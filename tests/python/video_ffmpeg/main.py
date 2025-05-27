@@ -1,6 +1,7 @@
 # TODO(#7484): Build this out into a proper example.
 from __future__ import annotations
 
+import platform
 import subprocess
 import time
 
@@ -18,43 +19,64 @@ def capture_webcam_h264() -> None:
     frame_duration = 1.0 / target_fps
     frame_time = 0.0
 
+    camera_input = []
+
+    if platform.system() == "Darwin":
+        # fmt: off
+        camera_input = [
+            "-f", "avfoundation",
+            # `avfoundation` fails if the framerate is not set.
+            "-framerate", str(target_fps),
+            # Device 0 for video, nothing for audio
+            "-i", "0:none"
+        ]
+        # fmt: on
+    elif platform.system() == "Windows":
+        # On windows we *have* to know the device name.
+        list_devices_cmd = ["ffmpeg", "-f", "dshow", "-list_devices", "true", "-i", "dummy", "-hide_banner"]
+        devices_output = subprocess.check_output(list_devices_cmd, stderr=subprocess.STDOUT).decode()
+
+        # Extract video device names
+        video_devices = []
+        for line in devices_output.split("\n"):
+            if '"' in line and "Alternative name" not in line:
+                device_name = line.split('"')[1]
+                if device_name not in video_devices:
+                    video_devices.append(device_name)
+
+        if not video_devices:
+            raise RuntimeError("No video devices found")
+
+        # Use first available video device
+        video_device = video_devices[0]
+        print(f"Using video device: {video_device}")
+
+        camera_input = ["-f", "dshow", "-framerate", str(target_fps), "-i", f"video={video_device}"]
+    else:
+        # TODO(#7484): Untested
+        camera_input = ["-f", "v4l2", "-i", "0"]
+
     # FFmpeg command to capture from webcam and output H.264 stream
-    ffmpeg_cmd = [
-        "ffmpeg",
-        # Setup input.
-        # TODO(#7484): non-mac?
-        "-f",
-        "avfoundation",  # Use avfoundation on macOS
-        "-framerate",
-        str(target_fps),  # Set frame rate
-        "-i",
-        "0:none",  # Device 0 for video, nothing for audio
+    # fmt: off
+    ffmpeg_cmd = ["ffmpeg"] + camera_input + [
         # Setup encoding.
-        "-c:v",
-        "libx264",  # H.264 codec
-        "-profile:v",
-        "baseline",  # Baseline profile to avoid b-frames.
-        "-pix_fmt",
-        "yuv420p",  # Ensure pixel format compatible with baseline profile.
-        "-preset",
-        "veryfast",  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
-        "-tune",
-        "zerolatency",  # Low latency
+        "-c:v", "libx264",  # H.264 codec
+        "-profile:v", "baseline",  # Baseline profile to avoid b-frames.
+        "-pix_fmt", "yuv420p",  # Ensure pixel format compatible with baseline profile.
+        "-preset", "veryfast",  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
+        "-tune", "zerolatency",  # Low latency
         #'-refs', '1',  # Force single reference frame
         #'-bf', '0',  # No B-frames (alternative way to forcing baseline profile)
         # GOP (Group of Pictures) size - smaller value for lower latency.
         # TODO(#7484): This is too aggressive, but needed until we handle gop extending in the viewer better.
-        "-g",
-        "4",
+        "-g", "4",
+
         # Setup output.
-        "-f",
-        "h264",  # Output format
-        "-r",
-        str(
-            target_fps
-        ),  # Important, otherwise the output will have a much higher framerate than the input. Practically causing the stream to break down.
+        "-f", "h264",  # Output format
+        "-r", str(target_fps),  # Important, otherwise the output will have a much higher framerate than the input. Practically causing the stream to break down.
         "-",  # Output to stdout
     ]
+    # fmt: on
 
     print("ffmpeg command: " + " ".join(ffmpeg_cmd))
 
