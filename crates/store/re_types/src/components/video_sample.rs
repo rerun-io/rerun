@@ -29,8 +29,8 @@ pub struct VideoSample(pub crate::datatypes::Blob);
 
 impl ::re_types_core::Component for VideoSample {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.VideoSample")
+    fn name() -> ComponentName {
+        "rerun.components.VideoSample".into()
     }
 }
 

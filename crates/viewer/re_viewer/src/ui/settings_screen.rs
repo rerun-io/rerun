@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
 use re_log_types::TimestampFormat;
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -42,7 +42,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             egui::RichText::new("Settings")
                 .strong()
                 .line_height(Some(32.0))
-                .text_style(re_ui::DesignTokens::welcome_screen_h2()),
+                .text_style(DesignTokens::welcome_screen_h2()),
         ));
 
         ui.allocate_ui_with_layout(

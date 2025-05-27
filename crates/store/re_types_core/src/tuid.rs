@@ -87,6 +87,13 @@ macro_rules! delegate_arrow_tuid {
     ($typ:ident as $fqname:expr) => {
         $crate::macros::impl_into_cow!($typ);
 
+        impl $typ {
+            #[inline]
+            pub fn partial_descriptor() -> $crate::ComponentDescriptor {
+                $crate::ComponentDescriptor::new($fqname)
+            }
+        }
+
         impl $crate::Loggable for $typ {
             #[inline]
             fn arrow_datatype() -> ::arrow::datatypes::DataType {
@@ -136,11 +143,6 @@ macro_rules! delegate_arrow_tuid {
             #[inline]
             fn name() -> $crate::ComponentName {
                 $fqname.into()
-            }
-
-            #[inline]
-            fn descriptor() -> $crate::ComponentDescriptor {
-                $crate::ComponentDescriptor::new($fqname)
             }
         }
     };

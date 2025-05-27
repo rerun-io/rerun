@@ -144,7 +144,9 @@ impl crate::Archetype for Clear {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ClearIndicator::DEFAULT.serialized().unwrap()
+        ClearIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

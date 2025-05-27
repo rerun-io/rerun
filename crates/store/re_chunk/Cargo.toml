@@ -51,7 +51,6 @@ half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
-similar-asserts.workspace = true
 thiserror.workspace = true
 
 # Native dependencies:

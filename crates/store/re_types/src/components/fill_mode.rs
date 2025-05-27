@@ -49,8 +49,8 @@ pub enum FillMode {
 
 impl ::re_types_core::Component for FillMode {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.FillMode")
+    fn name() -> ComponentName {
+        "rerun.components.FillMode".into()
     }
 }
 

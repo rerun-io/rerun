@@ -304,7 +304,9 @@ impl ::re_types_core::Archetype for Capsules3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Capsules3DIndicator::DEFAULT.serialized().unwrap()
+        Capsules3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

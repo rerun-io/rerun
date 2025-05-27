@@ -146,7 +146,9 @@ impl ::re_types_core::Archetype for GraphEdges {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        GraphEdgesIndicator::DEFAULT.serialized().unwrap()
+        GraphEdgesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

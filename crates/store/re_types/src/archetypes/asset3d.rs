@@ -175,7 +175,9 @@ impl ::re_types_core::Archetype for Asset3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Asset3DIndicator::DEFAULT.serialized().unwrap()
+        Asset3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

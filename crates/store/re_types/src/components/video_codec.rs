@@ -38,8 +38,8 @@ pub enum VideoCodec {
 
 impl ::re_types_core::Component for VideoCodec {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.VideoCodec")
+    fn name() -> ComponentName {
+        "rerun.components.VideoCodec".into()
     }
 }
 

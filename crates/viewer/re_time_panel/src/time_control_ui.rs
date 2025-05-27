@@ -195,7 +195,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     }
                 }
                 Looping::All => {
-                    ui.visuals_mut().selection.bg_fill = ui.design_tokens().loop_everything_color();
+                    ui.visuals_mut().selection.bg_fill = ui.tokens().loop_everything_color;
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping entire recording")

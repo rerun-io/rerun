@@ -30,8 +30,8 @@ pub struct ZoomLevel(
 
 impl ::re_types_core::Component for ZoomLevel {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ZoomLevel")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ZoomLevel".into()
     }
 }
 

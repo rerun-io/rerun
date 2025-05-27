@@ -1,13 +1,12 @@
 use ahash::HashMap;
-use egui::{NumExt as _, Ui, text_selection::LabelSelectionState};
+use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, LogMsg, ResolvedTimeRangeF, StoreId, TableId};
+use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
-use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
 use re_uri::Origin;
@@ -314,12 +313,13 @@ impl AppState {
                     global_context: GlobalContext {
                         app_options,
                         reflection,
-                        component_ui_registry,
-                        view_class_registry,
+
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
                     },
+                    component_ui_registry,
+                    view_class_registry,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:
@@ -396,12 +396,13 @@ impl AppState {
                     global_context: GlobalContext {
                         app_options,
                         reflection,
-                        component_ui_registry,
-                        view_class_registry,
+
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
                     },
+                    component_ui_registry,
+                    view_class_registry,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:
@@ -465,9 +466,9 @@ impl AppState {
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
-                        ui.design_tokens()
+                        ui.tokens()
                             .bottom_panel_frame()
-                            .fill(ui.design_tokens().blueprint_time_panel_bg_fill()),
+                            .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
 
                     {
@@ -505,7 +506,7 @@ impl AppState {
                         ctx.rec_cfg,
                         ui,
                         app_blueprint.time_panel_state(),
-                        ui.design_tokens().bottom_panel_frame(),
+                        ui.tokens().bottom_panel_frame(),
                     );
                 }
 
@@ -682,8 +683,12 @@ impl AppState {
             self.selection_state.clear_selection();
         }
 
-        // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
-        if !LabelSelectionState::load(ui.ctx()).has_selection()
+        // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
+        if ui
+            .memory(|mem| mem.focused())
+            .and_then(|id| TextEditState::load(ui.ctx(), id))
+            .is_none()
+            && !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
             self.selection_state
@@ -747,19 +752,6 @@ fn table_ui(
 ) {
     re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
         .title(table_id.as_str())
-        .column_name(|desc| match desc {
-            ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
-
-            ColumnDescriptorRef::Component(desc) => {
-                if desc.entity_path == EntityPath::root() {
-                    // In most case, user tables don't have any entities, so we filter out the root entity
-                    // noise in column names.
-                    desc.column_name(BatchType::Chunk)
-                } else {
-                    desc.column_name(BatchType::Dataframe)
-                }
-            }
-        })
         .show(ctx, runtime, ui);
 }
 
@@ -898,17 +890,16 @@ fn check_for_clicked_hyperlinks(
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
-
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        re_data_source::DataSource::RerunGrpcStream(uri),
+                        re_data_source::DataSource::RerunGrpcStream {
+                            uri,
+                            select_when_loaded: !open_url.new_tab,
+                        },
                     ));
 
-                    if is_dataset_uri && !open_url.new_tab {
-                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                            DisplayMode::LocalRecordings,
-                        ));
-                    }
+                    // NOTE: we do NOT change the display mode here.
+                    // Instead we rely on `select_when_loaded` to trigger the selection… once the data is loaded.
+
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
                     recording_path = Some(path_str.to_owned());

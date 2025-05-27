@@ -24,8 +24,8 @@ pub struct AffixFuzzer11(pub Option<::arrow::buffer::ScalarBuffer<f32>>);
 
 impl ::re_types_core::Component for AffixFuzzer11 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer11")
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer11".into()
     }
 }
 

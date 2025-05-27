@@ -28,8 +28,8 @@ pub struct AlbedoFactor(pub crate::datatypes::Rgba32);
 
 impl ::re_types_core::Component for AlbedoFactor {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AlbedoFactor")
+    fn name() -> ComponentName {
+        "rerun.components.AlbedoFactor".into()
     }
 }
 

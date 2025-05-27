@@ -41,8 +41,8 @@ pub enum BackgroundKind {
 
 impl ::re_types_core::Component for BackgroundKind {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.BackgroundKind")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.BackgroundKind".into()
     }
 }
 

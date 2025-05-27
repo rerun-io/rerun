@@ -22,10 +22,10 @@ pub enum NotificationLevel {
 impl NotificationLevel {
     fn color(&self, ui: &egui::Ui) -> egui::Color32 {
         match self {
-            Self::Info => crate::INFO_COLOR,
+            Self::Info => ui.tokens().info_text_color,
             Self::Warning => ui.style().visuals.warn_fg_color,
             Self::Error => ui.style().visuals.error_fg_color,
-            Self::Success => crate::SUCCESS_COLOR,
+            Self::Success => ui.tokens().success_text_color,
         }
     }
 }
@@ -239,7 +239,7 @@ impl NotificationPanel {
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
-                    .fill(ui.design_tokens().notification_panel_background_color())
+                    .fill(ui.tokens().notification_panel_background_color)
                     .corner_radius(8)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
@@ -368,9 +368,9 @@ fn show_notification(
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
     let background_color = if mode == DisplayMode::Toast || notification.is_unread {
-        ui.design_tokens().notification_background_color()
+        ui.tokens().notification_background_color
     } else {
-        ui.design_tokens().notification_panel_background_color()
+        ui.tokens().notification_panel_background_color
     };
 
     egui::Frame::window(ui.style())
@@ -439,13 +439,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
 }
 
 fn log_level_icon(ui: &mut egui::Ui, level: NotificationLevel) {
-    let color = match level {
-        NotificationLevel::Info => crate::INFO_COLOR,
-        NotificationLevel::Warning => ui.style().visuals.warn_fg_color,
-        NotificationLevel::Error => ui.style().visuals.error_fg_color,
-        NotificationLevel::Success => crate::SUCCESS_COLOR,
-    };
-
+    let color = level.color(ui);
     let (rect, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
     ui.painter()
         .circle_filled(rect.center() + egui::vec2(0.0, 2.0), 5.0, color);

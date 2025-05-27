@@ -90,7 +90,9 @@ impl ::re_types_core::Archetype for MapZoom {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        MapZoomIndicator::DEFAULT.serialized().unwrap()
+        MapZoomIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

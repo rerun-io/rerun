@@ -39,8 +39,8 @@ pub enum MagnificationFilter {
 
 impl ::re_types_core::Component for MagnificationFilter {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.MagnificationFilter")
+    fn name() -> ComponentName {
+        "rerun.components.MagnificationFilter".into()
     }
 }
 

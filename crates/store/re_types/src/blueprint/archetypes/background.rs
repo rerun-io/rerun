@@ -109,7 +109,9 @@ impl ::re_types_core::Archetype for Background {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        BackgroundIndicator::DEFAULT.serialized().unwrap()
+        BackgroundIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

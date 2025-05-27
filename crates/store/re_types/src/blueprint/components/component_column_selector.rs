@@ -28,8 +28,8 @@ pub struct ComponentColumnSelector(pub crate::blueprint::datatypes::ComponentCol
 
 impl ::re_types_core::Component for ComponentColumnSelector {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ComponentColumnSelector")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ComponentColumnSelector".into()
     }
 }
 

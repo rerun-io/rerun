@@ -31,8 +31,8 @@ pub struct ClassId(pub crate::datatypes::ClassId);
 
 impl ::re_types_core::Component for ClassId {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ClassId")
+    fn name() -> ComponentName {
+        "rerun.components.ClassId".into()
     }
 }
 

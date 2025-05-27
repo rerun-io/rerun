@@ -2,8 +2,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
 use re_types::{
-    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, ComponentName,
-    DeserializationError,
+    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
     ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewId,
@@ -151,9 +150,12 @@ impl ViewProperty {
             .map(|value| value.unwrap_or_default())
     }
 
-    pub fn component_row_id(&self, component_name: ComponentName) -> Option<re_chunk::RowId> {
+    pub fn component_row_id(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<re_chunk::RowId> {
         self.query_results
-            .get_by_name(&component_name)
+            .get(component_descr)
             .and_then(|unit| unit.row_id())
     }
 

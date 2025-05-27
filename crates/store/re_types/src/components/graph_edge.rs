@@ -26,8 +26,8 @@ pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
 
 impl ::re_types_core::Component for GraphEdge {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.GraphEdge")
+    fn name() -> ComponentName {
+        "rerun.components.GraphEdge".into()
     }
 }
 

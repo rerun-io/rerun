@@ -222,7 +222,9 @@ impl ::re_types_core::Archetype for AssetVideo {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        AssetVideoIndicator::DEFAULT.serialized().unwrap()
+        AssetVideoIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

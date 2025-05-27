@@ -17,14 +17,9 @@ fn depth_image_roundtrip() {
 
     let all_expected = [DepthImage {
         buffer: ImageBuffer::from(vec![1, 2, 3, 4, 5, 6])
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(DepthImage::descriptor_buffer())),
-        format: format_expected
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(DepthImage::descriptor_format())),
-        meter: DepthMeter::from(1000.0)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(DepthImage::descriptor_meter())),
+            .serialized(DepthImage::descriptor_buffer()),
+        format: format_expected.serialized(DepthImage::descriptor_format()),
+        meter: DepthMeter::from(1000.0).serialized(DepthImage::descriptor_meter()),
         draw_order: None,
         colormap: None,
         point_fill_ratio: None,

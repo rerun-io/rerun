@@ -211,6 +211,9 @@ Set the displayed dimensions in a selection panel.",
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let tokens = ui.tokens();
+
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
 
@@ -221,7 +224,7 @@ Set the displayed dimensions in a selection panel.",
 
             if tensors.len() > 1 {
                 egui::Frame {
-                    inner_margin: re_ui::DesignTokens::view_padding().into(),
+                    inner_margin: tokens.view_padding().into(),
                     ..egui::Frame::default()
                 }
                     .show(&mut ui, |ui| {
@@ -518,6 +521,7 @@ fn paint_axis_names(
     dimension_labels: [Option<(String, bool)>; 2],
 ) {
     let painter = ui.painter();
+    let tokens = ui.tokens();
 
     let [width, height] = dimension_labels;
     let (width_name, invert_width) =
@@ -527,7 +531,7 @@ fn paint_axis_names(
 
     let text_color = ui.visuals().text_color();
 
-    let rounding = re_ui::DesignTokens::normal_corner_radius();
+    let rounding = tokens.normal_corner_radius();
     let inner_margin = rounding;
     let outer_margin = 8.0;
 

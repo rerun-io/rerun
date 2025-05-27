@@ -15,7 +15,7 @@ pub enum IconTextItem {
 impl Debug for IconTextItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Icon(icon) => write!(f, "Icon({})", icon.id),
+            Self::Icon(icon) => write!(f, "Icon({})", icon.uri()),
             Self::Text(text) => write!(f, "Text({})", text.text()),
         }
     }

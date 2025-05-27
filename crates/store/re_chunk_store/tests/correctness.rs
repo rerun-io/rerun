@@ -11,7 +11,6 @@ use re_log_types::{
     build_log_time,
 };
 use re_types::ComponentDescriptor;
-use re_types_core::Component as _;
 
 // ---
 
@@ -318,7 +317,10 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [build_log_time(now), build_frame_nr(frame40)],
-            (MyIndex::descriptor(), &MyIndex::from_iter(0..num_instances)),
+            (
+                MyIndex::partial_descriptor(),
+                &MyIndex::from_iter(0..num_instances),
+            ),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -332,7 +334,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
-            &MyIndex::descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -342,7 +344,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
-            &MyIndex::descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -352,7 +354,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -362,7 +364,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }

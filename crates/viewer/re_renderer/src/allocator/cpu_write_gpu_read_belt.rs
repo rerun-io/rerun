@@ -53,7 +53,7 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
     ///
     /// UNSAFE: The lifetime is transmuted to be `'static`.
-    /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk_buffer)!
+    /// In actuality it is tied to the lifetime of [`chunk_buffer`](Self::chunk_buffer)!
     write_view: wgpu::BufferViewMut<'static>,
 
     /// Range in T elements in `write_view` that haven't been written yet.

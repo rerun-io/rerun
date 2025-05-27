@@ -80,7 +80,7 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::disallowed_methods)]
+    #![expect(clippy::disallowed_methods)]
 
     use std::sync::Arc;
 

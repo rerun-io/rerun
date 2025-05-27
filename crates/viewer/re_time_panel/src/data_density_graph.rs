@@ -736,38 +736,9 @@ impl<'a> DensityGraphBuilder<'a> {
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains_item(item);
 
-    match ui.theme() {
-        egui::Theme::Dark => {
-            if is_selected {
-                make_brighter(ui.visuals().widgets.active.fg_stroke.color)
-            } else {
-                Color32::from_gray(225) //TODO(ab): tokenize
-            }
-        }
-        egui::Theme::Light => {
-            if is_selected {
-                make_darker(ui.visuals().widgets.active.fg_stroke.color)
-            } else {
-                Color32::from_gray(64) //TODO(ab): tokenize
-            }
-        }
+    if is_selected {
+        ui.tokens().density_graph_selected
+    } else {
+        ui.tokens().density_graph_unselected
     }
-}
-
-fn make_brighter(color: Color32) -> Color32 {
-    let [r, g, b, _] = color.to_array();
-    egui::Color32::from_rgb(
-        r.saturating_add(64),
-        g.saturating_add(64),
-        b.saturating_add(64),
-    )
-}
-
-fn make_darker(color: Color32) -> Color32 {
-    let [r, g, b, _] = color.to_array();
-    egui::Color32::from_rgb(
-        r.saturating_sub(64),
-        g.saturating_sub(64),
-        b.saturating_sub(64),
-    )
 }

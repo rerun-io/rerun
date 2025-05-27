@@ -3,7 +3,7 @@ use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
@@ -305,7 +305,7 @@ impl ExampleSection {
                     egui::RichText::new("View example recordings")
                         .strong()
                         .line_height(Some(32.0))
-                        .text_style(re_ui::DesignTokens::welcome_screen_h2()),
+                        .text_style(DesignTokens::welcome_screen_h2()),
                 ));
 
                 ui.add_space(TITLE_TO_GRID_VSPACE);
@@ -344,7 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    ui.design_tokens().example_card_background_color(),
+                                    ui.tokens().example_card_background_color,
                                 );
 
                                 if response.clicked() {
@@ -412,7 +412,8 @@ impl ExampleSection {
                                     ui.painter().rect_filled(
                                         example.rect,
                                         THUMBNAIL_RADIUS,
-                                        //TODO(ab): use design tokens
+                                        // We respect the theme, but TODO(ab): use design tokens
+                                        #[expect(clippy::disallowed_methods)]
                                         match ui.theme() {
                                             Theme::Dark => Color32::from_additive_luminance(25),
                                             Theme::Light => Color32::from_black_alpha(20),
@@ -513,7 +514,7 @@ impl ExampleDescLayout {
         let title = egui::RichText::new(self.desc.title.clone())
             .strong()
             .line_height(Some(16.0))
-            .text_style(re_ui::DesignTokens::welcome_screen_example_title());
+            .text_style(DesignTokens::welcome_screen_example_title());
 
         ui.add_space(DESCRIPTION_INNER_MARGIN as _);
         egui::Frame {
@@ -540,16 +541,12 @@ impl ExampleDescLayout {
                 for tag in self.desc.tags.iter().sorted() {
                     ui.add(
                         egui::Button::new(
-                            egui::RichText::new(tag)
-                                .text_style(re_ui::DesignTokens::welcome_screen_tag()),
+                            egui::RichText::new(tag).text_style(DesignTokens::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
-                        .fill(match ui.theme() {
-                            Theme::Dark => egui::Color32::from_rgb(26, 29, 30),
-                            Theme::Light => Color32::from_rgb(219, 222, 228),
-                        })
-                        .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086)))
+                        .fill(ui.tokens().example_tag_bg_fill)
+                        .stroke(ui.tokens().example_tag_stroke)
                         .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }
@@ -569,8 +566,7 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        re_ui::icons::GITHUB
-                            .as_button_with_label(ui.design_tokens(), "Source code"),
+                        re_ui::icons::GITHUB.as_button_with_label(ui.tokens(), "Source code"),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")

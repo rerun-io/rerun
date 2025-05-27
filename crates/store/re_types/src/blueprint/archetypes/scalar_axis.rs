@@ -116,7 +116,9 @@ impl ::re_types_core::Archetype for ScalarAxis {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ScalarAxisIndicator::DEFAULT.serialized().unwrap()
+        ScalarAxisIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

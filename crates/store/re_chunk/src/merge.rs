@@ -909,9 +909,9 @@ mod tests {
             let timepoint2 = [(Timeline::new_sequence("frame"), 2)];
 
             let points32bit =
-                <MyPoint as re_types_core::LoggableBatch>::to_arrow(&MyPoint::new(1.0, 1.0))?;
+                <MyPoint as re_types_core::ComponentBatch>::to_arrow(&MyPoint::new(1.0, 1.0))?;
             let points64bit =
-                <MyPoint64 as re_types_core::LoggableBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
+                <MyPoint64 as re_types_core::ComponentBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
 
             let chunk1 = Chunk::builder(entity_path.into())
                 .with_row(

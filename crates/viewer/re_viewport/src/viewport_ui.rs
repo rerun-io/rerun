@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
+use re_ui::{ContextExt as _, Icon, UiExt as _, design_tokens_of_visuals};
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -39,6 +39,8 @@ impl ViewportUi {
         ctx: &ViewerContext<'_>,
         view_states: &mut ViewStates,
     ) {
+        let tokens = ui.tokens();
+
         let Self { blueprint } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
@@ -79,7 +81,7 @@ impl ViewportUi {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding() as f32;
+            ui.spacing_mut().item_spacing.x = tokens.view_padding() as f32;
 
             re_tracing::profile_scope!("tree.ui");
 
@@ -144,7 +146,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        ui.design_tokens().drop_target_container_stroke()
+                        tokens.drop_target_container_stroke
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -586,18 +588,18 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     }
 
     /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
-    fn drag_preview_stroke(&self, _visuals: &egui::Visuals) -> egui::Stroke {
-        egui::Stroke::new(1.0, egui::Color32::WHITE.gamma_multiply(0.5))
+    fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
+        design_tokens_of_visuals(visuals).tile_drag_preview_stroke
     }
 
     /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
-    fn drag_preview_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        egui::Color32::WHITE.gamma_multiply(0.1)
+    fn drag_preview_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        design_tokens_of_visuals(visuals).tile_drag_preview_color
     }
 
     /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::DesignTokens::title_bar_height()
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?
@@ -654,6 +656,8 @@ impl TabWidget {
         tab_state: &egui_tiles::TabState,
         gamma: f32,
     ) -> Self {
+        let tokens = ui.tokens();
+
         struct TabDesc {
             label: egui::WidgetText,
             user_named: bool,
@@ -763,8 +767,8 @@ impl TabWidget {
             .is_some_and(|item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
-        let icon_size = DesignTokens::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
+        let icon_size = tokens.small_icon_size;
+        let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
         let text = if !tab_desc.user_named {
@@ -780,7 +784,7 @@ impl TabWidget {
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(
             galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            DesignTokens::title_bar_height(),
+            tokens.title_bar_height(),
         ));
         let galley_rect = egui::Rect::from_two_pos(
             rect.min + egui::vec2(icon_width_plus_padding, 0.0),

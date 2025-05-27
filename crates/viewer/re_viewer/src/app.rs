@@ -360,7 +360,7 @@ impl App {
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
+        if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.add_redap_server(uri.origin.clone());
 
             self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
@@ -642,9 +642,13 @@ impl App {
                             .replace(DisplayMode::LocalTable(table_id.clone()));
                     }
 
+                    Item::StoreId(store_id) => {
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+
                     Item::AppId(_)
                     | Item::DataSource(_)
-                    | Item::StoreId(_)
                     | Item::InstancePath(_)
                     | Item::ComponentPath(_)
                     | Item::Container(_)
@@ -1297,7 +1301,8 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream { mut uri, .. }) =
+            entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1364,7 +1369,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..ui.design_tokens().bottom_panel_frame()
+            ..ui.tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -1387,7 +1392,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(ui.design_tokens().top_panel_frame())
+            .frame(ui.tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
@@ -1610,38 +1615,40 @@ impl App {
             if was_empty && !entity_db.is_empty() {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
-                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
                     self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
                 }
             }
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
-                    // Set the recording-id after potentially creating the store in the hub.
-                    // This ordering is important because the `StoreHub` internally
-                    // updates the app-id when changing the recording.
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id}'");
-                            store_hub.set_active_recording_id(store_id.clone());
+                    if channel_source.select_when_loaded() {
+                        // Set the recording-id after potentially creating the store in the hub.
+                        // This ordering is important because the `StoreHub` internally
+                        // updates the app-id when changing the recording.
+                        match store_id.kind {
+                            StoreKind::Recording => {
+                                re_log::trace!("Opening a new recording: '{store_id}'");
+                                store_hub.set_active_recording_id(store_id.clone());
 
-                            // Also select the new recording:
-                            self.command_sender.send_system(SystemCommand::SetSelection(
-                                re_viewer_context::Item::StoreId(store_id.clone()),
-                            ));
+                                // Also select the new recording:
+                                self.command_sender.send_system(SystemCommand::SetSelection(
+                                    re_viewer_context::Item::StoreId(store_id.clone()),
+                                ));
 
-                            // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
-                        }
-                        StoreKind::Blueprint => {
-                            // We wait with activating blueprints until they are fully loaded,
-                            // so that we don't run heuristics on half-loaded blueprints.
-                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                            // the blueprint won't be activated until the whole _recording_ has finished loading.
+                                // If the viewer is in the background, tell the user that it has received something new.
+                                egui_ctx.send_viewport_cmd(
+                                    egui::ViewportCommand::RequestUserAttention(
+                                        egui::UserAttentionType::Informational,
+                                    ),
+                                );
+                            }
+                            StoreKind::Blueprint => {
+                                // We wait with activating blueprints until they are fully loaded,
+                                // so that we don't run heuristics on half-loaded blueprints.
+                                // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                                // the blueprint won't be activated until the whole _recording_ has finished loading.
+                            }
                         }
                     }
                 }
@@ -2445,14 +2452,18 @@ fn paint_background_fill(ui: &egui::Ui) {
     // So we fill in that gap (and other) here.
     // Of course this does some over-draw, but we have to live with that.
 
+    let tokens = ui.tokens();
+
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_corner_radius(),
+        tokens.native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
 
 fn paint_native_window_frame(egui_ctx: &egui::Context) {
+    let tokens = egui_ctx.tokens();
+
     let painter = egui::Painter::new(
         egui_ctx.clone(),
         egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
@@ -2461,14 +2472,14 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_corner_radius(),
-        egui_ctx.design_tokens().native_frame_stroke,
+        tokens.native_window_corner_radius(),
+        egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
-    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
+    use egui::{Align2, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
     if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
@@ -2489,13 +2500,21 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
         let screen_rect = egui_ctx.screen_rect();
-        painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
+        painter.rect_filled(
+            screen_rect,
+            0.0,
+            egui_ctx
+                .style()
+                .visuals
+                .extreme_bg_color
+                .gamma_multiply_u8(192),
+        );
         painter.text(
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
             TextStyle::Body.resolve(&egui_ctx.style()),
-            Color32::WHITE,
+            egui_ctx.style().visuals.strong_text_color(),
         );
     }
 }

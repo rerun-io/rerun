@@ -157,7 +157,9 @@ impl ::re_types_core::Archetype for Scalars {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ScalarsIndicator::DEFAULT.serialized().unwrap()
+        ScalarsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

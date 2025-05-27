@@ -2,7 +2,7 @@ use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
 
 use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};
-use crate::{DesignTokens, Icon, LabelStyle};
+use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[allow(clippy::type_complexity)]
@@ -194,14 +194,16 @@ impl ListItemContent for LabelContent<'_> {
             min_desired_width: _,
         } = *self;
 
+        let tokens = ui.tokens();
+        let small_icon_size = tokens.small_icon_size;
         let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
-            DesignTokens::small_icon_size(),
+            context.rect.left_center() + egui::vec2(small_icon_size.x / 2., 0.0),
+            small_icon_size,
         );
 
         let mut text_rect = context.rect;
         if icon_fn.is_some() {
-            text_rect.min.x += icon_rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.min.x += icon_rect.width() + tokens.text_to_icon_padding();
         }
 
         // text styling
@@ -251,7 +253,7 @@ impl ListItemContent for LabelContent<'_> {
         // Draw text
 
         if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.max.x -= button_response.rect.width() + tokens.text_to_icon_padding();
         }
 
         let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
@@ -281,6 +283,7 @@ impl ListItemContent for LabelContent<'_> {
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
+        let tokens = ui.tokens();
         let text_wrap_mode = self.get_text_wrap_mode(ui);
 
         let measured_width = {
@@ -300,8 +303,7 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width +=
-                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                desired_width += tokens.small_icon_size.x + tokens.text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being

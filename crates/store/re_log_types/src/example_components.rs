@@ -5,7 +5,8 @@ use std::sync::Arc;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{
-    Component, ComponentDescriptor, DeserializationError, Loggable, SerializedComponentBatch,
+    Component, ComponentDescriptor, ComponentName, DeserializationError, Loggable,
+    SerializedComponentBatch,
 };
 
 // ----------------------------------------------------------------------------
@@ -102,7 +103,9 @@ impl re_types_core::Archetype for MyPoints {
         use re_types_core::ComponentBatch as _;
         // These is no such thing as failing to serialized an indicator.
         #[allow(clippy::unwrap_used)]
-        Self::Indicator::DEFAULT.serialized().unwrap()
+        Self::Indicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     fn name() -> re_types_core::ArchetypeName {
@@ -254,8 +257,8 @@ impl Loggable for MyPoint {
 }
 
 impl Component for MyPoint {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyPoint")
+    fn name() -> ComponentName {
+        "example.MyPoint".into()
     }
 }
 
@@ -275,6 +278,11 @@ impl MyPoint64 {
         it.into_iter()
             .map(|i| Self::new(i as f64, i as f64))
             .collect()
+    }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
     }
 }
 
@@ -370,8 +378,8 @@ impl Loggable for MyPoint64 {
 }
 
 impl Component for MyPoint64 {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyPoint64")
+    fn name() -> ComponentName {
+        "example.MyPoint64".into()
     }
 }
 
@@ -444,8 +452,8 @@ impl Loggable for MyColor {
 }
 
 impl Component for MyColor {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyColor")
+    fn name() -> ComponentName {
+        "example.MyColor".into()
     }
 }
 
@@ -495,8 +503,8 @@ impl Loggable for MyLabel {
 }
 
 impl Component for MyLabel {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyLabel")
+    fn name() -> ComponentName {
+        "example.MyLabel".into()
     }
 }
 
@@ -512,6 +520,11 @@ impl MyIndex {
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
+    }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
     }
 }
 
@@ -555,7 +568,7 @@ impl Loggable for MyIndex {
 }
 
 impl Component for MyIndex {
-    fn descriptor() -> re_types_core::ComponentDescriptor {
-        ComponentDescriptor::new("example.MyIndex")
+    fn name() -> re_types_core::ComponentName {
+        "example.MyIndex".into()
     }
 }

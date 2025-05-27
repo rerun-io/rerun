@@ -37,7 +37,7 @@ pub trait HarnessExt {
         broken_percent_threshold: f64,
     ) -> bool;
 
-    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: i32);
+    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: usize);
 }
 
 impl HarnessExt for egui_kittest::Harness<'_> {
@@ -101,7 +101,8 @@ impl HarnessExt for egui_kittest::Harness<'_> {
         }
     }
 
-    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels_threshold: i32) {
+    #[track_caller]
+    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels_threshold: usize) {
         match self.try_snapshot(name) {
             Ok(_) => {}
 
@@ -113,7 +114,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                 } => {
                     re_log::debug!(num_broken_pixels, broken_pixels_threshold);
                     assert!(
-                        num_broken_pixels <= broken_pixels_threshold,
+                        num_broken_pixels as usize <= broken_pixels_threshold,
                         "{name} failed because {num_broken_pixels} > {broken_pixels_threshold}\n{diff_path:?}"
                     );
                 }
@@ -398,12 +399,13 @@ impl TestContext {
             global_context: GlobalContext {
                 app_options: &Default::default(),
                 reflection: &self.reflection,
-                component_ui_registry: &self.component_ui_registry,
-                view_class_registry: &self.view_class_registry,
+
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
             },
+            component_ui_registry: &self.component_ui_registry,
+            view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             active_redap_entry: None,
             active_table_id: None,

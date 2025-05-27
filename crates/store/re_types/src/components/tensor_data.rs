@@ -33,8 +33,8 @@ pub struct TensorData(pub crate::datatypes::TensorData);
 
 impl ::re_types_core::Component for TensorData {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorData")
+    fn name() -> ComponentName {
+        "rerun.components.TensorData".into()
     }
 }
 

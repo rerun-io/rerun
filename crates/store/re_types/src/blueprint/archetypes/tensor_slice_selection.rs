@@ -159,7 +159,9 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorSliceSelectionIndicator::DEFAULT.serialized().unwrap()
+        TensorSliceSelectionIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

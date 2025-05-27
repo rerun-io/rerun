@@ -249,7 +249,9 @@ impl ::re_types_core::Archetype for VideoFrameReference {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VideoFrameReferenceIndicator::DEFAULT.serialized().unwrap()
+        VideoFrameReferenceIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

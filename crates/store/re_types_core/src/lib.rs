@@ -25,10 +25,10 @@ pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
+mod component_batch;
 mod component_descriptor;
 mod id;
 mod loggable;
-mod loggable_batch;
 pub mod reflection;
 mod result;
 mod tuid;
@@ -41,14 +41,12 @@ pub use self::{
     },
     arrow_string::ArrowString,
     as_components::AsComponents,
+    component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
     component_descriptor::ComponentDescriptor,
     id::{ChunkId, RowId},
     loggable::{
         Component, ComponentDescriptorSet, ComponentName, DatatypeName, Loggable,
         UnorderedComponentDescriptorSet,
-    },
-    loggable_batch::{
-        ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,

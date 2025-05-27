@@ -7,7 +7,7 @@ use re_byte_size::SizeBytes;
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
-use crate::{Archetype, ComponentBatch, LoggableBatch};
+use crate::{Archetype, ComponentBatch};
 
 // ---
 
@@ -19,7 +19,7 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// A [`Loggable`] has no semantics (such as a name, for example): it's just data.
 /// If you want to encode semantics, then you're looking for a [`Component`], which extends [`Loggable`].
 ///
-/// Implementing the [`Loggable`] trait automatically derives the [`LoggableBatch`] implementation,
+/// Implementing the [`Loggable`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
@@ -89,34 +89,8 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 /// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
-    /// Returns the complete [`ComponentDescriptor`] for this [`Component`].
-    ///
-    /// Every component is uniquely identified by its [`ComponentDescriptor`].
-    //
-    // NOTE: Builtin Rerun components don't (yet) have anything but a `ComponentName` attached to
-    // them (other tags are injected at the Archetype level), therefore having a full
-    // `ComponentDescriptor` might seem overkill.
-    // It's not:
-    // * Users might still want to register Components with specific tags.
-    // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
-    //   (e.g. generics, metric units, etc).
-    // TODO(#6889): This method should be removed, or made dynamic.
-    fn descriptor() -> ComponentDescriptor;
-
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
-    ///
-    /// This is a trivial but useful helper for `Self::descriptor().component_name`.
-    ///
-    /// The default implementation already does the right thing: do not override unless you know
-    /// what you're doing.
-    /// `Self::name()` must exactly match the value returned by `Self::descriptor().component_name`,
-    /// or undefined behavior ensues.
-    //
-    // TODO(#6889): This method should be removed.
-    #[inline]
-    fn name() -> ComponentName {
-        Self::descriptor().component_name
-    }
+    fn name() -> ComponentName;
 }
 
 // ---

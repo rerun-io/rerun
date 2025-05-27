@@ -37,8 +37,8 @@ pub struct QueryExpression(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for QueryExpression {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.QueryExpression")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.QueryExpression".into()
     }
 }
 

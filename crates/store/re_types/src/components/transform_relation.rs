@@ -42,8 +42,8 @@ pub enum TransformRelation {
 
 impl ::re_types_core::Component for TransformRelation {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TransformRelation")
+    fn name() -> ComponentName {
+        "rerun.components.TransformRelation".into()
     }
 }
 

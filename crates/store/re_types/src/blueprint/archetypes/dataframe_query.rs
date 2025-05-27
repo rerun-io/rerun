@@ -169,7 +169,9 @@ impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        DataframeQueryIndicator::DEFAULT.serialized().unwrap()
+        DataframeQueryIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

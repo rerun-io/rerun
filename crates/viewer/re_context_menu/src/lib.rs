@@ -102,7 +102,8 @@ fn context_menu_ui_for_item_with_context_impl(
             show_context_menu_for_selection(&context_menu_ctx, ui);
         };
 
-        let item_collection = ItemCollection::from(std::iter::once((item.clone(), item_context)));
+        let item_collection =
+            ItemCollection::from_items_and_context(std::iter::once((item.clone(), item_context)));
 
         // handle selection
         match selection_update_behavior {
@@ -331,7 +332,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(icon.as_button_with_label(ui.design_tokens(), label))
+            ui.add(icon.as_button_with_label(ui.tokens(), label))
         } else {
             ui.button(label)
         };

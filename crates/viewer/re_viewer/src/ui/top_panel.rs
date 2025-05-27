@@ -21,7 +21,7 @@ pub fn top_panel(
 
     let style_like_web = app.is_screenshotting();
     let top_bar_style = ui.ctx().top_bar_style(style_like_web);
-    let top_panel_frame = ui.design_tokens().top_panel_frame();
+    let top_panel_frame = ui.tokens().top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
@@ -227,7 +227,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
                 format!("Waiting for data on {uri}…")
             }
-            re_smart_channel::SmartChannelSource::RedapGrpcStream(uri) => {
+            re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
                 format!(
                     "Waiting for data on {}…",
                     uri.clone().without_query_and_fragment()
@@ -321,8 +321,9 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()
+        .fit_to_original_size(2.0) // hack, because the original SVG is very small
         .max_height(desired_height)
-        .tint(ui.design_tokens().strong_fg_color());
+        .tint(ui.tokens().strong_fg_color);
 
     let url = "https://rerun.io/";
     let response = ui

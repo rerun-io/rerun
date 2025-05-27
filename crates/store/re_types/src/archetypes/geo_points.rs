@@ -176,7 +176,9 @@ impl ::re_types_core::Archetype for GeoPoints {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        GeoPointsIndicator::DEFAULT.serialized().unwrap()
+        GeoPointsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

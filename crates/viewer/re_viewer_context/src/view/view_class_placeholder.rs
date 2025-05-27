@@ -59,8 +59,9 @@ impl ViewClass for ViewClassPlaceholder {
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
+        let tokens = ui.tokens();
         egui::Frame {
-            inner_margin: egui::Margin::same(re_ui::DesignTokens::view_padding()),
+            inner_margin: egui::Margin::same(tokens.view_padding()),
             ..Default::default()
         }
         .show(ui, |ui| {

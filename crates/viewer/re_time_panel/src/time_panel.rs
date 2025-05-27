@@ -18,12 +18,12 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, SyntaxHighlighting as _, UiExt as _, filter_widget,
-    icon_text, icons, list_item, maybe_plus, modifiers_text,
+    ContextExt as _, Help, SyntaxHighlighting as _, UiExt as _, filter_widget, icon_text, icons,
+    list_item, maybe_plus, modifiers_text,
 };
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
-    UiLayout, ViewerContext, VisitorControlFlow,
+    CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
+    TimeView, UiLayout, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -204,6 +204,8 @@ impl TimePanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // Invalidate the filter widget if the store id has changed.
         if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
             self.filter_state = Default::default();
@@ -258,8 +260,7 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.collapsed_ui(ctx, entity_db, ui, &mut time_ctrl_after);
                     });
@@ -293,17 +294,18 @@ impl TimePanel {
         time_ctrl_after: &mut TimeControl,
         ui: &mut Ui,
     ) {
+        let tokens = ui.tokens();
+
         ui.vertical(|ui| {
             // Add back the margin we removed from the panel:
             let mut top_row_frame = egui::Frame::default();
-            let margin = DesignTokens::bottom_panel_margin();
+            let margin = tokens.bottom_panel_margin();
             top_row_frame.inner_margin.right = margin.right;
             top_row_frame.inner_margin.bottom = margin.bottom;
             let top_row_rect = top_row_frame
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.top_row_ui(ctx, entity_db, ui, time_ctrl_after);
                     });
@@ -1152,19 +1154,21 @@ impl TimePanel {
                     // the user switched to another recording. In either case, we invalidate it.
                     self.range_selection_anchor_item = None;
                 } else {
-                    let items_iterator = items_in_range.into_iter().map(|item| {
-                        (
-                            item,
-                            Some(ItemContext::BlueprintTree {
-                                filter_session_id: self.filter_state.session_id(),
-                            }),
-                        )
-                    });
+                    let items = ItemCollection::from_items_and_context(
+                        items_in_range.into_iter().map(|item| {
+                            (
+                                item,
+                                Some(ItemContext::BlueprintTree {
+                                    filter_session_id: self.filter_state.session_id(),
+                                }),
+                            )
+                        }),
+                    );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items_iterator);
+                        ctx.selection_state.extend_selection(items);
                     } else {
-                        ctx.selection_state.set_selection(items_iterator);
+                        ctx.selection_state.set_selection(items);
                     }
                 }
             }
@@ -1455,7 +1459,7 @@ fn paint_range_highlight(
         painter.rect_filled(
             visible_history_area_rect,
             0.0,
-            egui::Color32::WHITE.gamma_multiply(0.1),
+            painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
         );
     }
 }
@@ -1627,7 +1631,7 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(right_pos, fill_color);
 
             shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh.colored_vertex(right_pos, ui.design_tokens().shadow_gradient_dark_start);
+            shadow_mesh.colored_vertex(right_pos, ui.tokens().shadow_gradient_dark_start);
 
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);

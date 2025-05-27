@@ -26,8 +26,8 @@ pub struct StrokeWidth(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for StrokeWidth {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.StrokeWidth")
+    fn name() -> ComponentName {
+        "rerun.components.StrokeWidth".into()
     }
 }
 

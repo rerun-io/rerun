@@ -272,7 +272,9 @@ impl ::re_types_core::Archetype for DepthImage {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        DepthImageIndicator::DEFAULT.serialized().unwrap()
+        DepthImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

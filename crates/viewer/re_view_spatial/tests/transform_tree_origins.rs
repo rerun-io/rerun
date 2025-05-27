@@ -149,6 +149,7 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
+            500,
         );
     }
 }
@@ -184,11 +185,13 @@ fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
     })
 }
 
+#[track_caller]
 fn run_view_ui_and_save_snapshot(
     test_context: &mut TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    num_pixels_allowed_to_deviate: usize,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -233,6 +236,5 @@ fn run_view_ui_and_save_snapshot(
             });
         });
 
-    let num_pixels_allowed_to_deviate = 170;
     harness.snapshot_with_broken_pixels(name, num_pixels_allowed_to_deviate);
 }

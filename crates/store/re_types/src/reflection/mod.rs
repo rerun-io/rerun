@@ -13,7 +13,8 @@ use re_types_core::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
         ComponentReflectionMap, Reflection,
     },
-    ArchetypeName, Component, ComponentName, Loggable as _, LoggableBatch as _, SerializationError,
+    ArchetypeName, Component, ComponentBatch as _, ComponentName, Loggable as _,
+    SerializationError,
 };
 
 /// Generates reflection about all known components.

@@ -1,5 +1,6 @@
 use std::iter;
 
+use egui::Color32;
 use itertools::{Either, izip};
 
 use re_entity_db::InstancePathHash;
@@ -29,6 +30,8 @@ pub enum UiLabelTarget {
 
 #[derive(Clone)]
 pub enum UiLabelStyle {
+    Default,
+
     Color(egui::Color32),
 
     /// Style it like an error message
@@ -198,7 +201,7 @@ pub fn process_labels<'a, P: 'a>(
     )
     .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 
-    let colors = clamped_or(colors, &egui::Color32::WHITE);
+    let colors = clamped_or(colors, &Color32::PLACEHOLDER);
 
     Either::Right(
         itertools::izip!(label_positions, labels, colors)
@@ -206,7 +209,11 @@ pub fn process_labels<'a, P: 'a>(
             .filter_map(move |(i, (position, label, color))| {
                 label.map(|label| UiLabel {
                     text: label,
-                    style: (*color).into(),
+                    style: if *color == Color32::PLACEHOLDER {
+                        UiLabelStyle::Default
+                    } else {
+                        UiLabelStyle::Color(*color)
+                    },
                     target: target_from_position(position),
                     labeled_instance: InstancePathHash::instance(
                         entity_path,

@@ -40,8 +40,8 @@ pub enum ContainerKind {
 
 impl ::re_types_core::Component for ContainerKind {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ContainerKind")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ContainerKind".into()
     }
 }
 

@@ -58,8 +58,8 @@ pub enum MarkerShape {
 
 impl ::re_types_core::Component for MarkerShape {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.MarkerShape")
+    fn name() -> ComponentName {
+        "rerun.components.MarkerShape".into()
     }
 }
 

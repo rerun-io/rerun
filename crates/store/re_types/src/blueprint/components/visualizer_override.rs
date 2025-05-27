@@ -33,8 +33,8 @@ pub struct VisualizerOverride(
 
 impl ::re_types_core::Component for VisualizerOverride {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.VisualizerOverride")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.VisualizerOverride".into()
     }
 }
 

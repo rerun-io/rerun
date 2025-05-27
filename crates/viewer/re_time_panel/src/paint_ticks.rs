@@ -113,8 +113,10 @@ fn paint_ticks(
 
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {
+            #[expect(clippy::disallowed_methods)] // We are theme-aware here.
             Rgba::from_white_alpha(alpha * alpha).into()
         } else {
+            #[expect(clippy::disallowed_methods)] // We are theme-aware here.
             Rgba::from_black_alpha(alpha).into()
         }
     };

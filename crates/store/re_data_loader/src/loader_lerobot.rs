@@ -21,11 +21,11 @@ use re_chunk::{
 };
 use re_log_types::{ApplicationId, StoreId};
 use re_types::{
-    Archetype, Component, ComponentBatch,
+    Archetype, ComponentBatch,
     archetypes::{
-        AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
+        self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
     },
-    components::{Name, VideoTimestamp},
+    components::VideoTimestamp,
 };
 
 use crate::lerobot::{
@@ -583,7 +583,7 @@ fn make_scalar_batch_entity_chunks(
                     RowId::new(),
                     TimePoint::default(),
                     std::iter::once((
-                        <Name as Component>::descriptor().clone(),
+                        archetypes::SeriesLines::descriptor_names(),
                         Arc::new(StringArray::from_iter(names)) as Arc<dyn ArrowArray>,
                     )),
                 )

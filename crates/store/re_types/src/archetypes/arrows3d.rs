@@ -252,7 +252,9 @@ impl ::re_types_core::Archetype for Arrows3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Arrows3DIndicator::DEFAULT.serialized().unwrap()
+        Arrows3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

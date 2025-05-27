@@ -121,7 +121,9 @@ impl ::re_types_core::Archetype for ForceManyBody {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceManyBodyIndicator::DEFAULT.serialized().unwrap()
+        ForceManyBodyIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

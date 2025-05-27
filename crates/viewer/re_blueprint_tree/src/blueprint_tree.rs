@@ -13,8 +13,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemContext, SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
-    contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, SystemCommandSender as _, ViewId, ViewerContext,
+    VisitorControlFlow, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -793,19 +793,21 @@ impl BlueprintTree {
                     // the user switched to another recording. In either case, we invalidate it.
                     self.range_selection_anchor_item = None;
                 } else {
-                    let items_iterator = items_in_range.into_iter().map(|item| {
-                        (
-                            item,
-                            Some(ItemContext::BlueprintTree {
-                                filter_session_id: self.filter_state.session_id(),
-                            }),
-                        )
-                    });
+                    let items = ItemCollection::from_items_and_context(
+                        items_in_range.into_iter().map(|item| {
+                            (
+                                item,
+                                Some(ItemContext::BlueprintTree {
+                                    filter_session_id: self.filter_state.session_id(),
+                                }),
+                            )
+                        }),
+                    );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items_iterator);
+                        ctx.selection_state.extend_selection(items);
                     } else {
-                        ctx.selection_state.set_selection(items_iterator);
+                        ctx.selection_state.set_selection(items);
                     }
                 }
             }
@@ -1088,7 +1090,7 @@ impl BlueprintTree {
         ui.painter().hline(
             drop_target.indicator_span_x,
             drop_target.indicator_position_y,
-            (2.0, egui::Color32::WHITE),
+            (2.0, ui.tokens().strong_fg_color),
         );
 
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
@@ -1256,7 +1258,7 @@ fn add_new_view_or_container_menu_button(
     ui: &mut egui::Ui,
 ) {
     if ui
-        .add(re_ui::icons::ADD.as_button_with_label(ui.design_tokens(), "Add view or container…"))
+        .add(re_ui::icons::ADD.as_button_with_label(ui.tokens(), "Add view or container…"))
         .clicked()
     {
         ui.close();
@@ -1301,8 +1303,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET
-                .as_button_with_label(ui.design_tokens(), "Reset to default blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to default blueprint"),
         )
         .on_hover_text("Reset to the default blueprint for this app");
 
@@ -1328,8 +1329,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET
-                .as_button_with_label(ui.design_tokens(), "Reset to heuristic blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to heuristic blueprint"),
         )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()

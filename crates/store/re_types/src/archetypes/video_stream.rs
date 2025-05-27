@@ -156,7 +156,9 @@ impl ::re_types_core::Archetype for VideoStream {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VideoStreamIndicator::DEFAULT.serialized().unwrap()
+        VideoStreamIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -27,8 +27,8 @@ pub struct Resolution(pub crate::datatypes::Vec2D);
 
 impl ::re_types_core::Component for Resolution {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Resolution")
+    fn name() -> ComponentName {
+        "rerun.components.Resolution".into()
     }
 }
 

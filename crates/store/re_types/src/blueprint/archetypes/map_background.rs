@@ -95,7 +95,9 @@ impl ::re_types_core::Archetype for MapBackground {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        MapBackgroundIndicator::DEFAULT.serialized().unwrap()
+        MapBackgroundIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

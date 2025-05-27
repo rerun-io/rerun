@@ -27,8 +27,8 @@ pub struct ViewMaximized(pub crate::datatypes::Uuid);
 
 impl ::re_types_core::Component for ViewMaximized {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ViewMaximized")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ViewMaximized".into()
     }
 }
 

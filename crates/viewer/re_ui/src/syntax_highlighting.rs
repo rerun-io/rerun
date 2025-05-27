@@ -83,12 +83,7 @@ fn text_format(style: &Style) -> TextFormat {
 
 fn faint_text_format(style: &Style) -> TextFormat {
     TextFormat {
-        color: if style.visuals.dark_mode {
-            Color32::WHITE
-        } else {
-            Color32::BLACK
-        },
-
+        color: style.visuals.strong_text_color(),
         ..text_format(style)
     }
 }

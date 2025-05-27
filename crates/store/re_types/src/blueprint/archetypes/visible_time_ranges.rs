@@ -103,7 +103,9 @@ impl ::re_types_core::Archetype for VisibleTimeRanges {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VisibleTimeRangesIndicator::DEFAULT.serialized().unwrap()
+        VisibleTimeRangesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

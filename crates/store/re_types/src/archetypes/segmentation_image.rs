@@ -199,7 +199,9 @@ impl ::re_types_core::Archetype for SegmentationImage {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        SegmentationImageIndicator::DEFAULT.serialized().unwrap()
+        SegmentationImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

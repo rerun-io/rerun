@@ -7,6 +7,7 @@ use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
+use re_ui::ContextExt as _;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
@@ -23,6 +24,12 @@ pub struct ViewerContext<'a> {
     pub global_context: GlobalContext<'a>,
 
     pub storage_context: &'a StorageContext<'a>,
+
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
+
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -77,6 +84,10 @@ impl ViewerContext<'_> {
         self.global_context.app_options
     }
 
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+        self.egui_ctx().tokens()
+    }
+
     /// Runtime info about components and archetypes.
     ///
     /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
@@ -90,12 +101,12 @@ impl ViewerContext<'_> {
 
     /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.global_context.component_ui_registry
+        self.component_ui_registry
     }
 
     /// Registry of all known classes of views.
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.global_context.view_class_registry
+        self.view_class_registry
     }
 
     /// The [`egui::Context`].

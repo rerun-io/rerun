@@ -274,7 +274,9 @@ impl ::re_types_core::Archetype for LineStrips2D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        LineStrips2DIndicator::DEFAULT.serialized().unwrap()
+        LineStrips2DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

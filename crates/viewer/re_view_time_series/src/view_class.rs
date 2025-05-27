@@ -726,11 +726,9 @@ fn update_series_visibility_overrides_from_plot(
             .map(SeriesVisible::from)
             .collect::<Vec<_>>();
 
-        if let Some(serialized_component_batch) = descriptor.and_then(|descriptor| {
-            component_array
-                .serialized()
-                .map(|serialized| serialized.with_descriptor_override(descriptor))
-        }) {
+        if let Some(serialized_component_batch) =
+            descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+        {
             ctx.save_serialized_blueprint_component(
                 override_path.clone(),
                 serialized_component_batch,

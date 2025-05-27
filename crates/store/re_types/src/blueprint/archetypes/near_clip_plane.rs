@@ -95,7 +95,9 @@ impl ::re_types_core::Archetype for NearClipPlane {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        NearClipPlaneIndicator::DEFAULT.serialized().unwrap()
+        NearClipPlaneIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

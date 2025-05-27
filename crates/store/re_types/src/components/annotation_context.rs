@@ -36,8 +36,8 @@ pub struct AnnotationContext(
 
 impl ::re_types_core::Component for AnnotationContext {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AnnotationContext")
+    fn name() -> ComponentName {
+        "rerun.components.AnnotationContext".into()
     }
 }
 

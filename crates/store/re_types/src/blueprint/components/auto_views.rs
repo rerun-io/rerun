@@ -28,8 +28,8 @@ pub struct AutoViews(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for AutoViews {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.AutoViews")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.AutoViews".into()
     }
 }
 

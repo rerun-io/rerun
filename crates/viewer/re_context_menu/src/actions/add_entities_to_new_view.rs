@@ -51,7 +51,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                     {
                         let btn = class
                             .icon()
-                            .as_button_with_label(ui.design_tokens(), class.display_name());
+                            .as_button_with_label(ui.tokens(), class.display_name());
                         if ui.add(btn).clicked() {
                             create_view_for_selected_entities(ctx, *identifier);
                             ui.close();

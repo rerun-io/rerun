@@ -40,8 +40,8 @@ pub enum Corner2D {
 
 impl ::re_types_core::Component for Corner2D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.Corner2D")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.Corner2D".into()
     }
 }
 

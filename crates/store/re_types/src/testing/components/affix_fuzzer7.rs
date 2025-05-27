@@ -24,8 +24,8 @@ pub struct AffixFuzzer7(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1>>
 
 impl ::re_types_core::Component for AffixFuzzer7 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer7")
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer7".into()
     }
 }
 

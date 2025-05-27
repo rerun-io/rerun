@@ -267,7 +267,7 @@ fn visualizer_components(
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
                         // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry().ui_raw(
+                        ctx.viewer_ctx.component_ui_registry().component_ui_raw(
                             ctx.viewer_ctx,
                             ui,
                             UiLayout::List,
@@ -360,7 +360,7 @@ fn visualizer_components(
                     ui.list_item_flat_noninteractive(
                         list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
                             // TODO(andreas): db & entity path don't make sense here.
-                            ctx.viewer_ctx.component_ui_registry().ui_raw(
+                            ctx.viewer_ctx.component_ui_registry().component_ui_raw(
                                 ctx.viewer_ctx,
                                 ui,
                                 UiLayout::List,

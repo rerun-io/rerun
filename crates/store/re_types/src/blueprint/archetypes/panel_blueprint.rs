@@ -93,7 +93,9 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        PanelBlueprintIndicator::DEFAULT.serialized().unwrap()
+        PanelBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

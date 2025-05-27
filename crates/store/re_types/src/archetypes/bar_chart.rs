@@ -134,7 +134,9 @@ impl ::re_types_core::Archetype for BarChart {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        BarChartIndicator::DEFAULT.serialized().unwrap()
+        BarChartIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

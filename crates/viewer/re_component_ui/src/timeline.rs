@@ -1,5 +1,5 @@
+use re_types::Component;
 use re_types::blueprint::components;
-use re_types_core::ComponentBatch as _;
 use re_viewer_context::external::re_log_types::TimelineName;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
@@ -11,7 +11,7 @@ pub(crate) fn edit_timeline_name(
 ) -> egui::Response {
     if let Some(value) = value.as_mut() {
         let mut current_value: TimelineName = (&*value).into();
-        let id_salt = value.name();
+        let id_salt = <components::TimelineName as Component>::name();
         let mut changed = false;
         let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(current_value.as_str())

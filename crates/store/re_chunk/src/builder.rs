@@ -125,7 +125,6 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
-    // TODO(#6889): expect `ComponentDescriptor`
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
     pub fn with_component_batch(

@@ -93,7 +93,9 @@ impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorViewFitIndicator::DEFAULT.serialized().unwrap()
+        TensorViewFitIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

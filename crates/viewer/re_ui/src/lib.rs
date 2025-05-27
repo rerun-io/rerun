@@ -4,11 +4,11 @@ mod color_table;
 mod command;
 mod command_palette;
 mod context_ext;
-mod design_token_colors;
 mod design_tokens;
 pub mod drag_and_drop;
 pub mod filter_widget;
 mod help;
+mod hot_reload_design_tokens;
 mod icon_text;
 pub mod icons;
 pub mod list_item;
@@ -21,16 +21,15 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
-use egui::Color32;
 use egui::NumExt as _;
 
 pub use self::{
-    color_table::{ColorTable, ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,
     design_tokens::DesignTokens,
     help::*,
+    hot_reload_design_tokens::design_tokens_of,
     icon_text::*,
     icons::Icon,
     markdown_utils::*,
@@ -62,9 +61,6 @@ pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO
 /// close/maximize/minimize buttons and app title.
 pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
 
-pub const INFO_COLOR: Color32 = Color32::from_rgb(0, 155, 255);
-pub const SUCCESS_COLOR: Color32 = Color32::from_rgb(0, 240, 32);
-
 // ----------------------------------------------------------------------------
 
 pub struct TopBarStyle {
@@ -91,20 +87,11 @@ pub enum LabelStyle {
 
 // ----------------------------------------------------------------------------
 
-/// Return a reference to the global design tokens structure.
-pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
-    use once_cell::sync::OnceCell;
-
-    static DESIGN_TOKENS_DARK: OnceCell<DesignTokens> = OnceCell::new();
-    static DESIGN_TOKENS_LIGHT: OnceCell<DesignTokens> = OnceCell::new();
-
-    match theme {
-        egui::Theme::Dark => {
-            DESIGN_TOKENS_DARK.get_or_init(|| DesignTokens::load(egui::Theme::Dark))
-        }
-        egui::Theme::Light => {
-            DESIGN_TOKENS_LIGHT.get_or_init(|| DesignTokens::load(egui::Theme::Light))
-        }
+pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignTokens {
+    if visuals.dark_mode {
+        design_tokens_of(egui::Theme::Dark)
+    } else {
+        design_tokens_of(egui::Theme::Light)
     }
 }
 
@@ -132,6 +119,21 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
         o.fallback_theme = egui::Theme::Dark;
     });
 
+    set_themes(egui_ctx);
+
+    #[cfg(hot_reload_design_tokens)]
+    {
+        let egui_ctx = egui_ctx.clone();
+        hot_reload_design_tokens::install_hot_reload(move || {
+            re_log::debug!("Hot-reloading design tokens…");
+            hot_reload_design_tokens::hot_reload_design_tokens();
+            set_themes(&egui_ctx);
+            egui_ctx.request_repaint();
+        });
+    }
+}
+
+fn set_themes(egui_ctx: &egui::Context) {
     // It's the same fonts in dark/light mode:
     design_tokens_of(egui::Theme::Dark).set_fonts(egui_ctx);
 

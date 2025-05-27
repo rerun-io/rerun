@@ -101,7 +101,9 @@ impl ::re_types_core::Archetype for VisualBounds2D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VisualBounds2DIndicator::DEFAULT.serialized().unwrap()
+        VisualBounds2DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

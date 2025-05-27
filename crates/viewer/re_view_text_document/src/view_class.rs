@@ -118,10 +118,11 @@ impl ViewClass for TextDocumentView {
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
+        let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
-        let frame = egui::Frame::new().inner_margin(re_ui::DesignTokens::view_padding());
+        let frame = egui::Frame::new().inner_margin(tokens.view_padding());
         let response = frame
             .show(ui, |ui| {
                 let inner_ui_builder = egui::UiBuilder::new()

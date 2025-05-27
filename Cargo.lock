@@ -2762,7 +2762,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2779,7 +2779,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2819,7 +2819,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2838,7 +2838,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2857,7 +2857,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2921,7 +2921,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "egui",
@@ -2938,7 +2938,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2955,7 +2955,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "dify",
  "eframe",
@@ -3027,7 +3027,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3144,7 +3144,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3163,7 +3163,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#6ccb76800060c5267f06b842e3327db3c307c622"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 
 [[package]]
 name = "equivalent"
@@ -3323,6 +3323,9 @@ name = "float-cmp"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "fnv"
@@ -3751,13 +3754,13 @@ dependencies = [
 
 [[package]]
 name = "gpu-descriptor"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c08c1f623a8d0b722b8b99f821eb0ba672a1618f0d3b16ddbee1cedd2dd8557"
+checksum = "b89c83349105e3732062a895becfc71a8f921bb71ecbbdd8ff99263e3b53a0ca"
 dependencies = [
  "bitflags 2.9.1",
  "gpu-descriptor-types",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.2",
 ]
 
 [[package]]
@@ -4711,7 +4714,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -6731,6 +6734,7 @@ dependencies = [
  "egui_plot",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_arrow_util",
  "re_data_ui",
  "re_format",
  "re_log_types",
@@ -6738,6 +6742,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_viewer_context",
 ]
 
@@ -7025,6 +7030,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_global_context"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "directories",
+ "egui",
+ "egui_tiles",
+ "home",
+ "once_cell",
+ "re_capabilities",
+ "re_chunk",
+ "re_chunk_store",
+ "re_data_source",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_smart_channel",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_uri",
+ "re_video",
+ "rfd",
+ "serde",
+ "strum_macros",
+ "uuid",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "re_grpc_client"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
@@ -7139,7 +7177,6 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
- "backtrace",
  "bytemuck",
  "clean-path",
  "criterion",
@@ -7311,6 +7348,7 @@ dependencies = [
  "datafusion",
  "egui",
  "itertools 0.14.0",
+ "re_component_ui",
  "re_data_ui",
  "re_dataframe_ui",
  "re_datafusion",
@@ -7339,7 +7377,6 @@ dependencies = [
  "anyhow",
  "bitflags 2.9.1",
  "bytemuck",
- "cfg-if",
  "cfg_aliases",
  "clean-path",
  "crossbeam",
@@ -7369,8 +7406,8 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
+ "stl_io",
  "thiserror 1.0.65",
- "tinystl",
  "tobj",
  "type-map",
  "unindent",
@@ -7647,7 +7684,6 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
- "backtrace",
  "bytemuck",
  "criterion",
  "document-features",
@@ -7673,6 +7709,7 @@ name = "re_ui"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "anyhow",
  "arrow",
  "eframe",
  "egui",
@@ -7682,18 +7719,19 @@ dependencies = [
  "egui_tiles",
  "getrandom 0.2.15",
  "itertools 0.14.0",
- "once_cell",
+ "notify",
  "parking_lot",
  "rand",
  "re_arrow_util",
+ "re_build_tools",
  "re_entity_db",
  "re_format",
  "re_log",
  "re_log_types",
  "re_tracing",
  "re_types",
+ "ron",
  "serde",
- "serde_json",
  "smallvec",
  "strum",
  "strum_macros",
@@ -8041,7 +8079,6 @@ dependencies = [
  "re_renderer",
  "re_selection_panel",
  "re_smart_channel",
- "re_sorbet",
  "re_time_panel",
  "re_tracing",
  "re_types",
@@ -8089,7 +8126,6 @@ dependencies = [
  "bytemuck",
  "crossbeam",
  "datafusion",
- "directories",
  "egui",
  "egui-wgpu",
  "egui_kittest",
@@ -8108,12 +8144,11 @@ dependencies = [
  "parking_lot",
  "pollster 0.4.0",
  "re_arrow_util",
- "re_capabilities",
  "re_chunk",
  "re_chunk_store",
- "re_data_source",
  "re_entity_db",
  "re_format",
+ "re_global_context",
  "re_log",
  "re_log_types",
  "re_math",
@@ -8126,16 +8161,12 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
- "re_uri",
  "re_video",
- "rfd",
  "serde",
  "slotmap",
  "smallvec",
- "strum_macros",
  "thiserror 1.0.65",
  "tokio",
- "uuid",
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
@@ -8398,6 +8429,7 @@ dependencies = [
  "re_error",
  "re_format",
  "re_format_arrow",
+ "re_global_context",
  "re_grpc_server",
  "re_log",
  "re_log_encoding",
@@ -8411,7 +8443,6 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_viewer",
- "re_viewer_context",
  "re_web_viewer_server",
  "similar-asserts",
  "tokio",
@@ -9439,6 +9470,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "stl_io"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cff2e145168af9fef3b518ac0c6f9849c407b3df8a28582ced9f1fda510aa34c"
+dependencies = [
+ "byteorder",
+ "float-cmp",
+]
+
+[[package]]
 name = "strict-num"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9808,15 +9849,6 @@ dependencies = [
  "chunked_transfer",
  "httpdate",
  "log",
-]
-
-[[package]]
-name = "tinystl"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdbcdda2f86a57b89b5d9ac17cd4c9f3917ec8edcde403badf3d992d2947af2a"
-dependencies = [
- "bytemuck",
 ]
 
 [[package]]
@@ -10824,9 +10856,9 @@ checksum = "53a85b86a771b1c87058196170769dd264f66c0782acf1ae6cc51bfd64b39082"
 
 [[package]]
 name = "wgpu"
-version = "25.0.0"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca6049eb2014a0e0d8689f9b787605dd71d5bbfdc74095ead499f3cff705c229"
+checksum = "ec8fb398f119472be4d80bc3647339f56eb63b2a331f6a3d16e25d8144197dd9"
 dependencies = [
  "arrayvec",
  "bitflags 2.9.1",
@@ -10852,9 +10884,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "25.0.1"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19813e647da7aa3cdaa84f5846e2c64114970ea7c86b1e6aae8be08091f4bdc"
+checksum = "f7b882196f8368511d613c6aeec80655160db6646aebddf8328879a88d54e500"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -10920,9 +10952,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "25.0.1"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb7c4a1dc42ff14c23c9b11ebf1ee85cde661a9b1cf0392f79c1faca5bc559fb"
+checksum = "f968767fe4d3d33747bbd1473ccd55bf0f6451f55d733b5597e67b5deab4ad17"
 dependencies = [
  "android_system_properties",
  "arrayvec",

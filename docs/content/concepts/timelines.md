@@ -19,7 +19,7 @@ This will add the logged points to the timelines `frame_idx` and `sensor_time`, 
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
 
 ### How to log precise times
-Rerun supports three types of idncies, all encoded as `i64`:
+Rerun supports three types of indices, all encoded as `i64`:
 * Sequential
 * Timestamp (nanoseconds since Unix epoch)
 * Timedelta/duration (nanoseconds)

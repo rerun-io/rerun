@@ -1,6 +1,10 @@
-use crate::icon_text::{IconText, IconTextItem};
-use crate::{ColorToken, DesignTokens, Scale, UiExt as _, icons};
 use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
+
+use crate::{
+    UiExt as _,
+    icon_text::{IconText, IconTextItem},
+    icons,
+};
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
@@ -109,13 +113,15 @@ impl Help {
                 .widgets
                 .noninteractive
                 .bg_stroke
-                .color = ui.design_tokens().color_table.gray(Scale::S400);
+                .color = ui.visuals().weak_text_color();
             ui.separator();
         });
     }
 
     /// Show the help popup. Usually you want to show this in [`egui::Response::on_hover_ui`].
     pub fn ui(self, ui: &mut Ui) {
+        let tokens = ui.tokens();
+
         egui::Sides::new().show(
             ui,
             |ui| {
@@ -130,11 +136,11 @@ impl Help {
                             ui.spacing_mut().item_spacing.x = 2.0;
                             let hovered = ui.response().hovered();
 
-                            let tint = ui.design_tokens().color(ColorToken::gray(if hovered {
-                                Scale::S900
+                            let tint = if hovered {
+                                ui.visuals().widgets.hovered.text_color()
                             } else {
-                                Scale::S700
-                            }));
+                                ui.visuals().widgets.inactive.text_color()
+                            };
 
                             ui.label(RichText::new("Docs").color(tint).size(11.0));
 
@@ -163,8 +169,8 @@ impl Help {
                                 ui.strong(RichText::new(&row.text).size(11.0));
                             },
                             |ui| {
-                                let color = ui.design_tokens().color(ColorToken::gray(Scale::S700));
-                                ui.set_height(DesignTokens::small_icon_size().y);
+                                let color = ui.visuals().widgets.inactive.text_color();
+                                ui.set_height(tokens.small_icon_size.y);
                                 ui.spacing_mut().item_spacing.x = 2.0;
                                 ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                                 ui.visuals_mut().override_text_color = Some(color);

@@ -49,6 +49,8 @@ impl ChunkUi {
 
     // Return `true` if the user wants to exit the chunk viewer.
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+        let tokens = ui.tokens();
+
         let should_exit = self.chunk_info_ui(ui);
 
         //
@@ -178,13 +180,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(re_ui::DesignTokens::table_line_height(), header_ui)
+                    .header(tokens.table_line_height(), header_ui)
                     .body(|body| {
-                        body.rows(
-                            re_ui::DesignTokens::table_line_height(),
-                            row_ids.len(),
-                            row_ui,
-                        );
+                        body.rows(tokens.table_line_height(), row_ids.len(), row_ui);
                     });
             });
 

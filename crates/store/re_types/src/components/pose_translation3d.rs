@@ -26,8 +26,8 @@ pub struct PoseTranslation3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for PoseTranslation3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.PoseTranslation3D")
+    fn name() -> ComponentName {
+        "rerun.components.PoseTranslation3D".into()
     }
 }
 

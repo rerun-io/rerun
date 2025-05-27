@@ -314,7 +314,6 @@ mod tests {
         StoreId, TimePoint, Timeline,
         example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
-    use re_types::Component as _;
 
     use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
 
@@ -388,7 +387,7 @@ mod tests {
                     (timeline_other, 666),     //
                     (timeline_yet_another, 1), //
                 ]),
-                (MyIndex::descriptor(), &MyIndex::from_iter(0..10)),
+                (MyIndex::partial_descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 
@@ -426,7 +425,7 @@ mod tests {
                     TimePoint::default(),
                     [
                         (
-                            MyIndex::descriptor(),
+                            MyIndex::partial_descriptor(),
                             &MyIndex::from_iter(0..num_instances as _) as _,
                         ),
                         (MyPoints::descriptor_colors(), &colors as _),

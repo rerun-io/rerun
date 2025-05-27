@@ -34,8 +34,8 @@ pub struct Plane3D(pub crate::datatypes::Plane3D);
 
 impl ::re_types_core::Component for Plane3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Plane3D")
+    fn name() -> ComponentName {
+        "rerun.components.Plane3D".into()
     }
 }
 

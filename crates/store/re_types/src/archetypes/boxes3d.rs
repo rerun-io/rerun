@@ -305,7 +305,9 @@ impl ::re_types_core::Archetype for Boxes3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Boxes3DIndicator::DEFAULT.serialized().unwrap()
+        Boxes3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

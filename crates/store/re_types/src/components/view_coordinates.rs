@@ -48,8 +48,8 @@ pub struct ViewCoordinates(
 
 impl ::re_types_core::Component for ViewCoordinates {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ViewCoordinates")
+    fn name() -> ComponentName {
+        "rerun.components.ViewCoordinates".into()
     }
 }
 
