@@ -149,7 +149,7 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
-            400,
+            500,
         );
     }
 }
