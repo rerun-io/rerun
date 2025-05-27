@@ -7,7 +7,7 @@ use re_video::{
     decode::{DecodeSettings, FrameInfo},
 };
 
-use super::{VideoFrameTexture, chunk_decoder::VideoChunkDecoder};
+use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
@@ -50,7 +50,7 @@ pub struct VideoTexture {
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
-    chunk_decoder: VideoChunkDecoder,
+    chunk_decoder: VideoSampleDecoder,
 
     /// The video texture is created lazily on the first received frame.
     video_texture: Option<VideoTexture>,
@@ -93,7 +93,7 @@ impl VideoPlayer {
             }
         }
 
-        let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
+        let chunk_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
             re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
@@ -370,7 +370,7 @@ impl VideoPlayer {
 
 fn update_video_texture(
     render_ctx: &RenderContext,
-    chunk_decoder: &VideoChunkDecoder,
+    chunk_decoder: &VideoSampleDecoder,
     last_error: &mut Option<TimedDecodingError>,
     video_texture: &mut Option<VideoTexture>,
     presentation_timestamp: Time,

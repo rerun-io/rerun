@@ -71,10 +71,10 @@ pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
 #[derive(thiserror::Error, Debug)]
 pub enum VideoStreamProcessingError {
     #[error("No video frame chunks found.")]
-    NoVideoChunksFound,
+    NoVideoSamplesFound,
 
     #[error("Frame chunks present, but arrow type but unexpected arrow type: {0:?}")]
-    InvalidVideoChunkType(arrow::datatypes::DataType),
+    InvalidVideoSampleType(arrow::datatypes::DataType),
 
     #[error("Expected only a single video sample per timestep")]
     MultipleVideoSamplesPerTimestep,
@@ -164,7 +164,7 @@ fn load_video_data_from_chunks(
     );
     let video_chunks = query_results
         .get_required(&frame_chunk_descr)
-        .map_err(|_err| VideoStreamProcessingError::NoVideoChunksFound)?;
+        .map_err(|_err| VideoStreamProcessingError::NoVideoSamplesFound)?;
     let codec_chunks = query_results
         .get_required(&codec_chunk_descr)
         .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
@@ -247,13 +247,13 @@ fn read_additional_samples_from_chunk(
 
     let inner_list_array = raw_array
         .downcast_array_ref::<arrow::array::ListArray>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
             raw_array.data_type().clone(),
         ))?;
     let values = inner_list_array
         .values()
         .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
             raw_array.data_type().clone(),
         ))?;
     let values = values.values().inner();

@@ -24,7 +24,7 @@ from enum import Enum
 
 class VideoCodec(Enum):
     """
-    **Component**: The codec used to encode video stored in [`components.VideoChunk`][rerun.components.VideoChunk].
+    **Component**: The codec used to encode video stored in [`components.VideoSample`][rerun.components.VideoSample].
 
     Support of these codecs by the Rerun Viewer is platform dependent.
     For more details see check the [video reference](https://rerun.io/docs/reference/video).

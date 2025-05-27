@@ -26,12 +26,12 @@ struct DecoderOutput {
 
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
 // TODO(andreas): Meld this into `super::player::VideoPlayer`.
-pub struct VideoChunkDecoder {
+pub struct VideoSampleDecoder {
     decoder: Box<dyn re_video::decode::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
-impl VideoChunkDecoder {
+impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(

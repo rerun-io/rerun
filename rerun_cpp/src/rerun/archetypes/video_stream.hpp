@@ -7,8 +7,8 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/draw_order.hpp"
-#include "../components/video_chunk.hpp"
 #include "../components/video_codec.hpp"
+#include "../components/video_sample.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -18,20 +18,33 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: TODO: nice docs
+    /// **Archetype**: Video stream consisting of raw video chunks.
     ///
-    /// TODO: words about (non-)relationship with `archetypes::VideoFrameReference`.
-    ///
-    /// For instead logging video containers, refer to `archetypes::AssetVideo` and `archetypes::VideoFrameReference`.
+    /// For logging video containers like mp4, refer to `archetypes::AssetVideo` and `archetypes::VideoFrameReference`.
     /// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
     ///
-    /// TODO: snippet.
+    /// All components except `sample` are typically logged statically once per entity.
+    /// `sample` is then logged repeatedly for each frame on the timeline.
+    ///
+    /// TODO(#7484): Add snippet.
     struct VideoStream {
-        /// Video chunk data, associated with the current timestamp.
+        /// Video sample data (also known as "video chunk").
+        ///
+        /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+        /// There is currently no way to log differing decoding timestamps, meaning
+        /// that there is no support for B-frames.
+        /// See https://github.com/rerun-io/rerun/issues/10090 for more details.
+        ///
+        /// Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+        /// as this may break live video playback.
+        /// I.e. any appended sample should have a timestamp greater than all previously logged samples.
         ///
         /// The chunks are expected to be encoded using the `codec` field.
-        /// TODO: more docs.
-        std::optional<ComponentBatch> frame;
+        /// Each video sample must contain enough data for exactly one video frame
+        /// (this restriction may be relaxed in the future for some codecs).
+        ///
+        /// See `components::VideoCodec` for codec specific requirements.
+        std::optional<ComponentBatch> sample;
 
         /// The codec used to encode the video chunks.
         ///
@@ -53,10 +66,10 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoStream";
 
-        /// `ComponentDescriptor` for the `frame` field.
-        static constexpr auto Descriptor_frame = ComponentDescriptor(
-            ArchetypeName, "frame",
-            Loggable<rerun::components::VideoChunk>::Descriptor.component_name
+        /// `ComponentDescriptor` for the `sample` field.
+        static constexpr auto Descriptor_sample = ComponentDescriptor(
+            ArchetypeName, "sample",
+            Loggable<rerun::components::VideoSample>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `codec` field.
         static constexpr auto Descriptor_codec = ComponentDescriptor(
@@ -77,10 +90,10 @@ namespace rerun::archetypes {
         VideoStream& operator=(VideoStream&& other) = default;
 
         explicit VideoStream(
-            rerun::components::VideoChunk _frame, rerun::components::VideoCodec _codec
+            rerun::components::VideoSample _sample, rerun::components::VideoCodec _codec
         )
-            : frame(ComponentBatch::from_loggable(std::move(_frame), Descriptor_frame)
-                        .value_or_throw()),
+            : sample(ComponentBatch::from_loggable(std::move(_sample), Descriptor_sample)
+                         .value_or_throw()),
               codec(ComponentBatch::from_loggable(std::move(_codec), Descriptor_codec)
                         .value_or_throw()) {}
 
@@ -92,21 +105,33 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `VideoStream`.
         static VideoStream clear_fields();
 
-        /// Video chunk data, associated with the current timestamp.
+        /// Video sample data (also known as "video chunk").
+        ///
+        /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+        /// There is currently no way to log differing decoding timestamps, meaning
+        /// that there is no support for B-frames.
+        /// See https://github.com/rerun-io/rerun/issues/10090 for more details.
+        ///
+        /// Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+        /// as this may break live video playback.
+        /// I.e. any appended sample should have a timestamp greater than all previously logged samples.
         ///
         /// The chunks are expected to be encoded using the `codec` field.
-        /// TODO: more docs.
-        VideoStream with_frame(const rerun::components::VideoChunk& _frame) && {
-            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
+        /// Each video sample must contain enough data for exactly one video frame
+        /// (this restriction may be relaxed in the future for some codecs).
+        ///
+        /// See `components::VideoCodec` for codec specific requirements.
+        VideoStream with_sample(const rerun::components::VideoSample& _sample) && {
+            sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `frame` in a single component batch.
+        /// This method makes it possible to pack multiple `sample` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_frame` should
+        /// This only makes sense when used in conjunction with `columns`. `with_sample` should
         /// be used when logging a single row's worth of data.
-        VideoStream with_many_frame(const Collection<rerun::components::VideoChunk>& _frame) && {
-            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
+        VideoStream with_many_sample(const Collection<rerun::components::VideoSample>& _sample) && {
+            sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
             return std::move(*this);
         }
 

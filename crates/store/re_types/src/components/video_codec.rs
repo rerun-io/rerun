@@ -20,7 +20,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The codec used to encode video stored in [`components::VideoChunk`][crate::components::VideoChunk].
+/// **Component**: The codec used to encode video stored in [`components::VideoSample`][crate::components::VideoSample].
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).

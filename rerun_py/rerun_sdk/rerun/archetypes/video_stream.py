@@ -24,19 +24,20 @@ __all__ = ["VideoStream"]
 @define(str=False, repr=False, init=False)
 class VideoStream(Archetype):
     """
-    **Archetype**: TODO: nice docs.
+    **Archetype**: Video stream consisting of raw video chunks.
 
-    TODO: words about (non-)relationship with [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
-
-    For instead logging video containers, refer to [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo] and [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
+    For logging video containers like mp4, refer to [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo] and [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
     To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
 
-    TODO: snippet.
+    All components except `sample` are typically logged statically once per entity.
+    `sample` is then logged repeatedly for each frame on the timeline.
+
+    TODO(#7484): Add snippet.
     """
 
     def __init__(
         self: Any,
-        frame: datatypes.BlobLike,
+        sample: datatypes.BlobLike,
         codec: components.VideoCodecLike,
         *,
         draw_order: datatypes.Float32Like | None = None,
@@ -46,11 +47,23 @@ class VideoStream(Archetype):
 
         Parameters
         ----------
-        frame:
-            Video chunk data, associated with the current timestamp.
+        sample:
+            Video sample data (also known as "video chunk").
+
+            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+            There is currently no way to log differing decoding timestamps, meaning
+            that there is no support for B-frames.
+            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+
+            Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+            as this may break live video playback.
+            I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
             The chunks are expected to be encoded using the `codec` field.
-            TODO: more docs.
+            Each video sample must contain enough data for exactly one video frame
+            (this restriction may be relaxed in the future for some codecs).
+
+            See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         codec:
             The codec used to encode the video chunks.
 
@@ -65,14 +78,14 @@ class VideoStream(Archetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(frame=frame, codec=codec, draw_order=draw_order)
+            self.__attrs_init__(sample=sample, codec=codec, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            frame=None,
+            sample=None,
             codec=None,
             draw_order=None,
         )
@@ -89,7 +102,7 @@ class VideoStream(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        frame: datatypes.BlobLike | None = None,
+        sample: datatypes.BlobLike | None = None,
         codec: components.VideoCodecLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
@@ -100,11 +113,23 @@ class VideoStream(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        frame:
-            Video chunk data, associated with the current timestamp.
+        sample:
+            Video sample data (also known as "video chunk").
+
+            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+            There is currently no way to log differing decoding timestamps, meaning
+            that there is no support for B-frames.
+            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+
+            Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+            as this may break live video playback.
+            I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
             The chunks are expected to be encoded using the `codec` field.
-            TODO: more docs.
+            Each video sample must contain enough data for exactly one video frame
+            (this restriction may be relaxed in the future for some codecs).
+
+            See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         codec:
             The codec used to encode the video chunks.
 
@@ -120,7 +145,7 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "frame": frame,
+                "sample": sample,
                 "codec": codec,
                 "draw_order": draw_order,
             }
@@ -143,7 +168,7 @@ class VideoStream(Archetype):
     def columns(
         cls,
         *,
-        frame: datatypes.BlobArrayLike | None = None,
+        sample: datatypes.BlobArrayLike | None = None,
         codec: components.VideoCodecArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -157,11 +182,23 @@ class VideoStream(Archetype):
 
         Parameters
         ----------
-        frame:
-            Video chunk data, associated with the current timestamp.
+        sample:
+            Video sample data (also known as "video chunk").
+
+            The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+            There is currently no way to log differing decoding timestamps, meaning
+            that there is no support for B-frames.
+            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+
+            Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+            as this may break live video playback.
+            I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
             The chunks are expected to be encoded using the `codec` field.
-            TODO: more docs.
+            Each video sample must contain enough data for exactly one video frame
+            (this restriction may be relaxed in the future for some codecs).
+
+            See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         codec:
             The codec used to encode the video chunks.
 
@@ -177,7 +214,7 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                frame=frame,
+                sample=sample,
                 codec=codec,
                 draw_order=draw_order,
             )
@@ -186,7 +223,7 @@ class VideoStream(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"frame": frame, "codec": codec, "draw_order": draw_order}
+        kwargs = {"sample": sample, "codec": codec, "draw_order": draw_order}
         columns = []
 
         for batch in batches:
@@ -217,15 +254,27 @@ class VideoStream(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
-    frame: components.VideoChunkBatch | None = field(
+    sample: components.VideoSampleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.VideoChunkBatch._converter,  # type: ignore[misc]
+        converter=components.VideoSampleBatch._converter,  # type: ignore[misc]
     )
-    # Video chunk data, associated with the current timestamp.
+    # Video sample data (also known as "video chunk").
+    #
+    # The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
+    # There is currently no way to log differing decoding timestamps, meaning
+    # that there is no support for B-frames.
+    # See https://github.com/rerun-io/rerun/issues/10090 for more details.
+    #
+    # Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
+    # as this may break live video playback.
+    # I.e. any appended sample should have a timestamp greater than all previously logged samples.
     #
     # The chunks are expected to be encoded using the `codec` field.
-    # TODO: more docs.
+    # Each video sample must contain enough data for exactly one video frame
+    # (this restriction may be relaxed in the future for some codecs).
+    #
+    # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

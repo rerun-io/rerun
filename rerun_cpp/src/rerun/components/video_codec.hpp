@@ -21,7 +21,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: The codec used to encode video stored in `components::VideoChunk`.
+    /// **Component**: The codec used to encode video stored in `components::VideoSample`.
     ///
     /// Support of these codecs by the Rerun Viewer is platform dependent.
     /// For more details see check the [video reference](https://rerun.io/docs/reference/video).

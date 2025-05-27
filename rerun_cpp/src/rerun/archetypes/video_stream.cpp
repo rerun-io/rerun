@@ -8,8 +8,8 @@
 namespace rerun::archetypes {
     VideoStream VideoStream::clear_fields() {
         auto archetype = VideoStream();
-        archetype.frame =
-            ComponentBatch::empty<rerun::components::VideoChunk>(Descriptor_frame).value_or_throw();
+        archetype.sample = ComponentBatch::empty<rerun::components::VideoSample>(Descriptor_sample)
+                               .value_or_throw();
         archetype.codec =
             ComponentBatch::empty<rerun::components::VideoCodec>(Descriptor_codec).value_or_throw();
         archetype.draw_order =
@@ -21,8 +21,8 @@ namespace rerun::archetypes {
     Collection<ComponentColumn> VideoStream::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
-        if (frame.has_value()) {
-            columns.push_back(frame.value().partitioned(lengths_).value_or_throw());
+        if (sample.has_value()) {
+            columns.push_back(sample.value().partitioned(lengths_).value_or_throw());
         }
         if (codec.has_value()) {
             columns.push_back(codec.value().partitioned(lengths_).value_or_throw());
@@ -38,8 +38,8 @@ namespace rerun::archetypes {
     }
 
     Collection<ComponentColumn> VideoStream::columns() {
-        if (frame.has_value()) {
-            return columns(std::vector<uint32_t>(frame.value().length(), 1));
+        if (sample.has_value()) {
+            return columns(std::vector<uint32_t>(sample.value().length(), 1));
         }
         if (codec.has_value()) {
             return columns(std::vector<uint32_t>(codec.value().length(), 1));
@@ -60,8 +60,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(4);
 
-        if (archetype.frame.has_value()) {
-            cells.push_back(archetype.frame.value());
+        if (archetype.sample.has_value()) {
+            cells.push_back(archetype.sample.value());
         }
         if (archetype.codec.has_value()) {
             cells.push_back(archetype.codec.value());
