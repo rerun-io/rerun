@@ -63,6 +63,12 @@ time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 url.workspace = true
 
 
+# Native
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
+
+
+# Web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 time = { workspace = true, features = [
   "formatting",
@@ -75,3 +81,7 @@ time = { workspace = true, features = [
 egui_kittest.workspace = true
 rand.workspace = true
 re_types.workspace = true
+
+
+[build-dependencies]
+re_build_tools.workspace = true
