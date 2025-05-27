@@ -273,15 +273,7 @@ fn js_video_decoder_config(
         .and_then(|stsd| stsd.contents.codec_string())
         .unwrap_or_else(|| {
             // TODO: This is neat, but doesn't work. Need the full codec string as described by the spec.
-            codec
-                .base_webcodec_string()
-                .unwrap_or_else(|| {
-                    if cfg!(debug_assertions) {
-                        unreachable!("Unknown codec should be caught earlier.")
-                    }
-                    "<unknown>"
-                })
-                .to_owned()
+            codec.base_webcodec_string().to_owned()
         });
 
     let js = VideoDecoderConfig::new(&codec_string);
