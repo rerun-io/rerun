@@ -7720,7 +7720,6 @@ dependencies = [
  "getrandom 0.2.15",
  "itertools 0.14.0",
  "notify",
- "once_cell",
  "parking_lot",
  "rand",
  "re_arrow_util",

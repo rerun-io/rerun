@@ -51,7 +51,6 @@ egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
