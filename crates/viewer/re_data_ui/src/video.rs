@@ -1,3 +1,4 @@
+use egui::NumExt as _;
 use egui_extras::Column;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
@@ -318,13 +319,15 @@ pub fn show_decoded_frame_info(
                 });
             }
 
-            let response = crate::image::texture_preview_ui(
-                render_ctx,
-                ui,
-                ui_layout,
-                "video_preview",
-                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-            );
+            let response = texture.map(|texture| {
+                crate::image::texture_preview_ui(
+                    render_ctx,
+                    ui,
+                    ui_layout,
+                    "video_preview",
+                    re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                )
+            });
 
             if is_pending {
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
@@ -332,9 +335,17 @@ pub fn show_decoded_frame_info(
 
             if show_spinner {
                 // Shrink slightly:
-                let smaller_rect = egui::Rect::from_center_size(
-                    response.rect.center(),
-                    0.75 * response.rect.size(),
+                let smaller_rect = response.map_or_else(
+                    || {
+                        ui.allocate_space(egui::Vec2::splat(ui.available_width().at_most(128.0)))
+                            .1
+                    },
+                    |response| {
+                        egui::Rect::from_center_size(
+                            response.rect.center(),
+                            0.75 * response.rect.size(),
+                        )
+                    },
                 );
                 egui::Spinner::new().paint_at(ui, smaller_rect);
             }

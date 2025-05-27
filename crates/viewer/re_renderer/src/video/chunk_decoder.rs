@@ -115,7 +115,7 @@ impl VideoSampleDecoder {
     pub fn update_video_texture(
         &self,
         render_ctx: &RenderContext,
-        video_texture: &mut Option<VideoTexture>,
+        video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
     ) -> Result<(), VideoPlayerError> {
         let mut decoder_output = self.decoder_output.lock();
@@ -139,20 +139,13 @@ impl VideoSampleDecoder {
 
         let frame_presentation_timestamp = frame.info.presentation_timestamp;
 
-        let video_texture = video_texture.get_or_insert_with(|| {
-            VideoTexture {
-                texture: alloc_video_frame_texture(
-                    &render_ctx.device,
-                    &render_ctx.gpu_resources.textures,
-                    frame.content.width(),
-                    frame.content.height(),
-                ),
-                frame_info: None,
-                // About to be replaced since the video texture is not up to date.
-                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
-                    wgpu::TextureFormat::Rgba8Unorm,
-                ),
-            }
+        let gpu_texture = video_texture.texture.get_or_insert_with(|| {
+            alloc_video_frame_texture(
+                &render_ctx.device,
+                &render_ctx.gpu_resources.textures,
+                frame.content.width(),
+                frame.content.height(),
+            )
         });
 
         let is_up_to_date = video_texture
@@ -163,19 +156,13 @@ impl VideoSampleDecoder {
         if !is_up_to_date {
             #[cfg(target_arch = "wasm32")]
             {
-                video_texture.source_pixel_format = copy_web_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
+                video_texture.source_pixel_format =
+                    copy_web_video_frame_to_texture(render_ctx, &frame.content, &gpu_texture)?;
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
-                video_texture.source_pixel_format = copy_native_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
+                video_texture.source_pixel_format =
+                    copy_native_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
             }
 
             video_texture.frame_info = Some(frame.info.clone());

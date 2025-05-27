@@ -49,7 +49,7 @@ pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
     /// The texture to show.
-    pub texture: GpuTexture2D,
+    pub texture: Option<GpuTexture2D>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
@@ -115,7 +115,7 @@ impl Video {
         &self.video_description
     }
 
-    /// The video data mutable.
+    /// Mutable access to the video data.
     ///
     /// Use with care. It's valid to add samples and groups of pictures, but arbitrary
     /// changes may interfere with subsequent decoding on existing video streams.

@@ -41,7 +41,7 @@ impl TimedDecodingError {
 #[derive(Clone)]
 pub struct VideoTexture {
     /// The video texture is created lazily on the first received frame.
-    pub texture: GpuTexture2D,
+    pub texture: Option<GpuTexture2D>,
     pub frame_info: Option<FrameInfo>,
     pub source_pixel_format: SourceImageDataFormat,
 }
@@ -52,8 +52,7 @@ pub struct VideoTexture {
 pub struct VideoPlayer {
     chunk_decoder: VideoSampleDecoder,
 
-    /// The video texture is created lazily on the first received frame.
-    video_texture: Option<VideoTexture>,
+    video_texture: VideoTexture,
 
     last_requested_sample_idx: usize,
     last_requested_gop_idx: usize,
@@ -100,9 +99,13 @@ impl VideoPlayer {
         Ok(Self {
             chunk_decoder,
 
-            // TODO: doing this lazy is fine overall, but it causes us not propagating the dimensions on reset when we actually know them.
-            // need to dive deeper and improve architecture for this probably
-            video_texture: None,
+            video_texture: VideoTexture {
+                texture: None,
+                frame_info: None,
+                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
+            },
 
             last_requested_sample_idx: usize::MAX,
             last_requested_gop_idx: usize::MAX,
@@ -145,25 +148,22 @@ impl VideoPlayer {
             &mut self.video_texture,
             presentation_timestamp,
         )?;
-        let Some(video_texture) = &mut self.video_texture else {
-            // Decoder hasn't produced a texture yet, but isn't in an error state.
-            // It's simply just busy.
-            return Err(VideoPlayerError::EmptyBuffer);
-        };
 
-        if let Some(frame_info) = video_texture.frame_info.clone() {
+        let (is_pending, show_spinner) = if let (Some(frame_info), Some(video_gpu_texture)) = (
+            self.video_texture.frame_info.clone(),
+            self.video_texture.texture.clone(),
+        ) {
             let time_range = frame_info.presentation_time_range();
             let is_active_frame = time_range.contains(&presentation_timestamp);
 
             let is_pending = !is_active_frame;
-
             let show_spinner = if is_pending && error_on_last_frame_at {
                 // If we switched from error to pending, clear the texture.
                 // This is important to avoid flickering, in particular when switching from
                 // benign errors like DecodingError::NegativeTimestamp.
                 // If we don't do this, we see the last valid texture which can look really weird.
-                clear_texture(render_ctx, &video_texture.texture);
-                video_texture.frame_info = None;
+                clear_texture(render_ctx, &video_gpu_texture);
+                self.video_texture.frame_info = None;
                 true
             } else if presentation_timestamp < time_range.start {
                 // We're seeking backwards and somehow forgot to reset.
@@ -178,22 +178,18 @@ impl VideoPlayer {
                     true // Very old frame - show spinner
                 }
             };
-            Ok(VideoFrameTexture {
-                texture: video_texture.texture.clone(),
-                is_pending,
-                show_spinner,
-                frame_info: Some(frame_info),
-                source_pixel_format: video_texture.source_pixel_format,
-            })
+            (is_pending, show_spinner)
         } else {
-            Ok(VideoFrameTexture {
-                texture: video_texture.texture.clone(),
-                is_pending: true,
-                show_spinner: true,
-                frame_info: None,
-                source_pixel_format: video_texture.source_pixel_format,
-            })
-        }
+            (true, true)
+        };
+
+        Ok(VideoFrameTexture {
+            texture: self.video_texture.texture.clone(),
+            is_pending,
+            show_spinner,
+            frame_info: self.video_texture.frame_info.clone(),
+            source_pixel_format: self.video_texture.source_pixel_format,
+        })
     }
 
     fn enqueue_samples(
@@ -372,7 +368,7 @@ fn update_video_texture(
     render_ctx: &RenderContext,
     chunk_decoder: &VideoSampleDecoder,
     last_error: &mut Option<TimedDecodingError>,
-    video_texture: &mut Option<VideoTexture>,
+    video_texture: &mut VideoTexture,
     presentation_timestamp: Time,
 ) -> Result<(), VideoPlayerError> {
     let result =

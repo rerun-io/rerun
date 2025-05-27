@@ -7,7 +7,7 @@ use re_renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::ImageDataDesc,
-    video::{Video, VideoFrameTexture},
+    video::Video,
 };
 use re_types::{
     Archetype as _,
@@ -27,10 +27,10 @@ use crate::{
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{
-        LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+        SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
         entity_iterator::{self, process_archetype},
         filter_visualizable_2d_entities,
-        video::video_stream_id,
+        video::{video_stream_id, visualize_video_frame_texture},
     },
 };
 
@@ -192,57 +192,17 @@ impl VideoFrameReferenceVisualizer {
                         video_timestamp.as_secs(),
                         &[video_data.as_ref()],
                     ) {
-                        Ok(VideoFrameTexture {
-                            texture,
-                            is_pending,
-                            show_spinner,
-                            frame_info: _,
-                            source_pixel_format: _,
-                        }) => {
-                            video_resolution =
-                                glam::vec2(texture.width() as _, texture.height() as _);
-
-                            // Make sure to use the video instead of texture size here,
-                            // since the texture may be a placeholder which doesn't have the full size yet.
-                            let top_left_corner_position =
-                                world_from_entity.transform_point3(glam::Vec3::ZERO);
-                            let extent_u = world_from_entity
-                                .transform_vector3(glam::Vec3::X * video_resolution.x);
-                            let extent_v = world_from_entity
-                                .transform_vector3(glam::Vec3::Y * video_resolution.y);
-
-                            if is_pending {
-                                // Keep polling for a fresh texture
-                                ctx.viewer_ctx.egui_ctx().request_repaint();
-                            }
-
-                            if show_spinner {
-                                // Show loading rectangle:
-                                self.data.loading_spinners.push(LoadingSpinner {
-                                    center: top_left_corner_position + 0.5 * (extent_u + extent_v),
-                                    half_extent_u: 0.5 * extent_u,
-                                    half_extent_v: 0.5 * extent_v,
-                                });
-                            }
-
-                            let textured_rect = TexturedRect {
-                                top_left_corner_position,
-                                extent_u,
-                                extent_v,
-                                colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-                                options: RectangleOptions {
-                                    texture_filter_magnification: TextureFilterMag::Nearest,
-                                    texture_filter_minification: TextureFilterMin::Linear,
-                                    outline_mask: spatial_ctx.highlight.overall,
-                                    depth_offset: spatial_ctx.depth_offset,
-                                    ..Default::default()
-                                },
-                            };
-                            self.data.pickable_rects.push(PickableTexturedRect {
-                                ent_path: entity_path.clone(),
-                                textured_rect,
-                                source_data: PickableRectSourceData::Video,
-                            });
+                        Ok(video_frame_reference) => {
+                            visualize_video_frame_texture(
+                                ctx.viewer_ctx,
+                                &mut self.data,
+                                video_frame_reference,
+                                entity_path,
+                                spatial_ctx.depth_offset,
+                                world_from_entity,
+                                spatial_ctx.highlight,
+                                &mut video_resolution,
+                            );
                         }
 
                         Err(err) => {

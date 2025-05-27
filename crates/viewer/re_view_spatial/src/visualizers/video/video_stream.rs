@@ -23,8 +23,9 @@ use crate::{
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{
-        LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
-        filter_visualizable_2d_entities, video::video_stream_id,
+        SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+        filter_visualizable_2d_entities,
+        video::{video_stream_id, visualize_video_frame_texture},
     },
 };
 
@@ -142,61 +143,22 @@ impl VisualizerSystem for VideoStreamVisualizer {
             };
 
             match frame_result {
-                Ok(re_renderer::video::VideoFrameTexture {
-                    texture,
-                    is_pending,
-                    show_spinner,
-                    frame_info: _,
-                    source_pixel_format: _,
-                }) => {
-                    video_resolution = glam::vec2(texture.width() as _, texture.height() as _);
-
-                    // Make sure to use the video instead of texture size here,
-                    // since the texture may be a placeholder which doesn't have the full size yet.
-                    let top_left_corner_position =
-                        world_from_entity.transform_point3(glam::Vec3::ZERO);
-                    let extent_u =
-                        world_from_entity.transform_vector3(glam::Vec3::X * video_resolution.x);
-                    let extent_v =
-                        world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
-
-                    if is_pending {
-                        // Keep polling for a fresh texture
-                        ctx.viewer_ctx.egui_ctx().request_repaint();
-                    }
-
-                    if show_spinner {
-                        // Show loading rectangle:
-                        self.data.loading_spinners.push(LoadingSpinner {
-                            center: top_left_corner_position + 0.5 * (extent_u + extent_v),
-                            half_extent_u: 0.5 * extent_u,
-                            half_extent_v: 0.5 * extent_v,
-                        });
-                    }
-
+                Ok(video_frame_reference) => {
                     let depth_offset = depth_offsets
                         .per_entity_and_visualizer
                         .get(&(Self::identifier(), entity_path.hash()))
                         .copied()
                         .unwrap_or_default();
-                    let textured_rect = TexturedRect {
-                        top_left_corner_position,
-                        extent_u,
-                        extent_v,
-                        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-                        options: RectangleOptions {
-                            texture_filter_magnification: TextureFilterMag::Nearest,
-                            texture_filter_minification: TextureFilterMin::Linear,
-                            outline_mask: highlight.overall,
-                            depth_offset,
-                            ..Default::default()
-                        },
-                    };
-                    self.data.pickable_rects.push(PickableTexturedRect {
-                        ent_path: entity_path.clone(),
-                        textured_rect,
-                        source_data: PickableRectSourceData::Video,
-                    });
+                    visualize_video_frame_texture(
+                        ctx.viewer_ctx,
+                        &mut self.data,
+                        video_frame_reference,
+                        entity_path,
+                        depth_offset,
+                        world_from_entity,
+                        highlight,
+                        &mut video_resolution,
+                    );
                 }
 
                 Err(err) => {
