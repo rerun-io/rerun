@@ -259,16 +259,22 @@ impl crate::DataLoader for ExternalLoader {
                 let is_compatible =
                     status.code() != Some(crate::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE);
 
-                if is_compatible && !status.success() {
-                    let mut stderr = std::io::BufReader::new(stderr);
-                    let mut reason = String::new();
-                    stderr.read_to_string(&mut reason).ok();
-                    re_log::error!(?filepath, loader = ?exe, %reason, "Failed to execute external loader");
-                }
-
                 if is_compatible {
-                    re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
-                    tx_feedback.send(CompatibleLoaderFound).ok();
+                    let mut stderr = std::io::BufReader::new(stderr);
+                    let mut stderr_str = String::new();
+                    stderr.read_to_string(&mut stderr_str).ok();
+
+                    if status.success() {
+                        re_log::debug!(loader = ?exe, ?filepath, "Compatible external loader found");
+
+                        // Include any log output of the external loader in the console, because maybe it has useful information:
+                        let stderr_indented = stderr_str.lines().map(|line| format!("  {line}")).collect::<Vec<_>>().join("\n");
+                        re_log::debug!("Dataloader stderr:\n{stderr_indented}");
+
+                        tx_feedback.send(CompatibleLoaderFound).ok();
+                    } else {
+                        re_log::error!(?filepath, loader = ?exe, %stderr_str, "Failed to execute external loader");
+                    }
                 }
             })?;
         }
