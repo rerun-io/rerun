@@ -84,7 +84,7 @@ impl ViewerContext<'_> {
         self.global_context.app_options
     }
 
-    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+    pub fn tokens(&self) -> &re_ui::DesignTokens {
         self.egui_ctx().tokens()
     }
 
