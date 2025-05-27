@@ -11,6 +11,8 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin};
 
+use redap_telemetry::external::{tower, tower_http};
+
 use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
 
 pub enum Command {
@@ -122,6 +124,7 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
     }
 }
 
+// TODO: do web too, somehow
 #[cfg(target_arch = "wasm32")]
 pub type RedapClient = FrontendServiceClient<
     tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
@@ -150,18 +153,18 @@ pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
+    tower_http::trace::Trace<
+        tonic::service::interceptor::InterceptedService<
+            tonic::service::interceptor::InterceptedService<
+                tonic::transport::Channel,
+                AuthDecorator,
+            >,
+            redap_telemetry::TracingInjectorInterceptor,
+        >,
+        tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+        redap_telemetry::GrpcSpanMaker,
+    >,
 >;
-// TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClient = FrontendServiceClient<
-//     tower_http::trace::Trace<
-//         tonic::service::interceptor::InterceptedService<
-//             tonic::transport::Channel,
-//             redap_telemetry::TracingInjectorInterceptor,
-//         >,
-//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
-//     >,
-// >;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
@@ -190,10 +193,9 @@ pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let auth = AuthDecorator::new(maybe_token);
 
     let middlewares = tower::ServiceBuilder::new()
+        .layer(redap_telemetry::new_grpc_tracing_layer())
+        .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
         .layer(tonic::service::interceptor::interceptor(auth))
-        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-        // .layer(redap_telemetry::new_grpc_tracing_layer())
-        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
         .into_inner();
 
     let svc = tower::ServiceBuilder::new()

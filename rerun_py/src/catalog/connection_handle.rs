@@ -10,6 +10,7 @@ use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
@@ -62,6 +63,7 @@ impl ConnectionHandle {
 // TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
 // used in e.g. the redap browser, etc. The present connection handle should just forward them.
 impl ConnectionHandle {
+    #[instrument(skip(self, py), err)]
     pub fn find_entries(
         &mut self,
         py: Python<'_>,
@@ -86,6 +88,7 @@ impl ConnectionHandle {
         Ok(entries?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn delete_entry(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         let _response = wait_for_future(
             py,
@@ -98,6 +101,7 @@ impl ConnectionHandle {
         Ok(())
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn create_dataset(&mut self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -113,6 +117,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_dataset(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -129,6 +134,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_table(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(
             py,
@@ -145,6 +151,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn get_dataset_schema(
         &mut self,
         py: Python<'_>,
@@ -168,6 +175,7 @@ impl ConnectionHandle {
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
+    #[instrument(skip(self, py), err)]
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,
@@ -225,6 +233,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn query_tasks(&mut self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
         wait_for_future(py, async {
             let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
@@ -247,6 +256,7 @@ impl ConnectionHandle {
     }
 
     /// Wait for the provided tasks to finish.
+    #[instrument(skip(self, py), err)]
     pub fn wait_for_tasks(
         &mut self,
         py: Python<'_>,
@@ -341,6 +351,7 @@ impl ConnectionHandle {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip(self, py, partition_ids), err)]
     pub fn get_chunks_for_dataframe_query(
         &mut self,
         py: Python<'_>,

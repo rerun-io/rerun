@@ -7,6 +7,7 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use tracing::instrument;
 
 use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -41,6 +42,7 @@ impl TableEntryTableProvider {
         Ok(GrpcStreamProvider::prepare(self).await?)
     }
 
+    #[instrument(skip(self), err)]
     async fn table_id(&mut self) -> Result<EntryId, DataFusionError> {
         if let Some(table_id) = self.table_id {
             return Ok(table_id);
@@ -91,6 +93,7 @@ impl TableEntryTableProvider {
 impl GrpcStreamToTable for TableEntryTableProvider {
     type GrpcStreamData = ScanTableResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetTableSchemaRequest {
             table_id: Some(self.table_id().await?.into()),
@@ -111,6 +114,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
