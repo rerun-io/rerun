@@ -272,7 +272,7 @@ fn js_video_decoder_config(
         .as_ref()
         .and_then(|stsd| stsd.contents.codec_string())
         .unwrap_or_else(|| {
-            // TODO: This is neat, but doesn't work. Need the full codec string as described by the spec.
+            // TODO(#7484): This is neat, but doesn't work. Need the full codec string as described by the spec.
             codec.base_webcodec_string().to_owned()
         });
 
