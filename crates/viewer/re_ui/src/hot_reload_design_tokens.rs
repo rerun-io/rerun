@@ -79,12 +79,9 @@ mod design_token_access {
 
     static STUFF_TO_DO_ON_HOT_RELOAD: OnceLock<Mutex<Vec<Callback>>> = OnceLock::new();
 
-    pub fn install_hot_reload<F>(f: F)
-    where
-        F: Fn() + Send + 'static,
-    {
+    pub fn install_hot_reload(callback: impl Fn() + Send + 'static) {
         let stuff = STUFF_TO_DO_ON_HOT_RELOAD.get_or_init(Default::default);
-        stuff.lock().push(Box::new(f));
+        stuff.lock().push(Box::new(callback));
         setup_file_watcher();
     }
 
