@@ -42,7 +42,7 @@ impl MyPoints {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
             archetype_field_name: "colors".into(),
-            component_name: MyColor::name(),
+            component_name: Some(MyColor::name()),
         }
     }
 
@@ -50,15 +50,15 @@ impl MyPoints {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
             archetype_field_name: "labels".into(),
-            component_name: MyLabel::name(),
+            component_name: Some(MyLabel::name()),
         }
     }
 
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            component_name: "rerun.components.MyPointsIndicator".into(),
-            archetype_field_name: None,
+            archetype_field_name: "rerun.components.MyPointsIndicator".into(),
+            component_name: None,
         }
     }
 
@@ -282,7 +282,7 @@ impl MyPoint64 {
 
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new(Self::name())
+        ComponentDescriptor::partial("my_point_64")
     }
 }
 
@@ -524,7 +524,11 @@ impl MyIndex {
 
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new(Self::name())
+        ComponentDescriptor {
+            archetype_field_name: "my_index".into(),
+            archetype_name: None,
+            component_name: Some(Self::name()),
+        }
     }
 }
 
