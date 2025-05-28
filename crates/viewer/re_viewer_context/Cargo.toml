@@ -23,7 +23,12 @@ ignored = ["home"]
 
 [features]
 ## Enable for testing utilities.
-testing = ["re_global_context/testing", "dep:pollster", "dep:egui_kittest"]
+testing = [
+  "re_global_context/testing",
+  "dep:re_grpc_client",
+  "dep:pollster",
+  "dep:egui_kittest",
+]
 
 [dependencies]
 re_chunk_store.workspace = true
@@ -74,8 +79,10 @@ thiserror.workspace = true
 wgpu.workspace = true
 
 # Optional dependencies:
+re_grpc_client = { workspace = true, optional = true }
 egui_kittest = { workspace = true, features = ["wgpu"], optional = true }
 pollster = { workspace = true, optional = true }
+
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

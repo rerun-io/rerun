@@ -6,6 +6,7 @@ use pyo3::{
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
+
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::EntryFilter;
 
@@ -33,10 +34,21 @@ impl PyCatalogClient {
 impl PyCatalogClient {
     /// Create a new catalog client object.
     #[new]
-    fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
+    #[pyo3(signature = (addr, token=None))]
+    fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection = ConnectionHandle::new(py, origin.clone())?;
+        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+
+        let token = token
+            .map(TryFrom::try_from)
+            .transpose()
+            .map_err(to_py_err)?;
+        if let Some(token) = token {
+            connection_registry.set_token(&origin, token);
+        }
+
+        let connection = ConnectionHandle::new(py, connection_registry, origin.clone())?;
 
         let datafusion_ctx = py
             .import("datafusion")

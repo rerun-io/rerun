@@ -660,6 +660,9 @@ fn run_impl(
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
+    //TODO(#10068): populate token passed with `--token`
+    let connection_registry = re_grpc_client::ConnectionRegistry::new();
+
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
 
@@ -780,8 +783,11 @@ fn run_impl(
         #[allow(unused_mut)]
         let mut rxs_logs = data_sources
             .into_iter()
-            .filter_map(
-                |data_source| match data_source.stream(on_cmd.clone(), None) {
+            .filter_map(|data_source| {
+                // TODO(#10093): this is problematic because the connection registry's token have
+                // not yet been deserialized from persistence (this is done later by `App`. So if
+                // this requires such a token, it will fail even though it'd succeed later.
+                match data_source.stream(&connection_registry, on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
 
                     Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
@@ -795,8 +801,8 @@ fn run_impl(
                     }
 
                     Err(err) => Some(Err(err)),
-                },
-            )
+                }
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -1004,6 +1010,7 @@ fn run_impl(
                         &call_source.app_env(),
                         startup_options,
                         cc,
+                        Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                         (command_sender, command_receiver),
                     );

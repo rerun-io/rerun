@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
+
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
     DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
@@ -11,7 +13,8 @@ use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
+    AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
 };
 
 use crate::add_server_modal::AddServerModal;
@@ -26,28 +29,55 @@ struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: TablesSessionContext,
 
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
-    fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(&runtime, egui_ctx, origin.clone());
+    fn new(
+        connection_registry: re_grpc_client::ConnectionRegistryHandle,
+        runtime: AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+    ) -> Self {
+        let entries = Entries::new(
+            connection_registry.clone(),
+            &runtime,
+            egui_ctx,
+            origin.clone(),
+        );
 
-        let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
+        let tables_session_ctx = TablesSessionContext::new(
+            connection_registry.clone(),
+            &runtime,
+            egui_ctx,
+            origin.clone(),
+        );
 
         Self {
             origin,
             entries,
             tables_session_ctx,
+            connection_registry,
             runtime,
         }
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+        self.entries = Entries::new(
+            self.connection_registry.clone(),
+            runtime,
+            egui_ctx,
+            self.origin.clone(),
+        );
 
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
+        self.tables_session_ctx = TablesSessionContext::new(
+            self.connection_registry.clone(),
+            runtime,
+            egui_ctx,
+            self.origin.clone(),
+        );
     }
 
     fn on_frame_start(&mut self) {
@@ -315,12 +345,17 @@ impl RedapServers {
     ///
     /// - Process commands from the queue.
     /// - Update all servers.
-    pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+    pub fn on_frame_start(
+        &mut self,
+        connection_registry: &ConnectionRegistryHandle,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+    ) {
         self.pending_servers.drain(..).for_each(|origin| {
             self.command_sender.send(Command::AddServer(origin)).ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(runtime, egui_ctx, command);
+            self.handle_command(connection_registry, runtime, egui_ctx, command);
         }
 
         for server in self.servers.values_mut() {
@@ -330,6 +365,7 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
+        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
@@ -343,7 +379,12 @@ impl RedapServers {
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
                         origin.clone(),
-                        Server::new(runtime.clone(), egui_ctx, origin.clone()),
+                        Server::new(
+                            connection_registry.clone(),
+                            runtime.clone(),
+                            egui_ctx,
+                            origin.clone(),
+                        ),
                     );
                 } else {
                     // Since we persist the server list on disk this happens quite often.
@@ -369,7 +410,7 @@ impl RedapServers {
 
     pub fn server_central_panel_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        global_ctx: &GlobalContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
     ) {
@@ -378,8 +419,8 @@ impl RedapServers {
                 server.server_ui(ctx, ui);
             });
         } else {
-            viewer_ctx
-                .command_sender()
+            global_ctx
+                .command_sender
                 .send_system(SystemCommand::ChangeDisplayMode(
                     DisplayMode::LocalRecordings,
                 ));
@@ -421,13 +462,13 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, connection_registry: &ConnectionRegistryHandle, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
         };
 
-        self.add_server_modal_ui.ui(&ctx, ui);
+        self.add_server_modal_ui.ui(&ctx, connection_registry, ui);
     }
 
     #[inline]

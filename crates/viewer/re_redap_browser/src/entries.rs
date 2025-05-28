@@ -6,8 +6,7 @@ use itertools::Itertools as _;
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
-use re_grpc_client::redap::ConnectionError;
-use re_grpc_client::{StreamError, redap};
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle, StreamError};
 use re_log_encoding::codec::CodecError;
 use re_log_types::{ApplicationId, EntryId, StoreKind, natural_ordering};
 use re_protos::TypeConversionError;
@@ -78,11 +77,12 @@ pub struct Entries {
 
 impl Entries {
     pub fn new(
+        connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let datasets = fetch_dataset_entries(origin);
+        let datasets = fetch_dataset_entries(connection_registry, origin);
 
         Self {
             datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets),
@@ -358,9 +358,10 @@ pub fn dataset_and_its_recordings_ui(
 }
 
 async fn fetch_dataset_entries(
+    connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let resp = client
         .find_entries(FindEntriesRequest {

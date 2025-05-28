@@ -15,7 +15,9 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{RedapClient, get_chunks_response_to_chunk_and_partition_id};
+use re_grpc_client::{
+    ConnectionRegistryHandle, RedapClient, get_chunks_response_to_chunk_and_partition_id,
+};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
@@ -43,9 +45,18 @@ pub struct ConnectionHandle {
 }
 
 impl ConnectionHandle {
-    pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, re_grpc_client::redap::client(origin.clone()))
-            .map_err(to_py_err)?;
+    pub fn new(
+        py: Python<'_>,
+        connection_registry: ConnectionRegistryHandle,
+        origin: re_uri::Origin,
+    ) -> PyResult<Self> {
+        let origin_clone = origin.clone();
+        let client = wait_for_future(py, async move {
+            connection_registry
+                .client(origin_clone)
+                .await
+                .map_err(to_py_err)
+        })?;
 
         Ok(Self { origin, client })
     }
@@ -59,8 +70,7 @@ impl ConnectionHandle {
     }
 }
 
-// TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
-// used in e.g. the redap browser, etc. The present connection handle should just forward them.
+// TODO(ab): migrate all of this to some `RedapClient` wrapper to be provided by `ConnectionRegistry`
 impl ConnectionHandle {
     pub fn find_entries(
         &mut self,

@@ -1,8 +1,16 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
+mod connection_registry;
 pub mod message_proxy;
+mod redap;
 
-pub mod redap;
+pub use self::{
+    connection_registry::{ConnectionRegistry, ConnectionRegistryHandle},
+    redap::{
+        Command, ConnectionError, RedapClient, get_chunks_response_to_chunk_and_partition_id,
+        stream_dataset_from_redap, stream_partition_async,
+    },
+};
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
