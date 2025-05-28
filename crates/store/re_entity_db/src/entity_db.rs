@@ -3,6 +3,7 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
+use crate::{Error, TimesPerTimeline};
 use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
@@ -16,15 +17,35 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
-
-use crate::{Error, TimesPerTimeline};
+use re_smart_channel::SmartChannelSource;
 
 // ----------------------------------------------------------------------------
 
 /// See [`GarbageCollectionOptions::time_budget`].
 pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------¨
+
+/// What class of [`EntityDb`] is this?
+///
+/// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
+/// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
+/// their default blueprint sourced remotely.
+pub enum EntityDbClass<'a> {
+    /// This is a regular local recording (e.g. loaded from a `.rrd` file or logged to the viewer).
+    LocalRecording,
+
+    /// This is an official rerun example recording.
+    ExampleRecording,
+
+    /// This is a recording loaded from a remote dataset partition.
+    DatasetPartition(&'a re_uri::DatasetDataUri),
+
+    /// This is a blueprint.
+    Blueprint,
+}
+
+// ---
 
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
@@ -158,6 +179,27 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
+    /// Returns the [`EntityDbClass`] of this entity db.
+    pub fn store_class(&self) -> EntityDbClass<'_> {
+        match self.store_kind() {
+            StoreKind::Blueprint => EntityDbClass::Blueprint,
+
+            StoreKind::Recording => match &self.data_source {
+                Some(SmartChannelSource::RrdHttpStream { url, .. })
+                    if url.starts_with("https://app.rerun.io") =>
+                {
+                    EntityDbClass::ExampleRecording
+                }
+
+                Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
+                    EntityDbClass::DatasetPartition(uri)
+                }
+
+                _ => EntityDbClass::LocalRecording,
+            },
+        }
+    }
+
     pub fn recording_property<C: re_types_core::Component>(
         &self,
         component_descr: &re_types_core::ComponentDescriptor,
@@ -228,11 +270,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono(component_descr)
             .map(|value| (results.index(), value))
@@ -255,11 +297,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono_quiet(component_descr)
             .map(|value| (results.index(), value))

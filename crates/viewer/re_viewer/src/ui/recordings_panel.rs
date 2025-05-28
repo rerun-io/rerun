@@ -106,11 +106,11 @@ fn recording_list_ui(
     welcome_screen_state: &WelcomeScreenState,
     servers: &RedapServers,
 ) {
-    let re_redap_browser::SortDatasetsResults {
+    let re_entity_db::SortDatasetsResults {
         remote_recordings,
         example_recordings,
         local_recordings,
-    } = re_redap_browser::sort_datasets(ctx);
+    } = ctx.storage_context.bundle.sort_recordings_by_class();
 
     servers.server_list_ui(ctx, ui, remote_recordings);
 
