@@ -55,7 +55,7 @@ impl ChunkStore {
         if chunk
             .components()
             .keys()
-            .any(|descr| descr.component_name.is_indicator_component())
+            .any(|descr| descr.is_indicator_component())
         {
             let patched = chunk.patched_weak_indicator_descriptor_023_compat();
             chunk = Arc::new(patched);
@@ -368,29 +368,32 @@ impl ChunkStore {
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(old_typ) = self
-                .type_registry
-                .insert(component_descr.component_name, list_array.value_type())
-            {
-                if old_typ != list_array.value_type() {
-                    re_log::warn_once!(
-                        "Component column '{}' changed type from {old_typ:?} to {:?}",
-                        component_descr.component_name,
-                        list_array.value_type()
-                    );
+            if let Some(component_name) = component_descr.component_name {
+                if let Some(old_typ) = self
+                    .type_registry
+                    .insert(component_name, list_array.value_type())
+                {
+                    if old_typ != list_array.value_type() {
+                        re_log::warn_once!(
+                            "Component column '{}' changed type from {old_typ:?} to {:?}",
+                            component_name,
+                            list_array.value_type()
+                        );
+                    }
                 }
             }
 
-            let column_metadata_state = self
+            let (_, column_metadata_state) = self
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.component_name)
-                .or_default()
-                .entry(component_descr.clone())
-                .or_insert(ColumnMetadataState {
-                    is_semantically_empty: true,
-                });
+                .entry(component_descr.clone().into())
+                .or_insert((
+                    component_descr.clone(),
+                    ColumnMetadataState {
+                        is_semantically_empty: true,
+                    },
+                ));
             {
                 let is_semantically_empty =
                     re_arrow_util::is_list_array_semantically_empty(list_array);
