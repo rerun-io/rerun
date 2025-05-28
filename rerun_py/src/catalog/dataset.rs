@@ -144,14 +144,15 @@ impl PyDataset {
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let catalog_client = super_.client.borrow(self_.py());
-        let client_fut = catalog_client.connection().client();
+        let connection = catalog_client.connection();
 
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();
 
         //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
-            let catalog_chunk_stream = client_fut
+            let catalog_chunk_stream = connection
+                .client()
                 .await?
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
@@ -363,10 +364,9 @@ impl PyDataset {
             Default::default(),
         );
 
-        let query = RecordBatch::try_new(
-            Arc::new(schema),
-            vec![Arc::new(StringArray::from_iter_values([query]))],
-        )
+        let query = RecordBatch::try_new(Arc::new(schema), vec![Arc::new(
+            StringArray::from_iter_values([query]),
+        )])
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         let request = SearchDatasetRequest {
