@@ -32,8 +32,8 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
-    ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
-    TimeColumnSelector,
+    ArchetypeFieldColumnSelector, ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector,
+    RowIdColumnDescriptor, TimeColumnSelector,
 };
 use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
 
@@ -348,7 +348,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let component_descriptor = store
                             .entity_component_descriptors_with_name(
                                 &descr.entity_path,
-                                descr.component_name,
+                                descr.component_name?,
                             )
                             .into_iter()
                             .next()?;
@@ -386,9 +386,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ) -> Vec<(usize, ColumnDescriptor)> {
         selection
             .iter()
-            .map(|column| match column {
-                ColumnSelector::RowId => {
-                    view_contents
+            .flat_map(|column| {
+                Some(match column {
+                    ColumnSelector::RowId => view_contents
                         .iter()
                         .enumerate()
                         .find_map(|(idx, view_column)| {
@@ -401,70 +401,64 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .unwrap_or((
                             usize::MAX,
                             ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                        ))
-                }
+                        )),
 
-                ColumnSelector::Time(selected_column) => {
-                    let TimeColumnSelector {
-                        timeline: selected_timeline,
-                    } = selected_column;
+                    ColumnSelector::Time(selected_column) => {
+                        let TimeColumnSelector {
+                            timeline: selected_timeline,
+                        } = selected_column;
 
-                    view_contents
+                        view_contents
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(idx, view_column)| {
+                                if let ColumnDescriptor::Time(view_descr) = view_column {
+                                    Some((idx, view_descr))
+                                } else {
+                                    None
+                                }
+                            })
+                            .find(|(_idx, view_descr)| {
+                                *view_descr.timeline().name() == *selected_timeline
+                            })
+                            .map_or_else(
+                                || {
+                                    (
+                                        usize::MAX,
+                                        ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                            *selected_timeline,
+                                        )),
+                                    )
+                                },
+                                |(idx, view_descr)| {
+                                    (idx, ColumnDescriptor::Time(view_descr.clone()))
+                                },
+                            )
+                    }
+
+                    ColumnSelector::Component(selected_column) => view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Time(view_descr) = view_column {
-                            Some((idx, view_descr))
-                        } else {
-                            None
+                        .filter_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::Component(view_descr) = view_column {
+                                Some((idx, view_descr))
+                            } else {
+                                None
+                            }
                         })
-                        .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
-                        .map_or_else(
-                            || {
-                                (
-                                    usize::MAX,
-                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                        *selected_timeline,
-                                    )),
-                                )
-                            },
-                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                        )
-                }
-
-                ColumnSelector::Component(selected_column) => {
-                    let ComponentColumnSelector {
-                        entity_path: selected_entity_path,
-                        component_name: selected_component_name,
-                    } = selected_column;
-
-                    debug_assert!(
-                        !selected_component_name.starts_with("rerun.components.rerun.components."),
-                        "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
-                    );
-
-                    view_contents
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Component(view_descr) = view_column {
-                            Some((idx, view_descr))
-                        } else {
-                            None
-                        })
-                        .find(|(_idx, view_descr)| {
-                            view_descr.entity_path == *selected_entity_path
-                                && view_descr.component_name.matches(selected_component_name)
-                        })
+                        .find(|(_idx, view_descr)| view_descr.matches(selected_column))
                         .map_or_else(
                             || {
                                 (
                                     usize::MAX,
                                     ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                        entity_path: selected_entity_path.clone(),
-                                        archetype_name: None,
-                                        archetype_field_name: None,
-                                        component_name: ComponentName::from(
-                                            selected_component_name.clone(),
-                                        ),
+                                        entity_path: selected_column.entity_path.clone(),
+                                        archetype_name: selected_column.archetype_name,
+                                        archetype_field_name: selected_column
+                                            .archetype_field_name
+                                            .as_str()
+                                            .into(),
+                                        component_name: None,
                                         store_datatype: ArrowDataType::Null,
                                         is_static: false,
                                         is_indicator: false,
@@ -476,8 +470,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             |(idx, view_descr)| {
                                 (idx, ColumnDescriptor::Component(view_descr.clone()))
                             },
-                        )
-                }
+                        ),
+                })
             })
             .collect_vec()
     }
@@ -503,9 +497,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .unwrap_or_default();
 
                     if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
-                        if pov.entity_path == column.entity_path
-                            && column.component_name.matches(&pov.component_name)
-                        {
+                        if column.matches(pov) {
                             view_pov_chunks_idx = Some(idx);
                         }
                     }
@@ -1079,11 +1071,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
                     let component_descriptor = store
-                        .entity_component_descriptors_with_name(
+                        .entity_component_descriptor(
                             &descr.entity_path,
-                            descr.component_name,
+                            descr.archetype_name,
+                            descr.archetype_field_name,
                         )
                         .into_iter()
                         .next()?;
@@ -1203,7 +1195,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         StreamingJoinState::Retrofilled(unit) => {
                             let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
-                                descr.component_name.sanity_check();
+                                if let Some(component_name) = descr.component_name  { component_name.sanity_check(); }
                                 Some(re_types_core::ComponentDescriptor {
                                     component_name: descr.component_name,
                                     archetype_name: descr.archetype_name,
@@ -1360,6 +1352,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
     use re_query::StorageEngine;
+    use re_sorbet::ArchetypeFieldColumnSelector;
     use re_types_core::{Component as _, components};
 
     use crate::{QueryCache, QueryEngine};
@@ -1652,11 +1645,18 @@ mod tests {
 
         // non-existing entity
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index,
-                filtered_is_not_null: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ArchetypeFieldColumnSelector {
                     entity_path: "no/such/entity".into(),
-                    component_name: MyPoint::name().to_string(),
+                    archetype_name,
+                    archetype_field_name: archetype_field_name.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1680,9 +1680,10 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_is_not_null: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ArchetypeFieldColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: "AComponentColumnThatDoesntExist".into(),
+                    archetype_name: None,
+                    archetype_field_name: "AFieldThatDoesntExist".to_owned(),
                 }),
                 ..Default::default()
             };
@@ -1704,11 +1705,18 @@ mod tests {
 
         // MyPoint
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index,
-                filtered_is_not_null: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ArchetypeFieldColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyPoint::name().to_string(),
+                    archetype_name,
+                    archetype_field_name: archetype_field_name.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1730,11 +1738,18 @@ mod tests {
 
         // MyColor
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_colors();
+
             let query = QueryExpression {
                 filtered_index,
-                filtered_is_not_null: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ArchetypeFieldColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyColor::name().to_string(),
+                    archetype_name,
+                    archetype_field_name: archetype_field_name.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1898,26 +1913,46 @@ mod tests {
             assert_snapshot!(DisplayRB(dataframe));
         }
 
-        // only components (+ duplication)
+        // duplication and non-existing
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        archetype_name,
+                        archetype_field_name: archetype_field_name.to_string(),
                     }),
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        archetype_name,
+                        archetype_field_name: archetype_field_name.to_string(),
                     }),
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: "non_existing_entity".into(),
-                        component_name: MyColor::name().to_string(),
+                        archetype_name,
+                        archetype_field_name: archetype_field_name.to_string(),
                     }),
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: "AComponentColumnThatDoesntExist".into(),
+                        archetype_name,
+                        archetype_field_name: "AFieldThatDoesntExist".into(),
+                    }),
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
+                        entity_path: entity_path.clone(),
+                        archetype_name: None,
+                        archetype_field_name: "AFieldThatDoesntExist".into(),
+                    }),
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
+                        entity_path: entity_path.clone(),
+                        archetype_name: Some("AArchetypeNameThatDoesNotExist".into()),
+                        archetype_field_name: archetype_field_name.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -1940,6 +1975,12 @@ mod tests {
 
         // static
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_labels();
+
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
@@ -1956,9 +1997,10 @@ mod tests {
                     ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     //
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyLabel::name().to_string(),
+                        archetype_name,
+                        archetype_field_name: archetype_field_name.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -2011,17 +2053,26 @@ mod tests {
                     ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_time().name())),
                     ColumnSelector::Time(TimeColumnSelector::from(*Timeline::log_tick().name())),
                     //
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyPoint::name().to_string(),
+                        archetype_name: MyPoints::descriptor_points().archetype_name,
+                        archetype_field_name: MyPoints::descriptor_points()
+                            .archetype_field_name
+                            .to_string(),
                     }),
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        archetype_name: MyPoints::descriptor_colors().archetype_name,
+                        archetype_field_name: MyPoints::descriptor_colors()
+                            .archetype_field_name
+                            .to_string(),
                     }),
-                    ColumnSelector::Component(ComponentColumnSelector {
+                    ColumnSelector::Component(ArchetypeFieldColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyLabel::name().to_string(),
+                        archetype_name: MyPoints::descriptor_labels().archetype_name,
+                        archetype_field_name: MyPoints::descriptor_labels()
+                            .archetype_field_name
+                            .to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -2164,11 +2215,17 @@ mod tests {
 
         // with pov
         {
+            let ComponentDescriptor {
+                archetype_name,
+                archetype_field_name,
+                ..
+            } = MyPoints::descriptor_points();
             let query = QueryExpression {
                 filtered_index,
-                filtered_is_not_null: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ArchetypeFieldColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyPoint::name().to_string(),
+                    archetype_name,
+                    archetype_field_name: archetype_field_name.to_string(),
                 }),
                 ..Default::default()
             };
