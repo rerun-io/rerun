@@ -37,6 +37,7 @@ impl ConnectionRegistry {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_tokens: HashMap::new(),
+                fallback_token: None,
                 clients: HashMap::new(),
             })),
         }
