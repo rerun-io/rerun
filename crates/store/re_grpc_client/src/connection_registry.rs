@@ -18,6 +18,11 @@ pub struct ConnectionRegistry {
     /// envvar if set. See [`ConnectionRegistryHandle::client`].
     saved_tokens: HashMap<re_uri::Origin, Jwt>,
 
+    /// Fallback token.
+    ///
+    /// If set, the fallback token is used when no specific token is registered for a given origin.
+    fallback_token: Option<Jwt>,
+
     /// The cached clients.
     ///
     /// Clients are much cheaper to clone than create (since the latter involves establishing an
@@ -32,6 +37,7 @@ impl ConnectionRegistry {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_tokens: HashMap::new(),
+                fallback_token: None,
                 clients: HashMap::new(),
             })),
         }
@@ -53,14 +59,23 @@ impl ConnectionRegistryHandle {
         inner.clients.remove(origin);
     }
 
+    pub fn set_fallback_token(&self, token: Jwt) {
+        let mut inner = self.inner.blocking_write();
+        inner.fallback_token = Some(token);
+    }
+
     /// Get a client for the given origin, creating one if it doesn't exist yet.
     ///
-    /// Note: although `RedapClient` is cheap to clone, call site should generally *not* hold on to
-    /// client instances for longer than the immediate need. In the future, authentication may
+    /// Note: although `RedapClient` is cheap to clone, callsites should generally *not* hold on to
+    /// client instances for longer than the immediate needs. In the future, authentication may
     /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
     ///
-    /// If a token has already been registered for this origin, it will be used. Otherwise, if the
-    /// `REDAP_TOKEN` environment variable is set, it will be used as the token.
+    /// If a token has already been registered for this origin, it will be used. It will attempt to
+    /// use the following token, in this order:
+    /// - The fallback token, if set via [`Self::set_fallback_token`].
+    /// - The `REDAP_TOKEN` environment variable is set.
+    ///
+    /// Failing that, no token will be used.
     ///
     /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
     /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
@@ -79,6 +94,7 @@ impl ConnectionRegistryHandle {
             .saved_tokens
             .get(&origin)
             .cloned()
+            .or_else(|| inner.fallback_token.clone())
             .or_else(get_token_from_env);
 
         let client = crate::redap::client(origin.clone(), token).await;

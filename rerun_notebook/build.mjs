@@ -48,7 +48,7 @@ async function build() {
     });
     log(`Built widget in ${Date.now() - start}ms`);
   } catch (e) {
-    error(`Failed to rebuild widget:\n${e.toString()}`);
+    throw new Error(`Failed to rebuild widget:\n${e.toString()}`);
   }
 }
 

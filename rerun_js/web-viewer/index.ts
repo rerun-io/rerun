@@ -88,6 +88,13 @@ export interface WebViewerOptions {
 
   /** The CSS height of the canvas. */
   height?: string;
+
+  /** The fallback token to use, if any.
+   *
+   * The fallback token behaves similarly to the `REDAP_TOKEN` env variable. If set in the
+   * enclosing notebook environment, it should be used to set the fallback token.
+   */
+  fallback_token?: string;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible

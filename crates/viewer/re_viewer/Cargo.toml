@@ -45,6 +45,7 @@ map_view = ["dep:re_view_map"]
 
 [dependencies]
 # Internal:
+re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
 re_capabilities.workspace = true

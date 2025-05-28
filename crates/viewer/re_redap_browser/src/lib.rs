@@ -7,7 +7,7 @@ mod entries;
 mod servers;
 mod tables_session_context;
 
-pub use entries::{EntryKind, SortDatasetsResults, dataset_and_its_recordings_ui, sort_datasets};
+pub use entries::{EntryKind, dataset_and_its_recordings_ui};
 use re_uri::Scheme;
 pub use servers::RedapServers;
 use std::sync::LazyLock;

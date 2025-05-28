@@ -19,7 +19,7 @@ use re_viewer_context::{
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
-use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
+use crate::entries::{Dataset, Entries};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
@@ -211,7 +211,7 @@ impl Server {
         viewer_ctx: &ViewerContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        recordings: Option<DatasetRecordings<'_>>,
+        recordings: Option<re_entity_db::DatasetRecordings<'_>>,
     ) {
         let item = Item::RedapServer(self.origin.clone());
         let is_selected = viewer_ctx.selection().contains_item(&item);
@@ -431,7 +431,7 @@ impl RedapServers {
         &self,
         viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        mut remote_recordings: RemoteRecordings<'_>,
+        mut remote_recordings: re_entity_db::RemoteRecordings<'_>,
     ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
