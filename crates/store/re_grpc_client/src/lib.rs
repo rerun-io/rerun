@@ -7,8 +7,9 @@ mod redap;
 pub use self::{
     connection_registry::{ConnectionRegistry, ConnectionRegistryHandle},
     redap::{
-        Command, ConnectionError, RedapClient, get_chunks_response_to_chunk_and_partition_id,
-        stream_dataset_from_redap, stream_partition_async,
+        Command, ConnectionError, RedapClient, channel,
+        get_chunks_response_to_chunk_and_partition_id, stream_dataset_from_redap,
+        stream_partition_async,
     },
 };
 
