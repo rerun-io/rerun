@@ -133,7 +133,7 @@ impl Drop for PopstateListener {
 }
 
 fn handle_popstate(
-    connection_registry: &re_grpc_client::ConnectionRegistry,
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     new_state: Option<HistoryEntry>,

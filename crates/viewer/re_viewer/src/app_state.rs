@@ -4,7 +4,7 @@ use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelec
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -169,7 +169,7 @@ impl AppState {
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
-        connection_registry: &ConnectionRegistry,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
     ) {
         re_tracing::profile_function!();

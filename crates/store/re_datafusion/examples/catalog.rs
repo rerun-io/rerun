@@ -10,7 +10,7 @@ use re_tuid::Tuid;
 async fn main() -> anyhow::Result<()> {
     let local_addr = "rerun+http:://127.0.0.1:51234";
 
-    let connection_registry = re_grpc_client::ConnectionRegistry::default();
+    let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
     let client = connection_registry.client(local_addr.parse()?).await?;
     let mut df_connector = DataFusionConnector::new(client).await?;

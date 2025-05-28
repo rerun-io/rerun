@@ -38,7 +38,7 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, Channel>,
 
-    connection_registry: re_grpc_client::ConnectionRegistry,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
 
     app_options: AppOptions,
 }
@@ -54,7 +54,7 @@ impl WebHandle {
 
         // TODO(#10069): we should be able to provide a token via JS, in particular to propagate
         // tokens from notebooks to the viewer.
-        let connection_registry = re_grpc_client::ConnectionRegistry::default();
+        let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
@@ -688,7 +688,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
-    connection_registry: re_grpc_client::ConnectionRegistry,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();

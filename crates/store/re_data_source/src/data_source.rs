@@ -1,4 +1,4 @@
-use re_grpc_client::{ConnectionRegistry, StreamError, message_proxy};
+use re_grpc_client::{ConnectionRegistryHandle, StreamError, message_proxy};
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 use re_uri::RedapUri;
@@ -149,7 +149,7 @@ impl DataSource {
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
-        connection_registry: &ConnectionRegistry,
+        connection_registry: &ConnectionRegistryHandle,
         on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
@@ -268,7 +268,7 @@ impl DataSource {
                 });
 
                 async fn stream_partition(
-                    connection_registry: &ConnectionRegistry,
+                    connection_registry: &ConnectionRegistryHandle,
                     tx: re_smart_channel::Sender<LogMsg>,
                     uri: re_uri::DatasetDataUri,
                     on_cmd: Box<dyn Fn(re_grpc_client::Command) + Send + Sync>,

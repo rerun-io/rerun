@@ -5,7 +5,7 @@ pub mod message_proxy;
 mod redap;
 
 pub use self::{
-    connection_registry::ConnectionRegistry,
+    connection_registry::{ConnectionRegistry, ConnectionRegistryHandle},
     redap::{
         Command, ConnectionError, RedapClient, get_chunks_response_to_chunk_and_partition_id,
         stream_dataset_from_redap, stream_partition_async,

@@ -8,10 +8,15 @@ use re_auth::Jwt;
 
 use crate::redap::{ConnectionError, RedapClient};
 
-#[derive(Default)]
-struct ConnectionRegistryImpl {
-    /// The available authentication tokens.
-    tokens: HashMap<re_uri::Origin, Jwt>,
+pub struct ConnectionRegistry {
+    /// The saved authentication tokens.
+    ///
+    /// These are the tokens explicitly set by the user, e.g. via `--token` or the UI. They may
+    /// be persisted.
+    ///
+    /// When no saved token is available for a given server, we fall back to the `REDAP_TOKEN`
+    /// envvar if set. See [`ConnectionRegistryHandle::client`].
+    saved_tokens: HashMap<re_uri::Origin, Jwt>,
 
     /// The cached clients.
     ///
@@ -20,18 +25,31 @@ struct ConnectionRegistryImpl {
     clients: HashMap<re_uri::Origin, RedapClient>,
 }
 
+impl ConnectionRegistry {
+    /// Create a new connection registry and return a handle to it.
+    #[expect(clippy::new_ret_no_self)] // intentional, to reflect the fact that this is a handle
+    pub fn new() -> ConnectionRegistryHandle {
+        ConnectionRegistryHandle {
+            inner: Arc::new(RwLock::new(Self {
+                saved_tokens: HashMap::new(),
+                clients: HashMap::new(),
+            })),
+        }
+    }
+}
+
 /// Registry of all tokens and connections to the redap servers.
 ///
 /// This registry is cheap to clone.
-#[derive(Default, Clone)]
-pub struct ConnectionRegistry {
-    inner: Arc<RwLock<ConnectionRegistryImpl>>,
+#[derive(Clone)]
+pub struct ConnectionRegistryHandle {
+    inner: Arc<RwLock<ConnectionRegistry>>,
 }
 
-impl ConnectionRegistry {
+impl ConnectionRegistryHandle {
     pub fn set_token(&self, origin: &re_uri::Origin, token: Jwt) {
         let mut inner = self.inner.blocking_write();
-        inner.tokens.insert(origin.clone(), token);
+        inner.saved_tokens.insert(origin.clone(), token);
         inner.clients.remove(origin);
     }
 
@@ -44,15 +62,17 @@ impl ConnectionRegistry {
     /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
     /// sensitive information.
     pub async fn client(&self, origin: re_uri::Origin) -> Result<RedapClient, ConnectionError> {
-        let inner = self.inner.read().await;
-        if let Some(client) = inner.clients.get(&origin) {
-            return Ok(client.clone());
+        // happy path
+        {
+            let inner = self.inner.read().await;
+            if let Some(client) = inner.clients.get(&origin) {
+                return Ok(client.clone());
+            }
         }
-        drop(inner);
 
         let mut inner = self.inner.write().await;
         let token = inner
-            .tokens
+            .saved_tokens
             .get(&origin)
             .cloned()
             .or_else(get_token_from_env);
@@ -72,7 +92,7 @@ impl ConnectionRegistry {
         SerializedTokens(
             self.inner
                 .blocking_read()
-                .tokens
+                .saved_tokens
                 .iter()
                 .map(|(origin, token)| (origin.clone(), token.to_string()))
                 .collect(),
@@ -86,7 +106,7 @@ impl ConnectionRegistry {
     pub fn load_tokens(&self, tokens: SerializedTokens) {
         let mut inner = self.inner.blocking_write();
         for (origin, token) in tokens.0 {
-            if let Entry::Vacant(e) = inner.tokens.entry(origin.clone()) {
+            if let Entry::Vacant(e) = inner.saved_tokens.entry(origin.clone()) {
                 if let Ok(jwt) = Jwt::try_from(token) {
                     e.insert(jwt);
                 } else {

@@ -4,7 +4,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use egui::{Frame, Margin, RichText};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
     DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
@@ -29,13 +29,13 @@ struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: TablesSessionContext,
 
-    connection_registry: re_grpc_client::ConnectionRegistry,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
     fn new(
-        connection_registry: re_grpc_client::ConnectionRegistry,
+        connection_registry: re_grpc_client::ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -347,7 +347,7 @@ impl RedapServers {
     /// - Update all servers.
     pub fn on_frame_start(
         &mut self,
-        connection_registry: &ConnectionRegistry,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
     ) {
@@ -365,7 +365,7 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
-        connection_registry: &re_grpc_client::ConnectionRegistry,
+        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
@@ -462,7 +462,7 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(&mut self, connection_registry: &ConnectionRegistry, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, connection_registry: &ConnectionRegistryHandle, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,

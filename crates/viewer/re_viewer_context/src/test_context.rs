@@ -157,7 +157,7 @@ pub struct TestContext {
     pub component_ui_registry: ComponentUiRegistry,
     pub reflection: Reflection,
 
-    pub connection_registry: re_grpc_client::ConnectionRegistry,
+    pub connection_registry: re_grpc_client::ConnectionRegistryHandle,
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -201,7 +201,7 @@ impl Default for TestContext {
             query_results: Default::default(),
             component_ui_registry,
             reflection,
-            connection_registry: re_grpc_client::ConnectionRegistry::default(),
+            connection_registry: re_grpc_client::ConnectionRegistry::new(),
 
             command_sender,
             command_receiver,

@@ -6,7 +6,7 @@ use serde::Deserialize;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
 
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log::ResultExt as _;
 use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 
@@ -111,7 +111,7 @@ impl EndpointCategory {
 
 /// Start receiving from the given url.
 pub fn url_to_receiver(
-    connection_registry: &ConnectionRegistry,
+    connection_registry: &ConnectionRegistryHandle,
     egui_ctx: egui::Context,
     follow_if_http: bool,
     url: String,

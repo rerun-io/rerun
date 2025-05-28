@@ -16,7 +16,7 @@ use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
 use re_grpc_client::{
-    ConnectionRegistry, RedapClient, get_chunks_response_to_chunk_and_partition_id,
+    ConnectionRegistryHandle, RedapClient, get_chunks_response_to_chunk_and_partition_id,
 };
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
@@ -47,7 +47,7 @@ pub struct ConnectionHandle {
 impl ConnectionHandle {
     pub fn new(
         py: Python<'_>,
-        connection_registry: ConnectionRegistry,
+        connection_registry: ConnectionRegistryHandle,
         origin: re_uri::Origin,
     ) -> PyResult<Self> {
         let origin_clone = origin.clone();

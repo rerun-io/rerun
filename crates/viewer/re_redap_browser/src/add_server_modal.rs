@@ -1,4 +1,4 @@
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
@@ -40,7 +40,7 @@ impl AddServerModal {
     pub fn ui(
         &mut self,
         ctx: &Context<'_>,
-        connection_registry: &ConnectionRegistry,
+        connection_registry: &ConnectionRegistryHandle,
         ui: &egui::Ui,
     ) {
         self.modal.ui(

@@ -7,7 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -128,7 +128,7 @@ pub struct App {
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
-    connection_registry: ConnectionRegistry,
+    connection_registry: ConnectionRegistryHandle,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -146,7 +146,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
-        connection_registry: Option<ConnectionRegistry>,
+        connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
         Self::with_commands(
@@ -169,7 +169,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
-        connection_registry: Option<ConnectionRegistry>,
+        connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
@@ -186,7 +186,9 @@ impl App {
             );
         }
 
-        let connection_registry = connection_registry.unwrap_or_default();
+        let connection_registry =
+            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+
         if let Some(storage) = creation_context.storage {
             if let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY) {
                 connection_registry.load_tokens(tokens);
@@ -347,7 +349,7 @@ impl App {
         self.profiler = profiler;
     }
 
-    pub fn connection_registry(&self) -> &ConnectionRegistry {
+    pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
         &self.connection_registry
     }
 

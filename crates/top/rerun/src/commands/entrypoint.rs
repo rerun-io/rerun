@@ -661,7 +661,7 @@ fn run_impl(
     tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_grpc_client::ConnectionRegistry::default();
+    let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);

@@ -11,7 +11,7 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin};
 
-use crate::{ConnectionRegistry, MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
+use crate::{ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
 
 pub enum Command {
     SetLoopSelection {
@@ -25,7 +25,7 @@ pub enum Command {
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
-    connection_registry: &ConnectionRegistry,
+    connection_registry: &ConnectionRegistryHandle,
     uri: DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
@@ -44,7 +44,7 @@ pub fn stream_dataset_from_redap(
     );
 
     async fn stream_partition(
-        connection_registry: ConnectionRegistry,
+        connection_registry: ConnectionRegistryHandle,
         tx: re_smart_channel::Sender<LogMsg>,
         uri: DatasetDataUri,
         on_cmd: Box<dyn Fn(Command) + Send + Sync>,
