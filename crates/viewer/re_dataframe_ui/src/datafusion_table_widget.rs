@@ -180,6 +180,8 @@ impl<'a> DataFusionTableWidget<'a> {
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
     ) {
+        let tokens = ui.tokens();
+
         let Self {
             session_ctx,
             table_ref,
@@ -326,7 +328,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
-                re_ui::DesignTokens::table_header_height() + CELL_MARGIN.sum().y,
+                tokens.table_header_height() + CELL_MARGIN.sum().y,
             )])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -385,6 +387,8 @@ struct DataFusionTableDelegate<'a> {
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
+        let tokens = ui.tokens();
+
         ui.set_truncate_style();
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
@@ -411,7 +415,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
                             {
                                 ui.add_space(-5.0);
-                                ui.small_icon(dir_icon, Some(ui.tokens().table_sort_icon_color));
+                                ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
                             }
 
                             response
@@ -490,7 +494,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
+        self.ctx.tokens().table_line_height() + CELL_MARGIN.sum().y
     }
 }
 

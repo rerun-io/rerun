@@ -109,6 +109,8 @@ impl SelectionPanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -130,7 +132,7 @@ impl SelectionPanel {
         } else {
             list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
-                    .with_height(re_ui::DesignTokens::title_bar_height())
+                    .with_height(tokens.title_bar_height())
                     .interactive(false)
                     .selected(true)
                     .show_flat(
@@ -574,7 +576,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
-        design_tokens: &re_ui::DesignTokens,
+        tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -591,7 +593,7 @@ fn entity_path_filter_ui(
             let color = if is_exclusion {
                 style.visuals.error_fg_color
             } else {
-                design_tokens.info_log_text_color
+                tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {

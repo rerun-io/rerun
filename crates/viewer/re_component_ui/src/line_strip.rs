@@ -1,5 +1,6 @@
 use re_format::{format_f32, format_uint};
 use re_types::components::{LineStrip2D, LineStrip3D};
+use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 
 use crate::DEFAULT_NUMBER_WIDTH;
@@ -22,6 +23,8 @@ fn multiline_view_line_strip_3d(
 ) -> egui::Response {
     use egui_extras::Column;
 
+    let tokens = ui.tokens();
+
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
 
@@ -32,7 +35,7 @@ fn multiline_view_line_strip_3d(
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
-        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+        .header(tokens.table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.label("x");
@@ -45,8 +48,8 @@ fn multiline_view_line_strip_3d(
             });
         })
         .body(|mut body| {
-            re_ui::DesignTokens::setup_table_body(&mut body);
-            let row_height = re_ui::DesignTokens::table_line_height();
+            tokens.setup_table_body(&mut body);
+            let row_height = tokens.table_line_height();
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {
@@ -84,6 +87,8 @@ fn multiline_view_line_strip_2d(
 ) -> egui::Response {
     use egui_extras::Column;
 
+    let tokens = ui.tokens();
+
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
 
@@ -94,7 +99,7 @@ fn multiline_view_line_strip_2d(
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
-        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+        .header(tokens.table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.label("x");
@@ -104,8 +109,8 @@ fn multiline_view_line_strip_2d(
             });
         })
         .body(|mut body| {
-            re_ui::DesignTokens::setup_table_body(&mut body);
-            let row_height = re_ui::DesignTokens::table_line_height();
+            tokens.setup_table_body(&mut body);
+            let row_height = tokens.table_line_height();
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {

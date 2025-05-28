@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used)]
+#![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
-use egui::{Color32, Stroke, Theme};
+use anyhow::Context as _;
+use egui::{Color32, Stroke, Theme, Vec2};
 
 use crate::{
     CUSTOM_WINDOW_DECORATIONS,
@@ -17,6 +19,11 @@ pub struct DesignTokens {
     pub theme: egui::Theme,
 
     typography: Typography,
+
+    pub large_button_size: Vec2,
+    pub large_button_icon_size: Vec2,
+    pub large_button_corner_radius: f32,
+    pub small_icon_size: Vec2,
 
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
@@ -159,27 +166,28 @@ pub struct DesignTokens {
 
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
-    pub fn load(theme: Theme) -> Self {
-        let color_table_json: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
+    pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
             .expect("Failed to parse data/color_table.ron");
-        let colors = load_color_table(&color_table_json);
+        let colors = load_color_table(&color_table_ron);
 
-        let theme_json: ron::Value = match theme {
-            egui::Theme::Dark => ron::from_str(include_str!("../data/dark_theme.ron"))
-                .expect("Failed to parse data/dark_theme.ron"),
-
-            egui::Theme::Light => ron::from_str(include_str!("../data/light_theme.ron"))
-                .expect("Failed to parse data/light_theme.ron"),
-        };
+        let theme_json: ron::Value = ron::from_str(tokens_ron)
+            .with_context(|| format!("Failed to parse {theme:?} theme .ron"))?;
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
+        let get_scalar = |scalar_name: &str| try_get_scalar(&theme_json, scalar_name);
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
-        Self {
+        Ok(Self {
             theme,
             typography,
+
+            large_button_size: Vec2::splat(get_scalar("large_button_size")?),
+            large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
+            large_button_corner_radius: get_scalar("large_button_corner_radius")?,
+            small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
@@ -276,7 +284,7 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
-        }
+        })
     }
 
     /// Apply style to the given egui context.
@@ -284,7 +292,7 @@ impl DesignTokens {
         re_tracing::profile_function!();
 
         self.set_text_styles(style);
-        Self::set_spacing(style);
+        self.set_spacing(style);
         self.set_colors(style);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
@@ -354,7 +362,7 @@ impl DesignTokens {
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
     }
 
-    fn set_spacing(egui_style: &mut egui::Style) {
+    fn set_spacing(&self, egui_style: &mut egui::Style) {
         egui_style.visuals.button_frame = true;
 
         {
@@ -371,9 +379,9 @@ impl DesignTokens {
             egui_style.visuals.widgets.open.expansion = 2.0;
         }
 
-        egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
-        egui_style.visuals.menu_corner_radius = Self::window_corner_radius().into();
-        let small_corner_radius = Self::small_corner_radius().into();
+        egui_style.visuals.window_corner_radius = self.window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = self.window_corner_radius().into();
+        let small_corner_radius = self.small_corner_radius().into();
         egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
         egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
         egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
@@ -381,7 +389,7 @@ impl DesignTokens {
         egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
 
         egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-        egui_style.spacing.menu_margin = Self::view_padding().into();
+        egui_style.spacing.menu_margin = self.view_padding().into();
         egui_style.spacing.menu_spacing = 1.0;
 
         // avoid some visual glitches with the default non-zero value
@@ -390,7 +398,7 @@ impl DesignTokens {
         // Add stripes to grids and tables?
         egui_style.visuals.striped = false;
         egui_style.visuals.indent_has_left_vline = false;
-        egui_style.spacing.button_padding = egui::Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
         egui_style.spacing.indent = 14.0; // From figma
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
@@ -498,50 +506,50 @@ impl DesignTokens {
     }
 
     /// Margin on all sides of views.
-    pub fn view_padding() -> i8 {
+    pub fn view_padding(&self) -> i8 {
         12
     }
 
-    pub fn panel_margin() -> egui::Margin {
-        egui::Margin::symmetric(Self::view_padding(), 0)
+    pub fn panel_margin(&self) -> egui::Margin {
+        egui::Margin::symmetric(self.view_padding(), 0)
     }
 
-    pub fn window_corner_radius() -> f32 {
+    pub fn window_corner_radius(&self) -> f32 {
         12.0
     }
 
-    pub fn normal_corner_radius() -> f32 {
+    pub fn normal_corner_radius(&self) -> f32 {
         6.0
     }
 
-    pub fn small_corner_radius() -> f32 {
+    pub fn small_corner_radius(&self) -> f32 {
         4.0
     }
 
-    pub fn table_line_height() -> f32 {
+    pub fn table_line_height(&self) -> f32 {
         20.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
     }
 
-    pub fn table_header_height() -> f32 {
+    pub fn table_header_height(&self) -> f32 {
         20.0
     }
 
-    pub fn top_bar_margin() -> egui::Margin {
+    pub fn top_bar_margin(&self) -> egui::Margin {
         egui::Margin::symmetric(8, 0)
     }
 
-    pub fn text_to_icon_padding() -> f32 {
+    pub fn text_to_icon_padding(&self) -> f32 {
         4.0
     }
 
     /// Height of the top-most bar.
-    pub fn top_bar_height() -> f32 {
+    pub fn top_bar_height(&self) -> f32 {
         28.0 // Don't waste vertical space, especially important for embedded web viewers
     }
 
     /// Height of the title row in the blueprint view and selection view,
     /// as well as the tab bar height in the viewport view.
-    pub fn title_bar_height() -> f32 {
+    pub fn title_bar_height(&self) -> f32 {
         24.0 // https://github.com/rerun-io/rerun/issues/5589
     }
 
@@ -557,25 +565,25 @@ impl DesignTokens {
         11.0
     }
 
-    pub fn native_window_corner_radius() -> u8 {
+    pub fn native_window_corner_radius(&self) -> u8 {
         10
     }
 
     pub fn top_panel_frame(&self) -> egui::Frame {
         let mut frame = egui::Frame {
-            inner_margin: Self::top_bar_margin(),
+            inner_margin: self.top_bar_margin(),
             fill: self.top_bar_color,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.nw = Self::native_window_corner_radius();
-            frame.corner_radius.ne = Self::native_window_corner_radius();
+            frame.corner_radius.nw = self.native_window_corner_radius();
+            frame.corner_radius.ne = self.native_window_corner_radius();
         }
         frame
     }
 
-    pub fn bottom_panel_margin() -> egui::Margin {
-        Self::top_bar_margin()
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        self.top_bar_margin()
     }
 
     /// For the streams view (time panel)
@@ -584,7 +592,7 @@ impl DesignTokens {
         // (on the inner margin we counteract this again)
         let margin_offset = (self.bottom_bar_stroke.width * 0.5) as i8;
 
-        let margin = Self::bottom_panel_margin();
+        let margin = self.bottom_panel_margin();
 
         let mut frame = egui::Frame {
             fill: self.bottom_bar_color,
@@ -601,21 +609,17 @@ impl DesignTokens {
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.sw = Self::native_window_corner_radius();
-            frame.corner_radius.se = Self::native_window_corner_radius();
+            frame.corner_radius.sw = self.native_window_corner_radius();
+            frame.corner_radius.se = self.native_window_corner_radius();
         }
         frame
     }
 
-    pub fn small_icon_size() -> egui::Vec2 {
-        egui::Vec2::splat(14.0)
-    }
-
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
-    pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
+    pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>) {
         // Make sure buttons don't visually overflow:
-        body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
+        body.ui_mut().spacing_mut().interact_size.y = self.table_line_height();
     }
 
     /// Layout area to allocate for the collapsing triangle.
@@ -624,15 +628,28 @@ impl DesignTokens {
     /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
     /// allocated for it. It's set to the same size as the small icon size so that everything is
     /// properly aligned in [`crate::list_item::ListItem`].
-    pub fn collapsing_triangle_area() -> egui::Vec2 {
-        Self::small_icon_size()
+    pub fn collapsing_triangle_area(&self) -> Vec2 {
+        self.small_icon_size
     }
 }
 
 // ----------------------------------------------------------------------------
 
 trait RonExt {
-    fn get(&self, key: &str) -> Option<&ron::Value>;
+    /// Supports path-like access to the JSON structure.
+    fn get(&self, path: &str) -> anyhow::Result<&Self> {
+        let mut value = self;
+        for component in path.split('.') {
+            if let Some(child) = value.get_child(component) {
+                value = child;
+            } else {
+                anyhow::bail!("Failed to find {component:?} in path {path:?}");
+            }
+        }
+        Ok(value)
+    }
+
+    fn get_child(&self, key: &str) -> Option<&Self>;
 
     fn as_str(&self) -> Option<&str>;
 
@@ -649,7 +666,7 @@ trait RonExt {
 }
 
 impl RonExt for ron::Value {
-    fn get(&self, key: &str) -> Option<&ron::Value> {
+    fn get_child(&self, key: &str) -> Option<&Self> {
         match self {
             Self::Map(map) => map.get(&Self::String(key.into())),
             _ => None,
@@ -690,18 +707,13 @@ fn try_get_alias_color(
     json: &ron::Value,
     color_name: &str,
 ) -> anyhow::Result<Color32> {
-    let color_alias = json
-        .get("Alias")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
-        .get(color_name)
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
+    let color_alias = json.get("Alias")?.get(color_name)?;
     color_from_json(color_table, color_alias)
 }
 
 fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
     let color = color_alias
-        .get("color")
-        .ok_or_else(|| anyhow::anyhow!("No color found"))?
+        .get("color")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
@@ -721,7 +733,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
         let hue: Hue = hue.parse()?;
         let scale: Scale = scale.parse()?;
         let mut color = color_table.get(ColorToken::new(hue, scale));
-        if let Some(alpha) = color_alias.get("alpha") {
+        if let Ok(alpha) = color_alias.get("alpha") {
             let alpha = alpha
                 .as_u8()
                 .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
@@ -731,6 +743,14 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
     } else {
         anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
     }
+}
+
+fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
+    json.get(path).and_then(|value| {
+        value
+            .as_f32()
+            .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
+    })
 }
 
 fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {
@@ -750,16 +770,11 @@ fn try_get_aliased_stroke(
     json: &ron::Value,
     alias_path: &str,
 ) -> anyhow::Result<Stroke> {
-    let color_alias = json
-        .get("Alias")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
-        .get(alias_path)
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}'"))?;
+    let color_alias = json.get("Alias")?.get(alias_path)?;
 
     let color = color_from_json(color_table, color_alias)?;
     let width = color_alias
-        .get("width")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}.width'"))?
+        .get("width")?
         .as_f32()
         .ok_or_else(|| anyhow::anyhow!("'Alias.{alias_path}.width' not a number"))?;
     let stroke = Stroke::new(width, color);
@@ -790,7 +805,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
     let path = path.strip_prefix('{')?;
     let path = path.strip_suffix('}')?;
     for component in path.split('.') {
-        value = value.get(component)?;
+        value = value.get_child(component)?;
     }
     Some(value)
 }

@@ -16,7 +16,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
-use re_ui::{DesignTokens, SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -31,8 +31,10 @@ pub fn item_heading_with_breadcrumbs(
 ) {
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     ui.list_item()
-        .with_height(DesignTokens::title_bar_height())
+        .with_height(tokens.title_bar_height())
         .interactive(false)
         .selected(true)
         .show_flat(

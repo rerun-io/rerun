@@ -3,7 +3,7 @@ use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
@@ -305,7 +305,7 @@ impl ExampleSection {
                     egui::RichText::new("View example recordings")
                         .strong()
                         .line_height(Some(32.0))
-                        .text_style(re_ui::DesignTokens::welcome_screen_h2()),
+                        .text_style(DesignTokens::welcome_screen_h2()),
                 ));
 
                 ui.add_space(TITLE_TO_GRID_VSPACE);
@@ -514,7 +514,7 @@ impl ExampleDescLayout {
         let title = egui::RichText::new(self.desc.title.clone())
             .strong()
             .line_height(Some(16.0))
-            .text_style(re_ui::DesignTokens::welcome_screen_example_title());
+            .text_style(DesignTokens::welcome_screen_example_title());
 
         ui.add_space(DESCRIPTION_INNER_MARGIN as _);
         egui::Frame {
@@ -541,8 +541,7 @@ impl ExampleDescLayout {
                 for tag in self.desc.tags.iter().sorted() {
                     ui.add(
                         egui::Button::new(
-                            egui::RichText::new(tag)
-                                .text_style(re_ui::DesignTokens::welcome_screen_tag()),
+                            egui::RichText::new(tag).text_style(DesignTokens::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)

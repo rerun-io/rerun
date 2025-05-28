@@ -174,7 +174,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 }
 
 pub fn add_axis_arrows(
-    design_tokens: &re_ui::DesignTokens,
+    tokens: &re_ui::DesignTokens,
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
@@ -201,19 +201,19 @@ pub fn add_axis_arrows(
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_x)
+        .color(tokens.axis_color_x)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_y)
+        .color(tokens.axis_color_y)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_z)
+        .color(tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }

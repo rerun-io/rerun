@@ -321,6 +321,7 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()
+        .fit_to_original_size(2.0) // hack, because the original SVG is very small
         .max_height(desired_height)
         .tint(ui.tokens().strong_fg_color);
 
