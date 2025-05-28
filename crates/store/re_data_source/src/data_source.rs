@@ -1,4 +1,4 @@
-use re_grpc_client::{ConnectionRegistryHandle, StreamError, message_proxy};
+use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 use re_uri::RedapUri;
@@ -267,23 +267,16 @@ impl DataSource {
                     }),
                 });
 
-                async fn stream_partition(
-                    connection_registry: &ConnectionRegistryHandle,
-                    tx: re_smart_channel::Sender<LogMsg>,
-                    uri: re_uri::DatasetDataUri,
-                    on_cmd: Box<dyn Fn(re_grpc_client::Command) + Send + Sync>,
-                    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-                ) -> Result<(), StreamError> {
-                    let client = connection_registry.client(uri.origin.clone()).await?;
-                    re_grpc_client::stream_partition_async(client, tx, uri, on_cmd, on_msg).await
-                }
-
                 let connection_registry = connection_registry.clone();
+                let uri_clone = uri.clone();
+                let stream_partition = async move {
+                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
+                    re_grpc_client::stream_partition_async(client, tx, uri_clone, on_cmd, on_msg)
+                        .await
+                };
+
                 spawn_future(async move {
-                    if let Err(err) =
-                        stream_partition(&connection_registry, tx, uri.clone(), on_cmd, on_msg)
-                            .await
-                    {
+                    if let Err(err) = stream_partition.await {
                         re_log::warn!(
                             "Error while streaming {uri}: {}",
                             re_error::format_ref(&err)

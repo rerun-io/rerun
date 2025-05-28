@@ -784,6 +784,9 @@ fn run_impl(
         let mut rxs_logs = data_sources
             .into_iter()
             .filter_map(|data_source| {
+                // TODO(#10093): this is problematic because the connection registry's token have
+                // not yet been deserialized from persistence (this is done later by `App`. So if
+                // this requires such a token, it will fail even though it'd succeed later.
                 match data_source.stream(&connection_registry, on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
 
