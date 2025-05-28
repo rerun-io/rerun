@@ -1,8 +1,8 @@
 {
   "large_button_size": 22,
-  "large_button_icon_size": 12,
+  "large_button_icon_size": 13, // Using an odd size makes the left/right arrow stems sharp (center on a pixel)
   "large_button_corner_radius": 6,
-  "small_icon_size": 14,
+  "small_icon_size": 15,  // Using an odd size makes the `+` (add) icon sharp (center on a pixel)
 
   "Alias": {
     "native_frame_stroke": {
