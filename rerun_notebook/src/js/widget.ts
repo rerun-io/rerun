@@ -3,6 +3,7 @@ import {
   type Panel,
   type PanelState,
   WebViewer,
+  type WebViewerOptions,
 } from "@rerun-io/web-viewer/inlined.js";
 
 import type { AnyModel, Render } from "@anywidget/types";
@@ -21,6 +22,8 @@ interface WidgetModel {
   _panel_states?: PanelStates;
   _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
   _recording_id?: string;
+
+  _fallback_token?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -29,7 +32,7 @@ class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
-  options = { hide_welcome_screen: true };
+  options: WebViewerOptions = { hide_welcome_screen: true };
 
   channel: LogChannel | null = null;
 
@@ -49,6 +52,8 @@ class ViewerWidget {
       this.on_time_ctrl(null, timeline, time, play),
     );
     model.on("change:_recording_id", this.on_set_recording_id);
+
+    this.options.fallback_token = model.get("_fallback_token");
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
