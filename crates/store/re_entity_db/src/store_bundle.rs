@@ -1,9 +1,11 @@
-use itertools::Itertools as _;
 use std::collections::BTreeMap;
+
+use itertools::Itertools as _;
+
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreKind};
 
 use crate::EntityDb;
 use crate::entity_db::EntityDbClass;
-use re_log_types::{ApplicationId, EntryId, StoreId, StoreKind};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StoreLoadError {
