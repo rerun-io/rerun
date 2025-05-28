@@ -14,7 +14,7 @@ use itertools::Itertools as _;
 
 use super::{Time, Timescale};
 
-use crate::{Chunk, TrackId, TrackKind};
+use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChromaSubsamplingModes {
@@ -102,7 +102,7 @@ pub struct VideoDataDescription {
 
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub gops: Vec<GroupOfPictures>,
+    pub gops: StableIndexDeque<GroupOfPictures>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -111,8 +111,10 @@ pub struct VideoDataDescription {
     /// Samples must be decoded in decode-timestamp order,
     /// and should be presented in composition-timestamp order.
     ///
-    /// In MP4, one sample is one frame.
-    pub samples: Vec<Sample>,
+    /// We assume one sample yields exactly one frame from the decoder.
+    ///
+    /// Samples may be removed from the beginning and added at the end.
+    pub samples: StableIndexDeque<Sample>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
@@ -134,6 +136,9 @@ pub struct SamplesStatistics {
     /// If `dts_always_equal_pts` is false, then this gives for each sample whether its PTS is the highest seen so far.
     /// If `dts_always_equal_pts` is true, then this is left as `None`.
     /// This is used for optimizing PTS search.
+    ///
+    /// TODO(andreas): We don't have a mechanism for shrinking this bitvec when dropping samples, i.e. it will keep growing.
+    /// ([`StableIndexDeque`] makes sure that indices in the bitvec will still match up with the samples even when samples are dropped from the front.)
     pub has_sample_highest_pts_so_far: Option<BitVec>,
 }
 
@@ -143,7 +148,7 @@ impl SamplesStatistics {
         has_sample_highest_pts_so_far: None,
     };
 
-    pub fn new(samples: &[Sample]) -> Self {
+    pub fn new(samples: &StableIndexDeque<Sample>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
@@ -241,7 +246,7 @@ impl VideoDataDescription {
     /// The number of samples in the video.
     #[inline]
     pub fn num_samples(&self) -> usize {
-        self.samples.len()
+        self.samples.num_elements()
     }
 
     /// Returns the subsampling mode of the video.
@@ -338,8 +343,8 @@ impl VideoDataDescription {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
-            self.samples[seg.sample_range_usize()]
-                .iter()
+            self.samples
+                .iter_truncated_index_range(&seg.sample_range)
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
                 .map(|pts| pts.into_nanos(self.timescale))
@@ -349,7 +354,7 @@ impl VideoDataDescription {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &[Sample],
+        samples: &StableIndexDeque<Sample>,
         decode_time: Time,
     ) -> Option<usize> {
         latest_at_idx(samples, |sample| sample.decode_timestamp, &decode_time)
@@ -357,7 +362,7 @@ impl VideoDataDescription {
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &[Sample],
+        samples: &StableIndexDeque<Sample>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<usize> {
@@ -374,7 +379,7 @@ impl VideoDataDescription {
             debug_assert!(sample_statistics.dts_always_equal_pts);
             return Some(decode_sample_idx);
         };
-        debug_assert!(has_sample_highest_pts_so_far.len() == samples.len());
+        debug_assert!(has_sample_highest_pts_so_far.len() == samples.next_index());
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
@@ -457,17 +462,7 @@ pub struct GroupOfPictures {
     pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
-    pub sample_range: Range<u32>,
-}
-
-impl GroupOfPictures {
-    /// The GOP's `sample_range` mapped to `usize` for slicing.
-    pub fn sample_range_usize(&self) -> Range<usize> {
-        Range {
-            start: self.sample_range.start as usize,
-            end: self.sample_range.end as usize,
-        }
-    }
+    pub sample_range: Range<usize>,
 }
 
 /// A single sample in a video.
@@ -501,6 +496,8 @@ pub struct Sample {
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
     /// In the absence of b-frames this is expected to be equal to the index in the array of all video samples.
+    ///
+    /// Do **not** ever use this for indexing into the array of samples.
     pub frame_nr: u32,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
@@ -541,7 +538,7 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &[&[u8]], sample_idx: u32) -> Option<Chunk> {
+    pub fn get(&self, data: &[&[u8]], sample_idx: usize) -> Option<Chunk> {
         let data = data
             .get(self.buffer_index as usize)?
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
@@ -614,16 +611,20 @@ impl std::fmt::Debug for VideoDataDescription {
 /// - The index of `needle` in `v`, if it exists
 /// - The index of the first element in `v` that is lesser than `needle`, if it exists
 /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+fn latest_at_idx<T, K: Ord>(
+    v: &StableIndexDeque<T>,
+    key: impl Fn(&T) -> K,
+    needle: &K,
+) -> Option<usize> {
     if v.is_empty() {
         return None;
     }
 
     let idx = v.partition_point(|x| key(x) <= *needle);
 
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
+    if idx == v.smallest_valid_index() {
+        // If idx is the smallest possible value, then all elements are greater than the needle
+        if &key(&v[idx]) > needle {
             return None;
         }
     }
@@ -637,9 +638,25 @@ mod tests {
 
     #[test]
     fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let mut v = (1..11).collect::<StableIndexDeque<i32>>();
         assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
         assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
+        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
+        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
+        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
+        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
+        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
+        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
+        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
+        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
+        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
+
+        // Index offset should be respected.
+        v.pop_front();
+        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
+        assert_eq!(latest_at_idx(&v, |v| *v, &1), None);
         assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
         assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
         assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
@@ -687,7 +704,7 @@ mod tests {
                 byte_offset: 0,
                 byte_length: 0,
             })
-            .collect::<Vec<_>>();
+            .collect::<StableIndexDeque<_>>();
 
         let sample_statistics = SamplesStatistics::new(&samples);
         assert!(!sample_statistics.dts_always_equal_pts);

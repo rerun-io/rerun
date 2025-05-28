@@ -47,7 +47,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         }
     };
 
-    let num_timestamps = video.samples.len();
+    let num_timestamps = video.samples.num_elements();
     let timestamps_nanos_memory = alloc_func(alloc_context, num_timestamps as u32);
     let timestamps_nanos =
         unsafe { std::slice::from_raw_parts_mut(timestamps_nanos_memory, num_timestamps) };

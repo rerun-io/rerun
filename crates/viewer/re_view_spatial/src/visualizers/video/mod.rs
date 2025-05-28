@@ -23,6 +23,7 @@ fn video_stream_id(
     )
 }
 
+#[expect(clippy::too_many_arguments)] // TODO: kick out video resolution
 fn visualize_video_frame_texture(
     ctx: &ViewerContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,

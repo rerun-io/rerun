@@ -192,6 +192,7 @@ impl VideoPlayer {
         })
     }
 
+    // TODO(#7484): Need to revisit this for gops that expand over time due to newly arrived samples.
     fn enqueue_samples(
         &mut self,
         video_description: &re_video::VideoDataDescription,
@@ -289,7 +290,7 @@ impl VideoPlayer {
             let next_gop_idx = if let Some(last_enqueued_gop_idx) = self.last_enqueued_gop_idx {
                 let last_enqueued_gop = video_description.gops.get(last_enqueued_gop_idx);
                 let last_enqueued_sample_idx = last_enqueued_gop
-                    .map(|gop| gop.sample_range_usize().end)
+                    .map(|gop| gop.sample_range.end)
                     .unwrap_or(0);
 
                 if last_enqueued_gop_idx > requested_gop_idx // Enqueue the next GOP after requested as well.
@@ -302,7 +303,7 @@ impl VideoPlayer {
                 requested_gop_idx
             };
 
-            if next_gop_idx >= video_description.gops.len() {
+            if next_gop_idx >= video_description.gops.next_index() {
                 // Reached end of video with a previously enqueued GOP already.
                 break;
             }
@@ -331,19 +332,25 @@ impl VideoPlayer {
 
         self.last_enqueued_gop_idx = Some(gop_idx);
 
-        let samples = &video_description.samples[gop.sample_range_usize()];
+        re_log::trace!(
+            "Enqueueing GOP {gop_idx} ({} samples)",
+            gop.sample_range.len()
+        );
 
-        re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
+        let samples = video_description
+            .samples
+            .iter_truncated_index_range(&gop.sample_range);
 
-        for (sample_offset, sample) in samples.iter().enumerate() {
-            let sample_idx = gop.sample_range.start + sample_offset as u32;
+        for (sample_offset, sample) in samples.enumerate() {
+            let sample_idx = gop.sample_range.start + sample_offset;
             let chunk = sample
                 .get(video_data, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
             self.chunk_decoder.decode(chunk)?;
         }
 
-        if gop_idx + 1 == video_description.gops.len() {
+        // TODO(#7484): For streaming we need to mark gops as open and do more here.
+        if gop_idx + 1 == video_description.gops.next_index() {
             // Last GOP - there is nothing more to decode,
             // so flush out any pending frames:
             // See https://github.com/rerun-io/rerun/issues/8073

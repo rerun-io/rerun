@@ -121,7 +121,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataD
         ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of GOPs")
-                    .value_text(video_data.gops.len().to_string()),
+                    .value_text(video_data.gops.num_elements().to_string()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
 
@@ -186,9 +186,9 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
 
             body.rows(
                 tokens.table_line_height(),
-                video_data.samples.len(),
+                video_data.samples.num_elements(),
                 |mut row| {
-                    let sample_idx = row.index();
+                    let sample_idx = row.index() + video_data.samples.smallest_valid_index();
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
@@ -478,10 +478,10 @@ fn frame_info_ui(
         .on_hover_text("The index of the group of picture (GOP) that this sample belongs to.");
 
         if let Some(gop) = video_data.gops.get(gop_index) {
-            let first_sample = video_data.samples.get(gop.sample_range.start as usize);
+            let first_sample = video_data.samples.get(gop.sample_range.start);
             let last_sample = video_data
                 .samples
-                .get((gop.sample_range.end as usize).saturating_sub(1));
+                .get(gop.sample_range.end.saturating_sub(1));
 
             if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(

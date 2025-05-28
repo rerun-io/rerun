@@ -167,7 +167,7 @@ impl VideoFrameReferenceVisualizer {
         match query_result {
             None => {
                 show_video_error(
-                    &ctx,
+                    ctx,
                     &mut self.data,
                     spatial_ctx.highlight,
                     world_from_entity,
@@ -203,7 +203,7 @@ impl VideoFrameReferenceVisualizer {
                                 video_resolution = glam::vec2(w as _, h as _);
                             }
                             show_video_error(
-                                &ctx,
+                                ctx,
                                 &mut self.data,
                                 spatial_ctx.highlight,
                                 world_from_entity,
@@ -216,7 +216,7 @@ impl VideoFrameReferenceVisualizer {
                 }
                 Err(err) => {
                     show_video_error(
-                        &ctx,
+                        ctx,
                         &mut self.data,
                         spatial_ctx.highlight,
                         world_from_entity,

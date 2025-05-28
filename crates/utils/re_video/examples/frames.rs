@@ -32,12 +32,13 @@ fn main() {
 
     println!(
         "{} {}x{}",
-        video.gops.len(),
+        video.gops.num_elements(),
         video.coded_dimensions.as_ref().map_or(0, |c| c[0]),
         video.coded_dimensions.as_ref().map_or(0, |c| c[1])
     );
 
-    let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
+    let progress =
+        ProgressBar::new(video.samples.num_elements() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
@@ -60,7 +61,7 @@ fn main() {
 
     let start = Instant::now();
     for (sample_idx, sample) in video.samples.iter().enumerate() {
-        let chunk = sample.get(&[&video_blob], sample_idx as u32).unwrap();
+        let chunk = sample.get(&[&video_blob], sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 

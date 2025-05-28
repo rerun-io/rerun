@@ -1,8 +1,10 @@
 #![allow(clippy::map_err_ignore)]
 
+use itertools::Itertools as _;
+
 use super::{GroupOfPictures, Sample, VideoDataDescription, VideoLoadError};
 
-use crate::{Time, Timescale, demux::SamplesStatistics};
+use crate::{StableIndexDeque, Time, Timescale, demux::SamplesStatistics};
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
@@ -24,8 +26,8 @@ impl VideoDataDescription {
 
         let timescale = Timescale::new(track.timescale);
         let duration = Time::new(track.duration as i64);
-        let mut samples = Vec::<Sample>::with_capacity(track.samples.len());
-        let mut gops = Vec::<GroupOfPictures>::new();
+        let mut samples = StableIndexDeque::<Sample>::with_capacity(track.samples.len());
+        let mut gops = StableIndexDeque::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
 
         {
@@ -34,12 +36,12 @@ impl VideoDataDescription {
             for sample in &track.samples {
                 if sample.is_sync && !samples.is_empty() {
                     let start = samples[gop_sample_start_index].decode_timestamp;
-                    let sample_range = gop_sample_start_index as u32..samples.len() as u32;
-                    gops.push(GroupOfPictures {
+                    let sample_range = gop_sample_start_index..samples.next_index();
+                    gops.push_back(GroupOfPictures {
                         decode_start_time: start,
                         sample_range,
                     });
-                    gop_sample_start_index = samples.len();
+                    gop_sample_start_index = samples.next_index();
                 }
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
@@ -49,7 +51,7 @@ impl VideoDataDescription {
                 let byte_offset = sample.offset as u32;
                 let byte_length = sample.size as u32;
 
-                samples.push(Sample {
+                samples.push_back(Sample {
                     is_sync: sample.is_sync,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
@@ -86,8 +88,8 @@ impl VideoDataDescription {
         // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
             let start = samples[gop_sample_start_index].decode_timestamp;
-            let sample_range = gop_sample_start_index as u32..samples.len() as u32;
-            gops.push(GroupOfPictures {
+            let sample_range = gop_sample_start_index..samples.next_index();
+            gops.push_back(GroupOfPictures {
                 decode_start_time: start,
                 sample_range,
             });
@@ -96,9 +98,9 @@ impl VideoDataDescription {
         {
             re_tracing::profile_scope!("Sanity-check samples");
             let mut samples_are_in_decode_order = true;
-            for window in samples.windows(2) {
+            for window in samples.iter().tuple_windows::<(&Sample, &Sample)>() {
                 samples_are_in_decode_order &=
-                    window[0].decode_timestamp <= window[1].decode_timestamp;
+                    window.0.decode_timestamp <= window.1.decode_timestamp;
             }
             if !samples_are_in_decode_order {
                 re_log::warn!(

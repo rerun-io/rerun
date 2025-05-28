@@ -257,7 +257,7 @@ pub struct Chunk {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: u32,
+    pub sample_idx: usize,
 
     /// Which frame does this chunk belong to?
     ///
@@ -341,7 +341,7 @@ pub struct FrameInfo {
     /// which is usually ordered by [`Self::latest_decode_timestamp`].
     ///
     /// None = unknown.
-    pub sample_idx: Option<u32>,
+    pub sample_idx: Option<usize>,
 
     /// Which frame is this?
     ///

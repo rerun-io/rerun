@@ -110,7 +110,7 @@ struct FFmpegFrameInfo {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    sample_idx: u32,
+    sample_idx: usize,
 
     /// Which frame is this?
     ///

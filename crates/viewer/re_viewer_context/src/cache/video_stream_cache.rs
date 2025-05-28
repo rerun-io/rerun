@@ -1,9 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 use ahash::HashMap;
@@ -15,7 +12,7 @@ use re_chunk::{ChunkId, EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::EntityPathHash;
 use re_types::{archetypes::VideoStream, components};
-use re_video::decode::DecodeSettings;
+use re_video::{StableIndexDeque, decode::DecodeSettings};
 
 use crate::Cache;
 
@@ -34,13 +31,15 @@ struct SampleBuffer {
 /// * active players for this stream and their state
 pub struct PlayableStoreVideoStream {
     pub video_renderer: re_renderer::video::Video,
-    video_sample_buffers: BTreeMap<u32, SampleBuffer>,
+
+    /// All buffers (each mapping 1:1 to a rerun chunk) that have samples for this video stream.
+    video_sample_buffers: StableIndexDeque<SampleBuffer>,
 }
 
 impl PlayableStoreVideoStream {
     pub fn sample_buffer_slices(&self) -> Vec<&[u8]> {
         self.video_sample_buffers
-            .values()
+            .iter()
             .map(|b| b.buffer.as_slice())
             .collect()
     }
@@ -141,8 +140,13 @@ fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
-) -> Result<(re_video::VideoDataDescription, BTreeMap<u32, SampleBuffer>), VideoStreamProcessingError>
-{
+) -> Result<
+    (
+        re_video::VideoDataDescription,
+        StableIndexDeque<SampleBuffer>,
+    ),
+    VideoStreamProcessingError,
+> {
     re_tracing::profile_function!();
 
     let frame_chunk_descr = VideoStream::descriptor_sample();
@@ -186,9 +190,9 @@ fn load_video_data_from_chunks(
     };
 
     // Extract all video samples.
-    let mut video_sample_buffers = BTreeMap::new();
-    let mut samples = Vec::with_capacity(video_chunks.len()); // Number of video chunks is minimum number of samples.
-    let mut gops = Vec::new();
+    let mut video_sample_buffers = StableIndexDeque::new();
+    let mut samples = StableIndexDeque::with_capacity(video_chunks.len()); // Number of video chunks is minimum number of samples.
+    let mut gops = StableIndexDeque::new();
 
     for chunk in video_chunks {
         read_additional_samples_from_chunk(
@@ -200,13 +204,6 @@ fn load_video_data_from_chunks(
             &mut samples,
             &mut gops,
         )?;
-    }
-
-    // Fill out frame durations.
-    for sample in 0..samples.len().saturating_sub(1) {
-        samples[sample].duration = Some(
-            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
-        );
     }
 
     Ok((
@@ -233,9 +230,9 @@ fn read_additional_samples_from_chunk(
     frame_chunk_descr: &re_types::ComponentDescriptor,
     chunk: &re_chunk::Chunk,
     codec: re_video::VideoCodec,
-    chunk_buffers: &mut BTreeMap<u32, SampleBuffer>,
-    samples: &mut Vec<re_video::Sample>,
-    gops: &mut Vec<re_video::demux::GroupOfPictures>,
+    chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
+    samples: &mut StableIndexDeque<re_video::Sample>,
+    gops: &mut StableIndexDeque<re_video::demux::GroupOfPictures>,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
@@ -260,11 +257,11 @@ fn read_additional_samples_from_chunk(
     let offsets = inner_list_array.offsets();
     let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
 
-    let chunk_key = chunk_buffers.keys().last().map_or(0, |k| k + 1);
-    let num_samples_before = samples.len();
+    let buffer_index = chunk_buffers.next_index();
+    let sample_base_idx = samples.next_index();
 
     let mut previous_max_presentation_timestamp = samples
-        .last()
+        .back()
         .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
 
     // Extract sample metadata.
@@ -275,7 +272,7 @@ fn read_additional_samples_from_chunk(
             .filter_map(move |((idx, len), (time, _row_id))| {
                 debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
 
-                let sample_idx = (num_samples_before + idx) as u32;
+                let sample_idx = sample_base_idx + idx;
                 let byte_offset = &offsets[idx..idx + len];
                 let byte_length = &lengths[idx..idx + len];
                 let decode_timestamp = re_video::Time(time.as_i64());
@@ -303,12 +300,12 @@ fn read_additional_samples_from_chunk(
 
                 if is_sync {
                     // Last GOP extends until here now
-                    if let Some(last_gop) = gops.last_mut() {
+                    if let Some(last_gop) = gops.back_mut() {
                         last_gop.sample_range.end = sample_idx;
                     }
 
                     // New gop starts at this frame.
-                    gops.push(re_video::demux::GroupOfPictures {
+                    gops.push_back(re_video::demux::GroupOfPictures {
                         decode_start_time: decode_timestamp,
                         sample_range: sample_idx..(sample_idx + 1),
                     });
@@ -318,7 +315,7 @@ fn read_additional_samples_from_chunk(
                     is_sync,
 
                     // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: sample_idx,
+                    frame_nr: sample_idx as u32,
                     decode_timestamp,
                     presentation_timestamp: decode_timestamp,
 
@@ -326,21 +323,49 @@ fn read_additional_samples_from_chunk(
                     duration: None,
 
                     // We're using offsets directly into the chunk data.
-                    buffer_index: chunk_key,
+                    buffer_index: buffer_index as u32,
                     byte_offset,
                     byte_length,
                 })
             }),
     );
 
-    chunk_buffers.insert(
-        chunk_key,
-        SampleBuffer {
-            buffer: values.clone(),
-            source_chunk: chunk.id(),
-            sample_range: num_samples_before..samples.len(),
-        },
-    );
+    // Any new samples actually added?
+    if sample_base_idx == samples.next_index() {
+        return Ok(());
+    }
+
+    // Sanity checks on chunk buffers.
+    if let Some(last_buffer) = chunk_buffers.back() {
+        debug_assert!(
+            last_buffer.sample_range.end == sample_base_idx,
+            "Sample range must be non-overlapping and without gaps."
+        );
+    }
+
+    // Fill out frame durations.
+    // Last frame of the previous round of adding samples:
+    let timestamp_first_new_sample = samples[sample_base_idx].presentation_timestamp;
+    if sample_base_idx != 0 {
+        // Note that the old sample might have been removed by now via GC, so it's important we check.
+        if let Some(previously_last_sample) = samples.get_mut(sample_base_idx - 1) {
+            previously_last_sample.duration =
+                Some(timestamp_first_new_sample - previously_last_sample.presentation_timestamp);
+        }
+    }
+
+    // Durations for all new samples (except the last one)
+    for sample in sample_base_idx..samples.next_index() - 1 {
+        samples[sample].duration = Some(
+            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
+        );
+    }
+
+    chunk_buffers.push_back(SampleBuffer {
+        buffer: values.clone(),
+        source_chunk: chunk.id(),
+        sample_range: sample_base_idx..samples.next_index(),
+    });
 
     Ok(())
 }
@@ -414,32 +439,38 @@ impl Cache for VideoStreamCache {
                         // This is a bit slower than re-using all the data, but much simpler and more robust.
                         //
                         // Compactions events are document to happen on **addition** only. Therefore, it should be save to remove samples from the end only.
+                        // We simply have to find the chunk with the oldest sample!
                         let chunk = if let Some(compaction) = &event.compacted {
-                            let mut num_remaining_samples = usize::MAX;
                             for chunk_id in compaction.srcs.keys() {
-                                let removed_buffer_key = {
-                                    let Some((removed_buffer_key, removed_buffer)) =
-                                        video_sample_buffers
-                                            .iter()
-                                            .find(|(_, buffer)| buffer.source_chunk == *chunk_id)
-                                    else {
-                                        continue;
-                                    };
-                                    num_remaining_samples = num_remaining_samples
-                                        .min(removed_buffer.sample_range.start + 1);
-                                    *removed_buffer_key
-                                };
-                                video_sample_buffers.remove(&removed_buffer_key);
+                                // TODO(andreas): This looks slow, but there shouldn't be all that many buffers.
+                                let mut num_remaining_buffers = video_sample_buffers.num_elements();
+                                for (i, buffer) in video_sample_buffers.iter().enumerate() {
+                                    if buffer.source_chunk == *chunk_id {
+                                        // Remove all samples that are in this and future buffers.
+                                        video_data
+                                            .samples
+                                            .truncate_to_index(buffer.sample_range.start);
+                                        num_remaining_buffers = i;
+                                        break;
+                                    }
+                                }
+                                // Remove all buffers starting with the found matching one.
+                                // (does nothing if we haven't found one)
+                                video_sample_buffers
+                                    .truncate_to_num_elements(num_remaining_buffers);
                             }
 
-                            video_data.samples.truncate(num_remaining_samples);
-                            video_data.gops.retain(|gop| {
-                                gop.sample_range.start < num_remaining_samples as u32
-                            });
-
-                            // Not strictly necessary since this should be adjusted again anyways, but let's make sure the last GOP remains valid.
-                            if let Some(last_gop) = video_data.gops.last_mut() {
-                                last_gop.sample_range.end = num_remaining_samples as _;
+                            // Remove all gops that are no longer valid.
+                            let max_sample_index = video_data.samples.next_index();
+                            while let Some(gop) = video_data.gops.back_mut() {
+                                if gop.sample_range.start >= max_sample_index {
+                                    video_data.gops.pop_back();
+                                } else {
+                                    // Not strictly necessary since this should be adjusted again anyways in `read_additional_samples_from_chunk`
+                                    // but let's make sure the last GOP remains valid.
+                                    gop.sample_range.end = max_sample_index;
+                                    break;
+                                }
                             }
 
                             &compaction.new_chunk

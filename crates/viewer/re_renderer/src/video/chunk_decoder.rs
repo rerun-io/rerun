@@ -121,7 +121,7 @@ impl VideoSampleDecoder {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = re_video::demux::latest_at_idx(
+        let Some(frame_idx) = latest_at_idx(
             frames,
             |frame| frame.info.presentation_timestamp,
             &presentation_timestamp,
@@ -336,4 +336,45 @@ fn copy_native_video_frame_to_texture(
     )?;
 
     Ok(format)
+}
+
+/// Like [`latest_at_idx`], but works with regular slices.
+pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+    if v.is_empty() {
+        return None;
+    }
+
+    let idx = v.partition_point(|x| key(x) <= *needle);
+
+    if idx == 0 {
+        // If idx is 0, then all elements are greater than the needle
+        if &key(&v[0]) > needle {
+            return None;
+        }
+    }
+
+    Some(idx.saturating_sub(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::latest_at_idx;
+
+    #[test]
+    fn test_latest_at_idx() {
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
+        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
+        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
+        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
+        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
+        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
+        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
+        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
+        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
+        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
+        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
+    }
 }

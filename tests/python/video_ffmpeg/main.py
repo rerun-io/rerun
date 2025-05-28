@@ -137,7 +137,7 @@ def capture_webcam_h264() -> None:
                     frame_time += frame_duration
                     rr.set_time("video_time", duration=frame_time)
                     rr.log(
-                        "video_stream", rr.VideoStream(frame=current_frame_data, codec=rr.components.VideoCodec.H264)
+                        "video_stream", rr.VideoStream(sample=current_frame_data, codec=rr.components.VideoCodec.H264)
                     )
 
                     # Start new frame
