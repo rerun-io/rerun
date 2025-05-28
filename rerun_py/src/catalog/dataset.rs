@@ -364,9 +364,10 @@ impl PyDataset {
             Default::default(),
         );
 
-        let query = RecordBatch::try_new(Arc::new(schema), vec![Arc::new(
-            StringArray::from_iter_values([query]),
-        )])
+        let query = RecordBatch::try_new(
+            Arc::new(schema),
+            vec![Arc::new(StringArray::from_iter_values([query]))],
+        )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         let request = SearchDatasetRequest {
