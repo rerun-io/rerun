@@ -73,6 +73,7 @@ crossbeam.workspace = true
 datafusion.workspace = true
 datafusion-ffi.workspace = true
 document-features.workspace = true
+futures.workspace = true
 itertools.workspace = true
 infer.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }

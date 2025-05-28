@@ -8493,6 +8493,7 @@ dependencies = [
  "datafusion",
  "datafusion-ffi",
  "document-features",
+ "futures",
  "infer",
  "itertools 0.14.0",
  "mimalloc",

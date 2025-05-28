@@ -1,27 +1,27 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
+use futures::StreamExt as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
-    exceptions::PyRuntimeError,
+    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyResult, Python,
 };
+use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
-use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{RedapClient, get_chunks_response_to_chunk_and_partition_id};
+use re_grpc_client::redap::{RedapClient};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
+        ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
-        ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
@@ -376,10 +376,8 @@ impl ConnectionHandle {
             columns_always_include_component_indexes: false,
         };
 
-        let mut stores = BTreeMap::default();
-
-        wait_for_future(py, async {
-            let get_chunks_response_stream = self
+        let stores = wait_for_future(py, async {
+            let mut get_chunks_response_stream = self
                 .client
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
@@ -398,39 +396,64 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            let mut chunk_stream =
-                get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
+            //let chunk_stream =
+            //    get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
 
-            while let Some(chunk_and_partition_id) = chunk_stream.next().await {
-                let (chunk, partition_id) = chunk_and_partition_id.map_err(to_py_err)?;
+            let (tx, mut rx) = tokio::sync::mpsc::channel::<(Chunk,Option<String>)>(1000);
 
-                let partition_id = partition_id.ok_or_else(|| {
-                    PyValueError::new_err("Received chunk without a partition id")
-                })?;
+            let collector_handle = tokio::spawn(async move {
+                let mut stores = BTreeMap::default();
+                while let Some((chunk, partition_id)) = rx.recv().await {
+                    if partition_id.is_none() {
+                        return Err(PyValueError::new_err(
+                            "Received chunk without a partition id",
+                        ));
+                    }
+                    let partition_id = partition_id.expect("partition_id is some");
 
-                let store = stores.entry(partition_id.clone()).or_insert_with(|| {
-                    let store_info = StoreInfo {
-                        application_id: ApplicationId::from(partition_id),
-                        store_id: StoreId::random(StoreKind::Recording),
-                        cloned_from: None,
-                        store_source: StoreSource::Unknown,
-                        store_version: None,
-                    };
+                    let store = stores.entry(partition_id.clone()).or_insert_with(|| {
+                        let store_info = StoreInfo {
+                            application_id: ApplicationId::from(partition_id),
+                            store_id: StoreId::random(StoreKind::Recording),
+                            cloned_from: None,
+                            store_source: StoreSource::Unknown,
+                            store_version: None,
+                        };
 
-                    let mut store =
-                        ChunkStore::new(store_info.store_id.clone(), Default::default());
-                    store.set_info(store_info);
+                        let mut store =
+                            ChunkStore::new(store_info.store_id.clone(), Default::default());
+                        store.set_info(store_info);
+                        store
+                    });
                     store
+                        .insert_chunk(&std::sync::Arc::new(chunk))
+                        .map_err(to_py_err)?;
+                }
+
+                Ok(stores)
+            });
+
+            while let Some(data) = get_chunks_response_stream.next().await {
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    let r = data.expect("tmp");
+                    let batch = r.chunk.expect("tmp").decode().expect("tmp");
+                    let partition_id = batch.schema().metadata().get("rerun.partition_id").cloned();
+                    let chunk = Chunk::from_record_batch(&batch).expect("tmp");
+                    tx.send((chunk, partition_id))
+                        .await
+                        .expect("Failed to send chunk to collector");
                 });
-
-                store
-                    .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(to_py_err)?;
             }
+            drop(tx);
+            println!("Consumed stream");
 
-            Ok::<_, PyErr>(())
+            collector_handle
+                .await
+                .expect("Failed to join collector task")
         })?;
 
+        println!("All done");
         Ok(stores)
     }
 }
