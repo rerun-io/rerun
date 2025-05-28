@@ -3,7 +3,6 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use crate::{Error, TimesPerTimeline};
 use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
@@ -18,6 +17,8 @@ use re_query::{
     StorageEngineWriteGuard,
 };
 use re_smart_channel::SmartChannelSource;
+
+use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
