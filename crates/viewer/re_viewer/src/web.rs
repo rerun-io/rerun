@@ -53,7 +53,7 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new()();
+        let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
