@@ -55,7 +55,7 @@ impl ConnectionRegistryHandle {
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
     ///
-    /// Note: although `RedapClient` is cheap to clone, call site should generally *not* hold onto
+    /// Note: although `RedapClient` is cheap to clone, call site should generally *not* hold on to
     /// client instances for longer than the immediate need. In the future, authentication may
     /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
     ///
