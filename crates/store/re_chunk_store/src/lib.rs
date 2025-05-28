@@ -31,7 +31,10 @@ pub use self::{
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
     stats::{ChunkStoreChunkStats, ChunkStoreStats},
-    store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
+    store::{
+        ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnIdentifier,
+        ColumnMetadata,
+    },
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
 pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};

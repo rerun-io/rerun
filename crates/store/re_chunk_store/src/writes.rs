@@ -51,16 +51,6 @@ impl ChunkStore {
 
         let mut chunk = Arc::clone(chunk);
 
-        // TODO(#6889): This is bad for performance, but indicators should go away all together soon anyways?
-        if chunk
-            .components()
-            .keys()
-            .any(|descr| descr.component_name.is_indicator_component())
-        {
-            let patched = chunk.patched_weak_indicator_descriptor_023_compat();
-            chunk = Arc::new(patched);
-        }
-
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();
             chunk = Arc::new(patched);
@@ -368,30 +358,44 @@ impl ChunkStore {
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(old_typ) = self
-                .type_registry
-                .insert(component_descr.component_name, list_array.value_type())
-            {
-                if old_typ != list_array.value_type() {
-                    re_log::warn_once!(
-                        "Component column '{}' changed type from {old_typ:?} to {:?}",
-                        component_descr.component_name,
-                        list_array.value_type()
-                    );
+            if let Some(component_name) = component_descr.component_name {
+                if let Some(old_typ) = self
+                    .type_registry
+                    .insert(component_name, list_array.value_type())
+                {
+                    if old_typ != list_array.value_type() {
+                        re_log::warn_once!(
+                            "Component column '{}' changed type from {old_typ:?} to {:?}",
+                            component_name,
+                            list_array.value_type()
+                        );
+                    }
                 }
             }
 
-            let column_metadata_state = self
+            let (descr, column_metadata_state, datatype) = self
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.component_name)
-                .or_default()
-                .entry(component_descr.clone())
-                .or_insert(ColumnMetadataState {
-                    is_semantically_empty: true,
-                });
+                .entry(component_descr.clone().into())
+                .or_insert((
+                    component_descr.clone(),
+                    ColumnMetadataState {
+                        is_semantically_empty: true,
+                    },
+                    list_array.value_type().clone(),
+                ));
             {
+                if *datatype != list_array.value_type() {
+                    // TODO(grtlr): we might even need to make the decision to drop that chunk entirely?
+                    re_log::warn!(
+                        "Datatype of column {descr} in {} has changed from {datatype} to {}",
+                        chunk.entity_path(),
+                        list_array.value_type()
+                    );
+                    *datatype = list_array.value_type().clone();
+                }
+
                 let is_semantically_empty =
                     re_arrow_util::is_list_array_semantically_empty(list_array);
 
