@@ -48,7 +48,7 @@ impl PyCatalogClient {
             connection_registry.set_token(&origin, token);
         }
 
-        let connection = ConnectionHandle::new(py, connection_registry, origin.clone())?;
+        let connection = ConnectionHandle::new(connection_registry, origin.clone());
 
         let datafusion_ctx = py
             .import("datafusion")
@@ -64,7 +64,7 @@ impl PyCatalogClient {
 
     /// Get a list of all entries in the catalog.
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
-        let mut connection = self_.borrow(py).connection.clone();
+        let connection = self_.borrow(py).connection.clone();
 
         let entry_details = connection.find_entries(
             py,
@@ -98,9 +98,9 @@ impl PyCatalogClient {
         name_or_id: EntryIdLike,
         py: Python<'_>,
     ) -> PyResult<Py<PyDataset>> {
-        let mut connection = self_.borrow(py).connection.clone();
+        let connection = self_.borrow(py).connection.clone();
 
-        let id = name_or_id.resolve(&mut connection, py)?;
+        let id = name_or_id.resolve(&connection, py)?;
 
         let entry_id = id.borrow(py).id;
 
@@ -125,7 +125,7 @@ impl PyCatalogClient {
 
     /// Create a new dataset with the provided name.
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
-        let mut connection = self_.borrow_mut(py).connection.clone();
+        let connection = self_.borrow_mut(py).connection.clone();
 
         let dataset_entry = connection.create_dataset(py, name.to_owned())?;
 
@@ -154,9 +154,9 @@ impl PyCatalogClient {
         name_or_id: EntryIdLike,
         py: Python<'_>,
     ) -> PyResult<Py<PyTable>> {
-        let mut connection = self_.borrow(py).connection.clone();
+        let connection = self_.borrow(py).connection.clone();
 
-        let id = name_or_id.resolve(&mut connection, py)?;
+        let id = name_or_id.resolve(&connection, py)?;
 
         let entry_id = id.borrow(py).id;
 
@@ -204,7 +204,7 @@ enum EntryIdLike {
 }
 
 impl EntryIdLike {
-    fn resolve(self, connection: &mut ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
+    fn resolve(self, connection: &ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
         match self {
             Self::Str(name_or_id) => {
                 // First try to find by name

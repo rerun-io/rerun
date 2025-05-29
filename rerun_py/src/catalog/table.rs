@@ -11,6 +11,7 @@ use pyo3::{
 
 use re_datafusion::TableEntryTableProvider;
 
+use crate::catalog::to_py_err;
 use crate::{
     catalog::PyEntry,
     utils::{get_tokio_runtime, wait_for_future},
@@ -40,10 +41,12 @@ impl PyTable {
             let connection = super_.client.borrow_mut(py).connection().clone();
 
             self_.lazy_provider = Some(
-                wait_for_future(
-                    py,
-                    TableEntryTableProvider::new(connection.client(), id).into_provider(),
-                )
+                wait_for_future(py, async {
+                    TableEntryTableProvider::new(connection.client().await?, id)
+                        .into_provider()
+                        .await
+                        .map_err(to_py_err)
+                })
                 .map_err(|err| {
                     PyRuntimeError::new_err(format!("Error creating TableProvider: {err}"))
                 })?,

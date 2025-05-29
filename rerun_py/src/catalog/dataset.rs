@@ -64,7 +64,7 @@ impl PyDataset {
         let dataset_id = super_.details.id;
 
         let provider = wait_for_future(self_.py(), async move {
-            PartitionTableProvider::new(connection.client(), dataset_id)
+            PartitionTableProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
@@ -111,7 +111,7 @@ impl PyDataset {
     fn register(self_: PyRef<'_, Self>, recording_uri: String, timeout_secs: u64) -> PyResult<()> {
         let register_timeout = std::time::Duration::from_secs(timeout_secs);
         let super_ = self_.as_super();
-        let mut connection = super_.client.borrow(self_.py()).connection().clone();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
         let task_ids =
@@ -132,7 +132,7 @@ impl PyDataset {
     #[allow(rustdoc::broken_intra_doc_links)]
     fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
         let super_ = self_.as_super();
-        let mut connection = super_.client.borrow(self_.py()).connection().clone();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
         let task_ids = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
@@ -143,14 +143,17 @@ impl PyDataset {
     /// Download a partition from the dataset.
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
-        let mut client = super_.client.borrow(self_.py()).connection().client();
+        let catalog_client = super_.client.borrow(self_.py());
+        let connection = catalog_client.connection();
 
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();
 
         //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
-            let catalog_chunk_stream = client
+            let catalog_chunk_stream = connection
+                .client()
+                .await?
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: vec![partition_id.clone().into()],
@@ -273,6 +276,7 @@ impl PyDataset {
         wait_for_future(self_.py(), async {
             connection
                 .client()
+                .await?
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -333,6 +337,7 @@ impl PyDataset {
         wait_for_future(self_.py(), async {
             connection
                 .client()
+                .await?
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -384,7 +389,7 @@ impl PyDataset {
         };
 
         let provider = wait_for_future(self_.py(), async move {
-            SearchResultsTableProvider::new(connection.client(), request)
+            SearchResultsTableProvider::new(connection.client().await?, request)
                 .map_err(to_py_err)?
                 .into_provider()
                 .await
@@ -434,7 +439,7 @@ impl PyDataset {
         };
 
         let provider = wait_for_future(self_.py(), async move {
-            SearchResultsTableProvider::new(connection.client(), request)
+            SearchResultsTableProvider::new(connection.client().await?, request)
                 .map_err(to_py_err)?
                 .into_provider()
                 .await
@@ -455,7 +460,7 @@ impl PyDataset {
 impl PyDataset {
     fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
-        let mut connection = super_.client.borrow_mut(self_.py()).connection().clone();
+        let connection = super_.client.borrow_mut(self_.py()).connection().clone();
 
         let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
 

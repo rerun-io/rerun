@@ -66,6 +66,10 @@ impl ConnectionRegistryHandle {
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
     ///
+    /// Note: although `RedapClient` is cheap to clone, callsites should generally *not* hold on to
+    /// client instances for longer than the immediate needs. In the future, authentication may
+    /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
+    ///
     /// If a token has already been registered for this origin, it will be used. It will attempt to
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
