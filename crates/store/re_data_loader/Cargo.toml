@@ -48,6 +48,7 @@ rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+urdf-rs.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
