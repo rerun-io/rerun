@@ -1,14 +1,20 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
+use pyo3::Py;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
     exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_protos::common::v1alpha1::DataframePart;
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::frontend::v1alpha1::QueryDatasetRequest;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
+use re_sdk::Loggable as _;
 use std::collections::BTreeMap;
+use std::iter::Scan;
 use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -386,25 +392,107 @@ impl ConnectionHandle {
         let mut stores = BTreeMap::default();
 
         wait_for_future(py, async {
-            let get_chunks_response_stream = self
-                .client()
-                .await?
-                .get_chunks(GetChunksRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: partition_ids
-                        .iter()
-                        .map(|id| id.as_ref().to_owned().into())
-                        .collect(),
-                    chunk_ids: vec![],
-                    entity_paths: entity_paths
+            let get_chunks_response_stream = if false {
+                // TODO(jleibs): Drop this once we know the 2-step version is working correctly.
+                self.client()
+                    .await?
+                    .get_chunks(GetChunksRequest {
+                        dataset_id: Some(dataset_id.into()),
+                        partition_ids: partition_ids
+                            .iter()
+                            .map(|id| id.as_ref().to_owned().into())
+                            .collect(),
+                        chunk_ids: vec![],
+                        entity_paths: entity_paths
+                            .into_iter()
+                            .map(|p| (*p).clone().into())
+                            .collect(),
+                        query: Some(query.into()),
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner()
+            } else {
+                let chunk_ids = self
+                    .client()
+                    .await?
+                    .query_dataset(QueryDatasetRequest {
+                        dataset_id: Some(dataset_id.into()),
+                        partition_ids: partition_ids
+                            .iter()
+                            .map(|id| id.as_ref().to_owned().into())
+                            .collect(),
+                        chunk_ids: vec![],
+                        entity_paths: entity_paths
+                            .clone()
+                            .into_iter()
+                            .map(|p| (*p).clone().into())
+                            .collect(),
+                        query: Some(query.clone().into()),
+                        scan_parameters: Some(
+                            ScanParameters {
+                                columns: vec!["chunk_id".to_owned()],
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner()
+                    .map(|response| {
+                        response.map_err(to_py_err).and_then(|r| {
+                            r.data
+                                .ok_or(PyValueError::new_err("missing data in response"))
+                                .and_then(|d| d.decode().map_err(to_py_err))
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .await?;
+
+                // convert from arrow array of FixedSizeBinary -> Tuid
+                let chunk_ids =
+                    chunk_ids
                         .into_iter()
-                        .map(|p| (*p).clone().into())
-                        .collect(),
-                    query: Some(query.into()),
-                })
-                .await
-                .map_err(to_py_err)?
-                .into_inner();
+                        .flat_map(|batch| {
+                            batch
+                        .column_by_name("chunk_id")
+                        .ok_or(PyValueError::new_err(
+                            "missing column 'chunk_id' in response",
+                        ))
+                        .and_then(|col| {
+                            col.try_downcast_array_ref::<arrow::array::FixedSizeBinaryArray>()
+                                .map_err(|_| {
+                                    PyValueError::new_err(
+                                        "expected column 'chunk_id' to be FixedSizeBinaryArray",
+                                    )
+                                })
+                        })
+                        .and_then(|col| {
+                            re_tuid::Tuid::from_arrow(col).map_err(|_| {
+                                PyValueError::new_err("failed to convert 'chunk_id' column to Tuid")
+                            })
+                        })
+                        })
+                        .flatten()
+                        .collect::<Vec<_>>();
+
+                self.client()
+                    .await?
+                    .get_chunks(GetChunksRequest {
+                        dataset_id: Some(dataset_id.into()),
+                        partition_ids: partition_ids
+                            .iter()
+                            .map(|id| id.as_ref().to_owned().into())
+                            .collect(),
+                        chunk_ids: chunk_ids.into_iter().map(|id| id.into()).collect(),
+                        entity_paths: vec![],
+                        query: None,
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner()
+            };
 
             let mut chunk_stream =
                 get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
