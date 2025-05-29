@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["collapse_expand_container","collapse_expand_data_result","collapse_expand_instance_path","collapse_expand_view"]};

@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["rerun_bindings",[["impl FromPyObject&lt;'_&gt; for <a class=\"struct\" href=\"rerun_bindings/dataframe/struct.ComponentLike.html\" title=\"struct rerun_bindings::dataframe::ComponentLike\">ComponentLike</a>"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/catalog/catalog_client/enum.EntryIdLike.html\" title=\"enum rerun_bindings::catalog::catalog_client::EntryIdLike\">EntryIdLike</a>"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/catalog/enum.VectorDistanceMetricLike.html\" title=\"enum rerun_bindings::catalog::VectorDistanceMetricLike\">VectorDistanceMetricLike</a>"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/catalog/enum.VectorLike.html\" title=\"enum rerun_bindings::catalog::VectorLike\">VectorLike</a>&lt;'py&gt;"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/dataframe/enum.AnyColumn.html\" title=\"enum rerun_bindings::dataframe::AnyColumn\">AnyColumn</a>"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/dataframe/enum.AnyComponentColumn.html\" title=\"enum rerun_bindings::dataframe::AnyComponentColumn\">AnyComponentColumn</a>"],["impl&lt;'py&gt; FromPyObject&lt;'py&gt; for <a class=\"enum\" href=\"rerun_bindings/dataframe/enum.IndexValuesLike.html\" title=\"enum rerun_bindings::dataframe::IndexValuesLike\">IndexValuesLike</a>&lt;'py&gt;"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1468]}

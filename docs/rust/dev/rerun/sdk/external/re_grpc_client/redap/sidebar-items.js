@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Command","ConnectionError"],"fn":["channel","client","client_with_interceptor","get_chunks_response_to_chunk_and_partition_id","stream_dataset_from_redap","stream_partition_async"],"type":["Client"]};

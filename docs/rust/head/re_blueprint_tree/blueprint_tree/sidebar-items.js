@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_new_view_or_container_menu_button","list_views_with_entity","remove_button_ui","set_blueprint_to_auto_menu_button","set_blueprint_to_default_menu_buttons","visibility_button_ui"],"struct":["BlueprintTree"]};

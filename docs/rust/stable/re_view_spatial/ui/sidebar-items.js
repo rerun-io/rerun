@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AutoSizeUnit"],"fn":["create_labels","format_vector","paint_loading_spinners"],"struct":["SpatialViewState"]};

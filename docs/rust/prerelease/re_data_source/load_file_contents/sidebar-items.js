@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["load_and_send","load_file_contents","load_rrd_sync","log_msg_from_file_contents"]};

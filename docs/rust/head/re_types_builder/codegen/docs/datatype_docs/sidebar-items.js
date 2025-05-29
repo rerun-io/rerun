@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["atomic_datatype_docs","datatype_docs","datatype_docs_impl"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Alpha"],"fn":["color_edit_button_hsva","color_edit_button_rgb","color_edit_button_rgba","color_edit_button_srgb","color_edit_button_srgba","color_picker_color32","color_picker_hsva_2d","show_color","show_color_at"]};

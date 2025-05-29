@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Compression"],"fn":["default_ipc_fields","schema_to_bytes","write"],"struct":["FileWriter","Record","StreamWriter","WriteOptions"]};

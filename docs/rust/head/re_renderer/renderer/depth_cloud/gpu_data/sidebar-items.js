@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SAMPLE_TYPE_FLOAT","SAMPLE_TYPE_SINT","SAMPLE_TYPE_UINT"],"struct":["DepthCloudInfoUBO"]};

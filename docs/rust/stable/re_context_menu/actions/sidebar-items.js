@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["add_container","add_entities_to_new_view","add_view","clone_view","collapse_expand_all","copy_entity_path","move_contents_to_new_container","remove","screenshot_action","show_hide"]};

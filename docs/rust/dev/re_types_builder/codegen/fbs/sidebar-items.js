@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["generate_include_file_for_dir"],"struct":["FbsCodeGenerator"]};

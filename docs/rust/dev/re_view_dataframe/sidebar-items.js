@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["dataframe_ui","expanded_rows","view_class","view_query","visualizer_system"],"struct":["DataframeView","Query"]};

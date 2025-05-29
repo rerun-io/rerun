@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Derive the `TransparentWrapper` trait for a struct"><title>TransparentWrapper in rerun::external::re_renderer::external::bytemuck - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc derive"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Transparent<wbr>Wrapper</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>renderer::<wbr>external::<wbr>bytemuck</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_renderer</a>::<wbr><a href="../index.html">external</a>::<wbr><a href="index.html">bytemuck</a></span><h1>Derive Macro <span class="derive">TransparentWrapper</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>#[derive(TransparentWrapper)]
+{
+    <span class="comment">// Attributes available to this derive:</span>
+    #[bytemuck]
+    #[transparent]
+}
+</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Derive the <code>TransparentWrapper</code> trait for a struct</p>
+<p>The macro ensures that the struct follows all the the safety requirements
+for the <code>TransparentWrapper</code> trait.</p>
+<p>The following constraints need to be satisfied for the macro to succeed</p>
+<ul>
+<li>The struct must be <code>#[repr(transparent)]</code></li>
+<li>The struct must contain the <code>Wrapped</code> type</li>
+<li>Any ZST fields must be <a href="derive.Zeroable.html" title="derive rerun::external::re_renderer::external::bytemuck::Zeroable"><code>Zeroable</code></a>.</li>
+</ul>
+<p>If the struct only contains a single field, the <code>Wrapped</code> type will
+automatically be determined. If there is more then one field in the struct,
+you need to specify the <code>Wrapped</code> type using <code>#[transparent(T)]</code></p>
+<h3 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, TransparentWrapper)]
+#[repr(transparent)]
+#[transparent(u16)]
+</span><span class="kw">struct </span>Test&lt;T&gt; {
+  inner: u16,
+  extra: PhantomData&lt;T&gt;,
+}</code></pre></div>
+<p>If the struct contains more than one field, the <code>Wrapped</code> type must be
+explicitly specified.</p>
+
+<div class="example-wrap compile_fail"><a href="#" class="tooltip" title="This example deliberately fails to compile">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, TransparentWrapper)]
+#[repr(transparent)]
+</span><span class="comment">// missing `#[transparent(u16)]`
+</span><span class="kw">struct </span>Test&lt;T&gt; {
+  inner: u16,
+  extra: PhantomData&lt;T&gt;,
+}</code></pre></div>
+<p>Any ZST fields must be <code>Zeroable</code>.</p>
+
+<div class="example-wrap compile_fail"><a href="#" class="tooltip" title="This example deliberately fails to compile">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">struct </span>NonTransparentSafeZST;
+
+<span class="attr">#[derive(TransparentWrapper)]
+#[repr(transparent)]
+#[transparent(u16)]
+</span><span class="kw">struct </span>Test&lt;T&gt; {
+  inner: u16,
+  extra: PhantomData&lt;T&gt;,
+  another_extra: NonTransparentSafeZST, <span class="comment">// not `Zeroable`
+</span>}</code></pre></div>
+</div></details></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["blueprint_timeline","blueprint_timepoint_for_writes"]};

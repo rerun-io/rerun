@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Derive the `Pod` trait for a struct"><title>Pod in rerun::external::re_renderer::external::bytemuck - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc derive"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Pod</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>renderer::<wbr>external::<wbr>bytemuck</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_renderer</a>::<wbr><a href="../index.html">external</a>::<wbr><a href="index.html">bytemuck</a></span><h1>Derive Macro <span class="derive">Pod</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>#[derive(Pod)]
+{
+    <span class="comment">// Attributes available to this derive:</span>
+    #[bytemuck]
+}
+</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Derive the <code>Pod</code> trait for a struct</p>
+<p>The macro ensures that the struct follows all the the safety requirements
+for the <code>Pod</code> trait.</p>
+<p>The following constraints need to be satisfied for the macro to succeed</p>
+<ul>
+<li>All fields in the struct must implement <code>Pod</code></li>
+<li>The struct must be <code>#[repr(C)]</code> or <code>#[repr(transparent)]</code></li>
+<li>The struct must not contain any padding bytes</li>
+<li>The struct contains no generic parameters, if it is not
+<code>#[repr(transparent)]</code></li>
+</ul>
+<h3 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, Pod, Zeroable)]
+#[repr(C)]
+</span><span class="kw">struct </span>Test {
+  a: u16,
+  b: u16,
+}
+
+<span class="attr">#[derive(Copy, Clone, Pod, Zeroable)]
+#[repr(transparent)]
+</span><span class="kw">struct </span>Generic&lt;A, B&gt; {
+  a: A,
+  b: PhantomData&lt;B&gt;,
+}</code></pre></div>
+<p>If the struct is generic, it must be <code>#[repr(transparent)]</code> also.</p>
+
+<div class="example-wrap compile_fail"><a href="#" class="tooltip" title="This example deliberately fails to compile">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, Pod, Zeroable)]
+#[repr(C)] </span><span class="comment">// must be `#[repr(transparent)]`
+</span><span class="kw">struct </span>Generic&lt;A&gt; {
+  a: A,
+}</code></pre></div>
+<p>If the struct is generic and <code>#[repr(transparent)]</code>, then it is only <code>Pod</code>
+when all of its generics are <code>Pod</code>, not just its fields.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, Pod, Zeroable)]
+#[repr(transparent)]
+</span><span class="kw">struct </span>Generic&lt;A, B&gt; {
+  a: A,
+  b: PhantomData&lt;B&gt;,
+}
+
+<span class="kw">let _</span>: u32 = bytemuck::cast(Generic { a: <span class="number">4u32</span>, b: PhantomData::&lt;u32&gt; });</code></pre></div>
+
+<div class="example-wrap compile_fail"><a href="#" class="tooltip" title="This example deliberately fails to compile">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">struct </span>NotPod;
+
+<span class="kw">let _</span>: u32 = bytemuck::cast(Generic { a: <span class="number">4u32</span>, b: PhantomData::&lt;NotPod&gt; });</code></pre></div>
+</div></details></section></div></main></body></html>

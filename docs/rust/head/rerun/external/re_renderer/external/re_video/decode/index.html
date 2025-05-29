@@ -1,0 +1,116 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Video frame decoding."><title>rerun::external::re_renderer::external::re_video::decode - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module decode</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#video-frame-decoding" title="Video frame decoding.">Video frame decoding.</a><ul><li><a href="#whirlwind-tour-of-how-to-interpret-picture-data-from-a-video-perspective" title="Whirlwind tour of how to interpret picture data (from a Video perspective)">Whirlwind tour of how to interpret picture data (from a Video perspective)</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#functions" title="Functions">Functions</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>re_<wbr>renderer::<wbr>external::<wbr>re_<wbr>video</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">rerun</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_renderer</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">re_video</a></span><h1>Module <span>decode</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../../../../src/re_video/lib.rs.html#5">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="video-frame-decoding"><a class="doc-anchor" href="#video-frame-decoding">§</a>Video frame decoding.</h2><h3 id="whirlwind-tour-of-how-to-interpret-picture-data-from-a-video-perspective"><a class="doc-anchor" href="#whirlwind-tour-of-how-to-interpret-picture-data-from-a-video-perspective">§</a>Whirlwind tour of how to interpret picture data (from a Video perspective)</h3>
+<p>Extracted from the <a href="https://wiki.x266.mov/docs/colorimetry/intro">av1 codec wiki</a> and other sources.
+Follows the trail of information we get from our AV1 decoder.</p>
+<h4 id="how-to-get-from-yuv-to-rgb"><a class="doc-anchor" href="#how-to-get-from-yuv-to-rgb">§</a>How to get from YUV to RGB?</h4>
+<p>Things to know about the incoming yuv data:</p>
+<ul>
+<li><code>picture.bit_depth()</code>
+<ul>
+<li>is either 8 or 16</li>
+<li>that’s how the decoder stores for us but the per component we have either 8 or 10 or 12 bits -&gt; see <code>picture.bits_per_component()</code></li>
+</ul>
+</li>
+<li><code>picture.pixel_layout()</code>
+<ul>
+<li><code>4:0:0</code> grayscale</li>
+<li><code>4:2:0</code> half horizontal and half vertical resolution for chroma</li>
+<li><code>4:2:2</code> half horizontal resolution for chroma</li>
+<li><code>4:4:4</code> full resolution for chroma</li>
+<li>note that the AV1 decoder gives us always (!) planar data</li>
+</ul>
+</li>
+<li><code>picture.color_range()</code>
+<ul>
+<li>yuv data range may be either <code>limited</code> or <code>full</code></li>
+<li><code>full</code> is what you’d naively expect, just full use up the entire 8/10/12 bits!</li>
+<li><code>limited</code> means that only a certain range of values is valid
+<ul>
+<li>weirdly enough, DO NOT CLAMP! a lot of software may say it’s limited but then use the so-called foot and head space anyways to go outside the regular colors
+<ul>
+<li>reportedly (read this on some forums ;-)) some players <em>do</em> clamp, so let’s not get too concerned about this</li>
+</ul>
+</li>
+<li>it’s a remnant of the analog age, but it’s still very common!</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="given-a-normalized-yuv-triplet-how-do-we-get-color"><a class="doc-anchor" href="#given-a-normalized-yuv-triplet-how-do-we-get-color">§</a>Given a normalized YUV triplet, how do we get color?</h4>
+<ul>
+<li><code>picture.matrix_coefficients()</code> (see <a href="https://wiki.x266.mov/docs/colorimetry/matrix">https://wiki.x266.mov/docs/colorimetry/matrix</a>)
+<ul>
+<li>this tells us what to multiply the incoming YUV data with to get SOME RGB data</li>
+<li>there’s various standards of how to do this, but the most common is BT.709</li>
+<li>here’s a fun special one: <code>identity</code> means it’s not actually YUV, but GBR!</li>
+</ul>
+</li>
+<li><code>picture.primaries()</code>
+<ul>
+<li>now we have RGB but we kinda have no idea what that means!</li>
+<li>the color primaries tell us which space we’re in</li>
+<li>…meaning that if the primaries are anything else we’d have to do some conversion BUT
+it also means that we have no chance of displaying the picture perfectly on a screen taking in sRGB (or any other not-matching color space)</li>
+<li><a href="https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB">Wikipedia says</a> sRGB uses the same primaries as BT.709
+<ul>
+<li>but I also found other sources (e.g. <a href="https://forum.doom9.org/showthread.php?p=1640342#post1640342">this forum post</a>)
+clamining that they’re just close enough to be considered the same for practical purposes</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>picture.transfer_characteristics()</code>
+<ul>
+<li>until this point everything is “gamma compressed”, or more accurately, went through Opto Electric Transfer Function (OETF)
+<ul>
+<li>i.e. measure of light in, electronic signal out</li>
+</ul>
+</li>
+<li>we have to keep in mind the EOTF that our screen at the other end will use which for today’s renderpipeline is always sRGB
+(meaning it’s a 2.2 gamma curve with a small linear part)</li>
+<li>Similar to the primaries, BT.709 uses a <em>similar</em> transfer function as sRGB, but not exactly the same
+<a href="https://www.image-engineering.de/library/technotes/714-color-spaces-rec-709-vs-srgb">https://www.image-engineering.de/library/technotes/714-color-spaces-rec-709-vs-srgb</a>
+<ul>
+<li>There’s reason to believe players just ignore this:
+<ul>
+<li>From a <a href="https://code.videolan.org/videolan/vlc/-/issues/26999">VLC issue</a>:
+<blockquote>
+<p>We do not support transfers or primaries anyway, so it does not matter
+(we do support HDR transfer functions PQ and HLG, not SDR ones and we support BT.2020 primaries, but not SMPTE C (which is what BT.601 NTSC is)).“</p>
+</blockquote>
+</li>
+<li>…I’m sure I found a report of other video players ignoring this and most of everything except <code>matrix_coefficients</code> but I can’t find it anymore :(</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>All of the above are completely optional for a video to specify and there’s sometimes some interplay of relationships with those.
+(a standard would often specify several things at once, there’s typical and less typical combinations)
+So naturally, people will use terms sloppily and interchangeably,
+If anything is lacking a video player has to make a guess.
+… and as discussed above, even it’s there, often video players tend to ignore some settings!</p>
+<p>With all this out of the way…</p>
+<h4 id="whats-the-state-of-us-making-use-of-all-these-things"><a class="doc-anchor" href="#whats-the-state-of-us-making-use-of-all-these-things">§</a>What’s the state of us making use of all these things?</h4>
+<ul>
+<li>❌ <code>picture.bit_depth()</code>
+<ul>
+<li>TODO(#7594): ignored, we just pretend everything is 8 bits</li>
+</ul>
+</li>
+<li>✅ <code>picture.pixel_layout()</code></li>
+<li>✅ <code>picture.color_range()</code></li>
+<li>🟧 <code>picture.matrix_coefficients()</code>
+<ul>
+<li>we try to figure out whether to use <code>BT.709</code> or <code>BT.601</code> coefficients, using other characteristics for guessing if nothing else is available.</li>
+</ul>
+</li>
+<li>❌ <code>picture.primaries()</code></li>
+<li>❌ <code>picture.transfer_characteristics()</code></li>
+</ul>
+<p>We’ll very likely be good with this until either we get specific feature requests and/or we’ll start
+supporting HDR content at which point more properties will be important!</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Chunk.html" title="struct rerun::external::re_renderer::external::re_video::decode::Chunk">Chunk</a></div><div class="desc docblock-short">One chunk of encoded video data, representing a single <a href="../struct.Sample.html" title="struct rerun::external::re_renderer::external::re_video::Sample"><code>crate::Sample</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.DecodeSettings.html" title="struct rerun::external::re_renderer::external::re_video::decode::DecodeSettings">Decode<wbr>Settings</a></div><div class="desc docblock-short">Settings for video decoding.</div></li><li><div class="item-name"><a class="struct" href="struct.FFmpegVersion.html" title="struct rerun::external::re_renderer::external::re_video::decode::FFmpegVersion">FFmpeg<wbr>Version</a></div><div class="desc docblock-short">A successfully parsed <code>FFmpeg</code> version.</div></li><li><div class="item-name"><a class="struct" href="struct.Frame.html" title="struct rerun::external::re_renderer::external::re_video::decode::Frame">Frame</a></div><div class="desc docblock-short">One decoded video frame.</div></li><li><div class="item-name"><a class="struct" href="struct.FrameContent.html" title="struct rerun::external::re_renderer::external::re_video::decode::FrameContent">Frame<wbr>Content</a></div><div class="desc docblock-short">Data for a decoded frame on native targets.</div></li><li><div class="item-name"><a class="struct" href="struct.FrameInfo.html" title="struct rerun::external::re_renderer::external::re_video::decode::FrameInfo">Frame<wbr>Info</a></div><div class="desc docblock-short">Meta information about a decoded video frame, as reported by the decoder.</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.DecodeHardwareAcceleration.html" title="enum rerun::external::re_renderer::external::re_video::decode::DecodeHardwareAcceleration">Decode<wbr>Hardware<wbr>Acceleration</a></div><div class="desc docblock-short">How the video should be decoded.</div></li><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum rerun::external::re_renderer::external::re_video::decode::Error">Error</a></div></li><li><div class="item-name"><a class="enum" href="enum.FFmpegError.html" title="enum rerun::external::re_renderer::external::re_video::decode::FFmpegError">FFmpeg<wbr>Error</a></div></li><li><div class="item-name"><a class="enum" href="enum.FFmpegVersionParseError.html" title="enum rerun::external::re_renderer::external::re_video::decode::FFmpegVersionParseError">FFmpeg<wbr>Version<wbr>Parse<wbr>Error</a></div></li><li><div class="item-name"><a class="enum" href="enum.PixelFormat.html" title="enum rerun::external::re_renderer::external::re_video::decode::PixelFormat">Pixel<wbr>Format</a></div><div class="desc docblock-short">Pixel format/layout used by <a href="struct.FrameContent.html#structfield.data" title="field rerun::external::re_renderer::external::re_video::decode::FrameContent::data"><code>FrameContent::data</code></a>.</div></li><li><div class="item-name"><a class="enum" href="enum.YuvMatrixCoefficients.html" title="enum rerun::external::re_renderer::external::re_video::decode::YuvMatrixCoefficients">YuvMatrix<wbr>Coefficients</a></div><div class="desc docblock-short">Yuv matrix coefficients used by <a href="../enum.PixelFormat.html#variant.Yuv" title="variant rerun::external::re_renderer::external::re_video::PixelFormat::Yuv"><code>PixelFormat::Yuv</code></a>.</div></li><li><div class="item-name"><a class="enum" href="enum.YuvPixelLayout.html" title="enum rerun::external::re_renderer::external::re_video::decode::YuvPixelLayout">YuvPixel<wbr>Layout</a></div><div class="desc docblock-short">Pixel layout used by <a href="../enum.PixelFormat.html#variant.Yuv" title="variant rerun::external::re_renderer::external::re_video::PixelFormat::Yuv"><code>PixelFormat::Yuv</code></a>.</div></li><li><div class="item-name"><a class="enum" href="enum.YuvRange.html" title="enum rerun::external::re_renderer::external::re_video::decode::YuvRange">YuvRange</a></div><div class="desc docblock-short">Yuv value range used by <a href="../enum.PixelFormat.html#variant.Yuv" title="variant rerun::external::re_renderer::external::re_video::PixelFormat::Yuv"><code>PixelFormat::Yuv</code></a>.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.AsyncDecoder.html" title="trait rerun::external::re_renderer::external::re_video::decode::AsyncDecoder">Async<wbr>Decoder</a></div><div class="desc docblock-short">Interface for an asynchronous video decoder.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.ffmpeg_download_url.html" title="fn rerun::external::re_renderer::external::re_video::decode::ffmpeg_download_url">ffmpeg_<wbr>download_<wbr>url</a></div><div class="desc docblock-short">Download URL for the latest version of <code>FFmpeg</code> on the current platform.
+None if the platform is not supported.</div></li><li><div class="item-name"><a class="fn" href="fn.new_decoder.html" title="fn rerun::external::re_renderer::external::re_video::decode::new_decoder">new_<wbr>decoder</a></div><div class="desc docblock-short">Creates a new async decoder for the given <code>video</code> data.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.OutputCallback.html" title="type rerun::external::re_renderer::external::re_video::decode::OutputCallback">Output<wbr>Callback</a></div></li><li><div class="item-name"><a class="type" href="type.Result.html" title="type rerun::external::re_renderer::external::re_video::decode::Result">Result</a></div></li></ul></section></div></main></body></html>

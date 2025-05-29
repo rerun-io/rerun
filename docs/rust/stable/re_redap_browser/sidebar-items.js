@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EntryKind"],"fn":["dataset_and_its_recordings_ui","sort_datasets"],"mod":["add_server_modal","context","dataset_ui","entries","servers"],"static":["EXAMPLES_ORIGIN","LOCAL_ORIGIN"],"struct":["RedapServers","SortDatasetsResults"]};

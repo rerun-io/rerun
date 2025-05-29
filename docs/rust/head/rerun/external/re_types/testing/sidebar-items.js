@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["build_some_large_structs","large_struct_descriptor"],"mod":["archetypes","components","datatypes"],"type":["LargeStruct"]};
