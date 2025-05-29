@@ -159,7 +159,7 @@
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     </span><span class="kw">pub fn </span>wait(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, timeout_secs: u64) -&gt; PyResult&lt;()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = <span class="self">self</span>.client.borrow(py).connection().clone();
+        <span class="kw">let </span>connection = <span class="self">self</span>.client.borrow(py).connection().clone();
         <span class="kw">let </span>timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(py, <span class="kw-2">&amp;</span>[<span class="self">self</span>.id.clone()], timeout)<span class="question-mark">?</span>;
 
@@ -196,7 +196,7 @@
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     </span><span class="kw">pub fn </span>wait(self_: PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt;, timeout_secs: u64) -&gt; PyResult&lt;()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = self_.client.borrow(self_.py()).connection().clone();
+        <span class="kw">let </span>connection = self_.client.borrow(self_.py()).connection().clone();
         <span class="kw">let </span>timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(self_.py(), <span class="kw-2">&amp;</span>self_.ids, timeout)<span class="question-mark">?</span>;
 
@@ -205,7 +205,7 @@
 
     <span class="doccomment">/// Return a table with the status of all tasks.
     </span><span class="kw">pub fn </span>status_table(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;PyDataFusionTable&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = <span class="self">self</span>.client.borrow(py).connection().clone();
+        <span class="kw">let </span>connection = <span class="self">self</span>.client.borrow(py).connection().clone();
 
         <span class="comment">// TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
         </span><span class="kw">let </span>hash = Hash64::hash(<span class="kw-2">&amp;</span><span class="self">self</span>.ids);

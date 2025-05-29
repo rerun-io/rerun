@@ -442,9 +442,7 @@
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::array::RecordBatch;
+<a href="#444" id="444">444</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::array::RecordBatch;
 <span class="kw">use </span>arrow::datatypes::Schema <span class="kw">as </span>ArrowSchema;
 <span class="kw">use </span>pyo3::exceptions::PyValueError;
 <span class="kw">use </span>pyo3::{
@@ -486,29 +484,22 @@
 </span><span class="kw">pub struct </span>ConnectionHandle {
     origin: re_uri::Origin,
 
-    <span class="doccomment">/// The actual tonic connection.
-    </span>client: RedapClient,
+    connection_registry: ConnectionRegistryHandle,
 }
 
 <span class="kw">impl </span>ConnectionHandle {
-    <span class="kw">pub fn </span>new(
-        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-        connection_registry: ConnectionRegistryHandle,
-        origin: re_uri::Origin,
-    ) -&gt; PyResult&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>origin_clone = origin.clone();
-        <span class="kw">let </span>client = wait_for_future(py, <span class="kw">async move </span>{
-            connection_registry
-                .client(origin_clone)
-                .<span class="kw">await
-                </span>.map_err(to_py_err)
-        })<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ origin, client })
+    <span class="kw">pub fn </span>new(connection_registry: ConnectionRegistryHandle, origin: re_uri::Origin) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            origin,
+            connection_registry,
+        }
     }
 
-    <span class="kw">pub fn </span>client(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RedapClient {
-        <span class="self">self</span>.client.clone()
+    <span class="kw">pub async fn </span>client(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PyResult&lt;RedapClient&gt; {
+        <span class="self">self</span>.connection_registry
+            .client(<span class="self">self</span>.origin.clone())
+            .<span class="kw">await
+            </span>.map_err(to_py_err)
     }
 
     <span class="kw">pub fn </span>origin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>re_uri::Origin {
@@ -518,19 +509,16 @@
 
 <span class="comment">// TODO(ab): migrate all of this to some `RedapClient` wrapper to be provided by `ConnectionRegistry`
 </span><span class="kw">impl </span>ConnectionHandle {
-    <span class="kw">pub fn </span>find_entries(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-        filter: EntryFilter,
-    ) -&gt; PyResult&lt;Vec&lt;EntryDetails&gt;&gt; {
-        <span class="kw">let </span>response = wait_for_future(
-            py,
-            <span class="self">self</span>.client
-                .find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
+    <span class="kw">pub fn </span>find_entries(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, filter: EntryFilter) -&gt; PyResult&lt;Vec&lt;EntryDetails&gt;&gt; {
+        <span class="kw">let </span>response = wait_for_future(py, <span class="kw">async </span>{
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
                     filter: <span class="prelude-val">Some</span>(filter),
-                }),
-        )
-        .map_err(to_py_err)<span class="question-mark">?</span>;
+                })
+                .<span class="kw">await
+                </span>.map_err(to_py_err)
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>entries: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = response
             .into_inner()
@@ -542,25 +530,28 @@
         <span class="prelude-val">Ok</span>(entries<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>delete_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;()&gt; {
-        <span class="kw">let </span>_response = wait_for_future(
-            py,
-            <span class="self">self</span>.client.delete_entry(DeleteEntryRequest {
-                id: <span class="prelude-val">Some</span>(entry_id.into()),
-            }),
-        )
-        .map_err(to_py_err)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;()&gt; {
+        <span class="kw">let </span>_response = wait_for_future(py, <span class="kw">async </span>{
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.delete_entry(DeleteEntryRequest {
+                    id: <span class="prelude-val">Some</span>(entry_id.into()),
+                })
+                .<span class="kw">await
+                </span>.map_err(to_py_err)
+        })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>create_dataset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, name: String) -&gt; PyResult&lt;DatasetEntry&gt; {
-        <span class="kw">let </span>response = wait_for_future(
-            py,
-            <span class="self">self</span>.client
-                .create_dataset_entry(CreateDatasetEntryRequest { name: <span class="prelude-val">Some</span>(name) }),
-        )
-        .map_err(to_py_err)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>create_dataset(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, name: String) -&gt; PyResult&lt;DatasetEntry&gt; {
+        <span class="kw">let </span>response = wait_for_future(py, <span class="kw">async </span>{
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.create_dataset_entry(CreateDatasetEntryRequest { name: <span class="prelude-val">Some</span>(name) })
+                .<span class="kw">await
+                </span>.map_err(to_py_err)
+        })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(response
             .into_inner()
@@ -569,14 +560,16 @@
             </span>.try_into()<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>read_dataset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;DatasetEntry&gt; {
-        <span class="kw">let </span>response = wait_for_future(
-            py,
-            <span class="self">self</span>.client.read_dataset_entry(ReadDatasetEntryRequest {
-                id: <span class="prelude-val">Some</span>(entry_id.into()),
-            }),
-        )
-        .map_err(to_py_err)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>read_dataset(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;DatasetEntry&gt; {
+        <span class="kw">let </span>response = wait_for_future(py, <span class="kw">async </span>{
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.read_dataset_entry(ReadDatasetEntryRequest {
+                    id: <span class="prelude-val">Some</span>(entry_id.into()),
+                })
+                .<span class="kw">await
+                </span>.map_err(to_py_err)
+        })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(response
             .into_inner()
@@ -585,14 +578,16 @@
             </span>.try_into()<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>read_table(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;TableEntry&gt; {
-        <span class="kw">let </span>response = wait_for_future(
-            py,
-            <span class="self">self</span>.client.read_table_entry(ReadTableEntryRequest {
-                id: <span class="prelude-val">Some</span>(entry_id.into()),
-            }),
-        )
-        .map_err(to_py_err)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>read_table(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;TableEntry&gt; {
+        <span class="kw">let </span>response = wait_for_future(py, <span class="kw">async </span>{
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.read_table_entry(ReadTableEntryRequest {
+                    id: <span class="prelude-val">Some</span>(entry_id.into()),
+                })
+                .<span class="kw">await
+                </span>.map_err(to_py_err)
+        })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(response
             .into_inner()
@@ -601,14 +596,11 @@
             </span>.try_into()<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>get_dataset_schema(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-        entry_id: EntryId,
-    ) -&gt; PyResult&lt;ArrowSchema&gt; {
+    <span class="kw">pub fn </span>get_dataset_schema(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, entry_id: EntryId) -&gt; PyResult&lt;ArrowSchema&gt; {
         wait_for_future(py, <span class="kw">async </span>{
-            <span class="self">self</span>.client
-                .get_dataset_schema(GetDatasetSchemaRequest {
+            <span class="self">self</span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: <span class="prelude-val">Some</span>(entry_id.into()),
                 })
                 .<span class="kw">await
@@ -625,7 +617,7 @@
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
     </span><span class="kw">pub fn </span>register_with_dataset(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
         dataset_id: EntryId,
         recording_uris: Vec&lt;String&gt;,
@@ -638,8 +630,9 @@
                 .map_err(to_py_err)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>response = <span class="self">self
-                </span>.client
-                .register_with_dataset(RegisterWithDatasetRequest {
+                </span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: <span class="prelude-val">Some</span>(dataset_id.into()),
                     data_sources,
                     <span class="comment">//TODO(ab): expose this to as a method argument
@@ -681,15 +674,16 @@
         })
     }
 
-    <span class="kw">pub fn </span>query_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, task_ids: <span class="kw-2">&amp;</span>[TaskId]) -&gt; PyResult&lt;RecordBatch&gt; {
+    <span class="kw">pub fn </span>query_tasks(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;, task_ids: <span class="kw-2">&amp;</span>[TaskId]) -&gt; PyResult&lt;RecordBatch&gt; {
         wait_for_future(py, <span class="kw">async </span>{
             <span class="kw">let </span>request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
                 ids: task_ids.to_vec(),
             };
 
             <span class="kw">let </span>status_table = <span class="self">self
-                </span>.client
-                .query_tasks(request)
+                </span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.query_tasks(request)
                 .<span class="kw">await
                 </span>.map_err(to_py_err)<span class="question-mark">?
                 </span>.into_inner()
@@ -704,7 +698,7 @@
 
     <span class="doccomment">/// Wait for the provided tasks to finish.
     </span><span class="kw">pub fn </span>wait_for_tasks(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
         task_ids: <span class="kw-2">&amp;</span>[TaskId],
         timeout: std::time::Duration,
@@ -720,8 +714,9 @@
                 timeout: <span class="prelude-val">Some</span>(timeout),
             };
             <span class="kw">let </span><span class="kw-2">mut </span>response_stream = <span class="self">self
-                </span>.client
-                .query_tasks_on_completion(request)
+                </span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.query_tasks_on_completion(request)
                 .<span class="kw">await
                 </span>.map_err(to_py_err)<span class="question-mark">?
                 </span>.into_inner();
@@ -798,7 +793,7 @@
 
     <span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>get_chunks_for_dataframe_query(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
         dataset_id: EntryId,
         contents: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ViewContentsSelector&gt;,
@@ -836,8 +831,9 @@
 
         wait_for_future(py, <span class="kw">async </span>{
             <span class="kw">let </span>get_chunks_response_stream = <span class="self">self
-                </span>.client
-                .get_chunks(GetChunksRequest {
+                </span>.client()
+                .<span class="kw">await</span><span class="question-mark">?
+                </span>.get_chunks(GetChunksRequest {
                     dataset_id: <span class="prelude-val">Some</span>(dataset_id.into()),
                     partition_ids: partition_ids
                         .iter()

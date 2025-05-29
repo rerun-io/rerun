@@ -657,7 +657,7 @@
             <span class="kw">let </span>dataset_py = dataset.borrow(py);
             <span class="kw">let </span>entry = dataset_py.as_super();
             <span class="kw">let </span>dataset_id = entry.details.id;
-            <span class="kw">let </span><span class="kw-2">mut </span>connection = entry.client.borrow(py).connection().clone();
+            <span class="kw">let </span>connection = entry.client.borrow(py).connection().clone();
 
             connection.get_dataset_schema(py, dataset_id)<span class="question-mark">?
         </span>};
@@ -1009,7 +1009,7 @@
         <span class="kw">let </span>dataset = self_.dataset.borrow(py);
         <span class="kw">let </span>entry = dataset.as_super();
         <span class="kw">let </span>dataset_id = entry.details.id;
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = entry.client.borrow(py).connection().clone();
+        <span class="kw">let </span>connection = entry.client.borrow(py).connection().clone();
 
         <span class="comment">//
         // Fetch relevant chunks

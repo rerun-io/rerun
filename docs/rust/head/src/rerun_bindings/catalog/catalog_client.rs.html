@@ -298,7 +298,7 @@
             connection_registry.set_token(<span class="kw-2">&amp;</span>origin, token);
         }
 
-        <span class="kw">let </span>connection = ConnectionHandle::new(py, connection_registry, origin.clone())<span class="question-mark">?</span>;
+        <span class="kw">let </span>connection = ConnectionHandle::new(connection_registry, origin.clone());
 
         <span class="kw">let </span>datafusion_ctx = py
             .import(<span class="string">"datafusion"</span>)
@@ -314,7 +314,7 @@
 
     <span class="doccomment">/// Get a list of all entries in the catalog.
     </span><span class="kw">fn </span>entries(self_: Py&lt;<span class="self">Self</span>&gt;, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Vec&lt;Py&lt;PyEntry&gt;&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = self_.borrow(py).connection.clone();
+        <span class="kw">let </span>connection = self_.borrow(py).connection.clone();
 
         <span class="kw">let </span>entry_details = connection.find_entries(
             py,
@@ -348,9 +348,9 @@
         name_or_id: EntryIdLike,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
     ) -&gt; PyResult&lt;Py&lt;PyDataset&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = self_.borrow(py).connection.clone();
+        <span class="kw">let </span>connection = self_.borrow(py).connection.clone();
 
-        <span class="kw">let </span>id = name_or_id.resolve(<span class="kw-2">&amp;mut </span>connection, py)<span class="question-mark">?</span>;
+        <span class="kw">let </span>id = name_or_id.resolve(<span class="kw-2">&amp;</span>connection, py)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>entry_id = id.borrow(py).id;
 
@@ -375,7 +375,7 @@
 
     </span><span class="doccomment">/// Create a new dataset with the provided name.
     </span><span class="kw">fn </span>create_dataset(self_: Py&lt;<span class="self">Self</span>&gt;, py: Python&lt;<span class="lifetime">'_</span>&gt;, name: <span class="kw-2">&amp;</span>str) -&gt; PyResult&lt;Py&lt;PyDataset&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = self_.borrow_mut(py).connection.clone();
+        <span class="kw">let </span>connection = self_.borrow_mut(py).connection.clone();
 
         <span class="kw">let </span>dataset_entry = connection.create_dataset(py, name.to_owned())<span class="question-mark">?</span>;
 
@@ -404,9 +404,9 @@
         name_or_id: EntryIdLike,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
     ) -&gt; PyResult&lt;Py&lt;PyTable&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = self_.borrow(py).connection.clone();
+        <span class="kw">let </span>connection = self_.borrow(py).connection.clone();
 
-        <span class="kw">let </span>id = name_or_id.resolve(<span class="kw-2">&amp;mut </span>connection, py)<span class="question-mark">?</span>;
+        <span class="kw">let </span>id = name_or_id.resolve(<span class="kw-2">&amp;</span>connection, py)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>entry_id = id.borrow(py).id;
 
@@ -454,7 +454,7 @@
 }
 
 <span class="kw">impl </span>EntryIdLike {
-    <span class="kw">fn </span>resolve(<span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>ConnectionHandle, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyEntryId&gt;&gt; {
+    <span class="kw">fn </span>resolve(<span class="self">self</span>, connection: <span class="kw-2">&amp;</span>ConnectionHandle, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyEntryId&gt;&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Str(name_or_id) =&gt; {
                 <span class="comment">// First try to find by name

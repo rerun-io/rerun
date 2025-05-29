@@ -301,7 +301,7 @@
     </span><span class="doccomment">/// Delete this entry from the catalog.
     </span><span class="kw">fn </span>delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;()&gt; {
         <span class="kw">let </span>entry_id = <span class="self">self</span>.id.borrow(py).id;
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = <span class="self">self</span>.client.borrow_mut(py).connection().clone();
+        <span class="kw">let </span>connection = <span class="self">self</span>.client.borrow_mut(py).connection().clone();
 
         connection.delete_entry(py, entry_id)
     }
