@@ -147,11 +147,11 @@ macro_rules! static_assert_struct_has_fields {
 /// merely be logged, not returned (except in debug builds, where all errors panic).
 #[doc(hidden)] // public so we can access it from re_types too
 #[allow(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
-pub fn try_serialize_field<C: crate::Component>(
+pub fn try_serialize_field<L: Loggable>(
     descriptor: ComponentDescriptor,
-    instances: impl IntoIterator<Item = impl Into<C>>,
+    instances: impl IntoIterator<Item = impl Into<L>>,
 ) -> Option<SerializedComponentBatch> {
-    let res = C::to_arrow(
+    let res = L::to_arrow(
         instances
             .into_iter()
             .map(|v| std::borrow::Cow::Owned(v.into())),
