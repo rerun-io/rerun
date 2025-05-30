@@ -402,6 +402,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         match ty {
             Type::Unit => unreachable!("Should be handled elsewhere"),
+            Type::Scalar => unimplemented!("Type::Scalar"),
 
             // We use explicit, arrow-like names:
             Type::UInt8 => atomic("uint8"),

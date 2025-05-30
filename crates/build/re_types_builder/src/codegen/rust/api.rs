@@ -755,6 +755,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
         let Self { typ, unwrap } = self;
         match typ {
             Type::Unit => quote!(()),
+            Type::Scalar => unimplemented!("Type::Scalar"),
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),
             Type::UInt32 => quote!(u32),
@@ -864,8 +865,6 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let name = format_ident!("{name}");
 
-    let datatype = type_registry.get(fqname);
-
     let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
@@ -882,6 +881,7 @@ fn quote_trait_impls_for_datatype_or_component(
             }
         }
     } else {
+        let datatype = type_registry.get(fqname);
         let datatype = ArrowDataTypeTokenizer {
             datatype: &datatype,
             recursive: false,

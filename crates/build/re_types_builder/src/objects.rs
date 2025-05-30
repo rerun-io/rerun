@@ -18,6 +18,8 @@ use crate::{
 
 // ---
 
+const BUILTIN_NAMESPACE: &str = "rerun.builtins";
+const BUILTIN_SCALAR_FQNAME: &str = "rerun.builtins.Scalar";
 const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
 
 /// The result of the semantic pass: an intermediate representation of all available object
@@ -64,7 +66,7 @@ impl Objects {
 
         // resolve objects
         for obj in schema.objects() {
-            if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
+            if obj.name().starts_with(BUILTIN_NAMESPACE) {
                 continue;
             }
 
@@ -82,23 +84,25 @@ impl Objects {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
-                    let field_obj = &this[field_type_fqname];
-                    match obj.kind {
-                        ObjectKind::Datatype | ObjectKind::Component => {
-                            if field_obj.kind != ObjectKind::Datatype {
-                                reporter.error(virtpath, field_type_fqname, "Is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes.");
+                    if !field_type_fqname.starts_with(BUILTIN_NAMESPACE) {
+                        let field_obj = &this[field_type_fqname];
+                        match obj.kind {
+                            ObjectKind::Datatype | ObjectKind::Component => {
+                                if field_obj.kind != ObjectKind::Datatype {
+                                    reporter.error(virtpath, field_type_fqname, "Is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes.");
+                                }
                             }
-                        }
-                        ObjectKind::Archetype => {
-                            if field_obj.kind != ObjectKind::Component {
-                                reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
-                            }
+                            ObjectKind::Archetype => {
+                                if field_obj.kind != ObjectKind::Component {
+                                    reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
+                                }
 
-                            validate_archetype_field_attributes(reporter, obj);
-                        }
-                        ObjectKind::View => {
-                            if field_obj.kind != ObjectKind::Archetype {
-                                reporter.error(virtpath, field_type_fqname, "Is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties.");
+                                validate_archetype_field_attributes(reporter, obj);
+                            }
+                            ObjectKind::View => {
+                                if field_obj.kind != ObjectKind::Archetype {
+                                    reporter.error(virtpath, field_type_fqname, "Is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties.");
+                                }
                             }
                         }
                     }
@@ -339,6 +343,8 @@ impl ObjectKind {
         } else if pkg_name.starts_with("rerun.blueprint.views") {
             // Not bothering with scope attributes on views since they're always part of the blueprint.
             Self::View
+        } else if pkg_name.starts_with("rerun.builtins") {
+            Self::Datatype
         } else {
             panic!("unknown package {pkg_name:?}");
         }
@@ -1140,6 +1146,10 @@ pub enum Type {
     /// In rust this would be `()`, and in C++ this would be `void`.
     Unit,
 
+    /// Generic scalar, using [`BUILTIN_SCALAR_FQNAME`].
+    /// Can be any integer or float
+    Scalar,
+
     UInt8,
     UInt16,
     UInt32,
@@ -1234,6 +1244,8 @@ impl Type {
                 let obj = &objs[field_type.index() as usize];
                 if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
                     Self::Unit
+                } else if obj.name() == BUILTIN_SCALAR_FQNAME {
+                    Self::Scalar
                 } else {
                     Self::Object {
                         fqname: obj.name().to_owned(),
@@ -1278,6 +1290,7 @@ impl Type {
 
     pub fn make_plural(&self) -> Option<Self> {
         match self {
+            Type::Scalar => unimplemented!(),
             Self::Vector { elem_type: _ }
             | Self::Array {
                 elem_type: _,
@@ -1348,6 +1361,7 @@ impl Type {
             } => Some(elem_type),
 
             Self::Unit
+            | Self::Scalar
             | Self::UInt8
             | Self::UInt16
             | Self::UInt32
@@ -1387,6 +1401,7 @@ impl Type {
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
             Self::Unit
+            | Self::Scalar
             | Self::UInt8
             | Self::UInt16
             | Self::UInt32

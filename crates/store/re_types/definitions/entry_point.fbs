@@ -4,6 +4,7 @@ include "./attributes.fbs";
 include "./rerun/attributes.fbs";
 
 include "./rerun/unit_type.fbs";
+include "./rerun/scalar.fbs";
 
 include "./rerun/datatypes.fbs";
 include "./rerun/blueprint/datatypes.fbs";
@@ -16,8 +17,10 @@ include "./rerun/blueprint/archetypes.fbs";
 
 include "./rerun/blueprint/views.fbs";
 
+include "./rerun/testing/datatypes/datatype_generics.fbs";
 include "./rerun/testing/datatypes/fuzzy.fbs";
 include "./rerun/testing/components/enum_test.fbs";
 include "./rerun/testing/components/fuzzy_deps.fbs";
 include "./rerun/testing/components/fuzzy.fbs";
 include "./rerun/testing/archetypes/fuzzy.fbs";
+

@@ -1612,6 +1612,7 @@ fn quote_field_type_from_field(
     let mut unwrapped = false;
     let typ = match &field.typ {
         Type::Unit => "None".to_owned(),
+        Type::Scalar => unimplemented!("Type::Scalar"),
 
         Type::UInt8
         | Type::UInt16
@@ -1674,6 +1675,7 @@ fn quote_field_converter_from_field(
         Type::Unit => {
             panic!("Unit type should only occur for enum variants");
         }
+        Type::Scalar => unimplemented!("Type::Scalar"),
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1796,6 +1798,7 @@ fn fqname_to_type(fqname: &str) -> String {
         ["rerun", scope, "datatypes", name] => format!("{scope}_datatypes.{name}"),
         ["rerun", scope, "components", name] => format!("{scope}_components.{name}"),
         ["rerun", scope, "archetypes", name] => format!("{scope}_archetypes.{name}"),
+        ["rerun", "builtins", name] => format!("builtins.{name}"), // TODO
         _ => {
             panic!("Unexpected fqname: {fqname}");
         }
@@ -1807,6 +1810,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         Type::Unit => {
             panic!("Unit type should only occur for enum variants");
         }
+        Type::Scalar => unimplemented!(),
 
         Type::UInt8
         | Type::UInt16
@@ -1963,6 +1967,7 @@ fn quote_arrow_support_from_obj(
 
 fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
     match t {
+        Type::Scalar => unimplemented!(),
         Type::UInt8 => Some("np.uint8"),
         Type::UInt16 => Some("np.uint16"),
         Type::UInt32 => Some("np.uint32"),
@@ -2050,6 +2055,7 @@ fn quote_arrow_serialization(
                 let field_array = format!("[x.{field_name} for x in data]");
 
                 match &field.typ {
+                    Type::Scalar => unimplemented!(),
                     Type::UInt8
                     | Type::UInt16
                     | Type::UInt32
@@ -2183,6 +2189,7 @@ return pa.array(pa_data, type=data_type)
                     Type::Unit => {
                         format!("pa.nulls({variant_kind_list})")
                     }
+                    Type::Scalar => unimplemented!("Type::Scalar"),
                     Type::UInt8
                     | Type::UInt16
                     | Type::UInt32

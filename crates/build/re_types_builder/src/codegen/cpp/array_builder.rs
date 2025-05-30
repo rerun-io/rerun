@@ -21,6 +21,8 @@ fn arrow_array_builder_type_and_declaration(
             ident
         }
 
+        Type::Scalar => unimplemented!("Type::Scalar"),
+
         Type::Int8
         | Type::Int16
         | Type::Int32

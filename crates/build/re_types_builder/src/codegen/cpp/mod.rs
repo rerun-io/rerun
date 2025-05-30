@@ -425,7 +425,7 @@ impl QuotedObject {
                 )),
                 ObjectKind::View => {
                     // TODO(#5521): Implement view codegen for C++.
-                    unimplemented!();
+                    unimplemented!("ObjectKind::View");
                 }
             },
             ObjectClass::Enum => {
@@ -2245,6 +2245,8 @@ fn quote_append_single_value_to_builder(
             quote!(ARROW_RETURN_NOT_OK(#value_builder->AppendNull());)
         }
 
+        Type::Scalar => unimplemented!("Type::Scalar"),
+
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -2438,6 +2440,7 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
     #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
         Type::Unit => panic!("Can't express the unit type directly"),
+        Type::Scalar => unimplemented!("Type::Scalar"),
 
         Type::UInt8 => quote! { uint8_t  },
         Type::UInt16 => quote! { uint16_t  },
@@ -2635,6 +2638,7 @@ fn quote_arrow_datatype(
 ) -> TokenStream {
     match typ {
         Type::Unit => quote!(arrow::null()),
+        Type::Scalar => unimplemented!("Type::Scalar"),
         Type::Int8 => quote!(arrow::int8()),
         Type::Int16 => quote!(arrow::int16()),
         Type::Int32 => quote!(arrow::int32()),

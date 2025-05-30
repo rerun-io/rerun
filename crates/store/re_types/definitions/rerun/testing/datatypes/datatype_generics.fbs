@@ -1,0 +1,19 @@
+namespace rerun.testing.datatypes;
+
+table MyTensor {
+
+  /// The shape of the tensor, i.e. the length of each dimension.
+  shape: [uint64] (order: 200);
+
+  /// The names of the dimensions of the tensor (optional).
+  ///
+  /// If set, should be the same length as [datatypes.TensorData.shape].
+  /// If it has a different length your names may show up improperly,
+  /// and some constructors may produce a warning or even an error.
+  ///
+  /// Example: `["height", "width", "channel", "batch"]`.
+  names: [string] (order: 250, nullable);
+
+  /// The content/data, using datatype generics.
+  buffer: [rerun.builtins.Scalar] (order: 300);
+}

@@ -1,0 +1,6 @@
+namespace rerun.builtins;
+
+/// Used for datatype generics: represents any scalar value (integers or floats)
+struct Scalar {
+  void: bool (order: 0); // ignored
+}

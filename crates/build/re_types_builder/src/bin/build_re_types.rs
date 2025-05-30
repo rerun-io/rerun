@@ -131,44 +131,85 @@ fn main() {
         re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
-    join!(
-        || re_types_builder::generate_cpp_code(
-            &reporter,
-            cpp_output_dir_path,
-            &objects,
-            &type_registry,
-            check,
-        ),
-        || re_types_builder::generate_rust_code(
+
+    if true {
+        // TODO: just for testing
+        re_types_builder::generate_rust_code(
             &reporter,
             workspace_dir,
             &objects,
             &type_registry,
             check,
-        ),
-        || re_types_builder::generate_python_code(
+        );
+        re_types_builder::generate_cpp_code(
+            &reporter,
+            cpp_output_dir_path,
+            &objects,
+            &type_registry,
+            check,
+        );
+        re_types_builder::generate_python_code(
             &reporter,
             python_output_dir_path,
             python_testing_output_dir_path,
             &objects,
             &type_registry,
             check,
-        ),
-        || re_types_builder::generate_docs(
+        );
+        re_types_builder::generate_docs(
             &reporter,
             docs_content_dir_path,
             &objects,
             &type_registry,
             check,
-        ),
-        || re_types_builder::generate_snippets_ref(
+        );
+        re_types_builder::generate_snippets_ref(
             &reporter,
             snippets_ref_dir_path,
             &objects,
             &type_registry,
             check,
-        ),
-    );
+        );
+    } else {
+        join!(
+            || re_types_builder::generate_cpp_code(
+                &reporter,
+                cpp_output_dir_path,
+                &objects,
+                &type_registry,
+                check,
+            ),
+            || re_types_builder::generate_rust_code(
+                &reporter,
+                workspace_dir,
+                &objects,
+                &type_registry,
+                check,
+            ),
+            || re_types_builder::generate_python_code(
+                &reporter,
+                python_output_dir_path,
+                python_testing_output_dir_path,
+                &objects,
+                &type_registry,
+                check,
+            ),
+            || re_types_builder::generate_docs(
+                &reporter,
+                docs_content_dir_path,
+                &objects,
+                &type_registry,
+                check,
+            ),
+            || re_types_builder::generate_snippets_ref(
+                &reporter,
+                snippets_ref_dir_path,
+                &objects,
+                &type_registry,
+                check,
+            ),
+        );
+    }
 
     report.finalize();
 

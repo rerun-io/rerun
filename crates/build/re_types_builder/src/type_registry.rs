@@ -147,6 +147,7 @@ impl TypeRegistry {
     fn arrow_datatype_from_type(&mut self, typ: Type, field: &mut ObjectField) -> LazyDatatype {
         let datatype = match typ {
             Type::Unit => LazyDatatype::Atomic(AtomicDataType::Null),
+            Type::Scalar => unimplemented!("Type::Scalar"),
             Type::UInt8 => LazyDatatype::Atomic(AtomicDataType::UInt8),
             Type::UInt16 => LazyDatatype::Atomic(AtomicDataType::UInt16),
             Type::UInt32 => LazyDatatype::Atomic(AtomicDataType::UInt32),
