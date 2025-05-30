@@ -246,11 +246,11 @@ impl UICommand {
             Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
             Self::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
             Self::PlaybackStepBack => (
-                "Step time back",
+                "Step backwards",
                 "Move the time marker back to the previous point in time with any data",
             ),
             Self::PlaybackStepForward => (
-                "Step time forward",
+                "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),

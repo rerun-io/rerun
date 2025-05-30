@@ -235,12 +235,10 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 }
 
 fn command_tooltip_ui(ui: &mut egui::Ui, cmd: UICommand) {
-    let (label, details) = cmd.text_and_tooltip();
-    command_tooltip_custom_ui(ui, label, cmd);
-}
-
-fn command_tooltip_custom_ui(ui: &mut egui::Ui, label: &str, cmd: UICommand) {
     let os = ui.ctx().os();
+
+    let (label, details) = cmd.text_and_tooltip();
+
     if let Some(shortcut) = cmd.primary_kb_shortcut(os) {
         re_ui::Help::new_without_title()
             .control(label, IconText::from_keyboard_shortcut(os, shortcut))
@@ -248,4 +246,7 @@ fn command_tooltip_custom_ui(ui: &mut egui::Ui, label: &str, cmd: UICommand) {
     } else {
         ui.label(label);
     }
+
+    ui.set_max_width(220.0);
+    ui.label(details);
 }
