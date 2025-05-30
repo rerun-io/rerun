@@ -2,7 +2,7 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
-use re_ui::{IconText, UICommand, UiExt as _, list_item};
+use re_ui::{UICommand, UiExt as _, list_item};
 
 use re_viewer_context::{Looping, PlayState, TimeControl};
 
@@ -115,7 +115,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let is_playing = time_control.play_state() == PlayState::Playing;
         if ui
             .large_button_selected(&re_ui::icons::PLAY, is_playing)
-            .on_hover_ui(|ui| command_tooltip_ui(ui, UICommand::PlaybackTogglePlayPause))
+            .on_hover_ui(|ui| UICommand::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
             time_control.set_play_state(times_per_timeline, PlayState::Playing);
@@ -132,7 +132,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let is_following = time_control.play_state() == PlayState::Following;
         if ui
             .large_button_selected(&re_ui::icons::FOLLOW, is_following)
-            .on_hover_ui(|ui| command_tooltip_ui(ui, UICommand::PlaybackFollow))
+            .on_hover_ui(|ui| UICommand::PlaybackFollow.tooltip_ui(ui))
             .clicked()
         {
             time_control.set_play_state(times_per_timeline, PlayState::Following);
@@ -144,7 +144,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let is_paused = time_control.play_state() == PlayState::Paused;
         if ui
             .large_button_selected(&re_ui::icons::PAUSE, is_paused)
-            .on_hover_ui(|ui| command_tooltip_ui(ui, UICommand::PlaybackTogglePlayPause))
+            .on_hover_ui(|ui| UICommand::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
             time_control.pause();
@@ -160,7 +160,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     ) {
         if ui
             .large_button(&re_ui::icons::ARROW_LEFT)
-            .on_hover_ui(|ui| command_tooltip_ui(ui, UICommand::PlaybackStepBack))
+            .on_hover_ui(|ui| UICommand::PlaybackStepBack.tooltip_ui(ui))
             .clicked()
         {
             time_control.step_time_back(times_per_timeline);
@@ -168,7 +168,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         if ui
             .large_button(&re_ui::icons::ARROW_RIGHT)
-            .on_hover_ui(|ui| command_tooltip_ui(ui, UICommand::PlaybackStepForward))
+            .on_hover_ui(|ui| UICommand::PlaybackStepForward.tooltip_ui(ui))
             .clicked()
         {
             time_control.step_time_fwd(times_per_timeline);
@@ -232,21 +232,4 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         time_control.set_speed(speed);
     }
-}
-
-fn command_tooltip_ui(ui: &mut egui::Ui, cmd: UICommand) {
-    let os = ui.ctx().os();
-
-    let (label, details) = cmd.text_and_tooltip();
-
-    if let Some(shortcut) = cmd.primary_kb_shortcut(os) {
-        re_ui::Help::new_without_title()
-            .control(label, IconText::from_keyboard_shortcut(os, shortcut))
-            .ui(ui);
-    } else {
-        ui.label(label);
-    }
-
-    ui.set_max_width(220.0);
-    ui.label(details);
 }

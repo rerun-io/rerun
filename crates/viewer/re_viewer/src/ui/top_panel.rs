@@ -270,10 +270,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle selection view{}",
-                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_selection_panel(&app.command_sender);
@@ -286,10 +283,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle timeline view{}",
-                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_time_panel(&app.command_sender);
@@ -302,10 +296,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle blueprint view{}",
-                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
