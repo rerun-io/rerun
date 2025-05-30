@@ -437,7 +437,7 @@ impl UICommand {
     }
 
     /// Primary keyboard shortcut
-    fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
+    pub fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
         self.kb_shortcuts(os).first().copied()
     }
 

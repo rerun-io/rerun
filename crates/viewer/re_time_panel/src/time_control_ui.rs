@@ -2,7 +2,7 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
-use re_ui::{UICommand, UiExt as _, list_item};
+use re_ui::{IconText, UICommand, UiExt as _, list_item};
 
 use re_viewer_context::{Looping, PlayState, TimeControl};
 
@@ -240,9 +240,10 @@ fn command_tooltip_ui(ui: &mut egui::Ui, cmd: UICommand) {
 }
 
 fn command_tooltip_custom_ui(ui: &mut egui::Ui, label: &str, cmd: UICommand) {
-    if let Some(shortcut_text) = cmd.formatted_kb_shortcut(ui.ctx()) {
+    let os = ui.ctx().os();
+    if let Some(shortcut) = cmd.primary_kb_shortcut(os) {
         re_ui::Help::new_without_title()
-            .control(label, shortcut_text)
+            .control(label, IconText::from_keyboard_shortcut(os, shortcut))
             .ui(ui);
     } else {
         ui.label(label);
