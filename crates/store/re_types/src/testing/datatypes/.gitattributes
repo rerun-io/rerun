@@ -13,6 +13,7 @@ enum_test.rs linguist-generated=true
 flattened_scalar.rs linguist-generated=true
 mod.rs linguist-generated=true
 multi_enum.rs linguist-generated=true
+my_tensor.rs linguist-generated=true
 primitive_component.rs linguist-generated=true
 string_component.rs linguist-generated=true
 valued_enum.rs linguist-generated=true

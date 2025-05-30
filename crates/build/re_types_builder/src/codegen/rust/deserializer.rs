@@ -699,6 +699,10 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::List(inner) => {
+            if inner.data_type == DataType::Scalar {
+                return quote!(todo!("Deserialize list of scalars")); // TODO
+            }
+
             let data_src_inner = format_ident!("{data_src}_inner");
 
             let inner_repr = if is_backed_by_scalar_buffer(inner.data_type()) {

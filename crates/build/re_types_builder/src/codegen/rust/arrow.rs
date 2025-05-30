@@ -15,6 +15,8 @@ pub struct ArrowDataTypeTokenizer<'a> {
 }
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
+    #![expect(clippy::match_same_arms)]
+
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self {
             datatype,
@@ -34,6 +36,8 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::Atomic(AtomicDataType::Float16) => quote!(DataType::Float16),
             DataType::Atomic(AtomicDataType::Float32) => quote!(DataType::Float32),
             DataType::Atomic(AtomicDataType::Float64) => quote!(DataType::Float64),
+
+            DataType::Scalar => quote!(DataType::Float64), // Placeholder
 
             DataType::Binary => quote!(DataType::Binary),
 

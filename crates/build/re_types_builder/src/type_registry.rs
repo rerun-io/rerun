@@ -7,6 +7,7 @@ use anyhow::Context as _;
 use crate::{
     ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type,
     data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
+    objects::BUILTIN_SCALAR_FQNAME,
 };
 
 // --- Registry ---
@@ -52,6 +53,10 @@ impl TypeRegistry {
     // ---
 
     fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
+        if obj.fqname == BUILTIN_SCALAR_FQNAME {
+            return LazyDatatype::Scalar;
+        }
+
         let is_struct = obj.is_struct();
         let is_enum = obj.is_enum();
         let is_arrow_transparent = obj.is_arrow_transparent();
@@ -147,7 +152,7 @@ impl TypeRegistry {
     fn arrow_datatype_from_type(&mut self, typ: Type, field: &mut ObjectField) -> LazyDatatype {
         let datatype = match typ {
             Type::Unit => LazyDatatype::Atomic(AtomicDataType::Null),
-            Type::Scalar => unimplemented!("Type::Scalar"),
+            Type::Scalar => LazyDatatype::Atomic(AtomicDataType::Float64), // Placeholder
             Type::UInt8 => LazyDatatype::Atomic(AtomicDataType::UInt8),
             Type::UInt16 => LazyDatatype::Atomic(AtomicDataType::UInt16),
             Type::UInt32 => LazyDatatype::Atomic(AtomicDataType::UInt32),

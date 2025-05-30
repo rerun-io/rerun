@@ -141,35 +141,35 @@ fn main() {
             &type_registry,
             check,
         );
-        re_types_builder::generate_cpp_code(
-            &reporter,
-            cpp_output_dir_path,
-            &objects,
-            &type_registry,
-            check,
-        );
-        re_types_builder::generate_python_code(
-            &reporter,
-            python_output_dir_path,
-            python_testing_output_dir_path,
-            &objects,
-            &type_registry,
-            check,
-        );
-        re_types_builder::generate_docs(
-            &reporter,
-            docs_content_dir_path,
-            &objects,
-            &type_registry,
-            check,
-        );
-        re_types_builder::generate_snippets_ref(
-            &reporter,
-            snippets_ref_dir_path,
-            &objects,
-            &type_registry,
-            check,
-        );
+        // re_types_builder::generate_cpp_code(
+        //     &reporter,
+        //     cpp_output_dir_path,
+        //     &objects,
+        //     &type_registry,
+        //     check,
+        // );
+        // re_types_builder::generate_python_code(
+        //     &reporter,
+        //     python_output_dir_path,
+        //     python_testing_output_dir_path,
+        //     &objects,
+        //     &type_registry,
+        //     check,
+        // );
+        // re_types_builder::generate_docs(
+        //     &reporter,
+        //     docs_content_dir_path,
+        //     &objects,
+        //     &type_registry,
+        //     check,
+        // );
+        // re_types_builder::generate_snippets_ref(
+        //     &reporter,
+        //     snippets_ref_dir_path,
+        //     &objects,
+        //     &type_registry,
+        //     check,
+        // );
     } else {
         join!(
             || re_types_builder::generate_cpp_code(

@@ -19,7 +19,7 @@ use crate::{
 // ---
 
 const BUILTIN_NAMESPACE: &str = "rerun.builtins";
-const BUILTIN_SCALAR_FQNAME: &str = "rerun.builtins.Scalar";
+pub const BUILTIN_SCALAR_FQNAME: &str = "rerun.builtins.Scalar";
 const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
 
 /// The result of the semantic pass: an intermediate representation of all available object
@@ -1290,7 +1290,7 @@ impl Type {
 
     pub fn make_plural(&self) -> Option<Self> {
         match self {
-            Type::Scalar => unimplemented!(),
+            Self::Scalar => unimplemented!(),
             Self::Vector { elem_type: _ }
             | Self::Array {
                 elem_type: _,
@@ -1608,6 +1608,14 @@ impl ElementType {
             | Self::Float32
             | Self::Float64 => true,
             Self::Bool | Self::Object { .. } | Self::String => false,
+        }
+    }
+
+    pub fn is_datatype_generics_scalar(&self) -> bool {
+        if let Self::Object { fqname } = self {
+            fqname == BUILTIN_SCALAR_FQNAME
+        } else {
+            false
         }
     }
 

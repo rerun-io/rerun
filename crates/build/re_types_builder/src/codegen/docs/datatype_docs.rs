@@ -32,6 +32,7 @@ fn datatype_docs_impl(page: &mut String, indent: usize, datatype: &DataType) {
         DataType::Atomic(atomic) => {
             atomic_datatype_docs(page, atomic);
         }
+        DataType::Scalar => page.push_str("scalar"),
         DataType::Utf8 => page.push_str("utf8"),
         DataType::Binary => page.push_str("binary"),
         DataType::List(inner) => {

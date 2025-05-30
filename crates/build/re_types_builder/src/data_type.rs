@@ -2,7 +2,7 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::TypeRegistry;
+use crate::{TypeRegistry, objects::BUILTIN_SCALAR_FQNAME};
 
 /// Mode of [`DataType::Union`]
 ///
@@ -112,6 +112,10 @@ impl std::fmt::Display for AtomicDataType {
 pub enum DataType {
     Atomic(AtomicDataType),
 
+    /// Generic scalar, using [`BUILTIN_SCALAR_FQNAME`].
+    /// Can be any integer or float
+    Scalar,
+
     Binary,
 
     Utf8,
@@ -153,6 +157,10 @@ impl DataType {
 pub enum LazyDatatype {
     Atomic(AtomicDataType),
 
+    /// Generic scalar, using [`BUILTIN_SCALAR_FQNAME`].
+    /// Can be any integer or float
+    Scalar, // TODO: try removing
+
     Binary,
 
     Utf8,
@@ -189,6 +197,7 @@ impl LazyDatatype {
     pub fn resolve(&self, registry: &TypeRegistry) -> DataType {
         match self {
             Self::Atomic(atomic) => DataType::Atomic(*atomic),
+            Self::Scalar => DataType::Scalar, // TODO: try removing
             Self::Binary => DataType::Binary,
             Self::Utf8 => DataType::Utf8,
             Self::List(data_type) => DataType::List(data_type.resolve(registry).into()),
@@ -202,11 +211,24 @@ impl LazyDatatype {
                 fields.iter().map(|field| field.resolve(registry)).collect(),
                 *mode,
             ),
-            Self::Object { fqname, datatype } => DataType::Object {
-                fqname: fqname.clone(),
-                datatype: Arc::new(datatype.resolve(registry)),
-            },
-            Self::Unresolved { fqname } => registry.get(fqname),
+            Self::Object { fqname, datatype } => {
+                if fqname == BUILTIN_SCALAR_FQNAME {
+                    // TODO: try removing
+                    DataType::Scalar
+                } else {
+                    DataType::Object {
+                        fqname: fqname.clone(),
+                        datatype: Arc::new(datatype.resolve(registry)),
+                    }
+                }
+            }
+            Self::Unresolved { fqname } => {
+                if fqname == BUILTIN_SCALAR_FQNAME {
+                    DataType::Scalar
+                } else {
+                    registry.get(fqname)
+                }
+            }
         }
     }
 }

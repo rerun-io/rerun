@@ -664,6 +664,10 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
+            if inner_field.data_type == DataType::Scalar {
+                return quote!(todo!("Deserialize list of scalars")); // TODO
+            }
+
             let inner_datatype = inner_field.data_type();
 
             // Note: We only use the ScalarBuffer optimization for `Lists` but not `FixedSizeList`.
