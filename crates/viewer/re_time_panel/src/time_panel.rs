@@ -1464,7 +1464,7 @@ fn paint_range_highlight(
     }
 }
 
-fn help(ctx: &egui::Context) -> Help {
+fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("Timeline")
         .control("Play/Pause", "Space")
         .control(
@@ -1481,14 +1481,14 @@ fn help(ctx: &egui::Context) -> Help {
         )
         .control(
             "Zoom",
-            IconText::from_modifiers_and(ctx.os(), Modifiers::COMMAND, icons::SCROLL),
+            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }
 
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        help(ui.ctx()).ui(ui);
+        help(ui.ctx().os()).ui(ui);
     });
 }
 

@@ -119,17 +119,17 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                IconText::from_modifiers_and(egui_ctx.os(), ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
@@ -148,11 +148,7 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    IconText::from_modifiers_and(
-                        egui_ctx.os(),
-                        egui::Modifiers::ALT,
-                        icons::LEFT_MOUSE_CLICK
-                    ),
+                    IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend"
                 ),
             )

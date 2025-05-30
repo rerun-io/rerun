@@ -43,17 +43,17 @@ impl ViewClass for BarChartView {
         Box::<()>::default()
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                IconText::from_modifiers_and(egui_ctx.os(), ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",

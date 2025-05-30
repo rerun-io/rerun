@@ -122,7 +122,7 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help(egui_ctx: &egui::Context) -> Help {
+pub fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("2D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
         .control(
@@ -131,7 +131,7 @@ pub fn help(egui_ctx: &egui::Context) -> Help {
         )
         .control(
             "Zoom",
-            re_ui::IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+            re_ui::IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }

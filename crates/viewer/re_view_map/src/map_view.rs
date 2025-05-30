@@ -101,13 +101,13 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                IconText::from_modifiers_and(egui_ctx.os(), Modifiers::COMMAND, icons::SCROLL),
+                IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }

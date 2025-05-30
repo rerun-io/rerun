@@ -7,6 +7,7 @@ use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
 #[test]
 fn test_help() {
     let mut snapshot_results = SnapshotResults::new();
+
     // We show different shortcuts based on the OS
     for os in [OperatingSystem::Windows, OperatingSystem::Mac] {
         let mut harness = Harness::builder()
@@ -21,11 +22,7 @@ fn test_help() {
                         .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                         .control(
                             "Zoom",
-                            IconText::from_modifiers_and(
-                                ui.ctx().os(),
-                                Modifiers::COMMAND,
-                                icons::SCROLL,
-                            ),
+                            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
                         )
                         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK));
 
@@ -39,7 +36,7 @@ fn test_help() {
                     ] {
                         help = help.control(
                             format!("{modifier:?}"),
-                            IconText::from_modifiers(ui.ctx().os(), modifier),
+                            IconText::from_modifiers(os, modifier),
                         );
                     }
 

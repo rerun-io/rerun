@@ -387,8 +387,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help(egui_ctx: &egui::Context) -> Help {
-    let os = egui_ctx.os();
+pub fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("3D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
         .control(
