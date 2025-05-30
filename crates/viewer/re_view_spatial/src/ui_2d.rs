@@ -8,7 +8,7 @@ use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
 };
-use re_ui::{ContextExt as _, Help, MouseButtonText, icon_text, icons, shortcut_with_icon};
+use re_ui::{ContextExt as _, Help, MouseButtonText, icon_text, icons};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
     ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext, gpu_bridge,
@@ -131,7 +131,7 @@ pub fn help(egui_ctx: &egui::Context) -> Help {
         )
         .control(
             "Zoom",
-            shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+            re_ui::IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }

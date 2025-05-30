@@ -4,11 +4,11 @@ mod right_panel;
 
 use egui::Modifiers;
 use egui::containers::menu;
-use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
-    filter_widget::FilterState, list_item, maybe_plus, modifiers_text,
+    filter_widget::FilterState, list_item,
 };
+use re_ui::{IconText, filter_widget::format_matching_text};
 use re_ui::{icon_text, icons, notifications};
 
 /// Sender that queues up the execution of a command.
@@ -493,10 +493,10 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                     .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(
                         "Zoom",
-                        icon_text!(
-                            modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                            maybe_plus(ui.ctx()),
-                            icons::SCROLL
+                        IconText::from_modifiers_and(
+                            ui.ctx().os(),
+                            Modifiers::COMMAND,
+                            icons::SCROLL,
                         ),
                     )
                     .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))

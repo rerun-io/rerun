@@ -2,9 +2,7 @@ use egui::os::OperatingSystem;
 use egui::{Modifiers, vec2};
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{
-    Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, maybe_plus, modifiers_text,
-};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
 
 #[test]
 fn test_help() {
@@ -24,7 +22,7 @@ fn test_help() {
                         .control(
                             "Zoom",
                             IconText::from_modifiers_and(
-                                ui.ctx(),
+                                ui.ctx().os(),
                                 Modifiers::COMMAND,
                                 icons::SCROLL,
                             ),
@@ -41,7 +39,7 @@ fn test_help() {
                     ] {
                         help = help.control(
                             format!("{modifier:?}"),
-                            icon_text!(modifiers_text(modifier, ui.ctx())),
+                            IconText::from_modifiers(ui.ctx().os(), modifier),
                         );
                     }
 

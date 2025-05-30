@@ -13,7 +13,7 @@ use re_types::{
         components::{MapProvider, ZoomLevel},
     },
 };
-use re_ui::{Help, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, icon_text, icons, list_item};
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -107,7 +107,7 @@ impl ViewClass for MapView {
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), Modifiers::COMMAND, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }

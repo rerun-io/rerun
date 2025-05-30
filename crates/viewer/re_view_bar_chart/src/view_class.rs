@@ -7,7 +7,7 @@ use re_types::{
     components::Visible,
     datatypes::TensorBuffer,
 };
-use re_ui::{Help, MouseButtonText, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, MouseButtonText, icon_text, icons, list_item};
 use re_view::{
     controls::{self, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
     suggest_view_for_each_entity, view_property_ui,
@@ -49,11 +49,11 @@ impl ViewClass for BarChartView {
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",

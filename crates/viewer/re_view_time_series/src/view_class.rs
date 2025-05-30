@@ -16,7 +16,7 @@ use re_types::{
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, list_item};
 use re_view::{
     controls::{
         self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
@@ -125,11 +125,11 @@ impl ViewClass for TimeSeriesView {
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
@@ -148,7 +148,11 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
+                    IconText::from_modifiers_and(
+                        egui_ctx.os(),
+                        egui::Modifiers::ALT,
+                        icons::LEFT_MOUSE_CLICK
+                    ),
                     "legend"
                 ),
             )

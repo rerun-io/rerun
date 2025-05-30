@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::iter::once;
 use std::{fmt, vec};
 
-use egui::{Context, ModifierNames, Modifiers, WidgetText};
+use egui::{ModifierNames, Modifiers, WidgetText, os::OperatingSystem};
 
 use crate::{Icon, icon_text, icons};
 
@@ -66,27 +66,31 @@ impl IconText {
         Self(Vec::new())
     }
 
-    pub fn from_keyboard_shortcut(ctx: &Context, shortcut: egui::KeyboardShortcut) -> Self {
+    pub fn from_keyboard_shortcut(os: OperatingSystem, shortcut: egui::KeyboardShortcut) -> Self {
         let egui::KeyboardShortcut {
             modifiers,
             logical_key,
         } = shortcut;
 
-        let key_text = if is_mac(ctx) {
+        let key_text = if is_mac(os) {
             logical_key.symbol_or_name()
         } else {
             logical_key.name()
         };
-        Self::from_modifiers_and(ctx, modifiers, key_text)
+        Self::from_modifiers_and(os, modifiers, key_text)
     }
 
-    pub fn from_modifiers_and(ctx: &Context, modifiers: Modifiers, icon: impl Into<Self>) -> Self {
+    pub fn from_modifiers_and(
+        os: OperatingSystem,
+        modifiers: Modifiers,
+        icon: impl Into<Self>,
+    ) -> Self {
         if modifiers.is_none() {
             icon_text!(icon.into())
         } else {
             icon_text!(
-                Self::from_modifiers(ctx, modifiers),
-                maybe_plus(ctx),
+                Self::from_modifiers(os, modifiers),
+                maybe_plus(os),
                 icon.into()
             )
         }
@@ -94,8 +98,8 @@ impl IconText {
 
     /// Helper to add [`egui::Modifiers`] as text with icons.
     /// Will automatically show Cmd/Ctrl based on the OS.
-    pub fn from_modifiers(ctx: &egui::Context, modifiers: Modifiers) -> Self {
-        let is_mac = is_mac(ctx);
+    pub fn from_modifiers(os: OperatingSystem, modifiers: Modifiers) -> Self {
+        let is_mac = is_mac(os);
 
         let names = if is_mac {
             let mut names = ModifierNames::SYMBOLS;
@@ -164,41 +168,21 @@ macro_rules! icon_text {
     }};
 }
 
-fn is_mac(ctx: &Context) -> bool {
+fn is_mac(os: OperatingSystem) -> bool {
     matches!(
-        ctx.os(),
+        os,
         egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
     )
 }
 
 /// Shows a "+" if the OS is not Mac.
 /// Useful if you want to e.g. show an icon after a [`modifiers_text`]
-pub fn maybe_plus(ctx: &Context) -> IconText {
-    if is_mac(ctx) {
+fn maybe_plus(os: OperatingSystem) -> IconText {
+    if is_mac(os) {
         IconText::default()
     } else {
         icon_text!("+")
     }
-}
-
-/// Shows a keyboard shortcut with a modifier and the given icon.
-///
-/// On Mac, this will show the symbol for the modifier.
-/// Otherwise, it will show the name of the modifier, and a "+" between the modifier and the icon.
-#[deprecated]
-pub fn shortcut_with_icon(
-    ctx: &Context,
-    modifiers: Modifiers,
-    icon: impl Into<IconText>,
-) -> IconText {
-    IconText::from_modifiers_and(ctx, modifiers, icon)
-}
-
-/// Helper to add [`egui::Modifiers`] as text with icons.
-/// Will automatically show Cmd/Ctrl based on the OS.
-#[deprecated]
-pub fn modifiers_text(modifiers: Modifiers, ctx: &egui::Context) -> IconText {
-    IconText::from_modifiers(ctx, modifiers)
 }
 
 /// Helper to show mouse buttons as text/icons.

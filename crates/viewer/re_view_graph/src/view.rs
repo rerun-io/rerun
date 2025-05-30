@@ -9,7 +9,7 @@ use re_types::{
         },
     },
 };
-use re_ui::{self, Help, MouseButtonText, UiExt as _, icon_text, icons, shortcut_with_icon};
+use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -55,7 +55,7 @@ impl ViewClass for GraphView {
             )
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(egui_ctx.os(), ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
