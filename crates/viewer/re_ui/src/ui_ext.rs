@@ -1,12 +1,15 @@
 use std::hash::Hash;
 
 use egui::{
-    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _,
+    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
 
-use crate::{DesignTokens, Icon, LabelStyle, icons, list_item};
+use crate::{
+    DesignTokens, Icon, LabelStyle, icons,
+    list_item::{self, LabelContent},
+};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -676,6 +679,12 @@ pub trait UiExt {
     #[allow(clippy::unused_self)]
     fn list_item(&self) -> list_item::ListItem {
         list_item::ListItem::new()
+    }
+
+    fn list_item_label(&mut self, text: impl Into<WidgetText>) -> egui::Response {
+        self.list_item()
+            .interactive(false)
+            .show_flat(self.ui_mut(), LabelContent::new(text))
     }
 
     /// Convenience for adding a flat non-interactive [`list_item::ListItemContent`]
