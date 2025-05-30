@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
@@ -279,6 +280,21 @@ class Viewer:
 
         if block_until_ready:
             self._viewer.block_until_ready()
+
+    def send_file(self, file_path: str | Path) -> None:
+        """
+        Send a file to the viewer.
+
+        This sends a local file, specified by `file_path`, directly to the Viewer. It is equivalent to
+        opening the file via the viewer's file picker or drag-and-drop.
+
+        Parameters
+        ----------
+        file_path : str | Path
+            The path to the file to send to the viewer.
+
+        """
+        bindings.dataloader_bytes_from_path_to_callback(Path(file_path), self._flush_hook)
 
     def _ipython_display_(self) -> None:
         self.display(block_until_ready=True)
