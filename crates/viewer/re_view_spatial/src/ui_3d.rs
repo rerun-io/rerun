@@ -17,7 +17,7 @@ use re_types::{
     view_coordinates::SignedAxis3,
 };
 use re_ui::{
-    ContextExt as _, Help, MouseButtonText, UiExt as _, icon_text, icons, modifiers_text,
+    ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, modifiers_text,
     shortcut_with_icon,
 };
 use re_view::controls::{
@@ -414,9 +414,9 @@ pub fn help(egui_ctx: &egui::Context) -> Help {
         .control(
             "Slow down / speed up",
             icon_text!(
-                modifiers_text(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+                IconText::from_modifiers(egui_ctx, RuntimeModifiers::slow_down(&egui_ctx.os())),
                 "/",
-                modifiers_text(SPEED_UP_3D_MODIFIER, egui_ctx)
+                IconText::from_modifiers(egui_ctx, SPEED_UP_3D_MODIFIER)
             ),
         )
         .control(

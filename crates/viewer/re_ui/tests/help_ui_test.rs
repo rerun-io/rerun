@@ -2,7 +2,9 @@ use egui::os::OperatingSystem;
 use egui::{Modifiers, vec2};
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, maybe_plus, modifiers_text};
+use re_ui::{
+    Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, maybe_plus, modifiers_text,
+};
 
 #[test]
 fn test_help() {
@@ -21,10 +23,10 @@ fn test_help() {
                         .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                         .control(
                             "Zoom",
-                            icon_text!(
-                                modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                                maybe_plus(ui.ctx()),
-                                icons::SCROLL
+                            IconText::from_modifiers_and(
+                                ui.ctx(),
+                                Modifiers::COMMAND,
+                                icons::SCROLL,
                             ),
                         )
                         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK));

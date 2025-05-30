@@ -66,6 +66,78 @@ impl IconText {
         Self(Vec::new())
     }
 
+    pub fn from_keyboard_shortcut(ctx: &Context, shortcut: egui::KeyboardShortcut) -> Self {
+        let egui::KeyboardShortcut {
+            modifiers,
+            logical_key,
+        } = shortcut;
+
+        let key_text = if is_mac(ctx) {
+            logical_key.symbol_or_name()
+        } else {
+            logical_key.name()
+        };
+        Self::from_modifiers_and(ctx, modifiers, key_text)
+    }
+
+    pub fn from_modifiers_and(ctx: &Context, modifiers: Modifiers, icon: impl Into<Self>) -> Self {
+        if modifiers.is_none() {
+            icon_text!(icon.into())
+        } else {
+            icon_text!(
+                Self::from_modifiers(ctx, modifiers),
+                maybe_plus(ctx),
+                icon.into()
+            )
+        }
+    }
+
+    /// Helper to add [`egui::Modifiers`] as text with icons.
+    /// Will automatically show Cmd/Ctrl based on the OS.
+    pub fn from_modifiers(ctx: &egui::Context, modifiers: Modifiers) -> Self {
+        let is_mac = is_mac(ctx);
+
+        let names = if is_mac {
+            let mut names = ModifierNames::SYMBOLS;
+            names.concat = "";
+            names
+        } else {
+            let mut names = ModifierNames::NAMES;
+            names.concat = "+";
+            names
+        };
+        let text = names.format(&modifiers, is_mac);
+
+        let mut icon_text = Self::new();
+
+        if is_mac {
+            for char in text.chars() {
+                if char == '⌘' {
+                    icon_text.add(IconTextItem::icon(icons::COMMAND));
+                } else if char == '⌃' {
+                    icon_text.add(IconTextItem::icon(icons::CONTROL));
+                } else if char == '⇧' {
+                    icon_text.add(IconTextItem::icon(icons::SHIFT));
+                } else if char == '⌥' {
+                    icon_text.add(IconTextItem::icon(icons::OPTION));
+                } else {
+                    // If there is anything else than the modifier symbols, just show the text.
+                    return text.into();
+                }
+            }
+            icon_text
+        } else {
+            let mut vec: Vec<_> = text
+                .split('+')
+                .map(IconTextItem::text)
+                // We want each + to be an extra item so the spacing looks nicer
+                .flat_map(|item| once(item).chain(once(IconTextItem::text("+"))))
+                .collect();
+            vec.pop(); // Remove the last "+"
+            Self(vec)
+        }
+    }
+
     /// Add an icon to the row.
     pub fn icon(&mut self, icon: Icon) {
         self.0.push(IconTextItem::Icon(icon));
@@ -113,58 +185,20 @@ pub fn maybe_plus(ctx: &Context) -> IconText {
 ///
 /// On Mac, this will show the symbol for the modifier.
 /// Otherwise, it will show the name of the modifier, and a "+" between the modifier and the icon.
+#[deprecated]
 pub fn shortcut_with_icon(
     ctx: &Context,
     modifiers: Modifiers,
     icon: impl Into<IconText>,
 ) -> IconText {
-    icon_text!(modifiers_text(modifiers, ctx), maybe_plus(ctx), icon.into())
+    IconText::from_modifiers_and(ctx, modifiers, icon)
 }
 
 /// Helper to add [`egui::Modifiers`] as text with icons.
 /// Will automatically show Cmd/Ctrl based on the OS.
+#[deprecated]
 pub fn modifiers_text(modifiers: Modifiers, ctx: &egui::Context) -> IconText {
-    let is_mac = is_mac(ctx);
-
-    let names = if is_mac {
-        let mut names = ModifierNames::SYMBOLS;
-        names.concat = "";
-        names
-    } else {
-        let mut names = ModifierNames::NAMES;
-        names.concat = "+";
-        names
-    };
-    let text = names.format(&modifiers, is_mac);
-
-    let mut icon_text = IconText::new();
-
-    if is_mac {
-        for char in text.chars() {
-            if char == '⌘' {
-                icon_text.add(IconTextItem::icon(icons::COMMAND));
-            } else if char == '⌃' {
-                icon_text.add(IconTextItem::icon(icons::CONTROL));
-            } else if char == '⇧' {
-                icon_text.add(IconTextItem::icon(icons::SHIFT));
-            } else if char == '⌥' {
-                icon_text.add(IconTextItem::icon(icons::OPTION));
-            } else {
-                // If there is anything else than the modifier symbols, just show the text.
-                return text.into();
-            }
-        }
-        icon_text
-    } else {
-        let mut vec: Vec<_> = text
-            .split('+')
-            .map(IconTextItem::text)
-            // We want each + to be an extra item so the spacing looks nicer
-            .flat_map(|item| once(item).chain(once(IconTextItem::text("+"))))
-            .collect();
-        vec.pop(); // Remove the last "+"
-        IconText(vec)
-    }
+    IconText::from_modifiers(ctx, modifiers)
 }
 
 /// Helper to show mouse buttons as text/icons.
