@@ -869,7 +869,7 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
-        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+        let mut descriptor = Self::partial(value.component_name.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
             "component_name"
         ))?);

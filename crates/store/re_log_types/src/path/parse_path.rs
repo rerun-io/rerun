@@ -460,28 +460,28 @@ mod tests {
             ComponentPath::from_str("world/points:rerun.components.Color"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+                component_descriptor: ComponentDescriptor::partial("rerun.components.Color"),
             })
         );
         assert_eq!(
             ComponentPath::from_str("world/points:Color"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+                component_descriptor: ComponentDescriptor::partial("rerun.components.Color"),
             })
         );
         assert_eq!(
             ComponentPath::from_str("world/points:my.custom.color"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color"),
+                component_descriptor: ComponentDescriptor::partial("my.custom.color"),
             })
         );
         assert_eq!(
             ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("my.custom.color")
                     .with_archetype_name("My.Custom.Archetype".into()),
             })
         );
@@ -489,7 +489,7 @@ mod tests {
             ComponentPath::from_str("world/points:Points3D:my.custom.color"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("my.custom.color")
                     .with_archetype_name("rerun.archetypes.Points3D".into()),
             })
         );
@@ -497,7 +497,7 @@ mod tests {
             ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color#colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("my.custom.color")
                     .with_archetype_name("My.Custom.Archetype".into())
                     .with_archetype_field_name("colors".into()),
             })
@@ -506,7 +506,7 @@ mod tests {
             ComponentPath::from_str("world/points:Points3D:my.custom.color#colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("my.custom.color")
                     .with_archetype_name("rerun.archetypes.Points3D".into())
                     .with_archetype_field_name("colors".into()),
             })
@@ -547,7 +547,7 @@ mod tests {
             Ok(DataPath {
                 entity_path: EntityPath::from("world/points"),
                 instance: Some(Instance(42)),
-                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+                component_descriptor: Some(ComponentDescriptor::partial("rerun.components.Color")),
             })
         );
         assert_eq!(
@@ -555,7 +555,7 @@ mod tests {
             Ok(DataPath {
                 entity_path: EntityPath::from("world/points"),
                 instance: None,
-                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+                component_descriptor: Some(ComponentDescriptor::partial("rerun.components.Color")),
             })
         );
         assert_eq!(
@@ -564,7 +564,7 @@ mod tests {
                 entity_path: EntityPath::from("world/points"),
                 instance: None,
                 component_descriptor: Some(
-                    ComponentDescriptor::new("my.custom.color")
+                    ComponentDescriptor::partial("my.custom.color")
                         .with_archetype_name("rerun.archetypes.Points3D".into())
                         .with_archetype_field_name("colors".into())
                 ),

@@ -245,7 +245,7 @@ fn test_single_component_ui_as_list_item(
                     &EntityPath::root(),
                     // As of writing, `ComponentDescriptor` the descriptor part is only used for
                     // caching and actual lookup of uis is only done via `ComponentName`.
-                    &ComponentDescriptor::new(test_case.component_name),
+                    &ComponentDescriptor::partial(test_case.component_name),
                     None,
                     &*test_case.component_data,
                 );

@@ -7,7 +7,7 @@ pub mod components;
 pub mod datatypes;
 
 pub fn large_struct_descriptor() -> ComponentDescriptor {
-    ComponentDescriptor::new(<LargeStruct as Component>::name())
+    ComponentDescriptor::partial(<LargeStruct as Component>::name())
 }
 
 /// Large struct used for benchmarking.
