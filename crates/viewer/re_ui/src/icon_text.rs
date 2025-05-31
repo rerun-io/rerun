@@ -88,11 +88,12 @@ impl IconText {
         if modifiers.is_none() {
             icon_text!(icon.into())
         } else {
-            icon_text!(
-                Self::from_modifiers(os, modifiers),
-                maybe_plus(os),
-                icon.into()
-            )
+            // macOS uses compact symbols for shortcuts without a `+`:
+            if is_mac(os) {
+                icon_text!(Self::from_modifiers(os, modifiers), icon.into())
+            } else {
+                icon_text!(Self::from_modifiers(os, modifiers), "+", icon.into())
+            }
         }
     }
 
@@ -102,13 +103,9 @@ impl IconText {
         let is_mac = is_mac(os);
 
         let names = if is_mac {
-            let mut names = ModifierNames::SYMBOLS;
-            names.concat = "";
-            names
+            ModifierNames::SYMBOLS
         } else {
-            let mut names = ModifierNames::NAMES;
-            names.concat = "+";
-            names
+            ModifierNames::NAMES
         };
         let text = names.format(&modifiers, is_mac);
 
@@ -173,16 +170,6 @@ fn is_mac(os: OperatingSystem) -> bool {
         os,
         egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
     )
-}
-
-/// Shows a "+" if the OS is not Mac.
-/// Useful if you want to e.g. show an icon after a [`modifiers_text`]
-fn maybe_plus(os: OperatingSystem) -> IconText {
-    if is_mac(os) {
-        IconText::default()
-    } else {
-        icon_text!("+")
-    }
 }
 
 /// Helper to show mouse buttons as text/icons.
