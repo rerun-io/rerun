@@ -296,7 +296,7 @@ pub struct ArchetypeFieldReflection {
     pub display_name: &'static str,
 
     /// The type of the field (it's always a component).
-    pub component_name: ComponentName,
+    pub component_name: Option<ComponentName>,
 
     /// Markdown docstring for the field (not for the component type).
     pub docstring_md: &'static str,
@@ -311,7 +311,7 @@ impl ArchetypeFieldReflection {
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
             component_name: self.component_name,
-            archetype_field_name: Some(self.name),
+            archetype_field_name: self.name,
             archetype_name: Some(archetype_name),
         }
     }

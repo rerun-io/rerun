@@ -36,8 +36,8 @@ impl TensorViewFit {
     pub fn descriptor_scaling() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-            component_name: "rerun.blueprint.components.ViewFit".into(),
-            archetype_field_name: Some("scaling".into()),
+            component_name: Some("rerun.blueprint.components.ViewFit".into()),
+            archetype_field_name: "scaling".into(),
         }
     }
 
@@ -46,8 +46,8 @@ impl TensorViewFit {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
         }
     }
 }

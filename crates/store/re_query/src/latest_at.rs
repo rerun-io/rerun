@@ -435,7 +435,7 @@ impl LatestAtResults {
         instance_index: usize,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_name, C::name());
+        debug_assert_eq!(component_descr.component_name, Some(C::name()));
         self.component_instance_with_log_level(
             re_log::Level::Error,
             instance_index,

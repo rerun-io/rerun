@@ -143,7 +143,8 @@ impl SorbetColumnDescriptors {
 
         // happy path: exact component name match
         let exact_match = self.component_columns().find(|column| {
-            column.component_name.as_str() == component_name && &column.entity_path == entity_path
+            column.component_name.map(|c| c.as_str()) == Some(component_name)
+                && &column.entity_path == entity_path
         });
 
         if let Some(exact_match) = exact_match {
@@ -152,7 +153,10 @@ impl SorbetColumnDescriptors {
 
         // fallback: use `ComponentName::match` and check that we have a single result
         let mut partial_match = self.component_columns().filter(|column| {
-            column.component_name.matches(component_name) && &column.entity_path == entity_path
+            let Some(c) = column.component_name else {
+                return false;
+            };
+            c.matches(component_name) && &column.entity_path == entity_path
         });
 
         let first_match = partial_match.next();

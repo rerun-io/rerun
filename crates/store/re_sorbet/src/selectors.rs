@@ -1,5 +1,5 @@
-use re_log_types::{ComponentPath, EntityPath, Timeline, TimelineName};
-use re_types_core::ComponentName;
+use re_log_types::{EntityPath, Timeline, TimelineName};
+use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
@@ -22,9 +22,7 @@ pub enum ColumnSelector {
     Time(TimeColumnSelector),
 
     /// Select some component column
-    Component(ComponentColumnSelector),
-    //TODO(jleibs): Add support for archetype-based component selection.
-    //ArchetypeField(ArchetypeFieldColumnSelector),
+    Component(ArchetypeFieldColumnSelector),
 }
 
 impl From<ColumnDescriptor> for ColumnSelector {
@@ -42,13 +40,6 @@ impl From<TimeColumnSelector> for ColumnSelector {
     #[inline]
     fn from(desc: TimeColumnSelector) -> Self {
         Self::Time(desc)
-    }
-}
-
-impl From<ComponentColumnSelector> for ColumnSelector {
-    #[inline]
-    fn from(desc: ComponentColumnSelector) -> Self {
-        Self::Component(desc)
     }
 }
 
@@ -105,12 +96,24 @@ impl From<IndexColumnDescriptor> for TimeColumnSelector {
     }
 }
 
+impl From<ComponentColumnDescriptor> for ArchetypeFieldColumnSelector {
+    #[inline]
+    fn from(desc: ComponentColumnDescriptor) -> Self {
+        Self {
+            entity_path: desc.entity_path,
+            archetype_name: desc.archetype_name,
+            archetype_field_name: desc.archetype_field_name.to_string(),
+        }
+    }
+}
+
 /// Select a component based on its `EntityPath` and `ComponentName`.
 ///
 /// Note, that in the future when Rerun supports duplicate tagged components
 /// on the same entity, this selector may be ambiguous. In this case, the
 /// query result will return an Error if it cannot determine a single selected
 /// component.
+#[deprecated]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnSelector {
     /// The path of the entity.
@@ -121,16 +124,6 @@ pub struct ComponentColumnSelector {
     /// This string will be flexibly matched against the available component names.
     /// Valid matches are case invariant matches of either the full name or the short name.
     pub component_name: String,
-}
-
-impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
-    #[inline]
-    fn from(desc: ComponentColumnDescriptor) -> Self {
-        Self {
-            entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name.short_name().to_owned(),
-        }
-    }
 }
 
 impl std::str::FromStr for ComponentColumnSelector {
@@ -154,17 +147,6 @@ impl std::str::FromStr for ComponentColumnSelector {
             }),
 
             _ => Err(ColumnSelectorParseError::FormatError(selector.to_owned())),
-        }
-    }
-}
-
-impl From<ComponentPath> for ComponentColumnSelector {
-    #[inline]
-    fn from(path: ComponentPath) -> Self {
-        Self {
-            entity_path: path.entity_path,
-            // TODO(#6889): component column selectors should be tag aware?
-            component_name: path.component_descriptor.component_name.as_str().to_owned(),
         }
     }
 }
@@ -200,17 +182,16 @@ impl std::fmt::Display for ComponentColumnSelector {
     }
 }
 
-// TODO(jleibs): Add support for archetype-based column selection.
-/*
-/// Select a component based on its `Archetype` and field.
+/// Select a component based on its [`ArchetypeName`] and archetype field.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+// TODO(#10065): Come up with a better name for this.
 pub struct ArchetypeFieldColumnSelector {
     /// The path of the entity.
-    entity_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// Name of the `Archetype` associated with this data.
-    archetype: ArchetypeName,
+    pub archetype_name: Option<ArchetypeName>,
 
     /// The field within the `Archetype` associated with this data.
-    field: String,
+    pub archetype_field_name: String,
 }
-*/

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use nohash_hasher::IntSet;
 
 use re_byte_size::SizeBytes;
@@ -105,28 +103,6 @@ re_string_interner::declare_new_type!(
     pub struct ComponentName;
 );
 
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(name))
-    }
-}
-
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: &ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(*name))
-    }
-}
-
 impl ComponentName {
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
@@ -174,6 +150,7 @@ impl ComponentName {
     }
 
     /// Is this an indicator component for an archetype?
+    // TODO(#6889): Remove once we remove indicator components.
     pub fn is_indicator_component(&self) -> bool {
         self.ends_with("Indicator")
     }

@@ -862,7 +862,7 @@ impl Chunk {
     ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_ + use<'_, C>> {
         debug_assert_eq!(
             component_descriptor.component_name,
-            C::name(),
+            Some(C::name()),
             "component name mismatch"
         );
 

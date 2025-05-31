@@ -13,6 +13,7 @@ impl Chunk {
     ///
     /// It turns out that too narrow indicator descriptors cause problems while querying.
     /// More information: <https://github.com/rerun-io/rerun/pull/9938#issuecomment-2888808593>
+    // TODO(#6889): Remove together with indicators.
     #[inline]
     pub fn patched_weak_indicator_descriptor_023_compat(&self) -> Self {
         let mut chunk = self.clone();
@@ -22,7 +23,10 @@ impl Chunk {
             .0
             .drain()
             .map(|(mut descriptor, list_array)| {
-                if descriptor.component_name.is_indicator_component() {
+                if descriptor
+                    .component_name
+                    .is_some_and(|c| c.is_indicator_component())
+                {
                     descriptor.archetype_name = None;
                 }
                 (descriptor, list_array)
@@ -59,8 +63,11 @@ impl Chunk {
                     patched_descriptor.archetype_name =
                         Some(archetype_name.as_str().replace(from, to).into());
                 }
-                patched_descriptor.component_name =
-                    descriptor.component_name.replace(from, to).into();
+
+                if let Some(component_name) = descriptor.component_name {
+                    patched_descriptor.component_name =
+                        Some(component_name.replace(from, to).into());
+                }
             }
             if patched_descriptor != *descriptor {
                 components_descriptor_patched_from_to
@@ -69,7 +76,9 @@ impl Chunk {
 
             // Finally, patch actual data that still uses space-view terminology.
             // As far as we know, this only concerns `IncludedContent` specifically.
-            if descriptor.component_name == "rerun.blueprint.components.IncludedContent" {
+            if descriptor.component_name
+                == Some("rerun.blueprint.components.IncludedContent".into())
+            {
                 let arrays = list_array
                     .iter()
                     .map(|utf8_array| {
