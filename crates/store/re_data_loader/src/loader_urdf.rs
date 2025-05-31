@@ -1,13 +1,20 @@
-use std::{path::Path, sync::mpsc::Sender};
+use std::{
+    path::Path,
+    sync::{Arc, mpsc::Sender},
+};
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::Context as _;
-use re_chunk::{ChunkBuilder, ChunkId, RowId, TimePoint};
-use re_log_types::StoreId;
-use re_types::archetypes::{Asset3D, Transform3D};
 use urdf_rs::{Geometry, Joint, Link, Robot};
 
-use crate::{DataLoader, DataLoaderError};
+use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
+use re_log_types::StoreId;
+use re_types::{
+    ComponentDescriptor, SerializedComponentBatch,
+    archetypes::{Asset3D, Transform3D},
+};
+
+use crate::{DataLoader, DataLoaderError, LoadedData};
 
 fn is_urdf_file(path: impl AsRef<Path>) -> bool {
     path.as_ref()
@@ -29,7 +36,7 @@ impl DataLoader for UrdfDataLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: Sender<crate::LoadedData>,
+        tx: Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         if !is_urdf_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath));
@@ -48,7 +55,7 @@ impl DataLoader for UrdfDataLoader {
         _settings: &crate::DataLoaderSettings,
         _filepath: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: Sender<crate::LoadedData>,
+        _tx: Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         todo!()
     }
@@ -99,10 +106,11 @@ impl UrdfTree {
 
 fn load_urdf_file(
     filepath: &Path,
-    tx: &Sender<crate::LoadedData>,
+    tx: &Sender<LoadedData>,
     store_id: &StoreId,
-) -> Result<(), DataLoaderError> {
-    let robot = urdf_rs::read_file(filepath).with_context(|| "Failed to parse URDF file!")?;
+) -> anyhow::Result<()> {
+    let robot =
+        urdf_rs::read_file(filepath).with_context(|| format!("Path: {}", filepath.display()))?;
 
     let root_dir = filepath
         .parent()
@@ -116,7 +124,7 @@ fn load_urdf_file(
     walk_tree(
         &urdf_tree.root.name,
         &urdf_tree,
-        &urdf_name.to_string_lossy(),
+        &urdf_name.to_string_lossy().to_string().into(),
         tx,
         store_id,
         root_dir,
@@ -128,18 +136,19 @@ fn load_urdf_file(
 fn walk_tree(
     link_name: &str,
     urdf_tree: &UrdfTree,
-    parent_path: &str,
-    tx: &Sender<crate::LoadedData>,
+    parent_path: &EntityPath,
+    tx: &Sender<LoadedData>,
     store_id: &StoreId,
     root_dir: &Path,
 ) -> anyhow::Result<()> {
     let link = urdf_tree
         .links
         .get(link_name)
-        .with_context(|| "Link missing from map")?;
-    let link_path = format!("{parent_path}/{link_name}");
+        .with_context(|| format!("Link {link_name:?} missing from map"))?;
+    debug_assert_eq!(link_name, link.name);
+    let link_path = parent_path.join(&link_name.into()); // TODO: ergonomics
 
-    log_link_visuals(link_name, tx, store_id, root_dir, link, &link_path)?;
+    log_link(tx, store_id, root_dir, link, &link_path)?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -147,8 +156,8 @@ fn walk_tree(
     };
 
     for joint in joints {
-        let joint_path = format!("{link_path}/{}", joint.name);
-        log_joint_pose(tx, store_id, &joint_path, joint)?;
+        let joint_path = link_path.join(&joint.name.as_str().into());
+        log_joint(tx, store_id, &joint_path, joint)?;
 
         walk_tree(
             &joint.child.link,
@@ -163,13 +172,64 @@ fn walk_tree(
     Ok(())
 }
 
-fn log_joint_pose(
-    tx: &Sender<crate::LoadedData>,
+fn log_joint(
+    tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    joint_path: &str,
+    joint_path: &EntityPath,
     joint: &Joint,
 ) -> anyhow::Result<()> {
-    let origin = &joint.origin;
+    let Joint {
+        name,
+        joint_type,
+        origin,
+        parent: _,
+        child: _,
+        axis,
+        limit,
+        calibration,
+        dynamics,
+        mimic,
+        safety_controller,
+    } = joint;
+
+    let transform = transform_from_pose(origin);
+
+    let chunk = ChunkBuilder::new(ChunkId::new(), joint_path.clone())
+        .with_archetype(RowId::new(), TimePoint::default(), &transform)
+        .build()?;
+
+    tx.send(LoadedData::Chunk(
+        UrdfDataLoader.name(),
+        store_id.clone(),
+        chunk,
+    ))?;
+
+    log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
+    log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
+    log_debug_format(tx, store_id, joint_path.clone(), "limit", limit)?;
+    if let Some(calibration) = calibration {
+        log_debug_format(tx, store_id, joint_path.clone(), "calibration", calibration)?;
+    }
+    if let Some(dynamics) = dynamics {
+        log_debug_format(tx, store_id, joint_path.clone(), "dynamics", dynamics)?;
+    }
+    if let Some(mimic) = mimic {
+        log_debug_format(tx, store_id, joint_path.clone(), "mimic", mimic)?;
+    }
+    if let Some(safety_controller) = safety_controller {
+        log_debug_format(
+            tx,
+            store_id,
+            joint_path.clone(),
+            "safety_controller",
+            &safety_controller,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let translation = [
         origin.xyz[0] as f32,
         origin.xyz[1] as f32,
@@ -182,64 +242,136 @@ fn log_joint_pose(
         origin.rpy[2] as f32,
     );
 
-    let chunk = ChunkBuilder::new(ChunkId::new(), joint_path.into())
-        .with_archetype(
-            RowId::new(),
-            TimePoint::default(),
-            &Transform3D::from_translation(translation).with_quaternion(quaternion),
-        )
-        .build()?;
+    Transform3D::from_translation(translation).with_quaternion(quaternion)
+}
 
-    tx.send(crate::LoadedData::Chunk(
+fn log_debug_format(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    entity_path: EntityPath,
+    name: &str,
+    value: &dyn std::fmt::Debug,
+) -> anyhow::Result<()> {
+    tx.send(LoadedData::Chunk(
         UrdfDataLoader.name(),
         store_id.clone(),
-        chunk,
+        ChunkBuilder::new(ChunkId::new(), entity_path)
+            .with_serialized_batches(
+                RowId::new(),
+                TimePoint::default(),
+                vec![SerializedComponentBatch {
+                    descriptor: ComponentDescriptor::new(name),
+                    array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
+                }],
+            )
+            .build()?,
     ))?;
-
     Ok(())
 }
 
-fn log_link_visuals(
-    link_name: &str,
-    tx: &Sender<crate::LoadedData>,
+fn log_link(
+    tx: &Sender<LoadedData>,
     store_id: &StoreId,
     root_dir: &Path,
     link: &urdf_rs::Link,
-    link_path: &String,
+    link_entity: &EntityPath,
 ) -> anyhow::Result<()> {
-    for (i, vis) in link.visual.iter().enumerate() {
-        match &vis.geometry {
-            Geometry::Mesh { filename, scale: _ } => {
-                let mesh_path = root_dir.join(filename);
+    let urdf_rs::Link {
+        name,
+        inertial,
+        visual,
+        collision,
+    } = link;
 
-                let asset3d = Asset3D::from_file_path(mesh_path.clone()).with_context(|| {
-                    format!("failed to load asset from: {}", mesh_path.display())
-                })?;
-                let chunk =
-                    ChunkBuilder::new(ChunkId::new(), format!("{link_path}/visual_{i}").into())
-                        .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
-                        .build()?;
+    log_debug_format(tx, store_id, link_entity.clone(), "inertial", &inertial)?;
 
-                tx.send(crate::LoadedData::Chunk(
-                    UrdfDataLoader.name(),
-                    store_id.clone(),
-                    chunk,
-                ))?;
-            }
-            other => {
-                anyhow::bail!(
-                    "Link '{}' has unsupported geometry: {:?}. Only meshes are allowed.",
-                    link_name,
-                    other
-                );
-            }
-        }
+    for (i, visual) in visual.iter().enumerate() {
+        let urdf_rs::Visual {
+            name,
+            origin,
+            geometry,
+            material,
+        } = visual;
+        let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
+        let vis_entity = link_entity.join(&name.into());
+        log_debug_format(tx, store_id, vis_entity.clone(), "origin", &origin)?;
+        log_geometry(
+            tx,
+            store_id,
+            root_dir,
+            vis_entity,
+            geometry,
+            material.as_ref(),
+        )?;
+    }
+
+    for (i, collision) in collision.iter().enumerate() {
+        let urdf_rs::Collision {
+            name,
+            origin,
+            geometry,
+        } = collision;
+        let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
+        let collision_entity = link_entity.join(&name.into());
+        log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?;
+        log_geometry(tx, store_id, root_dir, collision_entity, geometry, None)?;
     }
 
     Ok(())
 }
 
+fn log_geometry(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    root_dir: &Path,
+    vis_entity: EntityPath,
+    geometry: &Geometry,
+    material: Option<&urdf_rs::Material>,
+) -> Result<(), anyhow::Error> {
+    match &geometry {
+        Geometry::Mesh { filename, scale } => {
+            if let Some(material) = material {
+                let urdf_rs::Material {
+                    name: _,
+                    color,
+                    texture,
+                } = material;
+                if color.is_some() {
+                    re_log::warn_once!("Material color not supported");
+                };
+                if texture.is_some() {
+                    re_log::warn_once!("Material texture not supported");
+                }
+            }
+
+            let mesh_path = root_dir.join(filename);
+
+            let asset3d = Asset3D::from_file_path(mesh_path.clone())
+                .with_context(|| format!("failed to load asset from: {}", mesh_path.display()))?;
+
+            if scale.is_some_and(|scale| scale != urdf_rs::Vec3([1.0; 3])) {
+                re_log::warn_once!("Scaled meshes not supported");
+            }
+
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), vis_entity)
+                    .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
+                    .build()?,
+            ))?;
+        }
+        other => {
+            re_log::warn_once!(
+                "Unsupported geometry: {other:?}. Only meshes are currently supported."
+            );
+        }
+    }
+    Ok(())
+}
+
 fn euler_to_quat_xyzw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
+    // TODO(emilk): we should be able to use glam for this
     let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
     let (sr, cr) = (hr.sin(), hr.cos());
     let (sp, cp) = (hp.sin(), hp.cos());
