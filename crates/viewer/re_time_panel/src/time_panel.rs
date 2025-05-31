@@ -16,11 +16,11 @@ use re_log_types::{
 };
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
-use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     ContextExt as _, Help, SyntaxHighlighting as _, UiExt as _, filter_widget, icon_text, icons,
-    list_item, maybe_plus, modifiers_text,
+    list_item,
 };
+use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
     TimeView, UiLayout, ViewerContext, VisitorControlFlow,
@@ -1464,7 +1464,7 @@ fn paint_range_highlight(
     }
 }
 
-fn help(ctx: &egui::Context) -> Help {
+fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("Timeline")
         .control("Play/Pause", "Space")
         .control(
@@ -1481,18 +1481,14 @@ fn help(ctx: &egui::Context) -> Help {
         )
         .control(
             "Zoom",
-            icon_text!(
-                modifiers_text(Modifiers::COMMAND, ctx),
-                maybe_plus(ctx),
-                icons::SCROLL
-            ),
+            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
 }
 
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        help(ui.ctx()).ui(ui);
+        help(ui.ctx().os()).ui(ui);
     });
 }
 
