@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/visible_time_range.hpp"
 #include "../../result.hpp"
 
@@ -47,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisibleTimeRange> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.components.VisibleTimeRange";
 
         /// Returns the arrow data type this type corresponds to.

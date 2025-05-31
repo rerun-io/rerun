@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -43,7 +42,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::TensorDimensionIndexSlider> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.datatypes.TensorDimensionIndexSlider";
 
         /// Returns the arrow data type this type corresponds to.

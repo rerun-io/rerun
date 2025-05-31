@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -58,7 +57,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::Angle> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.Angle";
+        static constexpr std::string_view ComponentName = "rerun.datatypes.Angle";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -74,16 +74,15 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `line_strings` field.
         static constexpr auto Descriptor_line_strings = ComponentDescriptor(
-            ArchetypeName, "line_strings",
-            Loggable<rerun::components::GeoLineString>::Descriptor.component_name
+            ArchetypeName, "line_strings", Loggable<rerun::components::GeoLineString>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
 
       public:
