@@ -14,7 +14,7 @@ use tracing::instrument;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
-use re_dataframe::ViewContentsSelector;
+use re_dataframe::{ChunkStoreConfig, ViewContentsSelector};
 use re_grpc_client::redap::{RedapClient, get_chunks_response_to_chunk_and_partition_id};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
@@ -366,7 +366,7 @@ impl ConnectionHandle {
         wait_for_future(py, async {
             let get_chunks_response_stream = self
                 .client
-                .get_chunks(GetChunksRequest {
+                .get_chunks(dbg!(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: partition_ids
                         .iter()
@@ -378,7 +378,7 @@ impl ConnectionHandle {
                         .map(|p| (*p).clone().into())
                         .collect(),
                     query: Some(query.into()),
-                })
+                }))
                 .await
                 .map_err(to_py_err)?
                 .into_inner();

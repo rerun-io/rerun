@@ -412,18 +412,25 @@ impl PyDataframeQueryView {
         // Fetch relevant chunks
         //
 
+        // TODO: the problem is we don't need all of that data. the easiest way to fix this is to
+        // improve the query so it can be batched.
+
         let chunk_stores = connection.get_chunks_for_dataframe_query(
             py,
             dataset_id,
             &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
+            self_.query_expression.min_latest_at(), // TODO: this is the entire problem, damn
             self_.query_expression.max_range(),
             self_.partition_ids.as_slice(),
         )?;
 
+
+        let mut total = 0;
         let query_engines = chunk_stores
             .into_iter()
             .map(|(partition_id, chunk_store)| {
+                dbg!((&partition_id, chunk_store.num_chunks()));
+                total += chunk_store.num_chunks();
                 let store_handle = ChunkStoreHandle::new(chunk_store);
                 let query_engine = QueryEngine::new(
                     store_handle.clone(),
@@ -433,6 +440,7 @@ impl PyDataframeQueryView {
                 (partition_id, query_engine)
             })
             .collect();
+        dbg!(total);
 
         let provider: Arc<dyn TableProvider> =
             DataframeQueryTableProvider::new(query_engines, self_.query_expression.clone())
