@@ -524,14 +524,16 @@ fn preview_single_blob(
         .component_mono::<components::Blob>(blob_descr)?
         .ok()?;
 
-    // Media type comes typically alongside the blob.
+    // Media type comes typically alongside the blob in various different archetypes.
+    // Look for the one that matches the blob's archetype.
     let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
         components,
         blob_descr.archetype_name,
     )
     .or_else(|| components::MediaType::guess_from_data(&blob));
 
-    // Video timestamp is only relevant here if it comes from a VideoFrameReference.
+    // Video timestamp is only relevant here if it comes from a VideoFrameReference archetype.
+    // It doesn't show up in the blob's archetype.
     let video_timestamp_descr = archetypes::VideoFrameReference::descriptor_timestamp();
     let video_timestamp = components
         .iter()
