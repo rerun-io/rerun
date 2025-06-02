@@ -52,7 +52,7 @@ def _buffer_to_data_url(binary: bytes) -> str:
     return f"data:application/octet-stream;gzip;base64,{b64}"
 
 
-def _inline_widget():
+def _inline_widget() -> str:
     """
     For `RERUN_NOTEBOOK_ASSET=inline`, we need a single file to pass to `anywidget`.
 
@@ -109,7 +109,7 @@ def _set_parsed_url_filename(url: urllib.parse.ParseResult, filename: str) -> ur
     return url._replace(path=new_path)
 
 
-def _check_if_assets_accessible(widget_url: str):
+def _check_if_assets_accessible(widget_url: str) -> None:
     parsed_url = urllib.parse.urlparse(widget_url)
 
     assert parsed_url.path.endswith("widget.js")
