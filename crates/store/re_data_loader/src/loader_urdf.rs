@@ -465,8 +465,17 @@ fn log_geometry(
                     }
                 }
 
-                if scale.is_some_and(|scale| scale != urdf_rs::Vec3([1.0; 3])) {
-                    re_log::warn_once!("Scaled meshes not supported"); // TODO(emilk): support mesh scale
+                if let Some(scale) = scale {
+                    if scale != &urdf_rs::Vec3([1.0; 3]) {
+                        let urdf_rs::Vec3([x, y, z]) = *scale;
+                        send_archetype(
+                            tx,
+                            store_id,
+                            entity_path.clone(),
+                            &Transform3D::update_fields()
+                                .with_scale([x as f32, y as f32, z as f32]),
+                        )?;
+                    }
                 }
 
                 send_archetype(tx, store_id, entity_path, &asset3d)?;
