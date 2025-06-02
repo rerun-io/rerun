@@ -92,6 +92,8 @@ enum EntryKind {
   ENTRY_KIND_TABLE = 3;
 
   ENTRY_KIND_TABLE_VIEW = 4;
+
+  ENTRY_KIND_BLUEPRINT_DATASET = 5;
 }
 
 // Minimal info about an Entry for high-level catalog summary
@@ -112,6 +114,8 @@ message EntryDetails {
 
 message DatasetEntry {
   EntryDetails details = 1;
+
+  optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
   // Read-only
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;

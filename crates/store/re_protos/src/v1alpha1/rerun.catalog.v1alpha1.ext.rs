@@ -1,5 +1,6 @@
 use crate::v1alpha1::rerun_common_v1alpha1_ext::DatasetHandle;
 use crate::{TypeConversionError, missing_field};
+use re_log_types::EntryId;
 
 // --- EntryDetails ---
 
@@ -73,6 +74,7 @@ impl From<EntryDetails> for crate::catalog::v1alpha1::EntryDetails {
 #[derive(Debug, Clone)]
 pub struct DatasetEntry {
     pub details: EntryDetails,
+    pub blueprint_dataset: Option<EntryId>,
     pub handle: DatasetHandle,
 }
 
@@ -88,6 +90,7 @@ impl TryFrom<crate::catalog::v1alpha1::DatasetEntry> for DatasetEntry {
                     "details"
                 ))?
                 .try_into()?,
+            blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
             handle: value
                 .dataset_handle
                 .ok_or(missing_field!(
@@ -103,6 +106,7 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
     fn from(value: DatasetEntry) -> Self {
         Self {
             details: Some(value.details.into()),
+            blueprint_dataset: value.blueprint_dataset.map(Into::into),
             dataset_handle: Some(value.handle.into()),
         }
     }

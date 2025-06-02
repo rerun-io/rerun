@@ -42,7 +42,7 @@ impl From<EntryId> for PyEntryId {
 
 /// The kinds of entries that can be stored in the catalog.
 #[pyclass(name = "EntryKind", eq, eq_int)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
 pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
     Dataset = 1,
@@ -55,6 +55,9 @@ pub enum PyEntryKind {
 
     #[pyo3(name = "TABLE_VIEW")]
     TableView = 4,
+
+    #[pyo3(name = "BLUEPRINT_DATASET")]
+    BlueprintDataset = 5,
 }
 
 #[pymethods]
@@ -80,6 +83,18 @@ impl TryFrom<EntryKind> for PyEntryKind {
             EntryKind::DatasetView => Ok(Self::DatasetView),
             EntryKind::Table => Ok(Self::Table),
             EntryKind::TableView => Ok(Self::TableView),
+            EntryKind::BlueprintDataset => Ok(Self::BlueprintDataset),
+        }
+    }
+}
+impl From<PyEntryKind> for EntryKind {
+    fn from(value: PyEntryKind) -> Self {
+        match value {
+            PyEntryKind::Dataset => Self::Dataset,
+            PyEntryKind::DatasetView => Self::DatasetView,
+            PyEntryKind::Table => Self::Table,
+            PyEntryKind::TableView => Self::TableView,
+            PyEntryKind::BlueprintDataset => Self::BlueprintDataset,
         }
     }
 }
@@ -150,5 +165,23 @@ impl PyEntry {
         let connection = self.client.borrow_mut(py).connection().clone();
 
         connection.delete_entry(py, entry_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_entry_kind_and_py_entry_kind_have_same_representation() {
+        use strum::IntoEnumIterator as _;
+
+        for kind in PyEntryKind::iter() {
+            let entry_kind: EntryKind = kind.into();
+            assert_eq!(
+                kind as i32, entry_kind as i32,
+                "Mismatched numerical representation for kind: {kind:?}",
+            );
+        }
     }
 }
