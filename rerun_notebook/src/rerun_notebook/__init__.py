@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import http.client
 import importlib.metadata
 import logging
 import os
 import pathlib
 import time
-from collections.abc import Mapping
-from typing import Any, Callable, Literal
-import http.client
 import urllib.parse
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Literal
 
 import anywidget
 import jupyter_ui_poll
@@ -62,7 +62,7 @@ def _inline_widget():
     create a fake Response for the JS to load as a Wasm module.
     """
     print("Loading inline widget due to RERUN_NOTEBOOK_ASSET=inline")
-    
+
     wasm = WASM_PATH.read_bytes()
     data_url = _buffer_to_data_url(wasm)
 
@@ -91,13 +91,9 @@ def _inline_widget():
 
 
 def _is_url_accessible(url: urllib.parse.ParseResult) -> tuple[urllib.parse.ParseResult, bool]:
-    conn = (
-        http.client.HTTPSConnection(url.netloc)
-        if url.scheme == 'https'
-        else http.client.HTTPConnection(url.netloc)
-    )
+    conn = http.client.HTTPSConnection(url.netloc) if url.scheme == "https" else http.client.HTTPConnection(url.netloc)
     try:
-        conn.request('HEAD', url.path or '/')
+        conn.request("HEAD", url.path or "/")
         res = conn.getresponse()
         return url, res.status == 200
     except Exception:
@@ -109,7 +105,7 @@ def _is_url_accessible(url: urllib.parse.ParseResult) -> tuple[urllib.parse.Pars
 def _set_parsed_url_filename(url: urllib.parse.ParseResult, filename: str) -> urllib.parse.ParseResult:
     path_parts = url.path.split("/")
     path_parts[-1] = filename
-    new_path = '/'.join(path_parts)
+    new_path = "/".join(path_parts)
     return url._replace(path=new_path)
 
 
@@ -129,9 +125,12 @@ def _check_if_assets_accessible(widget_url: str):
     for url, exists in results:
         if not exists:
             success = False
-            print(f"\"{url.geturl()}\" is not accessible")
+            print(f'"{url.geturl()}" is not accessible')
     if not success:
-        raise ValueError(f"One or more asset URLs are inaccessible. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.")
+        raise ValueError(
+            f"One or more asset URLs are inaccessible. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
+        )
+
 
 ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
 if ASSET_ENV is None:
@@ -261,7 +260,9 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         with jupyter_ui_poll.ui_events() as poll:
             while self._ready is False:
                 if time.time() - start > timeout:
-                    logging.warning(f"Timed out waiting for viewer to load. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.")
+                    logging.warning(
+                        f"Timed out waiting for viewer to load. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
+                    )
                     return
                 poll(1)
                 time.sleep(0.1)

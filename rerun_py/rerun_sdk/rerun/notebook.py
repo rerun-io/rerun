@@ -18,9 +18,8 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-from rerun_notebook import Viewer as _Viewer
-
 from rerun import bindings
+from rerun_notebook import Viewer as _Viewer
 
 from .event import (
     ViewerEvent as ViewerEvent,
