@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
 use re_chunk::EntityPath;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression};
-use re_log_types::{EntityPathFilter, StoreId};
+use re_chunk_store::{ChunkStoreHandle, QueryExpression};
+use re_log_types::EntityPathFilter;
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
 use re_sorbet::ChunkColumnDescriptors;
 
@@ -45,13 +43,14 @@ impl QueryEngine<StorageEngine> {
 
     /// Like [`ChunkStore::from_rrd_filepath`], but automatically instantiates [`QueryEngine`]s
     /// with new empty [`QueryCache`]s.
+    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_rrd_filepath(
-        store_config: &ChunkStoreConfig,
+        store_config: &re_chunk_store::ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+    ) -> anyhow::Result<std::collections::BTreeMap<re_log_types::StoreId, Self>> {
         Ok(
-            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd)?
+            re_chunk_store::ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd)?
                 .into_iter()
                 .map(|(store_id, store)| (store_id, Self::from_store(store)))
                 .collect(),

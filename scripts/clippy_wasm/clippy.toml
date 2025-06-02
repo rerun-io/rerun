@@ -76,7 +76,12 @@ disallowed-methods = [
   { path = "rayon::spawn", reason = "Cannot spawn threads on wasm" },
   { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
   { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
+  { path = "std::fs::read", reason = "Can't access files on web" },
+  { path = "std::fs::write", reason = "Can't access files on web" },
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
+  { path = "std::path::PathBuf::exists", reason = "Can't access files on web" },
+  { path = "std::path::PathBuf::is_file", reason = "Can't access files on web" },
+  { path = "std::path::PathBuf::metadata", reason = "Can't access files on web" },
   { path = "std::sync::mpsc::Receiver::into_iter", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::iter", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::recv_timeout", reason = "Cannot block on Web" },
@@ -93,11 +98,12 @@ disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "instant::SystemTime", reason = "Known bugs. Use web-time." },
   { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
+  { path = "std::fs::File", reason = "Can't access files on web" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
   { path = "std::sync::RwLock", reason = "Use parking_lot instead" },
   { path = "std::thread::Builder", reason = "Cannot spawn threads on wasm" },
-  # { path = "std::path::PathBuf", reason = "Can't read/write files on web" }, // Used in build.rs files (which is fine).
+  # { path = "std::path::PathBuf" }, # We allow having paths, just not resolving them to files
 ]
 
 # Allow-list of words for markdown in docstrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
