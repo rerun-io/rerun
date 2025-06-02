@@ -178,6 +178,9 @@ impl MeshDrawData {
 
         // NOTE: can't use HashMap here or we get undeterrministic rendering order.
         // See <https://github.com/rerun-io/rerun/issues/10116> for more.
+        // Using a `BTreeMap` at least gives the same order every frame,
+        // but since it uses the pointer address as the key,
+        // it will still change if we run the app multiple times.
         let mut instances_by_mesh: BTreeMap<_, Vec<_>> = BTreeMap::new();
         for instance in instances {
             instances_by_mesh
