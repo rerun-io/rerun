@@ -1,8 +1,3 @@
-#![cfg_attr(
-    target_arch = "wasm32",
-    expect(unused_imports, unused_variables, clippy::needless_pass_by_value)
-)]
-
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, mpsc::Sender},
@@ -117,7 +112,6 @@ struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
     /// Used to find mesh files (.stl etc) relative to the URDF file.
-    #[cfg(not(target_arch = "wasm32"))]
     urdf_dir: Option<PathBuf>,
 
     name: String,
@@ -175,7 +169,6 @@ impl UrdfTree {
         };
 
         Ok(Self {
-            #[cfg(not(target_arch = "wasm32"))]
             urdf_dir,
             name,
             root: root.clone(),
@@ -421,6 +414,42 @@ fn log_link(
     Ok(())
 }
 
+/// TODO: trait-ify this
+#[cfg(target_arch = "wasm32")]
+fn load_ros_resource(_root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
+    anyhow::bail!("Loading ROS resources is not supported in WebAssembly: {resource_path}");
+}
+
+/// TODO: trait-ify this
+#[cfg(not(target_arch = "wasm32"))]
+fn load_ros_resource(
+    // Where the .urdf file is located.
+    root_dir: Option<&PathBuf>,
+    resource_path: &str,
+) -> anyhow::Result<Vec<u8>> {
+    if let Some((scheme, path)) = resource_path.split_once("://") {
+        match scheme {
+            "file" => std::fs::read(path).with_context(|| format!("Failed to read file: {path}")),
+            "package" => {
+                // This is a ROS package resource, which we don't support yet.
+                bail!("ROS package resources are not supported: {resource_path}");
+            }
+            _ => {
+                bail!("Unknown resource scheme: {scheme:?} in {resource_path}");
+            }
+        }
+    } else {
+        // Relative path
+        if let Some(root_dir) = &root_dir {
+            let full_path = root_dir.join(resource_path);
+            std::fs::read(&full_path)
+                .with_context(|| format!("Failed to read file: {}", full_path.display()))
+        } else {
+            bail!("No root directory set for URDF, cannot load resource: {resource_path}");
+        }
+    }
+}
+
 fn log_geometry(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
@@ -431,57 +460,47 @@ fn log_geometry(
 ) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale } => {
-            #[cfg(target_arch = "wasm32")]
-            re_log::warn_once!("URDF mesh loading not supported on wasm32");
+            use re_types::components::MediaType;
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(urdf_dir) = &urdf_tree.urdf_dir {
-                let mesh_path = urdf_dir.join(filename);
+            let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
+            let mut asset3d =
+                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename));
 
-                let mut asset3d =
-                    Asset3D::from_file_path(mesh_path.clone()).with_context(|| {
-                        format!("failed to load asset from: {}", mesh_path.display())
-                    })?;
-
-                if let Some(material) = material {
-                    let urdf_rs::Material {
-                        name: _,
-                        color,
-                        texture,
-                    } = material;
-                    if let Some(color) = color {
-                        let urdf_rs::Color {
-                            rgba: Vec4([r, g, b, a]),
-                        } = color;
-                        asset3d = asset3d.with_albedo_factor(
-                            // TODO(emilk): is this linear or sRGB?
-                            re_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
-                                *r as f32, *g as f32, *b as f32, *a as f32,
-                            ),
-                        );
-                    };
-                    if texture.is_some() {
-                        re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
-                    }
+            if let Some(material) = material {
+                let urdf_rs::Material {
+                    name: _,
+                    color,
+                    texture,
+                } = material;
+                if let Some(color) = color {
+                    let urdf_rs::Color {
+                        rgba: Vec4([r, g, b, a]),
+                    } = color;
+                    asset3d = asset3d.with_albedo_factor(
+                        // TODO(emilk): is this linear or sRGB?
+                        re_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
+                            *r as f32, *g as f32, *b as f32, *a as f32,
+                        ),
+                    );
+                };
+                if texture.is_some() {
+                    re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                 }
-
-                if let Some(scale) = scale {
-                    if scale != &urdf_rs::Vec3([1.0; 3]) {
-                        let urdf_rs::Vec3([x, y, z]) = *scale;
-                        send_archetype(
-                            tx,
-                            store_id,
-                            entity_path.clone(),
-                            &Transform3D::update_fields()
-                                .with_scale([x as f32, y as f32, z as f32]),
-                        )?;
-                    }
-                }
-
-                send_archetype(tx, store_id, entity_path, &asset3d)?;
-            } else {
-                re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
+
+            if let Some(scale) = scale {
+                if scale != &urdf_rs::Vec3([1.0; 3]) {
+                    let urdf_rs::Vec3([x, y, z]) = *scale;
+                    send_archetype(
+                        tx,
+                        store_id,
+                        entity_path.clone(),
+                        &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
+                    )?;
+                }
+            }
+
+            send_archetype(tx, store_id, entity_path, &asset3d)?;
         }
         Geometry::Box {
             size: Vec3([x, y, z]),
