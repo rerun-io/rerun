@@ -442,6 +442,7 @@ pub struct DecodeSettings {
     /// Custom path for the ffmpeg binary.
     ///
     /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
+    #[cfg(not(target_arch = "wasm32"))]
     pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 
