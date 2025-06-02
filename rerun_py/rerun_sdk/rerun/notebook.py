@@ -261,7 +261,7 @@ class Viewer:
         table_as_bytes = sink.getvalue().to_pybytes()
         self._viewer.send_table(table_as_bytes)
 
-    def display(self, block_until_ready: bool = True) -> None:
+    def display(self, block_until_ready: bool = False) -> None:
         """
         Display the viewer in the notebook cell immediately.
 
@@ -282,7 +282,7 @@ class Viewer:
             self._viewer.block_until_ready()
 
     def _ipython_display_(self) -> None:
-        self.display(block_until_ready=True)
+        self.display()
 
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
