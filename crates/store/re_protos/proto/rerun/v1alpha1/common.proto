@@ -94,6 +94,9 @@ message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   EntryId entry_id = 1;
 
+  // The kind of dateset this handle refers to.
+  StoreKind store_kind = 3;
+
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   optional string dataset_url = 2;
 }

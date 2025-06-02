@@ -211,6 +211,9 @@ pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<EntryId>,
+    /// The kind of dateset this handle refers to.
+    #[prost(enumeration = "StoreKind", tag = "3")]
+    pub store_kind: i32,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
