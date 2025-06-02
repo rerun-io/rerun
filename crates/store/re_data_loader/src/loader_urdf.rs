@@ -10,7 +10,7 @@ use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec4};
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::StoreId;
 use re_types::{
-    ComponentDescriptor, SerializedComponentBatch,
+    Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
 };
 
@@ -334,7 +334,36 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity.join(&name.into());
         log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?;
-        log_geometry(urdf_tree, tx, store_id, collision_entity, geometry, None)?;
+        log_geometry(
+            urdf_tree,
+            tx,
+            store_id,
+            collision_entity.clone(),
+            geometry,
+            None,
+        )?;
+
+        if false {
+            // TODO(#6541): the viewer should respect the `Visible` component.
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), collision_entity)
+                    .with_component_batch(
+                        RowId::new(),
+                        TimePoint::default(),
+                        (
+                            ComponentDescriptor {
+                                archetype_name: None,
+                                archetype_field_name: None,
+                                component_name: re_types::components::Visible::name(),
+                            },
+                            &re_types::components::Visible::from(false),
+                        ),
+                    )
+                    .build()?,
+            ))?;
+        }
     }
 
     Ok(())
@@ -344,7 +373,7 @@ fn log_geometry(
     urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    vis_entity: EntityPath,
+    entity_path: EntityPath,
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
 ) -> Result<(), anyhow::Error> {
@@ -387,7 +416,7 @@ fn log_geometry(
                 tx.send(crate::LoadedData::Chunk(
                     UrdfDataLoader.name(),
                     store_id.clone(),
-                    ChunkBuilder::new(ChunkId::new(), vis_entity)
+                    ChunkBuilder::new(ChunkId::new(), entity_path)
                         .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
                         .build()?,
                 ))?;
