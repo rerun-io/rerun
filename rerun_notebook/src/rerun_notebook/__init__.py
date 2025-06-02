@@ -7,6 +7,9 @@ import pathlib
 import time
 from collections.abc import Mapping
 from typing import Any, Callable, Literal
+import http.client
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 
 import anywidget
 import jupyter_ui_poll
@@ -87,6 +90,49 @@ def _inline_widget():
     return js
 
 
+def _is_url_accessible(url: urllib.parse.ParseResult) -> tuple[urllib.parse.ParseResult, bool]:
+    conn = (
+        http.client.HTTPSConnection(url.netloc)
+        if url.scheme == 'https'
+        else http.client.HTTPConnection(url.netloc)
+    )
+    try:
+        conn.request('HEAD', url.path or '/')
+        res = conn.getresponse()
+        return url, res.status == 200
+    except Exception:
+        return url, False
+    finally:
+        conn.close()
+
+
+def _set_parsed_url_filename(url: urllib.parse.ParseResult, filename: str) -> urllib.parse.ParseResult:
+    path_parts = url.path.split("/")
+    path_parts[-1] = filename
+    new_path = '/'.join(path_parts)
+    return url._replace(path=new_path)
+
+
+def _check_if_assets_accessible(widget_url: str):
+    parsed_url = urllib.parse.urlparse(widget_url)
+
+    assert parsed_url.path.endswith("widget.js")
+    urls_to_check = [
+        parsed_url,
+        _set_parsed_url_filename(parsed_url, "re_viewer_bg.wasm"),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as e:
+        results = list(e.map(_is_url_accessible, urls_to_check))
+
+    success = True
+    for url, exists in results:
+        if not exists:
+            success = False
+            print(f"\"{url.geturl()}\" is not accessible")
+    if not success:
+        raise ValueError(f"One or more asset URLs are inaccessible. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.")
+
 ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
 if ASSET_ENV is None:
     # if we're in the `rerun` repository, default to `serve-local`
@@ -109,6 +155,10 @@ else:  # remote widget
     # note that the JS expects the Wasm binary to exist at the same path as itself
     if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
+    if not (ASSET_ENV.endswith("widget.js")):
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
+
+    _check_if_assets_accessible(ASSET_ENV)
 
 
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
@@ -211,11 +261,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         with jupyter_ui_poll.ui_events() as poll:
             while self._ready is False:
                 if time.time() - start > timeout:
-                    logging.warning(
-                        f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
-If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
-""",
-                    )
+                    logging.warning(f"Timed out waiting for viewer to load. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.")
                     return
                 poll(1)
                 time.sleep(0.1)
