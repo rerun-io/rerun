@@ -3,9 +3,8 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data.
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
-use ahash::{HashMap, HashMapExt as _};
 use smallvec::smallvec;
 
 use crate::{
@@ -177,7 +176,9 @@ impl MeshDrawData {
             },
         );
 
-        let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::new();
+        // NOTE: can't use HashMap here or we get undeterrministic rendering order.
+        // See <https://github.com/rerun-io/rerun/issues/10116> for more.
+        let mut instances_by_mesh: BTreeMap<_, Vec<_>> = BTreeMap::new();
         for instance in instances {
             instances_by_mesh
                 // Use pointer equality, this is enough to determine if two instances use the same mesh.
