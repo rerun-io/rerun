@@ -1,5 +1,5 @@
 use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
-use re_math::IsoTransform;
+use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
@@ -367,7 +367,7 @@ fn setup_target_config(
     };
 
     // Position the camera looking straight at the principal point:
-    let view_from_world = re_math::IsoTransform::look_at_rh(
+    let view_from_world = macaw::IsoTransform::look_at_rh(
         pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
