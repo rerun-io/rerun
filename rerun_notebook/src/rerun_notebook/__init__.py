@@ -21,8 +21,10 @@ except importlib.metadata.PackageNotFoundError:
 Panel = Literal["top", "blueprint", "selection", "time"]
 PanelState = Literal["expanded", "collapsed", "hidden"]
 
-WIDGET_PATH = pathlib.Path(__file__).parent / "static" / "widget.js"
-CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
+STATIC_DIR = pathlib.Path(__file__).parent / "static"
+WIDGET_PATH = STATIC_DIR / "widget.js"
+WASM_PATH = STATIC_DIR / "re_viewer_bg.wasm"
+CSS_PATH = STATIC_DIR / "widget.css"
 
 # We need to bootstrap the value of ESM_MOD before the Viewer class is instantiated.
 # This is because AnyWidget will process the resource files during `__init_subclass__`
@@ -36,22 +38,75 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
+
+def _buffer_to_data_url(binary: bytes) -> str:
+    import base64
+    import gzip
+
+    gz = gzip.compress(binary)
+    b64 = base64.b64encode(gz).decode()
+
+    return f"data:application/octet-stream;gzip;base64,{b64}"
+
+
+def _inline_widget():
+    """
+    For `RERUN_NOTEBOOK_ASSET=inline`, we need a single file to pass to `anywidget`.
+
+    This function loads both the JS and Wasm files, then inlines the Wasm into the JS.
+
+    The Wasm is stored in the JS file as a (gzipped) base64 string, from which we can
+    create a fake Response for the JS to load as a Wasm module.
+    """
+    print("Loading inline widget due to RERUN_NOTEBOOK_ASSET=inline")
+    
+    wasm = WASM_PATH.read_bytes()
+    data_url = _buffer_to_data_url(wasm)
+
+    js = WIDGET_PATH.read_text()
+    fetch_viewer_wasm = f"""
+    async function compressed_data_url_to_buffer(dataUrl) {{
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+
+        let ds = new DecompressionStream("gzip");
+        let decompressedStream = blob.stream().pipeThrough(ds);
+
+        return new Response(decompressedStream).arrayBuffer();
+    }}
+    const dataUrl = "{data_url}";
+    const buffer = await compressed_data_url_to_buffer(dataUrl);
+    return new Response(buffer, {{ "headers": {{ "Content-Type": "application/wasm" }} }});
+    """
+
+    inline_marker = "//!<INLINE-MARKER>"
+    inline_start = js.find(inline_marker) + len(inline_marker)
+    inline_end = js.find(inline_marker, inline_start)
+    js = js[:inline_start] + fetch_viewer_wasm + js[inline_end:]
+
+    return js
+
+
 ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
 if ASSET_ENV is None:
+    # if we're in the `rerun` repository, default to `serve-local`
+    # as we don't upload widgets for `+dev` versions anywhere
     if "RERUN_DEV_ENVIRONMENT" in os.environ:
         ASSET_ENV = "serve-local"
     else:
         ASSET_ENV = f"https://app.rerun.io/version/{__version__}/widget.js"
 
-if ASSET_ENV == ASSET_MAGIC_SERVE:
+if ASSET_ENV == ASSET_MAGIC_SERVE:  # localhost widget
     from .asset_server import serve_assets
 
     bound_addr = serve_assets(background=True)
     ESM_MOD: str | pathlib.Path = f"http://localhost:{bound_addr[1]}/widget.js"
-elif ASSET_ENV == ASSET_MAGIC_INLINE:
-    ESM_MOD = WIDGET_PATH
-else:
+elif ASSET_ENV == ASSET_MAGIC_INLINE:  # inline widget
+    # in this case, `ESM_MOD` is the contents of a file, not its path.
+    ESM_MOD = _inline_widget()
+else:  # remote widget
     ESM_MOD = ASSET_ENV
+    # note that the JS expects the Wasm binary to exist at the same path as itself
     if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
@@ -104,10 +159,6 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._url = url
         self._data_queue = []
         self._table_queue = []
-
-        from ipywidgets import widgets
-
-        self._output = widgets.Output()
 
         if panel_states:
             self.update_panel_states(panel_states)
