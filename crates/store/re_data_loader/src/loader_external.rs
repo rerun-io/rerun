@@ -1,5 +1,6 @@
 use std::{
     io::Read as _,
+    path::PathBuf,
     sync::{Arc, atomic::AtomicBool},
 };
 
@@ -28,7 +29,7 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 /// External loaders are _not_ registered on a per-extension basis: we want users to be able to
 /// filter data on a much more fine-grained basis that just file extensions (e.g. checking the file
 /// itself for magic bytes).
-pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
+pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<PathBuf>> = Lazy::new(|| {
     re_tracing::profile_scope!("initialize-external-loaders");
 
     let dir_separator = if cfg!(target_os = "windows") {
@@ -46,7 +47,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
                 .map(ToOwned::to_owned)
                 .collect::<Vec<_>>()
         })
-        .map(std::path::PathBuf::from);
+        .map(PathBuf::from);
 
     let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
     for dirpath in dirpaths {
@@ -64,7 +65,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
                     .to_string_lossy()
                     .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
             });
-            (filepath.is_file() && is_rerun_loader).then_some(filepath)
+            (is_executable(&filepath) && is_rerun_loader).then_some(filepath)
         });
 
         for path in paths {
@@ -92,7 +93,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
 
 /// Iterator over all registered external [`crate::DataLoader`]s.
 #[inline]
-pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathBuf> {
+pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = PathBuf> {
     re_tracing::profile_wait!("EXTERNAL_LOADER_PATHS");
     EXTERNAL_LOADER_PATHS.iter().cloned()
 }
@@ -119,7 +120,7 @@ impl crate::DataLoader for ExternalLoader {
     fn load_from_path(
         &self,
         settings: &crate::DataLoaderSettings,
-        filepath: std::path::PathBuf,
+        filepath: PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use std::process::{Command, Stdio};
@@ -297,7 +298,7 @@ impl crate::DataLoader for ExternalLoader {
     fn load_from_file_contents(
         &self,
         _settings: &crate::DataLoaderSettings,
-        path: std::path::PathBuf,
+        path: PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -331,5 +332,32 @@ fn decode_and_stream<R: std::io::Read>(
         if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
+    }
+}
+
+/// This helpfully ignores files with the correct prefix that are not executable,
+/// e.g. debug symbols for compiled binaries.
+fn is_executable(path: &std::path::Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return false;
+    };
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let permissions = metadata.permissions();
+        permissions.mode() & 0o111 != 0
+    }
+
+    #[cfg(windows)]
+    {
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| matches!(ext.to_lowercase().as_str(), "exe" | "bat" | "cmd"))
+            .unwrap_or(false)
     }
 }
