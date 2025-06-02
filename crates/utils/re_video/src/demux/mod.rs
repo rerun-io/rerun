@@ -538,9 +538,9 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &[&[u8]], sample_idx: usize) -> Option<Chunk> {
-        let data = data
-            .get(self.buffer_index as usize)?
+    pub fn get(&self, data: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
+        let buffer = *data.get(self.buffer_index as usize)?;
+        let data = buffer
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
             .to_vec();
 
@@ -622,7 +622,7 @@ fn latest_at_idx<T, K: Ord>(
 
     let idx = v.partition_point(|x| key(x) <= *needle);
 
-    if idx == v.smallest_valid_index() {
+    if idx == v.min_index() {
         // If idx is the smallest possible value, then all elements are greater than the needle
         if &key(&v[idx]) > needle {
             return None;

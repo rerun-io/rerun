@@ -188,7 +188,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
                 tokens.table_line_height(),
                 video_data.samples.num_elements(),
                 |mut row| {
-                    let sample_idx = row.index() + video_data.samples.smallest_valid_index();
+                    let sample_idx = row.index() + video_data.samples.min_index();
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
@@ -285,7 +285,7 @@ pub fn show_decoded_frame_info(
         render_ctx,
         player_stream_id,
         timestamp_in_secs,
-        &[blob.as_ref()],
+        &std::iter::once(blob.as_ref()).collect(),
     ) {
         Ok(VideoFrameTexture {
             texture,

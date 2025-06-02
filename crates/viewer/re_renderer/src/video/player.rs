@@ -3,7 +3,7 @@ use std::time::Duration;
 use web_time::Instant;
 
 use re_video::{
-    Time,
+    StableIndexDeque, Time,
     decode::{DecodeSettings, FrameInfo},
 };
 
@@ -127,7 +127,7 @@ impl VideoPlayer {
         render_ctx: &RenderContext,
         time_since_video_start_in_secs: f64,
         video_description: &re_video::VideoDataDescription,
-        video_data: &[&[u8]],
+        video_data: &StableIndexDeque<&[u8]>,
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if time_since_video_start_in_secs < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
@@ -197,7 +197,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         presentation_timestamp: Time,
-        video_data: &[&[u8]],
+        video_data: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
 
@@ -254,14 +254,24 @@ impl VideoPlayer {
                 self.reset()?;
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
-            let current_pts =
-                video_description.samples[self.last_requested_sample_idx].presentation_timestamp;
-            let requested_sample = &video_description.samples[requested_sample_idx];
+            let requested_sample = video_description
+                .samples
+                .get(self.last_requested_sample_idx); // If it is not available, it got GC'ed by now.
+            let current_pts = requested_sample
+                .map(|s| s.presentation_timestamp)
+                .unwrap_or(Time::MIN);
 
-            if requested_sample.presentation_timestamp < current_pts {
+            let requested_sample = video_description.samples.get(requested_sample_idx);
+            let requested_sample_pts = requested_sample
+                .map(|s| s.presentation_timestamp)
+                .unwrap_or(Time::MIN);
+
+            if requested_sample_pts < current_pts {
                 re_log::trace!(
                     "Seeking backwards to sample {requested_sample_idx} (frame_nr {})",
-                    requested_sample.frame_nr
+                    requested_sample
+                        .map(|s| s.frame_nr.to_string())
+                        .unwrap_or("<unknown>".to_owned())
                 );
 
                 // special case: handle seeking backwards within a single GOP
@@ -324,7 +334,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         gop_idx: usize,
-        video_data: &[&[u8]],
+        video_data: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         let Some(gop) = video_description.gops.get(gop_idx) else {
             return Ok(());

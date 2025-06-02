@@ -183,7 +183,7 @@ impl VideoFrameReferenceVisualizer {
                         ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
-                        &[video_data.as_ref()],
+                        &std::iter::once(video_data.as_ref()).collect(),
                     ) {
                         Ok(video_frame_reference) => {
                             visualize_video_frame_texture(

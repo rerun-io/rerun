@@ -20,6 +20,22 @@ impl<T> StableIndexDeque<T> {
         }
     }
 
+    /// Creates a new deque from an iterator and an index offset.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let v = StableIndexDeque::from_iter_with_offset(0..2, 1);
+    /// assert_eq!(v.get(0), None);
+    /// assert_eq!(v.get(1), Some(&0));
+    /// assert_eq!(v.get(2), Some(&1));
+    /// ```
+    pub fn from_iter_with_offset(iter: impl IntoIterator<Item = T>, index_offset: usize) -> Self {
+        Self {
+            vec: VecDeque::from_iter(iter),
+            index_offset,
+        }
+    }
+
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -35,10 +51,19 @@ impl<T> StableIndexDeque<T> {
     }
 
     /// Unlike with [`VecDeque::pop_front`], indices into the deque stay the same.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
+    /// assert_eq!(v.get(0), Some(&0));
+    /// assert_eq!(v.get(1), Some(&1));
+    /// v.pop_front();
+    /// assert_eq!(v.get(0), None);
+    /// assert_eq!(v.get(1), Some(&1));
+    /// ```
     #[inline]
     pub fn pop_front(&mut self) -> Option<T> {
-        self.index_offset += 1;
-        self.vec.pop_front()
+        self.vec.pop_front().inspect(|_| self.index_offset += 1)
     }
 
     /// See [`VecDeque::pop_back`].
@@ -76,22 +101,19 @@ impl<T> StableIndexDeque<T> {
         self.vec.back_mut()
     }
 
-    /// Truncates the deque to the given number of elements.
-    /// Does **not** take into account the internal index offset.
-    ///
-    /// ```
-    /// # use re_video::StableIndexDeque;
-    /// let mut v = (0..4).collect::<StableIndexDeque<i32>>();
-    /// v.pop_front();
-    /// v.truncate_to_num_elements(2);
-    /// assert_eq!(v.num_elements(), 2);
-    /// ```
+    /// See [`VecDeque::front`].
     #[inline]
-    pub fn truncate_to_num_elements(&mut self, num_elements: usize) {
-        self.vec.truncate(num_elements);
+    pub fn front(&self) -> Option<&T> {
+        self.vec.front()
     }
 
-    /// Truncates to the deque to no longer contain the given index.
+    /// See [`VecDeque::front_mut`].
+    #[inline]
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        self.vec.front_mut()
+    }
+
+    /// Truncates to the deque to only contain data prior (!) to the given index.
     ///
     /// ```
     /// # use re_video::StableIndexDeque;
@@ -99,10 +121,31 @@ impl<T> StableIndexDeque<T> {
     /// v.pop_front();
     /// v.truncate_to_index(2);
     /// assert_eq!(v.num_elements(), 1);
+    /// assert_eq!(v.get(0), None);
+    /// assert_eq!(v.get(1), Some(&1));
+    /// assert_eq!(v.get(2), None);
+    /// assert_eq!(v.get(3), None);
     /// ```
     pub fn truncate_to_index(&mut self, first_index_not_contained: usize) {
         let new_len = first_index_not_contained.saturating_sub(self.index_offset);
         self.vec.truncate(new_len);
+    }
+
+    /// [`Iterator::position`] but with the index offset applied.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..4).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.position(|&x| x == 2), Some(2));
+    /// v.pop_front();
+    /// assert_eq!(v.position(|&x| x == 2), Some(2));
+    /// ```
+    pub fn position(&self, predicate: impl Fn(&T) -> bool) -> Option<usize> {
+        self.vec
+            .iter()
+            .position(predicate)
+            .map(|i| i + self.index_offset)
     }
 
     /// [`VecDeque::partition_point`] but with the index offset applied.
@@ -149,18 +192,19 @@ impl<T> StableIndexDeque<T> {
         self.vec.len() + self.index_offset
     }
 
-    /// The smallest index that is still valid for accessing elements in this deque.
+    /// The smallest index that is still valid for accessing elements in this deque if its non-empty.
     ///
     /// ```
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
-    /// assert_eq!(v.smallest_valid_index(), 0);
+    /// assert_eq!(v.min_index(), 0);
     /// v.pop_front();
-    /// assert_eq!(v.smallest_valid_index(), 1);
+    /// assert_eq!(v.min_index(), 1);
+    /// v.pop_front();
+    /// assert_eq!(v.min_index(), 2);
     /// ```
     #[inline]
-    // TODO: name is wrong since this returns the wrong value if there's  nothing here
-    pub fn smallest_valid_index(&self) -> usize {
+    pub fn min_index(&self) -> usize {
         self.index_offset
     }
 
@@ -233,7 +277,7 @@ mod tests {
         assert_eq!(vec[1], 2);
         assert_eq!(vec.next_index(), 2);
         assert_eq!(vec.num_elements(), 2);
-        assert_eq!(vec.smallest_valid_index(), 0);
+        assert_eq!(vec.min_index(), 0);
 
         vec.pop_front();
         assert_eq!(vec.get(0), None);
@@ -243,12 +287,12 @@ mod tests {
         assert_eq!(vec.next_index(), 2);
         assert_eq!(vec.vec.len(), 1);
         assert_eq!(vec.num_elements(), 1);
-        assert_eq!(vec.smallest_valid_index(), 1);
+        assert_eq!(vec.min_index(), 1);
 
         vec.pop_front();
         assert_eq!(vec.vec.len(), 0);
         assert_eq!(vec.next_index(), 2);
         assert_eq!(vec.num_elements(), 0);
-        assert_eq!(vec.smallest_valid_index(), 2);
+        assert_eq!(vec.min_index(), 2);
     }
 }

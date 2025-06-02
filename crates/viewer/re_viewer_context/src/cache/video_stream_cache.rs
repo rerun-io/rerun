@@ -37,11 +37,13 @@ pub struct PlayableStoreVideoStream {
 }
 
 impl PlayableStoreVideoStream {
-    pub fn sample_buffer_slices(&self) -> Vec<&[u8]> {
-        self.video_sample_buffers
-            .iter()
-            .map(|b| b.buffer.as_slice())
-            .collect()
+    pub fn sample_buffer_slices(&self) -> StableIndexDeque<&[u8]> {
+        StableIndexDeque::from_iter_with_offset(
+            self.video_sample_buffers
+                .iter()
+                .map(|b| b.buffer.as_slice()),
+            self.video_sample_buffers.min_index(),
+        )
     }
 }
 
@@ -335,14 +337,6 @@ fn read_additional_samples_from_chunk(
         return Ok(());
     }
 
-    // Sanity checks on chunk buffers.
-    if let Some(last_buffer) = chunk_buffers.back() {
-        debug_assert!(
-            last_buffer.sample_range.end == sample_base_idx,
-            "Sample range must be non-overlapping and without gaps."
-        );
-    }
-
     // Fill out frame durations.
     // Last frame of the previous round of adding samples:
     let timestamp_first_new_sample = samples[sample_base_idx].presentation_timestamp;
@@ -358,6 +352,17 @@ fn read_additional_samples_from_chunk(
     for sample in sample_base_idx..samples.next_index() - 1 {
         samples[sample].duration = Some(
             samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
+        );
+    }
+
+    // Sanity checks on chunk buffers.
+    if let Some(last_buffer) = chunk_buffers.back() {
+        debug_assert!(
+            last_buffer.sample_range.end == sample_base_idx,
+            "Sample range of each chunk buffer must be non-overlapping and without gaps. \
+                (last_buffer.sample_range.end: {}, sample_base_idx: {})",
+            last_buffer.sample_range.end,
+            sample_base_idx
         );
     }
 
@@ -442,36 +447,24 @@ impl Cache for VideoStreamCache {
                         // We simply have to find the chunk with the oldest sample!
                         let chunk = if let Some(compaction) = &event.compacted {
                             for chunk_id in compaction.srcs.keys() {
-                                // TODO(andreas): This looks slow, but there shouldn't be all that many buffers.
-                                let mut num_remaining_buffers = video_sample_buffers.num_elements();
-                                for (i, buffer) in video_sample_buffers.iter().enumerate() {
-                                    if buffer.source_chunk == *chunk_id {
-                                        // Remove all samples that are in this and future buffers.
-                                        video_data
-                                            .samples
-                                            .truncate_to_index(buffer.sample_range.start);
-                                        num_remaining_buffers = i;
-                                        break;
-                                    }
+                                if let Some(first_invalid_buffer_idx) = video_sample_buffers
+                                    .position(|buffer| buffer.source_chunk == *chunk_id)
+                                {
+                                    // Remove all samples that are in this and future buffers.
+                                    video_data.samples.truncate_to_index(
+                                        video_sample_buffers[first_invalid_buffer_idx]
+                                            .sample_range
+                                            .start,
+                                    );
+
+                                    // Remove all buffers starting with the found matching one.
+                                    // (does nothing if we haven't found one)
+                                    video_sample_buffers
+                                        .truncate_to_index(first_invalid_buffer_idx);
                                 }
-                                // Remove all buffers starting with the found matching one.
-                                // (does nothing if we haven't found one)
-                                video_sample_buffers
-                                    .truncate_to_num_elements(num_remaining_buffers);
                             }
 
-                            // Remove all gops that are no longer valid.
-                            let max_sample_index = video_data.samples.next_index();
-                            while let Some(gop) = video_data.gops.back_mut() {
-                                if gop.sample_range.start >= max_sample_index {
-                                    video_data.gops.pop_back();
-                                } else {
-                                    // Not strictly necessary since this should be adjusted again anyways in `read_additional_samples_from_chunk`
-                                    // but let's make sure the last GOP remains valid.
-                                    gop.sample_range.end = max_sample_index;
-                                    break;
-                                }
-                            }
+                            adjust_gops_for_removed_samples_back(video_data);
 
                             &compaction.new_chunk
                         } else {
@@ -493,7 +486,38 @@ impl Cache for VideoStreamCache {
                         }
                     }
                     re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                        // TODO: handle removed video chunks.
+                        // Chunk deletion typically happens at the start of the recording due to garbage collection.
+                        // Even if it were to happen somewhere in the middle of the stream,
+                        // we'd still want to delete all prior samples & buffers since we can't handle gaps
+                        // in the video stream.
+                        if let Some(last_invalid_buffer_idx) = video_sample_buffers
+                            .position(|buffer| buffer.source_chunk == event.chunk.id())
+                        {
+                            let last_invalid_buffer =
+                                &video_sample_buffers[last_invalid_buffer_idx];
+                            let first_valid_sample_idx = last_invalid_buffer.sample_range.end;
+
+                            while first_valid_sample_idx > video_data.samples.min_index() {
+                                debug_assert!(!video_data.samples.is_empty());
+                                video_data.samples.pop_front();
+                            }
+
+                            while last_invalid_buffer_idx >= video_sample_buffers.min_index() {
+                                debug_assert!(!video_sample_buffers.is_empty());
+                                video_sample_buffers.pop_front();
+                            }
+
+                            adjust_gops_for_removed_samples_front(video_data);
+
+                            re_log::trace!(
+                                "GC'ed video sample buffer from video streaming cache. Now referencing {:?} video sample chunks with total size of {:?} bytes",
+                                video_sample_buffers.num_elements(),
+                                video_sample_buffers
+                                    .iter()
+                                    .map(|b| b.buffer.len())
+                                    .sum::<usize>()
+                            );
+                        }
                     }
                 }
             }
@@ -502,5 +526,31 @@ impl Cache for VideoStreamCache {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+/// Adjust GOPs for removed samples at the back of the sample list.
+fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDescription) {
+    let max_sample_index = video_data.samples.next_index();
+    while let Some(gop) = video_data.gops.back_mut() {
+        if gop.sample_range.start >= max_sample_index {
+            video_data.gops.pop_back();
+        } else {
+            gop.sample_range.end = max_sample_index;
+            break;
+        }
+    }
+}
+
+/// Adjust GOPs for removed samples at the front of the sample list.
+fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
+    let min_sample_index = video_data.samples.min_index();
+    while let Some(gop) = video_data.gops.front_mut() {
+        if gop.sample_range.end < min_sample_index {
+            video_data.gops.pop_front();
+        } else {
+            gop.sample_range.start = min_sample_index;
+            break;
+        }
     }
 }
