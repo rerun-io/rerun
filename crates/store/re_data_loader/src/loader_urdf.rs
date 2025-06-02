@@ -255,7 +255,7 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    send_transform(tx, store_id, joint_path.clone(), &origin)?;
+    send_transform(tx, store_id, joint_path.clone(), origin)?;
 
     log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
     log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
@@ -361,7 +361,7 @@ fn log_link(
             .as_ref()
             .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
 
-        send_transform(tx, store_id, vis_entity.clone(), &origin)?;
+        send_transform(tx, store_id, vis_entity.clone(), origin)?;
 
         log_geometry(
             urdf_tree,
@@ -424,7 +424,7 @@ fn log_geometry(
     entity_path: EntityPath,
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale } => {
             if let Some(urdf_dir) = &urdf_tree.urdf_dir {
