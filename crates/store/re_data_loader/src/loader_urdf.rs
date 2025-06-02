@@ -4,11 +4,12 @@ use std::{
 };
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
-use anyhow::Context as _;
+use anyhow::{Context as _, bail};
+use itertools::Itertools as _;
 use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec4};
 
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
-use re_log_types::StoreId;
+use re_log_types::{EntityPathPart, StoreId};
 use re_types::{
     Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
@@ -119,17 +120,21 @@ impl UrdfTree {
             child_links.insert(joint.child.link.clone());
         }
 
-        // TODO: handle multiple roots
-        let root = links
+        let roots = links
             .iter()
-            .find_map(|(name, link)| {
-                if child_links.contains(name) {
-                    None
-                } else {
-                    Some(link)
-                }
-            })
-            .with_context(|| "No root link found in URDF")?;
+            .filter(|(name, _)| !child_links.contains(*name))
+            .map(|(_, link)| link)
+            .collect_vec();
+
+        let root = match roots.len() {
+            0 => {
+                bail!("No root link found in URDF");
+            }
+            1 => roots[0].clone(),
+            _ => {
+                bail!("Multiple roots in URDF");
+            }
+        };
 
         Ok(Self {
             urdf_dir,
@@ -179,7 +184,7 @@ fn walk_tree(
         .get(link_name)
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     debug_assert_eq!(link_name, link.name);
-    let link_path = parent_path.join(&link_name.into()); // TODO: ergonomics
+    let link_path = parent_path / EntityPathPart::new(link_name);
 
     log_link(urdf_tree, tx, store_id, link, &link_path)?;
 
@@ -189,7 +194,7 @@ fn walk_tree(
     };
 
     for joint in joints {
-        let joint_path = link_path.join(&joint.name.as_str().into()); // TODO: ergonomics
+        let joint_path = &link_path / EntityPathPart::new(&joint.name);
         log_joint(tx, store_id, &joint_path, joint)?;
 
         // Recurse
@@ -317,7 +322,7 @@ fn log_link(
             material,
         } = visual;
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
-        let vis_entity = link_entity.join(&name.into());
+        let vis_entity = link_entity / EntityPathPart::new(name);
 
         // We need to look up the material by name, because the `Visuals::Material`
         // only has a name, no color or texture.
@@ -343,7 +348,7 @@ fn log_link(
             geometry,
         } = collision;
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
-        let collision_entity = link_entity.join(&name.into());
+        let collision_entity = link_entity / EntityPathPart::new(name);
         log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?;
         log_geometry(
             urdf_tree,
@@ -435,7 +440,7 @@ fn log_geometry(
                 re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
         }
-        // TODO: suuport all of them
+        // TODO: support all of them
         _ => {
             re_log::warn_once!(
                 "Unsupported geometry: {geometry:?}. Only meshes are currently supported."
@@ -446,7 +451,7 @@ fn log_geometry(
 }
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
-    // TODO(emilk): we should be able to use glam for this
+    // TODO(emilk): we should use glam for this, but we need to update glam first
     let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
     let (sr, cr) = (hr.sin(), hr.cos());
     let (sp, cp) = (hp.sin(), hp.cos());

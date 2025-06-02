@@ -138,7 +138,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.24.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-re_math = "0.20.0"
+re_math = "0.20.0" # TODO(emilk): replace this with `macaw`
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
