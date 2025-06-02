@@ -215,7 +215,7 @@ jobs:
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
         with:
-          clang-format-version: "16"
+          clang-format-version: "18"
           # Only check c/cpp/h/hpp (default checks also .proto and others)
           include-regex: ^.*\.(c|cpp|h|hpp)$
 
