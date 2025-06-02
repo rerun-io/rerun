@@ -18,8 +18,9 @@ use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
-    ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -143,8 +144,9 @@ Set the displayed dimensions in a selection panel.",
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            view_property_ui::<TensorScalarMapping>(ctx, ui, view_id, self, state);
-            view_property_ui::<TensorViewFit>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<TensorScalarMapping>(&ctx, ui, self);
+            view_property_ui::<TensorViewFit>(&ctx, ui, self);
         });
 
         // TODO(#6075): Listitemify
@@ -316,8 +318,9 @@ impl TensorView {
         ];
 
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+            let ctx = self.view_context(ctx, view_id, state);
             if let Err(err) =
-                self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
+                self.tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }
@@ -328,15 +331,13 @@ impl TensorView {
 
     fn tensor_slice_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: ViewId,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) =
-            self.paint_tensor_slice(ctx, ui, state, view_id, slice_selection)?;
+        let (response, image_rect) = self.paint_tensor_slice(ctx, ui, state, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -348,10 +349,9 @@ impl TensorView {
 
     fn paint_tensor_slice(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: ViewId,
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<(egui::Response, egui::Rect)> {
         re_tracing::profile_function!();
@@ -367,25 +367,22 @@ impl TensorView {
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+            ctx.blueprint_query(),
+            ctx.view_id,
         );
         let colormap: Colormap = scalar_mapping.component_or_fallback(
             ctx,
             self,
-            state,
             &TensorScalarMapping::descriptor_colormap(),
         )?;
         let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
             ctx,
             self,
-            state,
             &TensorScalarMapping::descriptor_gamma(),
         )?;
         let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
             ctx,
             self,
-            state,
             &TensorScalarMapping::descriptor_mag_filter(),
         )?;
 
@@ -405,10 +402,10 @@ impl TensorView {
 
         let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
             ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+            ctx.blueprint_query(),
+            ctx.view_id,
         )
-        .component_or_fallback(ctx, self, state, &TensorViewFit::descriptor_scaling())?;
+        .component_or_fallback(ctx, self, &TensorViewFit::descriptor_scaling())?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

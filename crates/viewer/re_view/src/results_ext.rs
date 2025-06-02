@@ -39,22 +39,19 @@ pub struct HybridRangeResults<'a> {
 }
 
 impl HybridLatestAtResults<'_> {
-    // TODO(#6889): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
+    // TODO(#10112): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
-            viewer_ctx: self.ctx.viewer_ctx,
+            view_ctx: self.ctx,
             target_entity_path: &self.data_result.entity_path,
             archetype_name: None, // TODO(jleibs): Do we need this?
             query: &self.query,
-            view_state: self.ctx.view_state,
-            view_ctx: Some(self.ctx),
         };
 
-        self.data_result.best_fallback_for(
-            &query_context,
-            &self.ctx.visualizer_collection,
-            component_name,
-        )
+        // TODO(#10112): This is quite expensive for what we're doing here, but it would be trivial to remove with the proposal in #10112.
+        let visualizer_collection = self.ctx.new_visualizer_collection();
+        self.data_result
+            .best_fallback_for(&query_context, &visualizer_collection, component_name)
     }
 
     /// Utility for retrieving the first instance of a component, ignoring defaults.

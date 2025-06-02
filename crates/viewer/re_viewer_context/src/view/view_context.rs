@@ -1,11 +1,11 @@
-use std::sync::Arc;
-
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
+
+use super::VisualizerCollection;
 
 /// The context associated with a view.
 ///
@@ -17,8 +17,8 @@ use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: ViewId,
+    pub view_class_identifier: ViewClassIdentifier,
     pub view_state: &'a dyn crate::ViewState,
-    pub visualizer_collection: Arc<crate::VisualizerCollection>,
     pub query_result: &'a DataQueryResult,
 }
 
@@ -30,13 +30,21 @@ impl<'a> ViewContext<'a> {
         query: &'a LatestAtQuery,
     ) -> QueryContext<'a> {
         QueryContext {
-            viewer_ctx: self.viewer_ctx,
+            view_ctx: self,
             target_entity_path: &data_result.entity_path,
             archetype_name: None,
             query,
-            view_state: self.view_state,
-            view_ctx: Some(self),
         }
+    }
+
+    #[inline]
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.viewer_ctx.global_context.render_ctx
+    }
+
+    #[inline]
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.viewer_ctx.global_context.egui_ctx
     }
 
     pub fn tokens(&self) -> &'static re_ui::DesignTokens {
@@ -59,6 +67,12 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn blueprint_db(&self) -> &re_entity_db::EntityDb {
         self.viewer_ctx.blueprint_db()
+    }
+
+    /// The blueprint query used for resolving blueprint in this frame
+    #[inline]
+    pub fn blueprint_query(&self) -> &LatestAtQuery {
+        self.viewer_ctx.blueprint_query
     }
 
     /// The `StoreId` of the active recording.
@@ -149,5 +163,15 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx
             .store_context
             .blueprint_timepoint_for_writes()
+    }
+
+    /// Iterates over all visualizers that are registered for this view.
+    ///
+    /// Note that these are newly instantiated visualizers, therefore their internal
+    /// state is likely not of any use.
+    pub fn new_visualizer_collection(&self) -> VisualizerCollection {
+        self.viewer_ctx
+            .view_class_registry()
+            .new_visualizer_collection(self.view_class_identifier)
     }
 }

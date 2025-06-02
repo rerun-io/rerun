@@ -5,7 +5,7 @@ use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
-use re_viewer_context::{Item, RecommendedView, ViewClassExt as _};
+use re_viewer_context::{Item, RecommendedView};
 use re_viewport_blueprint::ViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};

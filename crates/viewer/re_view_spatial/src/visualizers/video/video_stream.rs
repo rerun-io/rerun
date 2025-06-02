@@ -102,7 +102,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 Ok(video) => video,
                 Err(err) => {
                     show_video_error(
-                        &query_context,
+                        ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
@@ -141,20 +141,20 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         .copied()
                         .unwrap_or_default();
                     visualize_video_frame_texture(
-                        ctx.viewer_ctx,
+                        ctx,
                         &mut self.data,
                         video_frame_reference,
                         entity_path,
                         depth_offset,
                         world_from_entity,
                         highlight,
-                        &mut video_resolution,
+                        video_resolution,
                     );
                 }
 
                 Err(err) => {
                     show_video_error(
-                        &query_context,
+                        ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,

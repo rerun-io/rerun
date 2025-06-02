@@ -6,9 +6,9 @@ pub use video_stream::VideoStreamVisualizer;
 
 use re_log_types::{EntityPath, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewId, ViewSystemIdentifier, ViewerContext};
+use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialViewState};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D, SpatialViewState};
 
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
@@ -23,16 +23,16 @@ fn video_stream_id(
     )
 }
 
-#[expect(clippy::too_many_arguments)] // TODO: kick out video resolution
+#[expect(clippy::too_many_arguments)]
 fn visualize_video_frame_texture(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,
     video_frame_texture: re_renderer::video::VideoFrameTexture,
     entity_path: &EntityPath,
     depth_offset: re_renderer::DepthOffset,
     world_from_entity: glam::Affine3A,
     highlight: &re_viewer_context::ViewOutlineMasks,
-    video_resolution: &mut glam::Vec2,
+    fallback_video_size: glam::Vec2,
 ) {
     let re_renderer::video::VideoFrameTexture {
         texture,
@@ -42,15 +42,17 @@ fn visualize_video_frame_texture(
         source_pixel_format: _,
     } = video_frame_texture;
 
-    if let Some(texture) = &texture {
-        *video_resolution = glam::vec2(texture.width() as _, texture.height() as _);
-    }
+    let video_size = if let Some(texture) = &texture {
+        glam::vec2(texture.width() as _, texture.height() as _)
+    } else {
+        fallback_video_size
+    };
 
     // Make sure to use the video instead of texture size here,
     // since the texture may be a placeholder which doesn't have the full size yet.
     let top_left_corner_position = world_from_entity.transform_point3(glam::Vec3::ZERO);
-    let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_resolution.x);
-    let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
+    let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * fallback_video_size.x);
+    let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * fallback_video_size.y);
 
     if is_pending {
         // Keep polling for a fresh texture
@@ -85,11 +87,19 @@ fn visualize_video_frame_texture(
             textured_rect,
             source_data: PickableRectSourceData::Video,
         });
+
+        if ctx.view_class_identifier == SpatialView2D::identifier() {
+            let bounding_box = re_math::BoundingBox::from_min_size(
+                world_from_entity.transform_point3(glam::Vec3::ZERO),
+                video_size.extend(0.0),
+            );
+            visualizer_data.add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+        }
     }
 }
 
 fn show_video_error(
-    ctx: &re_viewer_context::QueryContext<'_>,
+    ctx: &ViewContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,
     highlight: &re_viewer_context::ViewOutlineMasks,
     world_from_entity: glam::Affine3A,
@@ -197,4 +207,12 @@ fn show_video_error(
         textured_rect: error_rect,
         source_data: PickableRectSourceData::ErrorPlaceholder,
     });
+
+    if ctx.view_class_identifier == SpatialView2D::identifier() {
+        let bounding_box = re_math::BoundingBox::from_min_size(
+            world_from_entity.transform_point3(glam::Vec3::ZERO),
+            video_size.extend(0.0),
+        );
+        visualizer_data.add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+    }
 }

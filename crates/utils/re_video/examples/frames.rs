@@ -60,8 +60,9 @@ fn main() {
     .expect("Failed to create decoder");
 
     let start = Instant::now();
+    let video_buffers = std::iter::once(video_blob.as_ref()).collect();
     for (sample_idx, sample) in video.samples.iter().enumerate() {
-        let chunk = sample.get(&[&video_blob], sample_idx).unwrap();
+        let chunk = sample.get(&video_buffers, sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 

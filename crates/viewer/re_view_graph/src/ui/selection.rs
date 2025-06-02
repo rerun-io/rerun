@@ -2,7 +2,7 @@ use re_types::{
     Archetype, ArchetypeReflectionMarker, Component as _, blueprint::components::Enabled,
 };
 use re_view::{view_property_component_ui, view_property_component_ui_custom};
-use re_viewer_context::{ComponentFallbackProvider, ViewId, ViewState, ViewerContext};
+use re_viewer_context::{ComponentFallbackProvider, ViewContext};
 use re_viewport_blueprint::ViewProperty;
 
 /// This function is similar to [`view_property_component_ui`], but it always
@@ -10,16 +10,15 @@ use re_viewport_blueprint::ViewProperty;
 /// Also, it will always show the single-line edit UI (and not only if there is
 /// a single property per archetype).
 pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    view_id: ViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn ViewState,
 ) {
     let property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
 
-    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -28,7 +27,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
         return;
     };
 
-    let query_ctx = property.query_context(ctx, view_state);
+    let query_ctx = property.query_context(ctx);
 
     if reflection.fields.len() == 1 {
         let field = &reflection.fields[0];
@@ -66,7 +65,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
         let row_id = property.component_row_id(&component_descr);
 
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-            ctx.component_ui_registry().singleline_edit_ui(
+            ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
                 &query_ctx,
                 ui,
                 ctx.blueprint_db(),

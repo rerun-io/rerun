@@ -14,8 +14,9 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -117,7 +118,8 @@ impl ViewClass for BarChartView {
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotLegend>(&ctx, ui, self);
         });
 
         Ok(())
@@ -146,20 +148,16 @@ impl ViewClass for BarChartView {
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
-        let plot_legend =
-            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible: Visible = plot_legend.component_or_fallback(
-            ctx,
-            self,
-            state,
-            &PlotLegend::descriptor_visible(),
-        )?;
-        let legend_corner: Corner2D = plot_legend.component_or_fallback(
-            ctx,
-            self,
-            state,
-            &PlotLegend::descriptor_corner(),
-        )?;
+        let ctx = self.view_context(ctx, view_id, state);
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
+            blueprint_db,
+            ctx.blueprint_query(),
+            view_id,
+        );
+        let legend_visible: Visible =
+            plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_visible())?;
+        let legend_corner: Corner2D =
+            plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_corner())?;
 
         ui.scope(|ui| {
             let mut plot = Plot::new("bar_chart_plot")
@@ -259,7 +257,7 @@ impl ViewClass for BarChartView {
             if let Some(entity_path) = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
             {
-                ctx.handle_select_hover_drag_interactions(
+                ctx.viewer_ctx.handle_select_hover_drag_interactions(
                     &response,
                     re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into()),
                     false,

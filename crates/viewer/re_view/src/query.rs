@@ -324,6 +324,6 @@ impl DataResultQuery for DataResult {
             }
         }
 
-        query_ctx.viewer_ctx.placeholder_for(component)
+        query_ctx.viewer_ctx().placeholder_for(component)
     }
 }

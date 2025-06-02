@@ -614,14 +614,11 @@ impl ComponentUiRegistry {
         allow_multiline: bool,
     ) {
         if !self.try_show_edit_ui(
-            ctx.viewer_ctx,
+            ctx.viewer_ctx(),
             ui,
             EditTarget {
-                store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
-                timepoint: ctx
-                    .viewer_ctx
-                    .store_context
-                    .blueprint_timepoint_for_writes(),
+                store_id: ctx.store_ctx().blueprint.store_id().clone(),
+                timepoint: ctx.store_ctx().blueprint_timepoint_for_writes(),
                 entity_path: blueprint_write_path,
             },
             component_raw,
@@ -630,7 +627,7 @@ impl ComponentUiRegistry {
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.component_ui_raw(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 ui,
                 UiLayout::List,
                 ctx.query,

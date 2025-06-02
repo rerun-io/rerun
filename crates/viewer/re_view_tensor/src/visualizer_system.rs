@@ -147,8 +147,7 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
             &Tensor::descriptor_data(),
         ) {
             let tensor_stats = ctx
-                .viewer_ctx
-                .store_context
+                .store_ctx()
                 .caches
                 .entry(|c: &mut TensorStatsCache| c.entry(Hash64::hash(row_id), &tensor));
             tensor_data_range_heuristic(&tensor_stats, tensor.dtype())

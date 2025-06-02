@@ -27,9 +27,9 @@ use re_view::{
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
     external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -194,8 +194,9 @@ impl ViewClass for TimeSeriesView {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
-            view_property_ui::<ScalarAxis>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotLegend>(&ctx, ui, self);
+            view_property_ui::<ScalarAxis>(&ctx, ui, self);
         });
 
         Ok(())
@@ -338,35 +339,32 @@ impl ViewClass for TimeSeriesView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
+        let view_ctx = self.view_context(ctx, view_id, state);
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &PlotLegend::descriptor_visible(),
         )?;
         let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &PlotLegend::descriptor_corner(),
         )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &ScalarAxis::descriptor_range(),
         )?;
         let y_range = make_range_sane(y_range);
 
         let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &ScalarAxis::descriptor_zoom_lock(),
         )?;
         let y_zoom_lock = y_zoom_lock.0.0;
@@ -883,7 +881,7 @@ impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
 
 impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
-        ctx.view_state
+        ctx.view_state()
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
             .map(|s| make_range_sane(s.scalar_range))

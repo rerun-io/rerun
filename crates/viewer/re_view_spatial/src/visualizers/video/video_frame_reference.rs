@@ -152,7 +152,7 @@ impl VideoFrameReferenceVisualizer {
                     .as_str()
                     .into()
             });
-        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
+        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
@@ -167,7 +167,7 @@ impl VideoFrameReferenceVisualizer {
         match query_result {
             None => {
                 show_video_error(
-                    ctx,
+                    ctx.view_ctx,
                     &mut self.data,
                     spatial_ctx.highlight,
                     world_from_entity,
@@ -180,21 +180,21 @@ impl VideoFrameReferenceVisualizer {
             Some((video, video_data)) => match video.as_ref() {
                 Ok(video) => {
                     match video.frame_at(
-                        ctx.viewer_ctx.render_ctx(),
+                        ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
                         &std::iter::once(video_data.as_ref()).collect(),
                     ) {
                         Ok(video_frame_reference) => {
                             visualize_video_frame_texture(
-                                ctx.viewer_ctx,
+                                ctx.view_ctx,
                                 &mut self.data,
                                 video_frame_reference,
                                 entity_path,
                                 spatial_ctx.depth_offset,
                                 world_from_entity,
                                 spatial_ctx.highlight,
-                                &mut video_resolution,
+                                video_resolution,
                             );
                         }
 
@@ -203,7 +203,7 @@ impl VideoFrameReferenceVisualizer {
                                 video_resolution = glam::vec2(w as _, h as _);
                             }
                             show_video_error(
-                                ctx,
+                                ctx.view_ctx,
                                 &mut self.data,
                                 spatial_ctx.highlight,
                                 world_from_entity,
@@ -216,7 +216,7 @@ impl VideoFrameReferenceVisualizer {
                 }
                 Err(err) => {
                     show_video_error(
-                        ctx,
+                        ctx.view_ctx,
                         &mut self.data,
                         spatial_ctx.highlight,
                         world_from_entity,

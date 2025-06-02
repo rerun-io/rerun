@@ -309,7 +309,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
-        let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return Default::default();
         };
 
@@ -338,7 +338,7 @@ impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualize
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
         // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx, ctx.query, ctx.target_entity_path)
+        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
             // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
             // TODO(andreas): We should display a warning about this somewhere.
             // Since it's not a required component, logging a warning about this might be too noisy.

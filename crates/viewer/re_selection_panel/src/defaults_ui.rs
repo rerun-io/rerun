@@ -11,7 +11,7 @@ use re_types_core::ComponentDescriptor;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
-    ViewSystemIdentifier, blueprint_timeline,
+    ViewSystemIdentifier, VisualizerCollection, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -41,12 +41,13 @@ pub fn view_components_defaults_section_ui(
     view: &ViewBlueprint,
 ) {
     let db = ctx.viewer_ctx.blueprint_db();
-    let query = ctx.viewer_ctx.blueprint_query;
+    let query = ctx.blueprint_query();
 
     // TODO(andreas): Components in `active_defaults` should be sorted by field order within each archetype.
     // Right now, they're just sorted by descriptor, which is not the same.
     let active_defaults = active_defaults(ctx, view, db, query);
-    let visualized_components_by_archetype = visualized_components_by_archetype(ctx);
+    let visualizers = ctx.new_visualizer_collection();
+    let visualized_components_by_archetype = visualized_components_by_archetype(&visualizers);
 
     // If there is nothing set by the user and nothing to be possibly added, we skip the section
     // entirely.
@@ -68,6 +69,7 @@ pub fn view_components_defaults_section_ui(
             &view.defaults_path,
             query,
             components_to_show_in_add_menu.unwrap_or_default(),
+            &visualizers,
         );
     })
     .hover_text("Add more component defaults");
@@ -100,12 +102,10 @@ fn active_default_ui(
     db: &re_entity_db::EntityDb,
 ) {
     let query_context = QueryContext {
-        viewer_ctx: ctx.viewer_ctx,
+        view_ctx: ctx,
         target_entity_path: &view.defaults_path,
         archetype_name: None,
         query,
-        view_state: ctx.view_state,
-        view_ctx: Some(ctx),
     };
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
@@ -173,7 +173,7 @@ fn active_default_ui(
 }
 
 fn visualized_components_by_archetype(
-    ctx: &ViewContext<'_>,
+    visualizers: &VisualizerCollection,
 ) -> BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>> {
     let mut visualized_components_by_visualizer: BTreeMap<
         ArchetypeName,
@@ -183,7 +183,7 @@ fn visualized_components_by_archetype(
     // It only makes sense to set defaults for components that are used by a system in the view.
     // Accumulate the components across all visualizers and track which visualizer
     // each component came from so we can use it for fallbacks later.
-    for (id, vis) in ctx.visualizer_collection.iter_with_identifiers() {
+    for (id, vis) in visualizers.iter_with_identifiers() {
         for descr in vis.visualizer_query_info().queried.iter() {
             let (Some(archetype_name), Some(archetype_field_name)) =
                 (descr.archetype_name, descr.archetype_field_name)
@@ -301,14 +301,13 @@ fn add_popup_ui(
     defaults_path: &EntityPath,
     query: &LatestAtQuery,
     components_to_show_in_add_menu: BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
+    visualizers: &VisualizerCollection,
 ) {
     let query_context = QueryContext {
-        viewer_ctx: ctx.viewer_ctx,
+        view_ctx: ctx,
         target_entity_path: defaults_path,
         archetype_name: None,
         query,
-        view_state: ctx.view_state,
-        view_ctx: Some(ctx),
     };
 
     // Present the option to add new components for each component that doesn't
@@ -333,6 +332,7 @@ fn add_popup_ui(
                         &query_context,
                         entry.descriptor(archetype_name),
                         entry.visualizer_identifier,
+                        visualizers,
                     );
                     ui.close();
                 }
@@ -347,12 +347,13 @@ fn add_new_default(
     query_context: &QueryContext<'_>,
     component_descr: ComponentDescriptor,
     visualizer: ViewSystemIdentifier,
+    visualizers: &VisualizerCollection,
 ) {
     // We are creating a new override. We need to decide what initial value to give it.
     // - First see if there's an existing splat in the recording.
     // - Next see if visualizer system wants to provide a value.
     // - Finally, fall back on the default value from the component registry.
-    let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer) else {
+    let Ok(visualizer) = visualizers.get_by_identifier(visualizer) else {
         re_log::warn!("Could not find visualizer for: {}", visualizer);
         return;
     };
