@@ -129,7 +129,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length(), self)
                 .into();
 
             if axis_length == 0.0 {
@@ -237,6 +237,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 
                     Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
                         &Pinhole::descriptor_image_plane_distance(),
+                        &CamerasVisualizer::default(),
                     ))
                 } else {
                     None

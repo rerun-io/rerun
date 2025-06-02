@@ -6,10 +6,9 @@ use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
-use re_types_core::ComponentName;
-use re_viewer_context::{DataResult, QueryContext, ViewContext};
+use re_viewer_context::{DataResult, QueryContext, TypedComponentFallbackProvider, ViewContext};
 
-use crate::{DataResultQuery as _, chunks_with_descriptor::ChunksWithDescriptor};
+use crate::chunks_with_descriptor::ChunksWithDescriptor;
 
 // ---
 
@@ -39,21 +38,6 @@ pub struct HybridRangeResults<'a> {
 }
 
 impl HybridLatestAtResults<'_> {
-    // TODO(#10112): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
-    pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
-        let query_context = QueryContext {
-            view_ctx: self.ctx,
-            target_entity_path: &self.data_result.entity_path,
-            archetype_name: None, // TODO(jleibs): Do we need this?
-            query: &self.query,
-        };
-
-        // TODO(#10112): This is quite expensive for what we're doing here, but it would be trivial to remove with the proposal in #10112.
-        let visualizer_collection = self.ctx.new_visualizer_collection();
-        self.data_result
-            .best_fallback_for(&query_context, &visualizer_collection, component_name)
-    }
-
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
     pub fn get_required_mono<C: re_types_core::Component>(
@@ -77,10 +61,19 @@ impl HybridLatestAtResults<'_> {
     pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
         &self,
         component_descr: &ComponentDescriptor,
+        fallback_provider: &impl TypedComponentFallbackProvider<C>,
     ) -> C {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        self.get_instance_with_fallback(0, component_descr)
+        self.get_instance(0, component_descr).unwrap_or_else(|| {
+            let query_context = QueryContext {
+                view_ctx: self.ctx,
+                target_entity_path: &self.data_result.entity_path,
+                archetype_name: component_descr.archetype_name,
+                query: &self.query,
+            };
+            fallback_provider.fallback_for(&query_context)
+        })
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
@@ -116,29 +109,6 @@ impl HybridLatestAtResults<'_> {
                 self.defaults
                     .component_instance::<C>(index, component_descr)
             })
-    }
-
-    /// Utility for retrieving a single instance of a component.
-    ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
-    #[inline]
-    pub fn get_instance_with_fallback<C: re_types_core::Component + Default>(
-        &self,
-        index: usize,
-        component_descr: &ComponentDescriptor,
-    ) -> C {
-        debug_assert_eq!(component_descr.component_name, C::name());
-
-        let component_name = component_descr.component_name;
-        self.get_instance(index, component_descr)
-            .or_else(|| {
-                // No override, no store, no default -> try fallback instead
-                let raw_fallback = self.fallback_raw(component_name);
-                C::from_arrow(raw_fallback.as_ref())
-                    .ok()
-                    .and_then(|r| r.first().cloned())
-            })
-            .unwrap_or_default()
     }
 }
 
