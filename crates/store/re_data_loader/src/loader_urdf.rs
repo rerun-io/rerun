@@ -11,7 +11,7 @@ use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
 use re_types::{
-    Component as _, ComponentDescriptor, SerializedComponentBatch,
+    AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
     datatypes::Vec3D,
 };
@@ -22,6 +22,36 @@ fn is_urdf_file(path: impl AsRef<Path>) -> bool {
     path.as_ref()
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("urdf"))
+}
+
+fn send_chunk_builder(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    chunk: ChunkBuilder,
+) -> anyhow::Result<()> {
+    tx.send(LoadedData::Chunk(
+        UrdfDataLoader.name(),
+        store_id.clone(),
+        chunk.build()?,
+    ))?;
+    Ok(())
+}
+
+fn send_archetype(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    entity_path: EntityPath,
+    archetype: &impl AsComponents,
+) -> anyhow::Result<()> {
+    send_chunk_builder(
+        tx,
+        store_id,
+        ChunkBuilder::new(ChunkId::new(), entity_path).with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            archetype,
+        ),
+    )
 }
 
 /// A [`DataLoader`] for [URDF](https://en.wikipedia.org/wiki/URDF) (Unified Robot Description Format),
@@ -225,17 +255,12 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    let transform = transform_from_pose(origin);
-
-    let chunk = ChunkBuilder::new(ChunkId::new(), joint_path.clone())
-        .with_archetype(RowId::new(), TimePoint::default(), &transform)
-        .build()?;
-
-    tx.send(LoadedData::Chunk(
-        UrdfDataLoader.name(),
-        store_id.clone(),
-        chunk,
-    ))?;
+    send_archetype(
+        tx,
+        store_id,
+        joint_path.clone(),
+        &transform_from_pose(origin),
+    )?;
 
     log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
     log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
@@ -282,21 +307,18 @@ fn log_debug_format(
     name: &str,
     value: &dyn std::fmt::Debug,
 ) -> anyhow::Result<()> {
-    tx.send(LoadedData::Chunk(
-        UrdfDataLoader.name(),
-        store_id.clone(),
-        ChunkBuilder::new(ChunkId::new(), entity_path)
-            .with_serialized_batches(
-                RowId::new(),
-                TimePoint::default(),
-                vec![SerializedComponentBatch {
-                    descriptor: ComponentDescriptor::new(name),
-                    array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
-                }],
-            )
-            .build()?,
-    ))?;
-    Ok(())
+    send_chunk_builder(
+        tx,
+        store_id,
+        ChunkBuilder::new(ChunkId::new(), entity_path).with_serialized_batches(
+            RowId::new(),
+            TimePoint::default(),
+            vec![SerializedComponentBatch {
+                descriptor: ComponentDescriptor::new(name),
+                array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
+            }],
+        ),
+    )
 }
 
 fn log_link(
@@ -331,7 +353,7 @@ fn log_link(
             .as_ref()
             .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
 
-        log_debug_format(tx, store_id, vis_entity.clone(), "origin", &origin)?;
+        log_debug_format(tx, store_id, vis_entity.clone(), "origin", &origin)?; // TODO
         log_geometry(
             urdf_tree,
             tx,
@@ -350,7 +372,7 @@ fn log_link(
         } = collision;
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(name);
-        log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?;
+        log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?; // TODO
         log_geometry(
             urdf_tree,
             tx,
@@ -362,24 +384,22 @@ fn log_link(
 
         if false {
             // TODO(#6541): the viewer should respect the `Visible` component.
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), collision_entity)
-                    .with_component_batch(
-                        RowId::new(),
-                        TimePoint::default(),
-                        (
-                            ComponentDescriptor {
-                                archetype_name: None,
-                                archetype_field_name: None,
-                                component_name: re_types::components::Visible::name(),
-                            },
-                            &re_types::components::Visible::from(false),
-                        ),
-                    )
-                    .build()?,
-            ))?;
+            send_chunk_builder(
+                tx,
+                store_id,
+                ChunkBuilder::new(ChunkId::new(), collision_entity).with_component_batch(
+                    RowId::new(),
+                    TimePoint::default(),
+                    (
+                        ComponentDescriptor {
+                            archetype_name: None,
+                            archetype_field_name: None,
+                            component_name: re_types::components::Visible::name(),
+                        },
+                        &re_types::components::Visible::from(false),
+                    ),
+                ),
+            )?;
         }
     }
 
@@ -430,13 +450,7 @@ fn log_geometry(
                     re_log::warn_once!("Scaled meshes not supported"); // TODO(emilk): support mesh scale
                 }
 
-                tx.send(crate::LoadedData::Chunk(
-                    UrdfDataLoader.name(),
-                    store_id.clone(),
-                    ChunkBuilder::new(ChunkId::new(), entity_path)
-                        .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
-                        .build()?,
-                ))?;
+                send_archetype(tx, store_id, entity_path, &asset3d)?;
             } else {
                 re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
@@ -444,69 +458,47 @@ fn log_geometry(
         Geometry::Box {
             size: Vec3([x, y, z]),
         } => {
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), entity_path)
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &re_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
-                            *x as _, *y as _, *z as _,
-                        )]),
-                    )
-                    .build()?,
-            ))?;
+            send_archetype(
+                tx,
+                store_id,
+                entity_path,
+                &re_types::archetypes::Boxes3D::from_sizes([Vec3D::new(*x as _, *y as _, *z as _)]),
+            )?;
         }
         Geometry::Cylinder { radius, length } => {
             // URDF and Rerun both use Z as the main axis
             re_log::warn_once!(
                 "Converting URDF cylinder to a capsule, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
             ); // TODO(#1361): support cylinders
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), entity_path)
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &re_types::archetypes::Capsules3D::from_lengths_and_radii(
-                            [*length as f32],
-                            [*radius as f32],
-                        ),
-                    )
-                    .build()?,
-            ))?;
+            send_archetype(
+                tx,
+                store_id,
+                entity_path,
+                &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                    [*length as f32],
+                    [*radius as f32],
+                ),
+            )?;
         }
         Geometry::Capsule { radius, length } => {
             // URDF and Rerun both use Z as the main axis
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), entity_path)
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &re_types::archetypes::Capsules3D::from_lengths_and_radii(
-                            [*length as f32],
-                            [*radius as f32],
-                        ),
-                    )
-                    .build()?,
-            ))?;
+            send_archetype(
+                tx,
+                store_id,
+                entity_path,
+                &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                    [*length as f32],
+                    [*radius as f32],
+                ),
+            )?;
         }
         Geometry::Sphere { radius } => {
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), entity_path)
-                    .with_archetype(
-                        RowId::new(),
-                        TimePoint::default(),
-                        &re_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
-                    )
-                    .build()?,
-            ))?;
+            send_archetype(
+                tx,
+                store_id,
+                entity_path,
+                &re_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
+            )?;
         }
     }
     Ok(())
