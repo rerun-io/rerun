@@ -255,12 +255,7 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    send_archetype(
-        tx,
-        store_id,
-        joint_path.clone(),
-        &transform_from_pose(origin),
-    )?;
+    send_transform(tx, store_id, joint_path.clone(), &origin)?;
 
     log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
     log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
@@ -295,6 +290,22 @@ fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
 
     Transform3D::from_translation(translation).with_quaternion(quaternion)
+}
+
+fn send_transform(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    entity_path: EntityPath,
+    origin: &urdf_rs::Pose,
+) -> anyhow::Result<()> {
+    let urdf_rs::Pose { xyz, rpy } = origin;
+    let is_identity = xyz.0 == [0.0, 0.0, 0.0] && rpy.0 == [0.0, 0.0, 0.0];
+
+    if is_identity {
+        Ok(()) // avoid noise
+    } else {
+        send_archetype(tx, store_id, entity_path, &transform_from_pose(origin))
+    }
 }
 
 /// Log the given value using its `Debug` formatting.
@@ -353,7 +364,8 @@ fn log_link(
             .as_ref()
             .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
 
-        log_debug_format(tx, store_id, vis_entity.clone(), "origin", &origin)?; // TODO
+        send_transform(tx, store_id, vis_entity.clone(), &origin)?;
+
         log_geometry(
             urdf_tree,
             tx,
@@ -372,7 +384,9 @@ fn log_link(
         } = collision;
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(name);
-        log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?; // TODO
+
+        send_transform(tx, store_id, collision_entity.clone(), origin)?;
+
         log_geometry(
             urdf_tree,
             tx,
