@@ -55,7 +55,7 @@ impl ViewClass for TextView {
         &re_ui::icons::VIEW_LOG
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Text log view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
             .markdown(

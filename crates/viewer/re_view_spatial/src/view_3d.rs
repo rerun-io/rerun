@@ -59,8 +59,8 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
-        super::ui_3d::help(egui_ctx)
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        super::ui_3d::help(os)
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {

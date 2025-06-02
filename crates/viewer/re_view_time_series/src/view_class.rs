@@ -16,7 +16,7 @@ use re_types::{
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, list_item};
 use re_view::{
     controls::{
         self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
@@ -119,17 +119,17 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom only x-axis",
-                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
             )
             .control(
                 "Zoom to selection",
@@ -148,7 +148,7 @@ impl ViewClass for TimeSeriesView {
             .control(
                 "Hide/show other series",
                 icon_text!(
-                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
+                    IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend"
                 ),
             )

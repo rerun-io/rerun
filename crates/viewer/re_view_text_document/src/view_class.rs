@@ -56,7 +56,7 @@ impl ViewClass for TextDocumentView {
         &re_ui::icons::VIEW_TEXT
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Text document view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
             .markdown("Supports raw text and markdown.")

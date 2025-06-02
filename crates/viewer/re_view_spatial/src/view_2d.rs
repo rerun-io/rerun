@@ -55,8 +55,8 @@ impl ViewClass for SpatialView2D {
         &re_ui::icons::VIEW_2D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
-        super::ui_2d::help(egui_ctx)
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        super::ui_2d::help(os)
     }
 
     fn on_register(

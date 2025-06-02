@@ -16,10 +16,7 @@ use re_types::{
     components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
-use re_ui::{
-    ContextExt as _, Help, MouseButtonText, UiExt as _, icon_text, icons, modifiers_text,
-    shortcut_with_icon,
-};
+use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
@@ -390,7 +387,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help(egui_ctx: &egui::Context) -> Help {
+pub fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("3D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
         .control(
@@ -404,19 +401,15 @@ pub fn help(egui_ctx: &egui::Context) -> Help {
         )
         .control(
             "Roll",
-            shortcut_with_icon(
-                egui_ctx,
-                ROLL_MOUSE_MODIFIER,
-                MouseButtonText(ROLL_MOUSE_ALT),
-            ),
+            IconText::from_modifiers_and(os, ROLL_MOUSE_MODIFIER, MouseButtonText(ROLL_MOUSE_ALT)),
         )
         .control("Navigate", icon_text!("WASD", "/", "QE"))
         .control(
             "Slow down / speed up",
             icon_text!(
-                modifiers_text(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+                IconText::from_modifiers(os, RuntimeModifiers::slow_down(&os)),
                 "/",
-                modifiers_text(SPEED_UP_3D_MODIFIER, egui_ctx)
+                IconText::from_modifiers(os, SPEED_UP_3D_MODIFIER)
             ),
         )
         .control(
