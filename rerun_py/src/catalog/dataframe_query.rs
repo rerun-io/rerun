@@ -9,8 +9,9 @@ use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 
-use re_chunk::ComponentName;
-use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk_store::{
+    ChunkStoreHandle, ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector,
+};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
@@ -552,12 +553,12 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<String> = if let Ok(component) =
+            let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
                 value.extract::<ComponentLike>()
             {
-                std::iter::once(component.0).collect()
+                std::iter::once(component.into()).collect()
             } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
-                components.into_iter().map(|c| c.0).collect()
+                components.into_iter().map(Into::into).collect()
             } else {
                 return Err(PyTypeError::new_err(format!(
                     "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
@@ -567,15 +568,7 @@ fn extract_contents_expr(
             let mut key_contents = known_components
                 .keys()
                 .filter(|p| path_filter.matches(p))
-                .map(|entity_path| {
-                    let components: BTreeSet<ComponentName> = component_strs
-                        .iter()
-                        .map(|component_name| {
-                            find_best_component(&known_components, entity_path, component_name)
-                        })
-                        .collect();
-                    (entity_path.clone(), Some(components))
-                })
+                .map(|entity_path| (entity_path.clone(), Some(component_strs.clone())))
                 .collect();
 
             contents.append(&mut key_contents);
@@ -587,20 +580,4 @@ fn extract_contents_expr(
             "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
         ));
     }
-}
-
-fn find_best_component(
-    mapping: &BTreeMap<EntityPath, BTreeSet<ComponentDescriptor>>,
-    entity_path: &EntityPath,
-    component_name: &str,
-) -> ComponentName {
-    mapping
-        .get(entity_path)
-        .and_then(|components| {
-            components
-                .iter()
-                .find(|component| component.component_name.matches(component_name))
-        })
-        .map(|component| component.component_name)
-        .unwrap_or_else(|| ComponentName::new(component_name))
 }
