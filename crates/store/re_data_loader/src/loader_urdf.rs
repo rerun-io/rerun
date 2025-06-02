@@ -6,13 +6,14 @@ use std::{
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
-use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec4};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
 use re_types::{
     Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
+    datatypes::Vec3D,
 };
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -421,12 +422,12 @@ fn log_geometry(
                         );
                     };
                     if texture.is_some() {
-                        re_log::warn_once!("Material texture not supported");
+                        re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                     }
                 }
 
                 if scale.is_some_and(|scale| scale != urdf_rs::Vec3([1.0; 3])) {
-                    re_log::warn_once!("Scaled meshes not supported");
+                    re_log::warn_once!("Scaled meshes not supported"); // TODO(emilk): support mesh scale
                 }
 
                 tx.send(crate::LoadedData::Chunk(
@@ -440,11 +441,72 @@ fn log_geometry(
                 re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
         }
-        // TODO: support all of them
-        _ => {
+        Geometry::Box {
+            size: Vec3([x, y, z]),
+        } => {
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), entity_path)
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
+                            *x as _, *y as _, *z as _,
+                        )]),
+                    )
+                    .build()?,
+            ))?;
+        }
+        Geometry::Cylinder { radius, length } => {
+            // URDF and Rerun both use Z as the main axis
             re_log::warn_once!(
-                "Unsupported geometry: {geometry:?}. Only meshes are currently supported."
-            );
+                "Converting URDF cylinder to a capsule, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
+            ); // TODO(#1361): support cylinders
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), entity_path)
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                            [*length as f32],
+                            [*radius as f32],
+                        ),
+                    )
+                    .build()?,
+            ))?;
+        }
+        Geometry::Capsule { radius, length } => {
+            // URDF and Rerun both use Z as the main axis
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), entity_path)
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                            [*length as f32],
+                            [*radius as f32],
+                        ),
+                    )
+                    .build()?,
+            ))?;
+        }
+        Geometry::Sphere { radius } => {
+            tx.send(crate::LoadedData::Chunk(
+                UrdfDataLoader.name(),
+                store_id.clone(),
+                ChunkBuilder::new(ChunkId::new(), entity_path)
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
+                    )
+                    .build()?,
+            ))?;
         }
     }
     Ok(())
