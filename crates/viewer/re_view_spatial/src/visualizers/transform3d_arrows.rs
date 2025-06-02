@@ -220,37 +220,35 @@ pub fn add_axis_arrows(
 
 impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
-        if let Some(view_ctx) = ctx.view_ctx {
-            let query_result = ctx.viewer_ctx.lookup_query_result(view_ctx.view_id);
+        let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
-            // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
-            if let Some(length) = query_result
-                .tree
-                .lookup_result_by_path(ctx.target_entity_path)
-                .cloned()
-                .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&CamerasVisualizer::identifier())
-                    {
-                        let results = data_result
-                            .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
+        // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
+        if let Some(length) = query_result
+            .tree
+            .lookup_result_by_path(ctx.target_entity_path)
+            .cloned()
+            .and_then(|data_result| {
+                if data_result
+                    .visualizers
+                    .contains(&CamerasVisualizer::identifier())
+                {
+                    let results = data_result
+                        .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx.view_ctx, ctx.query);
 
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
-                            &Pinhole::descriptor_image_plane_distance(),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            {
-                let length: f32 = length.into();
-                return (length * 0.5).into();
-            }
+                    Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
+                        &Pinhole::descriptor_image_plane_distance(),
+                    ))
+                } else {
+                    None
+                }
+            })
+        {
+            let length: f32 = length.into();
+            return (length * 0.5).into();
         }
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
-        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() {
+        if let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() {
             let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {

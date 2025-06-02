@@ -84,7 +84,7 @@ impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLinesSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
+        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()

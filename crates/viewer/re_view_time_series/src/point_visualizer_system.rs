@@ -84,7 +84,7 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
+        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()

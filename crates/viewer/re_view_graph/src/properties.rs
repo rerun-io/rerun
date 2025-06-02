@@ -16,7 +16,7 @@ fn valid_bound(rect: &egui::Rect) -> bool {
 
 impl TypedComponentFallbackProvider<VisualBounds2D> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
-        let Ok(state) = ctx.view_state.downcast_ref::<GraphViewState>() else {
+        let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
             return VisualBounds2D::default();
         };
 
