@@ -4,7 +4,7 @@ use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_types::{
-    ArchetypeName, Component, ComponentDescriptor, components,
+    ArchetypeName, Component, ComponentDescriptor, archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
@@ -524,16 +524,27 @@ fn preview_single_blob(
         .component_mono::<components::Blob>(blob_descr)?
         .ok()?;
 
+    // Media type comes typically alongside the blob in various different archetypes.
+    // Look for the one that matches the blob's archetype.
     let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
         components,
         blob_descr.archetype_name,
     )
     .or_else(|| components::MediaType::guess_from_data(&blob));
 
-    let video_timestamp = find_and_deserialize_archetype_mono_component::<components::VideoTimestamp>(
-        components,
-        blob_descr.archetype_name,
-    );
+    // Video timestamp is only relevant here if it comes from a VideoFrameReference archetype.
+    // It doesn't show up in the blob's archetype.
+    let video_timestamp_descr = archetypes::VideoFrameReference::descriptor_timestamp();
+    let video_timestamp = components
+        .iter()
+        .find_map(|(descr, chunk)| {
+            (descr == &video_timestamp_descr).then(|| {
+                chunk
+                    .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)
+                    .and_then(|r| r.ok())
+            })
+        })
+        .flatten();
 
     blob_preview_and_save_ui(
         ctx,
