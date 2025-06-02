@@ -191,7 +191,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1};
+                            batch1
+                        };
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }

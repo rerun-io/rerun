@@ -138,4 +138,4 @@ namespace rerun {
             return std::nullopt;
         }
     }; // namespace components
-};     // namespace rerun
+}; // namespace rerun

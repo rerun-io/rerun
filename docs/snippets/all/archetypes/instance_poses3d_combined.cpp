@@ -22,7 +22,8 @@ int main() {
             "world/box",
             rerun::Transform3D::from_rotation(rerun::RotationAxisAngle{
                 {0.0f, 0.0f, 1.0f},
-                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)})
+                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)
+            })
         );
 
         // Log an instance pose which affects only the box.

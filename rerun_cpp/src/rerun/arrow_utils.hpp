@@ -26,7 +26,8 @@ namespace rerun {
         return std::shared_ptr<arrow::Buffer>{
             new arrow::Buffer{data, size_in_bytes},
             // Keep the vector's buffer alive inside the shared_ptr's destructor until after we have deleted the Buffer.
-            [vec = std::move(vec)](arrow::Buffer* buffer) { delete buffer; }};
+            [vec = std::move(vec)](arrow::Buffer* buffer) { delete buffer; }
+        };
     }
 
 } // namespace rerun
