@@ -42,8 +42,7 @@ table VideoStream (
 
     // --- Optional ---
 
-    // TODO(andreas): Orientation? Should probably be part of 2D transform system instead,
-    // but that said it's more pressing & specialized with any kind of image-like data, so may add this earlier.
+    // TODO(#3982): add orientation.
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
