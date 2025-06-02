@@ -22,9 +22,8 @@ fn is_urdf_file(path: impl AsRef<Path>) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("urdf"))
 }
 
-/// A [`DataLoader`] for `LeRobot` datasets.
-///
-/// An example dataset which can be loaded can be found on Hugging Face: [lerobot/pusht_image](https://huggingface.co/datasets/lerobot/pusht_image)
+/// A [`DataLoader`] for [URDF](https://en.wikipedia.org/wiki/URDF) (Unified Robot Description Format),
+/// common in ROS.
 pub struct UrdfDataLoader;
 
 impl DataLoader for UrdfDataLoader {
@@ -71,6 +70,7 @@ impl DataLoader for UrdfDataLoader {
 
         log_robot(robot, &filepath, &tx, &settings.store_id)
             .with_context(|| "Failed to load URDF file!")?;
+
         Ok(())
     }
 }
@@ -81,6 +81,7 @@ struct UrdfTree {
     /// Used to find mesh files (.stl etc) relative to the URDF file.
     urdf_dir: Option<PathBuf>,
 
+    name: String,
     root: Link,
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
@@ -88,9 +89,9 @@ struct UrdfTree {
 }
 
 impl UrdfTree {
-    fn new(robot: Robot, root_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
-            name: _,
+            name,
             links,
             joints,
             materials,
@@ -118,7 +119,7 @@ impl UrdfTree {
             child_links.insert(joint.child.link.clone());
         }
 
-        // TODO: handle multiple rooots
+        // TODO: handle multiple roots
         let root = links
             .iter()
             .find_map(|(name, link)| {
@@ -131,7 +132,8 @@ impl UrdfTree {
             .with_context(|| "No root link found in URDF")?;
 
         Ok(Self {
-            urdf_dir: root_dir,
+            urdf_dir,
+            name,
             root: root.clone(),
             links,
             children,
@@ -153,15 +155,12 @@ fn log_robot(
 
     let urdf_tree =
         UrdfTree::new(robot, Some(urdf_dir)).with_context(|| "Failed to build URDF tree!")?;
-    let urdf_name = filepath
-        .file_stem()
-        .with_context(|| "Failed to get URDF file name")?;
 
     walk_tree(
         &urdf_tree,
         tx,
         store_id,
-        &urdf_name.to_string_lossy().to_string().into(),
+        &EntityPath::from_single_string(urdf_tree.name.clone()),
         &urdf_tree.root.name,
     )?;
 
@@ -190,9 +189,10 @@ fn walk_tree(
     };
 
     for joint in joints {
-        let joint_path = link_path.join(&joint.name.as_str().into());
+        let joint_path = link_path.join(&joint.name.as_str().into()); // TODO: ergonomics
         log_joint(tx, store_id, &joint_path, joint)?;
 
+        // Recurse
         walk_tree(urdf_tree, tx, store_id, &joint_path, &joint.child.link)?;
     }
 
@@ -257,21 +257,18 @@ fn log_joint(
 }
 
 fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
-    let translation = [
-        origin.xyz[0] as f32,
-        origin.xyz[1] as f32,
-        origin.xyz[2] as f32,
-    ];
+    let urdf_rs::Pose { xyz, rpy } = origin;
 
-    let quaternion = euler_to_quat_xyzw(
-        origin.rpy[0] as f32,
-        origin.rpy[1] as f32,
-        origin.rpy[2] as f32,
-    );
+    let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
+
+    let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
 
     Transform3D::from_translation(translation).with_quaternion(quaternion)
 }
 
+/// Log the given value using its `Debug` formatting.
+///
+/// TODO(#402): support dynamic structured logging
 fn log_debug_format(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
@@ -391,7 +388,7 @@ fn log_geometry(
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
 ) -> Result<(), anyhow::Error> {
-    match &geometry {
+    match geometry {
         Geometry::Mesh { filename, scale } => {
             if let Some(urdf_dir) = &urdf_tree.urdf_dir {
                 let mesh_path = urdf_dir.join(filename);
@@ -438,16 +435,17 @@ fn log_geometry(
                 re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
         }
-        other => {
+        // TODO: suuport all of them
+        _ => {
             re_log::warn_once!(
-                "Unsupported geometry: {other:?}. Only meshes are currently supported."
+                "Unsupported geometry: {geometry:?}. Only meshes are currently supported."
             );
         }
     }
     Ok(())
 }
 
-fn euler_to_quat_xyzw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
+fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
     // TODO(emilk): we should be able to use glam for this
     let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
     let (sr, cr) = (hr.sin(), hr.cos());
