@@ -6,9 +6,9 @@ pub use video_stream::VideoStreamVisualizer;
 
 use re_log_types::{EntityPath, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
+use re_viewer_context::{ViewContext, ViewId, ViewSystemIdentifier};
 
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D, SpatialViewState};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialViewState};
 
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
@@ -51,8 +51,8 @@ fn visualize_video_frame_texture(
     // Make sure to use the video instead of texture size here,
     // since the texture may be a placeholder which doesn't have the full size yet.
     let top_left_corner_position = world_from_entity.transform_point3(glam::Vec3::ZERO);
-    let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * fallback_video_size.x);
-    let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * fallback_video_size.y);
+    let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
+    let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
 
     if is_pending {
         // Keep polling for a fresh texture
@@ -82,19 +82,14 @@ fn visualize_video_frame_texture(
                 ..Default::default()
             },
         };
-        visualizer_data.pickable_rects.push(PickableTexturedRect {
-            ent_path: entity_path.clone(),
-            textured_rect,
-            source_data: PickableRectSourceData::Video,
-        });
-
-        if ctx.view_class_identifier == SpatialView2D::identifier() {
-            let bounding_box = re_math::BoundingBox::from_min_size(
-                world_from_entity.transform_point3(glam::Vec3::ZERO),
-                video_size.extend(0.0),
-            );
-            visualizer_data.add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
-        }
+        visualizer_data.add_pickable_rect(
+            PickableTexturedRect {
+                ent_path: entity_path.clone(),
+                textured_rect,
+                source_data: PickableRectSourceData::Video,
+            },
+            ctx.view_class_identifier,
+        );
     }
 }
 
@@ -202,17 +197,12 @@ fn show_video_error(
             },
     };
 
-    visualizer_data.pickable_rects.push(PickableTexturedRect {
-        ent_path: entity_path.clone(),
-        textured_rect: error_rect,
-        source_data: PickableRectSourceData::ErrorPlaceholder,
-    });
-
-    if ctx.view_class_identifier == SpatialView2D::identifier() {
-        let bounding_box = re_math::BoundingBox::from_min_size(
-            world_from_entity.transform_point3(glam::Vec3::ZERO),
-            video_size.extend(0.0),
-        );
-        visualizer_data.add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
-    }
+    visualizer_data.add_pickable_rect(
+        PickableTexturedRect {
+            ent_path: entity_path.clone(),
+            textured_rect: error_rect,
+            source_data: PickableRectSourceData::ErrorPlaceholder,
+        },
+        ctx.view_class_identifier,
+    );
 }

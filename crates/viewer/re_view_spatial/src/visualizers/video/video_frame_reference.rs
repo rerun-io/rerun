@@ -9,13 +9,13 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
-    VideoAssetCache, ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    PickableTexturedRect, SpatialView2D,
+    PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{
@@ -226,15 +226,6 @@ impl VideoFrameReferenceVisualizer {
                     );
                 }
             },
-        }
-
-        if spatial_ctx.view_class_identifier == SpatialView2D::identifier() {
-            let bounding_box = re_math::BoundingBox::from_min_size(
-                world_from_entity.transform_point3(glam::Vec3::ZERO),
-                video_resolution.extend(0.0),
-            );
-            self.data
-                .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
         }
     }
 }
