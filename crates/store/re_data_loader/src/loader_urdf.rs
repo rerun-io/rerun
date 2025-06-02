@@ -44,7 +44,10 @@ impl DataLoader for UrdfDataLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        load_urdf_file(&filepath, &tx, &settings.store_id)
+        let robot = urdf_rs::read_file(&filepath)
+            .with_context(|| format!("Path: {}", filepath.display()))?;
+
+        log_robot(robot, &filepath, &tx, &settings.store_id)
             .with_context(|| "Failed to load URDF file!")?;
 
         Ok(())
@@ -52,17 +55,30 @@ impl DataLoader for UrdfDataLoader {
 
     fn load_from_file_contents(
         &self,
-        _settings: &crate::DataLoaderSettings,
-        _filepath: std::path::PathBuf,
-        _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: Sender<LoadedData>,
+        settings: &crate::DataLoaderSettings,
+        filepath: std::path::PathBuf,
+        contents: std::borrow::Cow<'_, [u8]>,
+        tx: Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
-        todo!()
+        if !is_urdf_file(&filepath) {
+            return Err(DataLoaderError::Incompatible(filepath));
+        }
+
+        re_tracing::profile_function!(filepath.display().to_string());
+
+        let robot = urdf_rs::read_from_string(&String::from_utf8_lossy(&contents))
+            .with_context(|| format!("Path: {}", filepath.display()))?;
+
+        log_robot(robot, &filepath, &tx, &settings.store_id)
+            .with_context(|| "Failed to load URDF file!")?;
+        Ok(())
     }
 }
 
 struct UrdfTree {
-    /// Used to find .STL mesh files
+    /// The dir containing the .urdf file.
+    ///
+    /// Used to find mesh files (.stl etc) relative to the URDF file.
     urdf_dir: Option<PathBuf>,
 
     root: Link,
@@ -124,14 +140,12 @@ impl UrdfTree {
     }
 }
 
-fn load_urdf_file(
+fn log_robot(
+    robot: urdf_rs::Robot,
     filepath: &Path,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
 ) -> anyhow::Result<()> {
-    let robot =
-        urdf_rs::read_file(filepath).with_context(|| format!("Path: {}", filepath.display()))?;
-
     let urdf_dir = filepath
         .parent()
         .with_context(|| "Failed to get URDF parent directory")?
