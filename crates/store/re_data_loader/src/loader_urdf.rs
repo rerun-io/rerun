@@ -1,11 +1,11 @@
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, mpsc::Sender},
 };
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::Context as _;
-use urdf_rs::{Geometry, Joint, Link, Robot};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec4};
 
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::StoreId;
@@ -62,21 +62,38 @@ impl DataLoader for UrdfDataLoader {
 }
 
 struct UrdfTree {
+    /// Used to find .STL mesh files
+    urdf_dir: Option<PathBuf>,
+
     root: Link,
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
+    materials: HashMap<String, Material>,
 }
 
 impl UrdfTree {
-    fn new(robot: Robot) -> anyhow::Result<Self> {
-        let mut links = HashMap::<String, Link>::new();
+    fn new(robot: Robot, root_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+        let urdf_rs::Robot {
+            name: _,
+            links,
+            joints,
+            materials,
+        } = robot;
+
+        let materials = materials
+            .into_iter()
+            .map(|material| (material.name.clone(), material))
+            .collect::<HashMap<_, _>>();
+
+        let links: HashMap<String, Link> = links
+            .into_iter()
+            .map(|link| (link.name.clone(), link))
+            .collect();
+
         let mut children = HashMap::<String, Vec<Joint>>::new();
         let mut child_links = HashSet::<String>::new();
 
-        for link in robot.links {
-            links.insert(link.name.clone(), link);
-        }
-        for joint in robot.joints {
+        for joint in joints {
             children
                 .entry(joint.parent.link.clone())
                 .or_default()
@@ -85,21 +102,24 @@ impl UrdfTree {
             child_links.insert(joint.child.link.clone());
         }
 
+        // TODO: handle multiple rooots
         let root = links
             .iter()
             .find_map(|(name, link)| {
-                if !child_links.contains(name) {
-                    Some(link)
-                } else {
+                if child_links.contains(name) {
                     None
+                } else {
+                    Some(link)
                 }
             })
             .with_context(|| "No root link found in URDF")?;
 
         Ok(Self {
+            urdf_dir: root_dir,
             root: root.clone(),
             links,
             children,
+            materials,
         })
     }
 }
@@ -112,34 +132,34 @@ fn load_urdf_file(
     let robot =
         urdf_rs::read_file(filepath).with_context(|| format!("Path: {}", filepath.display()))?;
 
-    let root_dir = filepath
+    let urdf_dir = filepath
         .parent()
-        .with_context(|| "Failed to get URDF parent directory")?;
+        .with_context(|| "Failed to get URDF parent directory")?
+        .to_path_buf();
 
-    let urdf_tree = UrdfTree::new(robot).with_context(|| "Failed to build URDF tree!")?;
+    let urdf_tree =
+        UrdfTree::new(robot, Some(urdf_dir)).with_context(|| "Failed to build URDF tree!")?;
     let urdf_name = filepath
         .file_stem()
         .with_context(|| "Failed to get URDF file name")?;
 
     walk_tree(
-        &urdf_tree.root.name,
         &urdf_tree,
-        &urdf_name.to_string_lossy().to_string().into(),
         tx,
         store_id,
-        root_dir,
+        &urdf_name.to_string_lossy().to_string().into(),
+        &urdf_tree.root.name,
     )?;
 
     Ok(())
 }
 
 fn walk_tree(
-    link_name: &str,
     urdf_tree: &UrdfTree,
-    parent_path: &EntityPath,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    root_dir: &Path,
+    parent_path: &EntityPath,
+    link_name: &str,
 ) -> anyhow::Result<()> {
     let link = urdf_tree
         .links
@@ -148,7 +168,7 @@ fn walk_tree(
     debug_assert_eq!(link_name, link.name);
     let link_path = parent_path.join(&link_name.into()); // TODO: ergonomics
 
-    log_link(tx, store_id, root_dir, link, &link_path)?;
+    log_link(urdf_tree, tx, store_id, link, &link_path)?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -159,14 +179,7 @@ fn walk_tree(
         let joint_path = link_path.join(&joint.name.as_str().into());
         log_joint(tx, store_id, &joint_path, joint)?;
 
-        walk_tree(
-            &joint.child.link,
-            urdf_tree,
-            &joint_path,
-            tx,
-            store_id,
-            root_dir,
-        )?;
+        walk_tree(urdf_tree, tx, store_id, &joint_path, &joint.child.link)?;
     }
 
     Ok(())
@@ -179,7 +192,7 @@ fn log_joint(
     joint: &Joint,
 ) -> anyhow::Result<()> {
     let Joint {
-        name,
+        name: _,
         joint_type,
         origin,
         parent: _,
@@ -270,14 +283,14 @@ fn log_debug_format(
 }
 
 fn log_link(
+    urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    root_dir: &Path,
     link: &urdf_rs::Link,
     link_entity: &EntityPath,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
-        name,
+        name: _,
         inertial,
         visual,
         collision,
@@ -294,11 +307,18 @@ fn log_link(
         } = visual;
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let vis_entity = link_entity.join(&name.into());
+
+        // We need to look up the material by name, because the `Visuals::Material`
+        // only has a name, no color or texture.
+        let material = material
+            .as_ref()
+            .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
+
         log_debug_format(tx, store_id, vis_entity.clone(), "origin", &origin)?;
         log_geometry(
+            urdf_tree,
             tx,
             store_id,
-            root_dir,
             vis_entity,
             geometry,
             material.as_ref(),
@@ -314,52 +334,66 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity.join(&name.into());
         log_debug_format(tx, store_id, collision_entity.clone(), "origin", &origin)?;
-        log_geometry(tx, store_id, root_dir, collision_entity, geometry, None)?;
+        log_geometry(urdf_tree, tx, store_id, collision_entity, geometry, None)?;
     }
 
     Ok(())
 }
 
 fn log_geometry(
+    urdf_tree: &UrdfTree,
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
-    root_dir: &Path,
     vis_entity: EntityPath,
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
 ) -> Result<(), anyhow::Error> {
     match &geometry {
         Geometry::Mesh { filename, scale } => {
-            if let Some(material) = material {
-                let urdf_rs::Material {
-                    name: _,
-                    color,
-                    texture,
-                } = material;
-                if color.is_some() {
-                    re_log::warn_once!("Material color not supported");
-                };
-                if texture.is_some() {
-                    re_log::warn_once!("Material texture not supported");
+            if let Some(urdf_dir) = &urdf_tree.urdf_dir {
+                let mesh_path = urdf_dir.join(filename);
+
+                let mut asset3d =
+                    Asset3D::from_file_path(mesh_path.clone()).with_context(|| {
+                        format!("failed to load asset from: {}", mesh_path.display())
+                    })?;
+
+                if let Some(material) = material {
+                    let urdf_rs::Material {
+                        name: _,
+                        color,
+                        texture,
+                    } = material;
+                    if let Some(color) = color {
+                        let urdf_rs::Color {
+                            rgba: Vec4([r, g, b, a]),
+                        } = color;
+                        asset3d = asset3d.with_albedo_factor(
+                            // TODO(emilk): is this linear or sRGB?
+                            re_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
+                                *r as f32, *g as f32, *b as f32, *a as f32,
+                            ),
+                        );
+                    };
+                    if texture.is_some() {
+                        re_log::warn_once!("Material texture not supported");
+                    }
                 }
+
+                if scale.is_some_and(|scale| scale != urdf_rs::Vec3([1.0; 3])) {
+                    re_log::warn_once!("Scaled meshes not supported");
+                }
+
+                tx.send(crate::LoadedData::Chunk(
+                    UrdfDataLoader.name(),
+                    store_id.clone(),
+                    ChunkBuilder::new(ChunkId::new(), vis_entity)
+                        .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
+                        .build()?,
+                ))?;
+            } else {
+                re_log::warn_once!("URDF directory not set, cannot load mesh: {filename}");
             }
-
-            let mesh_path = root_dir.join(filename);
-
-            let asset3d = Asset3D::from_file_path(mesh_path.clone())
-                .with_context(|| format!("failed to load asset from: {}", mesh_path.display()))?;
-
-            if scale.is_some_and(|scale| scale != urdf_rs::Vec3([1.0; 3])) {
-                re_log::warn_once!("Scaled meshes not supported");
-            }
-
-            tx.send(crate::LoadedData::Chunk(
-                UrdfDataLoader.name(),
-                store_id.clone(),
-                ChunkBuilder::new(ChunkId::new(), vis_entity)
-                    .with_archetype(RowId::new(), TimePoint::default(), &asset3d)
-                    .build()?,
-            ))?;
         }
         other => {
             re_log::warn_once!(
