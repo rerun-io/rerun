@@ -187,7 +187,7 @@ impl DepthCloud {
         let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
         let offset = intrinsics.col(2).truncate();
 
-        let mut bbox = re_math::BoundingBox::NOTHING;
+        let mut bbox = re_math::BoundingBox::nothing();
 
         for corner in corners {
             let depth = corner.z;
