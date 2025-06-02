@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
+from rerun_notebook import Viewer as _Viewer
+
 from rerun import bindings
 
 from .event import (
@@ -106,7 +108,6 @@ class Viewer:
             Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-        from rerun_notebook import Viewer as _Viewer
 
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
