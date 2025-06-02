@@ -41,14 +41,14 @@ class IndicatorComponentBatch:
         )
         self._archetype_name = archetype_name
 
-    def component_name(self) -> str:
+    def archetype_field_name(self) -> str:
         return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_array(self) -> pa.Array:
         return self.data
 
     def component_descriptor(self) -> ComponentDescriptor:
-        return ComponentDescriptor(self.component_name())
+        return ComponentDescriptor(self.archetype_field_name())
 
 
 @catch_and_log_exceptions()
@@ -218,6 +218,8 @@ def _log_components(
     instanced: dict[ComponentDescriptor, pa.Array] = {}
 
     descriptors = [comp.component_descriptor() for comp in components]
+    print(descriptors[0])
+    print(descriptors[1])
     arrow_arrays = [comp.as_arrow_array() for comp in components]
 
     if isinstance(entity_path, list):

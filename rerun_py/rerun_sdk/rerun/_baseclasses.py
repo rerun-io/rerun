@@ -30,18 +30,18 @@ class ComponentDescriptor:
     Example: `rerun.archetypes.Points3D`.
     """
 
-    archetype_field_name: str | None
+    archetype_field_name: str
     """
-    Optional name of the field within `Archetype` associated with this data.
+    Name of the field within `Archetype` associated with this data.
 
     `None` if the data wasn't logged through an archetype.
 
     Example: `positions`.
     """
 
-    component_name: str
+    component_name: str | None
     """
-    Semantic name associated with this data.
+    Optional semantic name associated with this data.
 
     This is fully implied by `archetype_name` and `archetype_field`, but
     included for semantic convenience.
@@ -51,12 +51,12 @@ class ComponentDescriptor:
 
     def __init__(
         self,
-        component_name: str,
+        archetype_field_name: str,
         *,
         archetype_name: str | None = None,
-        archetype_field_name: str | None = None,
+        component_name: str | None = None,
     ) -> None:
-        assert not component_name.startswith("rerun.components.rerun.components."), (
+        assert component_name is None or not component_name.startswith("rerun.components.rerun.components."), (
             f"Bad component name: {component_name}'"
         )
         if archetype_name is not None:
@@ -85,37 +85,35 @@ class ComponentDescriptor:
         archetype_field_name = self.archetype_field_name
         component_name = self.component_name
 
-        if archetype_name is not None and archetype_field_name is None:
-            return f"{archetype_name}:{component_name}"
-        elif archetype_name is None and archetype_field_name is not None:
-            return f"{component_name}#{archetype_field_name}"
-        elif archetype_name is not None and archetype_field_name is not None:
-            return f"{archetype_name}:{component_name}#{archetype_field_name}"
+        if archetype_name is not None and component_name is None:
+            return f"{archetype_name}:{archetype_field_name}"
+        elif archetype_name is None and component_name is not None:
+            return f"{archetype_field_name}#{component_name}"
+        elif archetype_name is not None and component_name is not None:
+            return f"{archetype_name}:{archetype_field_name}#{component_name}"
 
-        return component_name
+        return archetype_field_name
 
-    def with_overrides(self, *, archetype_name: str | None, archetype_field_name: str | None) -> ComponentDescriptor:
+    def with_overrides(self, *, archetype_name: str | None, component_name: str | None) -> ComponentDescriptor:
         """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
-        component_name = self.component_name
+        archetype_field_name = self.archetype_field_name
         archetype_name = archetype_name if archetype_name is not None else self.archetype_name
-        archetype_field_name = archetype_field_name if archetype_field_name is not None else self.archetype_field_name
+        component_name = component_name if component_name is not None else self.component_name
         return ComponentDescriptor(
-            component_name,
+            archetype_field_name,
+            component_name=component_name,
             archetype_name=archetype_name,
-            archetype_field_name=archetype_field_name,
         )
 
-    def or_with_overrides(self, *, archetype_name: str | None, archetype_field_name: str | None) -> ComponentDescriptor:
+    def or_with_overrides(self, *, archetype_name: str | None, component_name: str | None) -> ComponentDescriptor:
         """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
-        component_name = self.component_name
+        archetype_field_name = self.archetype_field_name
         archetype_name = self.archetype_name if self.archetype_name is not None else archetype_name
-        archetype_field_name = (
-            self.archetype_field_name if self.archetype_field_name is not None else archetype_field_name
-        )
+        component_name = self.component_name if self.component_name is not None else component_name
         return ComponentDescriptor(
-            component_name,
+            archetype_field_name,
             archetype_name=archetype_name,
-            archetype_field_name=archetype_field_name,
+            component_name=component_name,
         )
 
 
@@ -256,9 +254,9 @@ class Archetype(AsComponents):
                 comp = getattr(self, fld.name)
                 if comp is not None:
                     descr = ComponentDescriptor(
-                        comp._COMPONENT_NAME,
+                        fld.name,
+                        component_name=comp._COMPONENT_NAME,
                         archetype_name=self.archetype_name(),
-                        archetype_field_name=fld.name,
                     )
                     batches.append(DescribedComponentBatch(comp, descr))
 
@@ -426,7 +424,7 @@ class ComponentColumn:
         self.descriptor = descriptor
         self.component_batch = component_batch
 
-        if "Indicator" in descriptor.component_name:
+        if "Indicator" in descriptor.archetype_field_name:
             if lengths is None:
                 # Indicator component, no lengths -> zero-sized batches by default
                 self.lengths = np.zeros(len(component_batch.as_arrow_array()), dtype=np.int32)
