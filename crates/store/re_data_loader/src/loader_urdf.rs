@@ -284,11 +284,8 @@ fn log_joint(
 
 fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
-
     let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
-
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
-
     Transform3D::from_translation(translation).with_quaternion(quaternion)
 }
 
@@ -482,14 +479,14 @@ fn log_geometry(
         Geometry::Cylinder { radius, length } => {
             // URDF and Rerun both use Z as the main axis
             re_log::warn_once!(
-                "Converting URDF cylinder to a capsule, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
+                "Respresitng URDF cylinder as a capsule instead, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
             ); // TODO(#1361): support cylinders
             send_archetype(
                 tx,
                 store_id,
                 entity_path,
                 &re_types::archetypes::Capsules3D::from_lengths_and_radii(
-                    [*length as f32],
+                    [*length as f32 - *radius as f32], // Very approximately the correct volume
                     [*radius as f32],
                 ),
             )?;
