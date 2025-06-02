@@ -1,3 +1,4 @@
+use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
@@ -10,6 +11,7 @@ pub struct AddServerModal {
 
     scheme: Scheme,
     host: String,
+    token: String,
     port: u16,
 }
 
@@ -19,6 +21,7 @@ impl Default for AddServerModal {
             modal: Default::default(),
             scheme: Scheme::Rerun,
             host: String::new(),
+            token: String::new(),
             port: 443,
         }
     }
@@ -34,7 +37,12 @@ impl AddServerModal {
     }
 
     //TODO(ab): handle ESC and return
-    pub fn ui(&mut self, ctx: &Context<'_>, ui: &egui::Ui) {
+    pub fn ui(
+        &mut self,
+        ctx: &Context<'_>,
+        connection_registry: &ConnectionRegistryHandle,
+        ui: &egui::Ui,
+    ) {
         self.modal.ui(
             ui.ctx(),
             || ModalWrapper::new("Add Server"),
@@ -63,15 +71,29 @@ impl AddServerModal {
                 ui.scope(|ui| {
                     // make field red if host is invalid
                     if host.is_err() {
-                        ui.visuals_mut().widgets.active.bg_stroke =
-                            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-                        ui.visuals_mut().widgets.hovered.bg_stroke =
-                            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-                        ui.visuals_mut().widgets.inactive.bg_stroke =
-                            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+                        style_invalid_field(ui);
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
                 });
+
+                ui.add_space(14.0);
+
+                ui.label("Token (optional, will be stored in clear text):");
+                let token = ui
+                    .scope(|ui| {
+                        let token = (!self.token.is_empty())
+                            .then(|| re_auth::Jwt::try_from(self.token.clone()))
+                            .transpose();
+
+                        if token.is_err() {
+                            style_invalid_field(ui);
+                        }
+
+                        ui.add(egui::TextEdit::singleline(&mut self.token));
+
+                        token
+                    })
+                    .inner;
 
                 ui.add_space(14.0);
 
@@ -87,9 +109,13 @@ impl AddServerModal {
                 ui.add_space(24.0);
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if let Ok(origin) = origin {
+                    if let (Ok(origin), Ok(token)) = (origin, token) {
                         if ui.button("Add").clicked() {
                             ui.close();
+
+                            if let Some(token) = token {
+                                connection_registry.set_token(&origin, token);
+                            }
 
                             ctx.command_sender.send(Command::AddServer(origin)).ok();
                         }
@@ -104,4 +130,12 @@ impl AddServerModal {
             },
         );
     }
+}
+
+fn style_invalid_field(ui: &mut egui::Ui) {
+    ui.visuals_mut().widgets.active.bg_stroke = egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+    ui.visuals_mut().widgets.hovered.bg_stroke =
+        egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+    ui.visuals_mut().widgets.inactive.bg_stroke =
+        egui::Stroke::new(1.0, ui.visuals().error_fg_color);
 }

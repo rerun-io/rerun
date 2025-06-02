@@ -37,7 +37,7 @@ impl PyTask {
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     pub fn wait(&self, py: Python<'_>, timeout_secs: u64) -> PyResult<()> {
-        let mut connection = self.client.borrow(py).connection().clone();
+        let connection = self.client.borrow(py).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(py, &[self.id.clone()], timeout)?;
 
@@ -74,7 +74,7 @@ impl PyTasks {
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     pub fn wait(self_: PyRef<'_, Self>, timeout_secs: u64) -> PyResult<()> {
-        let mut connection = self_.client.borrow(self_.py()).connection().clone();
+        let connection = self_.client.borrow(self_.py()).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(self_.py(), &self_.ids, timeout)?;
 
@@ -83,7 +83,7 @@ impl PyTasks {
 
     /// Return a table with the status of all tasks.
     pub fn status_table(&self, py: Python<'_>) -> PyResult<PyDataFusionTable> {
-        let mut connection = self.client.borrow(py).connection().clone();
+        let connection = self.client.borrow(py).connection().clone();
 
         // TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
         let hash = Hash64::hash(&self.ids);

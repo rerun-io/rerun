@@ -53,6 +53,11 @@ impl QueryContext<'_> {
     }
 
     #[inline]
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.view_ctx.viewer_ctx.global_context.egui_ctx
+    }
+
+    #[inline]
     pub fn recording(&self) -> &re_entity_db::EntityDb {
         self.view_ctx.recording()
     }

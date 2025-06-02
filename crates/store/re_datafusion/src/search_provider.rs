@@ -8,7 +8,7 @@ use datafusion::{
 };
 use tokio_stream::StreamExt as _;
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     common::v1alpha1::ScanParameters, frontend::v1alpha1::SearchDatasetRequest,

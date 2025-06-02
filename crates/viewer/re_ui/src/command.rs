@@ -246,11 +246,11 @@ impl UICommand {
             Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
             Self::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
             Self::PlaybackStepBack => (
-                "Step time back",
+                "Step backwards",
                 "Move the time marker back to the previous point in time with any data",
             ),
             Self::PlaybackStepForward => (
-                "Step time forward",
+                "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
@@ -437,25 +437,17 @@ impl UICommand {
     }
 
     /// Primary keyboard shortcut
-    fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
+    pub fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
         self.kb_shortcuts(os).first().copied()
     }
 
     /// Return the keyboard shortcut for this command, nicely formatted
+    // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
             .map(|shortcut| egui_ctx.format_shortcut(&shortcut))
-    }
-
-    /// Add e.g. " (Ctrl+F11)" as a suffix
-    pub fn format_shortcut_tooltip_suffix(self, egui_ctx: &egui::Context) -> String {
-        if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {
-            format!(" ({shortcut_text})")
-        } else {
-            Default::default()
-        }
     }
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
@@ -554,12 +546,22 @@ impl UICommand {
         button
     }
 
-    pub fn tooltip_with_shortcut(self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "{}{}",
-            self.tooltip(),
-            self.format_shortcut_tooltip_suffix(egui_ctx)
-        )
+    /// Show name of command and how to activate it
+    pub fn tooltip_ui(self, ui: &mut egui::Ui) {
+        let os = ui.ctx().os();
+
+        let (label, details) = self.text_and_tooltip();
+
+        if let Some(shortcut) = self.primary_kb_shortcut(os) {
+            crate::Help::new_without_title()
+                .control(label, crate::IconText::from_keyboard_shortcut(os, shortcut))
+                .ui(ui);
+        } else {
+            ui.label(label);
+        }
+
+        ui.set_max_width(220.0);
+        ui.label(details);
     }
 }
 

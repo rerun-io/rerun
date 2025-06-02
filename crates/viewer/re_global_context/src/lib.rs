@@ -44,6 +44,9 @@ pub struct GlobalContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
+
+    /// Registry of authenticated redap connections
+    pub connection_registry: &'a re_grpc_client::ConnectionRegistryHandle,
 }
 
 /// Which display mode are we currently in?

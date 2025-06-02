@@ -7,8 +7,7 @@ use datafusion::prelude::SessionContext;
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::redap;
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
@@ -52,6 +51,7 @@ pub struct TablesSessionContext {
 
 impl TablesSessionContext {
     pub fn new(
+        connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -62,7 +62,7 @@ impl TablesSessionContext {
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
-                register_all_table_entries(ctx.clone(), origin.clone()),
+                register_all_table_entries(ctx.clone(), connection_registry, origin.clone()),
             )
         };
 
@@ -80,9 +80,10 @@ impl TablesSessionContext {
 
 async fn register_all_table_entries(
     ctx: Arc<SessionContext>,
+    connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
 ) -> Result<Vec<Table>, SessionContextError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
         .find_entries(FindEntriesRequest {
@@ -104,21 +105,15 @@ async fn register_all_table_entries(
     for entry in entries {
         let table_provider = match entry.kind {
             EntryKind::Dataset => Some(
-                PartitionTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
-                )
-                .into_provider()
-                .await?,
+                PartitionTableProvider::new(client.clone(), entry.id)
+                    .into_provider()
+                    .await?,
             ),
 
             EntryKind::Table => Some(
-                TableEntryTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
-                )
-                .into_provider()
-                .await?,
+                TableEntryTableProvider::new(client.clone(), entry.id)
+                    .into_provider()
+                    .await?,
             ),
 
             // TODO(ab): these do not exist yet

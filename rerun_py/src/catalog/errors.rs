@@ -18,7 +18,7 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::ConnectionError;
 use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
@@ -69,6 +69,9 @@ enum ExternalError {
 
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error(transparent)]
+    TokenError(#[from] re_auth::TokenError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -144,6 +147,10 @@ impl From<ExternalError> for PyErr {
 
             ExternalError::TypeConversionError(err) => {
                 PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
+            }
+
+            ExternalError::TokenError(err) => {
+                PyValueError::new_err(format!("Invalid token: {err}"))
             }
         }
     }

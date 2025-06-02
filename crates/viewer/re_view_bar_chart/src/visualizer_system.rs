@@ -50,7 +50,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             };
 
             if tensor.is_vector() {
-                let color = results.get_mono_with_fallback(&BarChart::descriptor_color());
+                let color = results.get_mono_with_fallback(&BarChart::descriptor_color(), self);
                 self.charts
                     .insert(data_result.entity_path.clone(), (tensor.0.clone(), color));
             }

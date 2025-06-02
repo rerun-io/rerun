@@ -1,4 +1,4 @@
-use egui::{NumExt as _, WidgetText, epaint::util::OrderedFloat, text::TextWrapping};
+use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
 use re_format::format_f32;
 use re_math::BoundingBox;

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use ahash::HashMap;
-use egui::Context;
+use egui::os::OperatingSystem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
@@ -157,6 +157,8 @@ pub struct TestContext {
     pub component_ui_registry: ComponentUiRegistry,
     pub reflection: Reflection,
 
+    pub connection_registry: re_grpc_client::ConnectionRegistryHandle,
+
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
 
@@ -199,6 +201,8 @@ impl Default for TestContext {
             query_results: Default::default(),
             component_ui_registry,
             reflection,
+            connection_registry: re_grpc_client::ConnectionRegistry::new(),
+
             command_sender,
             command_receiver,
 
@@ -403,6 +407,8 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
+
+                connection_registry: &self.connection_registry,
             },
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
@@ -581,18 +587,23 @@ impl TestContext {
         }
     }
 
-    pub fn test_help_view(help: impl Fn(&Context) -> Help) {
+    pub fn test_help_view(help: impl Fn(OperatingSystem) -> Help) {
         use egui::os::OperatingSystem;
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
                 ui.ctx().set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
-                help(ui.ctx()).ui(ui);
+                help(os).ui(ui);
             });
-            let help_view = help(&harness.ctx);
-            let name = format!("help_view_{}_{os:?}", help_view.title())
-                .replace(' ', "_")
-                .to_lowercase();
+            let help_view = help(os);
+            let name = format!(
+                "help_view_{}_{os:?}",
+                help_view
+                    .title()
+                    .expect("View help texts should have titles")
+            )
+            .replace(' ', "_")
+            .to_lowercase();
             harness.fit_contents();
             harness.snapshot(&name);
         }

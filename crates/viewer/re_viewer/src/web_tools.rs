@@ -6,6 +6,7 @@ use serde::Deserialize;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
 
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log::ResultExt as _;
 use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 
@@ -110,6 +111,7 @@ impl EndpointCategory {
 
 /// Start receiving from the given url.
 pub fn url_to_receiver(
+    connection_registry: &ConnectionRegistryHandle,
     egui_ctx: egui::Context,
     follow_if_http: bool,
     url: String,
@@ -131,7 +133,7 @@ pub fn url_to_receiver(
 
         EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
-                re_grpc_client::redap::Command::SetLoopSelection {
+                re_grpc_client::Command::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -141,7 +143,8 @@ pub fn url_to_receiver(
                     time_range,
                 }),
             });
-            Some(re_grpc_client::redap::stream_dataset_from_redap(
+            Some(re_grpc_client::stream_dataset_from_redap(
+                connection_registry,
                 uri,
                 on_cmd,
                 Some(ui_waker),

@@ -51,7 +51,7 @@ impl PyDataframeQueryView {
             let dataset_py = dataset.borrow(py);
             let entry = dataset_py.as_super();
             let dataset_id = entry.details.id;
-            let mut connection = entry.client.borrow(py).connection().clone();
+            let connection = entry.client.borrow(py).connection().clone();
 
             connection.get_dataset_schema(py, dataset_id)?
         };
@@ -403,7 +403,7 @@ impl PyDataframeQueryView {
         let dataset = self_.dataset.borrow(py);
         let entry = dataset.as_super();
         let dataset_id = entry.details.id;
-        let mut connection = entry.client.borrow(py).connection().clone();
+        let connection = entry.client.borrow(py).connection().clone();
 
         //
         // Fetch relevant chunks

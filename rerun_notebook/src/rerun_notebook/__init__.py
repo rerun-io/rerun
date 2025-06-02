@@ -83,6 +83,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
     _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
+    _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
+
     _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
@@ -92,6 +94,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         height: int | None = None,
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
+        fallback_token: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -108,6 +111,9 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         if panel_states:
             self.update_panel_states(panel_states)
+
+        if fallback_token:
+            self._fallback_token = fallback_token
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str):

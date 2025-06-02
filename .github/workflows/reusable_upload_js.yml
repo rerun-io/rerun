@@ -76,6 +76,7 @@ jobs:
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_js"
           parent: false
           process_gcloudignore: false
+          gzip: false
 
       - name: "Upload rerun_js (tagged)"
         if: inputs.MARK_TAGGED_VERSION
@@ -85,6 +86,7 @@ jobs:
           destination: "rerun-builds/version/${{inputs.RELEASE_VERSION}}/rerun_js"
           parent: false
           process_gcloudignore: false
+          gzip: false
 
       - name: "Upload rerun_js (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
@@ -94,6 +96,7 @@ jobs:
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_js"
           parent: false
           process_gcloudignore: false
+          gzip: false
 
       - name: "Upload rerun_js (prerelease)"
         if: github.ref == 'refs/heads/main'
@@ -105,6 +108,7 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+          gzip: false
 
       - name: "Upload rerun_js (main)"
         if: github.ref == 'refs/heads/main'
@@ -116,6 +120,7 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+          gzip: false
 
       - name: "Upload rerun_js (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
@@ -127,6 +132,7 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+          gzip: false
 
       - name: "Upload rerun_js (nightly)"
         if: ${{ inputs.NIGHTLY }}
@@ -138,3 +144,4 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+          gzip: false

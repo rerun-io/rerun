@@ -62,6 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                None,
                 re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
 

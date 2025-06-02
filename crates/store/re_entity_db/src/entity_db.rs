@@ -16,6 +16,7 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
+use re_smart_channel::SmartChannelSource;
 
 use crate::{Error, TimesPerTimeline};
 
@@ -24,7 +25,28 @@ use crate::{Error, TimesPerTimeline};
 /// See [`GarbageCollectionOptions::time_budget`].
 pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------¨
+
+/// What class of [`EntityDb`] is this?
+///
+/// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
+/// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
+/// their default blueprint sourced remotely.
+pub enum EntityDbClass<'a> {
+    /// This is a regular local recording (e.g. loaded from a `.rrd` file or logged to the viewer).
+    LocalRecording,
+
+    /// This is an official rerun example recording.
+    ExampleRecording,
+
+    /// This is a recording loaded from a remote dataset partition.
+    DatasetPartition(&'a re_uri::DatasetDataUri),
+
+    /// This is a blueprint.
+    Blueprint,
+}
+
+// ---
 
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
@@ -156,6 +178,27 @@ impl EntityDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
+    }
+
+    /// Returns the [`EntityDbClass`] of this entity db.
+    pub fn store_class(&self) -> EntityDbClass<'_> {
+        match self.store_kind() {
+            StoreKind::Blueprint => EntityDbClass::Blueprint,
+
+            StoreKind::Recording => match &self.data_source {
+                Some(SmartChannelSource::RrdHttpStream { url, .. })
+                    if url.starts_with("https://app.rerun.io") =>
+                {
+                    EntityDbClass::ExampleRecording
+                }
+
+                Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
+                    EntityDbClass::DatasetPartition(uri)
+                }
+
+                _ => EntityDbClass::LocalRecording,
+            },
+        }
     }
 
     pub fn recording_property<C: re_types_core::Component>(

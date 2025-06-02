@@ -2,11 +2,12 @@ use egui::os::OperatingSystem;
 use egui::{Modifiers, vec2};
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, maybe_plus, modifiers_text};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
 
 #[test]
 fn test_help() {
     let mut snapshot_results = SnapshotResults::new();
+
     // We show different shortcuts based on the OS
     for os in [OperatingSystem::Windows, OperatingSystem::Mac] {
         let mut harness = Harness::builder()
@@ -21,11 +22,7 @@ fn test_help() {
                         .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
                         .control(
                             "Zoom",
-                            icon_text!(
-                                modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                                maybe_plus(ui.ctx()),
-                                icons::SCROLL
-                            ),
+                            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
                         )
                         .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK));
 
@@ -39,7 +36,7 @@ fn test_help() {
                     ] {
                         help = help.control(
                             format!("{modifier:?}"),
-                            icon_text!(modifiers_text(modifier, ui.ctx())),
+                            IconText::from_modifiers(os, modifier),
                         );
                     }
 

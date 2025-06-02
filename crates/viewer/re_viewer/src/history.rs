@@ -86,10 +86,11 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
     let egui_ctx = app.egui_ctx.clone();
     let command_sender = app.command_sender.clone();
 
+    let connection_registry = app.connection_registry().clone();
     let closure = Closure::wrap(Box::new({
         move |event: web_sys::PopStateEvent| {
             let new_state = deserialize_from_state(&event.state())?;
-            handle_popstate(&egui_ctx, &command_sender, new_state);
+            handle_popstate(&connection_registry, &egui_ctx, &command_sender, new_state);
             Ok(())
         }
     }) as Box<EventListener<_>>);
@@ -132,6 +133,7 @@ impl Drop for PopstateListener {
 }
 
 fn handle_popstate(
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     new_state: Option<HistoryEntry>,
@@ -168,6 +170,7 @@ fn handle_popstate(
     for url in &entry.urls {
         // we continue in case of errors because some receivers may be valid
         let Some(receiver) = url_to_receiver(
+            connection_registry,
             egui_ctx.clone(),
             follow_if_http,
             url.clone(),

@@ -8,7 +8,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::catalog::v1alpha1::ext::EntryDetails;

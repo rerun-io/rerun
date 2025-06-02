@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Callable, Literal
 
@@ -111,6 +112,7 @@ class Viewer:
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
             url=url,
+            fallback_token=os.environ.get("REDAP_TOKEN", None),
         )
 
         # Viewer event handling
