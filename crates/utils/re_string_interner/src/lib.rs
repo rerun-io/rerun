@@ -68,6 +68,13 @@ impl From<String> for InternedString {
     }
 }
 
+impl From<&String> for InternedString {
+    #[inline]
+    fn from(string: &String) -> Self {
+        Self::new(string)
+    }
+}
+
 impl std::cmp::PartialEq for InternedString {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
