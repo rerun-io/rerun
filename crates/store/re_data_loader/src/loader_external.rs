@@ -5,6 +5,7 @@ use std::{
 };
 
 use ahash::HashMap;
+use indexmap::IndexSet;
 use once_cell::sync::Lazy;
 
 use crate::{DataLoader as _, LoadedData};
@@ -49,7 +50,8 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<PathBuf>> = Lazy::new(|| {
         })
         .map(PathBuf::from);
 
-    let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
+    // For each file name, collect the paths to all executables that match that name.
+    let mut executables = HashMap::<String, IndexSet<PathBuf>>::default();
     for dirpath in dirpaths {
         re_tracing::profile_scope!("dir", dirpath.to_string_lossy());
         let Ok(dir) = std::fs::read_dir(dirpath) else {
@@ -73,7 +75,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<PathBuf>> = Lazy::new(|| {
                 let exe_paths = executables
                     .entry(filename.to_string_lossy().to_string())
                     .or_default();
-                exe_paths.push(path.clone());
+                exe_paths.insert(path.clone());
             }
         }
     }
