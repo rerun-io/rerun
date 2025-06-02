@@ -89,17 +89,22 @@ impl ConnectionRegistryHandle {
             }
         }
 
-        let mut inner = self.inner.write().await;
-        let token = inner
-            .saved_tokens
-            .get(&origin)
-            .cloned()
-            .or_else(|| inner.fallback_token.clone())
-            .or_else(get_token_from_env);
+        // Don't hold the lock while creating the client - this may take a while and we may
+        // want to read the tokens in the meantime for other purposes.
+        let token = {
+            let inner = self.inner.read().await;
+            inner
+                .saved_tokens
+                .get(&origin)
+                .cloned()
+                .or_else(|| inner.fallback_token.clone())
+                .or_else(get_token_from_env)
+        };
 
         let client = crate::redap::client(origin.clone(), token).await;
         match client {
             Ok(client) => {
+                let mut inner = self.inner.write().await;
                 inner.clients.insert(origin, client.clone());
                 Ok(client)
             }
