@@ -1,3 +1,8 @@
+#![cfg_attr(
+    target_arch = "wasm32",
+    expect(unused_imports, unused_variables, clippy::needless_pass_by_value)
+)]
+
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, mpsc::Sender},
@@ -63,6 +68,7 @@ impl DataLoader for UrdfDataLoader {
         "URDF Loader".to_owned()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
         settings: &crate::DataLoaderSettings,
@@ -111,6 +117,7 @@ struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
     /// Used to find mesh files (.stl etc) relative to the URDF file.
+    #[cfg(not(target_arch = "wasm32"))]
     urdf_dir: Option<PathBuf>,
 
     name: String,
@@ -168,6 +175,7 @@ impl UrdfTree {
         };
 
         Ok(Self {
+            #[cfg(not(target_arch = "wasm32"))]
             urdf_dir,
             name,
             root: root.clone(),
@@ -423,6 +431,10 @@ fn log_geometry(
 ) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale } => {
+            #[cfg(target_arch = "wasm32")]
+            re_log::warn_once!("URDF mesh loading not supported on wasm32");
+
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(urdf_dir) = &urdf_tree.urdf_dir {
                 let mesh_path = urdf_dir.join(filename);
 

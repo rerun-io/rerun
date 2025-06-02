@@ -24,12 +24,11 @@ pub mod loader_lerobot;
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
-#[cfg(not(target_arch = "wasm32"))]
 mod loader_urdf;
 
 pub use self::{
     load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
-    loader_directory::DirectoryLoader, loader_rrd::RrdLoader,
+    loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -40,7 +39,6 @@ pub use self::{
         iter_external_loaders,
     },
     loader_lerobot::LeRobotDatasetLoader,
-    loader_urdf::UrdfDataLoader,
 };
 
 // ----------------------------------------------------------------------------
@@ -401,7 +399,6 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
-        #[cfg(not(target_arch = "wasm32"))]
         Arc::new(UrdfDataLoader),
     ]
 });
