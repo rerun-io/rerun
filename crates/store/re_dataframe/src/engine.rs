@@ -41,7 +41,7 @@ impl QueryEngine<StorageEngine> {
         Self::new(store.clone(), QueryCache::new_handle(store))
     }
 
-    /// Like [`ChunkStore::from_rrd_filepath`], but automatically instantiates [`QueryEngine`]s
+    /// Like [`re_chunk_store::ChunkStore::from_rrd_filepath`], but automatically instantiates [`QueryEngine`]s
     /// with new empty [`QueryCache`]s.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
