@@ -184,13 +184,9 @@ fn log_robot(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
 ) -> anyhow::Result<()> {
-    let urdf_dir = filepath
-        .parent()
-        .with_context(|| "Failed to get URDF parent directory")?
-        .to_path_buf();
+    let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
 
-    let urdf_tree =
-        UrdfTree::new(robot, Some(urdf_dir)).with_context(|| "Failed to build URDF tree!")?;
+    let urdf_tree = UrdfTree::new(robot, urdf_dir).with_context(|| "Failed to build URDF tree!")?;
 
     walk_tree(
         &urdf_tree,
