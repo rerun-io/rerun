@@ -6,7 +6,7 @@ use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
-use re_viewer_context::{DataResult, QueryContext, TypedComponentFallbackProvider, ViewContext};
+use re_viewer_context::{DataResult, TypedComponentFallbackProvider, ViewContext};
 
 use crate::chunks_with_descriptor::ChunksWithDescriptor;
 
@@ -66,12 +66,7 @@ impl HybridLatestAtResults<'_> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
         self.get_instance(0, component_descr).unwrap_or_else(|| {
-            let query_context = QueryContext {
-                view_ctx: self.ctx,
-                target_entity_path: &self.data_result.entity_path,
-                archetype_name: component_descr.archetype_name,
-                query: &self.query,
-            };
+            let query_context = self.ctx.query_context(self.data_result, &self.query);
             fallback_provider.fallback_for(&query_context)
         })
     }
