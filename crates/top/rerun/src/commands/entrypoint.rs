@@ -576,7 +576,7 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    re_crash_handler::install_crash_handlers(build_info);
+    re_crash_handler::install_crash_handlers(build_info.clone());
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);

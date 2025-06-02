@@ -357,13 +357,13 @@ impl Properties for re_build_info::BuildInfo {
             datetime,
         } = self;
 
-        event.insert("features", features);
+        event.insert("features", features.to_string());
         event.insert("git_hash", git_hash);
         event.insert("rerun_version", version.to_string());
-        event.insert("rust_version", rustc_version);
-        event.insert("llvm_version", llvm_version);
-        event.insert("target", target_triple);
-        event.insert("build_date", datetime);
+        event.insert("rust_version", rustc_version.to_string());
+        event.insert("llvm_version", llvm_version.to_string());
+        event.insert("target", target_triple.to_string());
+        event.insert("build_date", datetime.to_string());
         event.insert("debug", cfg!(debug_assertions)); // debug-build?
         event.insert("rerun_workspace", is_in_rerun_workspace);
     }

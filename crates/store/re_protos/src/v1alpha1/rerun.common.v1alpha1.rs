@@ -377,6 +377,105 @@ impl ::prost::Name for TaskId {
         "/rerun.common.v1alpha1.TaskId".into()
     }
 }
+/// Mirrors `re_build_info::BuildInfo`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildInfo {
+    /// `CARGO_PKG_NAME`.
+    #[prost(string, optional, tag = "1")]
+    pub crate_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Space-separated names of all features enabled for this crate.
+    #[prost(string, optional, tag = "2")]
+    pub features: ::core::option::Option<::prost::alloc::string::String>,
+    /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
+    #[prost(message, optional, tag = "3")]
+    pub version: ::core::option::Option<SemanticVersion>,
+    /// The raw version string of the Rust compiler used, or an empty string.
+    #[prost(string, optional, tag = "4")]
+    pub rustc_version: ::core::option::Option<::prost::alloc::string::String>,
+    /// The raw version string of the LLVM toolchain used, or an empty string.
+    #[prost(string, optional, tag = "5")]
+    pub llvm_version: ::core::option::Option<::prost::alloc::string::String>,
+    /// Git commit hash, or empty string.
+    #[prost(string, optional, tag = "6")]
+    pub git_hash: ::core::option::Option<::prost::alloc::string::String>,
+    /// Current git branch, or empty string.
+    #[prost(string, optional, tag = "7")]
+    pub git_branch: ::core::option::Option<::prost::alloc::string::String>,
+    /// Target architecture and OS
+    ///
+    /// Example: `xaarch64-apple-darwin`
+    #[prost(string, optional, tag = "8")]
+    pub target_triple: ::core::option::Option<::prost::alloc::string::String>,
+    /// ISO 8601 / RFC 3339 build time.
+    ///
+    /// Example: `"2023-02-23T19:33:26Z"`
+    ///
+    /// Empty if unknown.
+    #[prost(string, optional, tag = "9")]
+    pub build_time: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for BuildInfo {
+    const NAME: &'static str = "BuildInfo";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.BuildInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.BuildInfo".into()
+    }
+}
+/// Mirrors `re_build_info::CrateVersion`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SemanticVersion {
+    #[prost(fixed32, optional, tag = "1")]
+    pub major: ::core::option::Option<u32>,
+    #[prost(fixed32, optional, tag = "2")]
+    pub minor: ::core::option::Option<u32>,
+    #[prost(fixed32, optional, tag = "3")]
+    pub patch: ::core::option::Option<u32>,
+    #[prost(oneof = "semantic_version::Meta", tags = "4, 5, 6")]
+    pub meta: ::core::option::Option<semantic_version::Meta>,
+}
+/// Nested message and enum types in `SemanticVersion`.
+pub mod semantic_version {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Meta {
+        #[prost(fixed32, tag = "4")]
+        Rc(u32),
+        #[prost(fixed32, tag = "5")]
+        Alpha(u32),
+        #[prost(message, tag = "6")]
+        DevAlpha(super::DevAlpha),
+    }
+}
+impl ::prost::Name for SemanticVersion {
+    const NAME: &'static str = "SemanticVersion";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.SemanticVersion".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.SemanticVersion".into()
+    }
+}
+/// Mirrors `re_build_info::DevAlpha`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DevAlpha {
+    #[prost(fixed32, optional, tag = "1")]
+    pub alpha: ::core::option::Option<u32>,
+    #[prost(string, optional, tag = "2")]
+    pub commit: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for DevAlpha {
+    const NAME: &'static str = "DevAlpha";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DevAlpha".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DevAlpha".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
