@@ -5,7 +5,7 @@ use std::sync::{
 
 use ahash::HashMap;
 
-use arrow::buffer::Buffer;
+use arrow::buffer::Buffer as ArrowBuffer;
 use parking_lot::RwLock;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{ChunkId, EntityPath, TimelineName};
@@ -16,11 +16,15 @@ use re_video::{StableIndexDeque, decode::DecodeSettings};
 
 use crate::Cache;
 
-/// A buffer of video sample data from the datastore.
+/// A buffer of multiple video sample data from the datastore.
+///
+/// It's essentially a pointer into a column of [`VideoSample`]s inside a Rerun chunk.
 struct SampleBuffer {
-    buffer: Buffer,
+    buffer: ArrowBuffer,
     source_chunk: ChunkId,
-    sample_range: std::ops::Range<usize>,
+
+    /// Indexes into [`VideoDataDescription::samples`] that this buffer contains.
+    sample_index_range: std::ops::Range<usize>,
 }
 
 /// Video stream from the store, ready for playback.
@@ -151,7 +155,7 @@ fn load_video_data_from_chunks(
 > {
     re_tracing::profile_function!();
 
-    let frame_chunk_descr = VideoStream::descriptor_sample();
+    let frame_sample_descr = VideoStream::descriptor_sample();
     let codec_chunk_descr = VideoStream::descriptor_codec();
 
     // Query for all video chunks on the **entire** timeline.
@@ -165,10 +169,10 @@ fn load_video_data_from_chunks(
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        &[frame_chunk_descr.clone(), codec_chunk_descr.clone()],
+        &[frame_sample_descr.clone(), codec_chunk_descr.clone()],
     );
     let video_chunks = query_results
-        .get_required(&frame_chunk_descr)
+        .get_required(&frame_sample_descr)
         .map_err(|_err| VideoStreamProcessingError::NoVideoSamplesFound)?;
     let codec_chunks = query_results
         .get_required(&codec_chunk_descr)
@@ -197,9 +201,9 @@ fn load_video_data_from_chunks(
     let mut gops = StableIndexDeque::new();
 
     for chunk in video_chunks {
-        read_additional_samples_from_chunk(
+        read_samples_from_chunk(
             timeline,
-            &frame_chunk_descr,
+            &frame_sample_descr,
             chunk,
             codec,
             &mut video_sample_buffers,
@@ -211,9 +215,9 @@ fn load_video_data_from_chunks(
     Ok((
         re_video::VideoDataDescription {
             codec,
-            stsd: None,
+            stsd: None,                               // Only on mp4s have this.
             coded_dimensions: None,                   // Unknown so far.
-            timescale: re_video::Timescale::NO_SCALE, // We use raw rerun timestamps, so we don't have to scale time.
+            timescale: re_video::Timescale::IDENTITY, // We use raw rerun timestamps, so we don't have to scale time.
             duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
             gops,
             samples,
@@ -227,7 +231,7 @@ fn load_video_data_from_chunks(
 /// Reads all samples from a chunk and appends them to a list.
 ///
 /// Rejects out of order samples - new samples must have a higher timestamp than the previous ones.
-fn read_additional_samples_from_chunk(
+fn read_samples_from_chunk(
     timeline: TimelineName,
     frame_chunk_descr: &re_types::ComponentDescriptor,
     chunk: &re_chunk::Chunk,
@@ -279,6 +283,9 @@ fn read_additional_samples_from_chunk(
                 let byte_length = &lengths[idx..idx + len];
                 let decode_timestamp = re_video::Time(time.as_i64());
 
+                // Make sure samples are in order.
+                // Within a chunk we know that, but we want to check whether the *previous* samples
+                // (from prior calls to this method) are also in order with the new one.
                 if previous_max_presentation_timestamp > decode_timestamp {
                     re_log::warn_once!("Out of order insertion into video streams is not supported. Ignoring any out of order samples.");
                     return None;
@@ -339,6 +346,7 @@ fn read_additional_samples_from_chunk(
 
     // Fill out frame durations.
     // Last frame of the previous round of adding samples:
+    // TODO: do checked access with early out, removing above arly out
     let timestamp_first_new_sample = samples[sample_base_idx].presentation_timestamp;
     if sample_base_idx != 0 {
         // Note that the old sample might have been removed by now via GC, so it's important we check.
@@ -348,7 +356,8 @@ fn read_additional_samples_from_chunk(
         }
     }
 
-    // Durations for all new samples (except the last one)
+    // Durations for all new samples (except the last one since we don't know how long it will last)
+    // TODO: window itertools iterators
     for sample in sample_base_idx..samples.next_index() - 1 {
         samples[sample].duration = Some(
             samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
@@ -358,10 +367,10 @@ fn read_additional_samples_from_chunk(
     // Sanity checks on chunk buffers.
     if let Some(last_buffer) = chunk_buffers.back() {
         debug_assert!(
-            last_buffer.sample_range.end == sample_base_idx,
+            last_buffer.sample_index_range.end == sample_base_idx,
             "Sample range of each chunk buffer must be non-overlapping and without gaps. \
                 (last_buffer.sample_range.end: {}, sample_base_idx: {})",
-            last_buffer.sample_range.end,
+            last_buffer.sample_index_range.end,
             sample_base_idx
         );
     }
@@ -369,7 +378,7 @@ fn read_additional_samples_from_chunk(
     chunk_buffers.push_back(SampleBuffer {
         buffer: values.clone(),
         source_chunk: chunk.id(),
-        sample_range: sample_base_idx..samples.next_index(),
+        sample_index_range: sample_base_idx..samples.next_index(),
     });
 
     Ok(())
@@ -443,8 +452,8 @@ impl Cache for VideoStreamCache {
                         // If this came with a compaction, throw out all samples and gops that were compacted away and restart there.
                         // This is a bit slower than re-using all the data, but much simpler and more robust.
                         //
-                        // Compactions events are document to happen on **addition** only. Therefore, it should be save to remove samples from the end only.
-                        // We simply have to find the chunk with the oldest sample!
+                        // Compactions events are document to happen on **addition** only.
+                        // Therefore, it should be save to remove only the newest data.
                         let chunk = if let Some(compaction) = &event.compacted {
                             for chunk_id in compaction.srcs.keys() {
                                 if let Some(first_invalid_buffer_idx) = video_sample_buffers
@@ -453,7 +462,7 @@ impl Cache for VideoStreamCache {
                                     // Remove all samples that are in this and future buffers.
                                     video_data.samples.truncate_to_index(
                                         video_sample_buffers[first_invalid_buffer_idx]
-                                            .sample_range
+                                            .sample_index_range
                                             .start,
                                     );
 
@@ -466,12 +475,13 @@ impl Cache for VideoStreamCache {
 
                             adjust_gops_for_removed_samples_back(video_data);
 
+                            // `event.chunk` is added data PRIOR to compaction.
                             &compaction.new_chunk
                         } else {
                             &event.chunk
                         };
 
-                        if let Err(err) = read_additional_samples_from_chunk(
+                        if let Err(err) = read_samples_from_chunk(
                             *timeline,
                             &frame_chunk_descr,
                             chunk,
@@ -495,7 +505,7 @@ impl Cache for VideoStreamCache {
                         {
                             let last_invalid_buffer =
                                 &video_sample_buffers[last_invalid_buffer_idx];
-                            let first_valid_sample_idx = last_invalid_buffer.sample_range.end;
+                            let first_valid_sample_idx = last_invalid_buffer.sample_index_range.end;
 
                             while first_valid_sample_idx > video_data.samples.min_index() {
                                 debug_assert!(!video_data.samples.is_empty());

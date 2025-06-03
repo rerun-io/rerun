@@ -28,7 +28,7 @@ table VideoStream (
     /// as this may break live video playback.
     /// I.e. any appended sample should have a timestamp greater than all previously logged samples.
     ///
-    /// The chunks are expected to be encoded using the `codec` field.
+    /// The samples are expected to be encoded using the `codec` field.
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
     ///
@@ -38,7 +38,7 @@ table VideoStream (
     /// The codec used to encode the video chunks.
     ///
     /// This property is expected to be constant over time and is ideally logged statically once per stream.
-    codec: rerun.components.VideoCodec ("attr.rerun.component_required", order: 1100);
+    codec: rerun.components.VideoCodec ("attr.rerun.component_required", required, order: 1100);
 
     // --- Optional ---
 

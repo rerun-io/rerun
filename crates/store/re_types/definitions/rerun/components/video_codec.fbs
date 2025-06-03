@@ -12,7 +12,8 @@ enum VideoCodec: ubyte {
     ///
     /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
     ///
-    /// [components.VideoCodec]s using this codec should be formatted according to Annex B specification
+    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification
+    // TODO: add link to what the heck is annex b. point out that this is *not* what's in an mp4.
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     H264,
 
@@ -20,7 +21,7 @@ enum VideoCodec: ubyte {
     ///
     /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
     ///
-    /// [components.VideoCodec]s using this codec should be formatted according to Annex B specification
+    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification
     /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
     // TODO(andreas): foxglove `CompressedVideo` mentions PPS (picture parameter set) and VPS (video parameter set) being required for IRAP as well.
     // need to confirm if we need those as well (they exist in h264 as well but we didn't need them so far?)

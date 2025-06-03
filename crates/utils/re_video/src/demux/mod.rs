@@ -94,6 +94,8 @@ impl VideoCodec {
     }
 }
 
+// TODO: add type aliases for gop & sample indices.
+
 /// Description of video data.
 ///
 /// Store various metadata about a video.
