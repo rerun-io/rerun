@@ -20,10 +20,10 @@ pub fn is_sample_start_of_gop(
     #[expect(clippy::match_same_arms)]
     match codec {
         crate::VideoCodec::H264 => Ok(is_annexb_sample_start_of_gop(sample_data)),
-        crate::VideoCodec::Av1 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
         crate::VideoCodec::H265 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
-        crate::VideoCodec::Vp8 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
-        crate::VideoCodec::Vp9 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
+        crate::VideoCodec::AV1 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
+        crate::VideoCodec::VP8 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
+        crate::VideoCodec::VP9 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
     }
 }
 

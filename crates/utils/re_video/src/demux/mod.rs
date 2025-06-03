@@ -94,7 +94,11 @@ impl VideoCodec {
     }
 }
 
-// TODO: add type aliases for gop & sample indices.
+/// Index used for referencing into [`VideoDataDescription::gops`].
+pub type GopIndex = usize;
+
+/// Index used for referencing into [`VideoDataDescription::samples`].
+pub type SampleIndex = usize;
 
 /// Description of video data.
 ///
@@ -385,7 +389,7 @@ impl VideoDataDescription {
     fn latest_sample_index_at_decode_timestamp(
         samples: &StableIndexDeque<Sample>,
         decode_time: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
     }
 
@@ -394,7 +398,7 @@ impl VideoDataDescription {
         samples: &StableIndexDeque<Sample>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         // Because `decode <= presentation`, we never have to look further backwards in the
         // video than this.
@@ -416,7 +420,7 @@ impl VideoDataDescription {
         //
         // The tricky part is that we can't just take the first sample with a presentation timestamp that matches
         // since smaller presentation timestamps may still show up further back!
-        let mut best_index = usize::MAX;
+        let mut best_index = SampleIndex::MAX;
         let mut best_pts = Time::MIN;
         for sample_idx in (0..=decode_sample_idx).rev() {
             let sample = &samples[sample_idx];
@@ -451,7 +455,7 @@ impl VideoDataDescription {
     pub fn latest_sample_index_at_presentation_timestamp(
         &self,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         Self::latest_sample_index_at_presentation_timestamp_internal(
             &self.samples,
             &self.samples_statistics,
@@ -460,7 +464,7 @@ impl VideoDataDescription {
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
-    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
+    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
         self.gops
             .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
     }
@@ -469,7 +473,7 @@ impl VideoDataDescription {
     pub fn gop_index_containing_presentation_timestamp(
         &self,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         let requested_sample_index =
             self.latest_sample_index_at_presentation_timestamp(presentation_timestamp)?;
 
@@ -492,7 +496,7 @@ pub struct GroupOfPictures {
     pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
-    pub sample_range: Range<usize>,
+    pub sample_range: Range<SampleIndex>,
 }
 
 /// A single sample in a video.
@@ -569,7 +573,7 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
+    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
         let buffer = *buffers.get(self.buffer_index)?;
         let data = buffer
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?

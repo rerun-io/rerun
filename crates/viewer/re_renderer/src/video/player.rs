@@ -3,7 +3,7 @@ use std::time::Duration;
 use web_time::Instant;
 
 use re_video::{
-    StableIndexDeque, Time,
+    GopIndex, SampleIndex, StableIndexDeque, Time,
     decode::{DecodeSettings, FrameInfo},
 };
 
@@ -54,9 +54,9 @@ pub struct VideoPlayer {
 
     video_texture: VideoTexture,
 
-    last_requested_sample_idx: usize,
-    last_requested_gop_idx: usize,
-    last_enqueued_gop_idx: Option<usize>,
+    last_requested_sample_idx: SampleIndex,
+    last_requested_gop_idx: GopIndex,
+    last_enqueued_gop_idx: Option<GopIndex>,
 
     /// Last error that was encountered during decoding.
     ///
@@ -107,8 +107,8 @@ impl VideoPlayer {
                 ),
             },
 
-            last_requested_sample_idx: usize::MAX,
-            last_requested_gop_idx: usize::MAX,
+            last_requested_sample_idx: SampleIndex::MAX,
+            last_requested_gop_idx: GopIndex::MAX,
             last_enqueued_gop_idx: None,
 
             last_error: None,
@@ -233,7 +233,7 @@ impl VideoPlayer {
             //
             // By resetting the current GOP/sample indices, the frame enqueued code below
             // is forced to reset the decoder.
-            self.last_requested_gop_idx = usize::MAX;
+            self.last_requested_gop_idx = GopIndex::MAX;
 
             // If we already have an error set, preserve its occurrence time.
             // Otherwise, set the error using the time at which it was registered.
@@ -333,7 +333,7 @@ impl VideoPlayer {
     fn enqueue_gop(
         &mut self,
         video_description: &re_video::VideoDataDescription,
-        gop_idx: usize,
+        gop_idx: GopIndex,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         let Some(gop) = video_description.gops.get(gop_idx) else {
@@ -373,8 +373,8 @@ impl VideoPlayer {
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), VideoPlayerError> {
         self.chunk_decoder.reset()?;
-        self.last_requested_gop_idx = usize::MAX;
-        self.last_requested_sample_idx = usize::MAX;
+        self.last_requested_gop_idx = GopIndex::MAX;
+        self.last_requested_sample_idx = SampleIndex::MAX;
         self.last_enqueued_gop_idx = None;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())

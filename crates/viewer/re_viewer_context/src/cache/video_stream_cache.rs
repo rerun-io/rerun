@@ -18,13 +18,13 @@ use crate::Cache;
 
 /// A buffer of multiple video sample data from the datastore.
 ///
-/// It's essentially a pointer into a column of [`VideoSample`]s inside a Rerun chunk.
+/// It's essentially a pointer into a column of [`re_types::components::VideoSample`]s inside a Rerun chunk.
 struct SampleBuffer {
     buffer: ArrowBuffer,
     source_chunk: ChunkId,
 
-    /// Indexes into [`VideoDataDescription::samples`] that this buffer contains.
-    sample_index_range: std::ops::Range<usize>,
+    /// Indexes into [`re_video::VideoDataDescription::samples`] that this buffer contains.
+    sample_index_range: std::ops::Range<re_video::SampleIndex>,
 }
 
 /// Video stream from the store, ready for playback.
@@ -43,10 +43,10 @@ pub struct PlayableStoreVideoStream {
 impl PlayableStoreVideoStream {
     pub fn sample_buffer_slices(&self) -> StableIndexDeque<&[u8]> {
         StableIndexDeque::from_iter_with_offset(
+            self.video_sample_buffers.min_index(),
             self.video_sample_buffers
                 .iter()
                 .map(|b| b.buffer.as_slice()),
-            self.video_sample_buffers.min_index(),
         )
     }
 }
@@ -445,7 +445,7 @@ impl Cache for VideoStreamCache {
                     video_renderer,
                     video_sample_buffers,
                 } = &mut *video_stream;
-                let video_data = video_renderer.data_mut();
+                let video_data = video_renderer.data_descr_mut();
 
                 match event.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -460,7 +460,7 @@ impl Cache for VideoStreamCache {
                                     .position(|buffer| buffer.source_chunk == *chunk_id)
                                 {
                                     // Remove all samples that are in this and future buffers.
-                                    video_data.samples.truncate_to_index(
+                                    video_data.samples.remove_all_with_index_larger_equal(
                                         video_sample_buffers[first_invalid_buffer_idx]
                                             .sample_index_range
                                             .start,
@@ -468,8 +468,9 @@ impl Cache for VideoStreamCache {
 
                                     // Remove all buffers starting with the found matching one.
                                     // (does nothing if we haven't found one)
-                                    video_sample_buffers
-                                        .truncate_to_index(first_invalid_buffer_idx);
+                                    video_sample_buffers.remove_all_with_index_larger_equal(
+                                        first_invalid_buffer_idx,
+                                    );
                                 }
                             }
 
