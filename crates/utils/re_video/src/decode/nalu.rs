@@ -1,10 +1,13 @@
 /// In Annex-B before every NAL unit is a nal start code.
 ///
-/// Can also be 2 bytes of 0x00 and 1 byte of 0x01.
+/// Can also be 3 bytes of 0x00, see [`NAL_START_CODE_SHORT`].
 ///
 /// This is used in Annex-B byte stream formats such as h264 files.
 /// Packet transform systems (RTP) may omit these.
 pub const NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
+
+/// See [`NAL_START_CODE`].
+pub const NAL_START_CODE_SHORT: &[u8] = &[0x00, 0x00, 0x01];
 
 /// Possible values for `nal_unit_type` field in `nal_unit`.
 ///
@@ -61,6 +64,7 @@ pub enum NalUnitType {
 pub struct NalHeader(pub u8);
 
 impl NalHeader {
+    #[allow(dead_code)] // May be unused if `ffmpeg` decoder isn't used.
     pub const fn new(unit_type: NalUnitType, ref_idc: u8) -> Self {
         Self((unit_type as u8) | (ref_idc << 5))
     }

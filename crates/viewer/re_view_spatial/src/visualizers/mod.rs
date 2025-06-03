@@ -86,6 +86,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -112,6 +113,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -155,6 +157,10 @@ pub fn visualizers_processing_draw_order()
         (
             video::VideoFrameReferenceVisualizer::identifier(),
             archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
+        (
+            video::VideoStreamVisualizer::identifier(),
+            archetypes::VideoStream::descriptor_draw_order(),
         ),
     ]
     .into_iter()

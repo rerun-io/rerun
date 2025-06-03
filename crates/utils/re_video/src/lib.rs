@@ -8,7 +8,7 @@ pub mod stable_index_deque;
 
 pub use self::stable_index_deque::StableIndexDeque;
 pub use self::{
-    decode::{Chunk, Frame, PixelFormat},
+    decode::{Chunk, Frame, PixelFormat, is_sample_start_of_gop},
     demux::{Sample, SamplesStatistics, VideoCodec, VideoDataDescription, VideoLoadError},
     time::{Time, Timescale},
 };

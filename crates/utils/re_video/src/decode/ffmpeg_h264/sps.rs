@@ -2,7 +2,7 @@
 
 use crate::decode::YuvPixelLayout;
 
-use super::nalu::{NalHeader, NalUnitType};
+use crate::decode::nalu::{NalHeader, NalUnitType};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum SpsParsingError {
@@ -317,9 +317,7 @@ fn read_exponential_golomb(
 
 #[cfg(test)]
 mod tests {
-    use crate::decode::ffmpeg_h264::sps::SpsParsingError;
-
-    use super::{read_bits, read_exponential_golomb};
+    use super::{SpsParsingError, read_bits, read_exponential_golomb};
 
     #[test]
     fn test_read_bits() {

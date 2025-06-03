@@ -36,4 +36,5 @@ text_document.rs linguist-generated=true
 text_log.rs linguist-generated=true
 transform3d.rs linguist-generated=true
 video_frame_reference.rs linguist-generated=true
+video_stream.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true

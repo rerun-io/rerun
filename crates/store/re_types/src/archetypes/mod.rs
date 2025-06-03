@@ -56,6 +56,7 @@ mod text_log;
 mod transform3d;
 mod transform3d_ext;
 mod video_frame_reference;
+mod video_stream;
 mod view_coordinates;
 mod view_coordinates_ext;
 
@@ -93,4 +94,5 @@ pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
+pub use self::video_stream::VideoStream;
 pub use self::view_coordinates::ViewCoordinates;

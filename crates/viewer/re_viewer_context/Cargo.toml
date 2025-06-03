@@ -31,6 +31,7 @@ testing = [
 ]
 
 [dependencies]
+re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }

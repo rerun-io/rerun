@@ -72,6 +72,8 @@
 #include "components/value_range.hpp"
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"
+#include "components/video_codec.hpp"
+#include "components/video_sample.hpp"
 #include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"
 #include "components/visible.hpp"
