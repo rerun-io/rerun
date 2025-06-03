@@ -59,7 +59,7 @@ class VideoStream(Archetype):
             as this may break live video playback.
             I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
-            The chunks are expected to be encoded using the `codec` field.
+            The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
 
@@ -125,7 +125,7 @@ class VideoStream(Archetype):
             as this may break live video playback.
             I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
-            The chunks are expected to be encoded using the `codec` field.
+            The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
 
@@ -194,7 +194,7 @@ class VideoStream(Archetype):
             as this may break live video playback.
             I.e. any appended sample should have a timestamp greater than all previously logged samples.
 
-            The chunks are expected to be encoded using the `codec` field.
+            The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
 
@@ -270,7 +270,7 @@ class VideoStream(Archetype):
     # as this may break live video playback.
     # I.e. any appended sample should have a timestamp greater than all previously logged samples.
     #
-    # The chunks are expected to be encoded using the `codec` field.
+    # The samples are expected to be encoded using the `codec` field.
     # Each video sample must contain enough data for exactly one video frame
     # (this restriction may be relaxed in the future for some codecs).
     #

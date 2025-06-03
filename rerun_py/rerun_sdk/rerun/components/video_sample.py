@@ -19,7 +19,9 @@ class VideoSample(datatypes.Blob, ComponentMixin):
     """
     **Component**: Video sample data (also known as "video chunk").
 
-    Each video chunk should contain enough data a single frame.
+    Each video sample must contain enough data for exactly one video frame
+    (this restriction may be relaxed in the future for some codecs).
+
     Keyframes may require additional data, for details see [`components.VideoCodec`][rerun.components.VideoCodec].
     """
 

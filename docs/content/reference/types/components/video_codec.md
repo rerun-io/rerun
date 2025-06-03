@@ -14,7 +14,9 @@ Advanced Video Coding (AVC/H.264)
 
 See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
 
-[`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec)s using this codec should be formatted according to Annex B specification
+[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.
+(Note that this is different from AVCC format found in MP4 files.
+To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
 Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
 
 

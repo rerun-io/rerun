@@ -12,8 +12,9 @@ enum VideoCodec: ubyte {
     ///
     /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
     ///
-    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification
-    // TODO: add link to what the heck is annex b. point out that this is *not* what's in an mp4.
+    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification.
+    /// (Note that this is different from AVCC format found in MP4 files.
+    /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     H264,
 
@@ -21,7 +22,9 @@ enum VideoCodec: ubyte {
     ///
     /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
     ///
-    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification
+    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification.
+    /// (Note that this is different from AVCC format found in MP4 files.
+    /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
     // TODO(andreas): foxglove `CompressedVideo` mentions PPS (picture parameter set) and VPS (video parameter set) being required for IRAP as well.
     // need to confirm if we need those as well (they exist in h264 as well but we didn't need them so far?)

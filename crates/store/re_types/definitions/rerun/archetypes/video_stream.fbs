@@ -38,7 +38,7 @@ table VideoStream (
     /// The codec used to encode the video chunks.
     ///
     /// This property is expected to be constant over time and is ideally logged statically once per stream.
-    codec: rerun.components.VideoCodec ("attr.rerun.component_required", required, order: 1100);
+    codec: rerun.components.VideoCodec ("attr.rerun.component_required", order: 1100);
 
     // --- Optional ---
 

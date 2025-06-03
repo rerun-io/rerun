@@ -31,7 +31,9 @@ namespace rerun::components {
         ///
         /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
         ///
-        /// `components::VideoCodec`s using this codec should be formatted according to Annex B specification
+        /// `components::VideoSample`s using this codec should be formatted according to Annex B specification.
+        /// (Note that this is different from AVCC format found in MP4 files.
+        /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
         /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
         H264 = 1,
     };
