@@ -19,7 +19,7 @@ pub fn is_sample_start_of_gop(
 ) -> Result<bool, StartOfGopDetectionFailure> {
     #[expect(clippy::match_same_arms)]
     match codec {
-        crate::VideoCodec::H264 => is_annexb_sample_start_of_gop(sample_data),
+        crate::VideoCodec::H264 => Ok(is_annexb_sample_start_of_gop(sample_data)),
         crate::VideoCodec::Av1 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
         crate::VideoCodec::H265 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
         crate::VideoCodec::Vp8 => Err(StartOfGopDetectionFailure::UnsupportedCodec(codec)),
@@ -30,7 +30,7 @@ pub fn is_sample_start_of_gop(
 /// Try to determine whether a frame chunk is the start of a closed GOP.
 ///
 /// Expects Annex B encoded frame.
-fn is_annexb_sample_start_of_gop(sample_data: &[u8]) -> Result<bool, StartOfGopDetectionFailure> {
+fn is_annexb_sample_start_of_gop(sample_data: &[u8]) -> bool {
     // We look for one SPS and one IDR frame in this chunk, otherwise we don't count it as a GOP.
     let mut sps_found = false;
     let mut idr_found = false;
@@ -48,9 +48,9 @@ fn is_annexb_sample_start_of_gop(sample_data: &[u8]) -> Result<bool, StartOfGopD
         }
 
         if sps_found && idr_found {
-            return Ok(true);
+            return true;
         }
     }
 
-    Ok(false)
+    false
 }
