@@ -1,16 +1,15 @@
-use ahash::{HashMap, HashSet};
-use itertools::Either;
+use ahash::HashMap;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
-    Component as _, ComponentDescriptor,
-    components::{self, ImageBuffer, MediaType},
+    ComponentDescriptor,
+    components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
 };
 
-use crate::{Cache, ImageInfo, image_info::StoredBlobCacheKey};
+use crate::{Cache, ImageInfo, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -164,28 +163,7 @@ impl Cache for ImageDecodeCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<StoredBlobCacheKey> = events
-            .iter()
-            .flat_map(|event| {
-                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                    Either::Left(
-                        event
-                            .chunk
-                            .component_descriptors()
-                            .filter(|descr| descr.component_name == components::Blob::name())
-                            .flat_map(|descr| {
-                                event
-                                    .chunk
-                                    .row_ids()
-                                    .map(move |row_id| StoredBlobCacheKey::new(row_id, &descr))
-                            }),
-                    )
-                } else {
-                    Either::Right(std::iter::empty())
-                }
-            })
-            .collect();
-
+        let cache_key_removed = filter_blob_removed_events(events);
         self.cache
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }

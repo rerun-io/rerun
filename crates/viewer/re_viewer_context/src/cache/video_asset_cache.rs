@@ -3,20 +3,16 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-use ahash::{HashMap, HashSet};
-use itertools::Either;
+use ahash::HashMap;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{
-    Component as _, ComponentDescriptor,
-    components::{self, MediaType},
-};
+use re_types::{ComponentDescriptor, components::MediaType};
 use re_video::decode::DecodeSettings;
 
-use crate::{Cache, image_info::StoredBlobCacheKey};
+use crate::{Cache, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
 
 // ----------------------------------------------------------------------------
 
@@ -27,11 +23,11 @@ struct Entry {
     video: Arc<Result<Video, VideoLoadError>>,
 }
 
-/// Caches meshes based on media type & row id.
+/// Caches videos assets and their players based on media type & row id.
 #[derive(Default)]
-pub struct VideoCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
+pub struct VideoAssetCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
 
-impl VideoCache {
+impl VideoAssetCache {
     /// Read in some video data and cache the result.
     ///
     /// You may use the `RowId` as cache key if any.
@@ -87,7 +83,7 @@ impl VideoCache {
     }
 }
 
-impl Cache for VideoCache {
+impl Cache for VideoAssetCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
         // Clean up unused video data.
         self.0.retain(|_row_id, per_key| {
@@ -119,28 +115,7 @@ impl Cache for VideoCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<StoredBlobCacheKey> = events
-            .iter()
-            .flat_map(|event| {
-                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                    Either::Left(
-                        event
-                            .chunk
-                            .component_descriptors()
-                            .filter(|descr| descr.component_name == components::Blob::name())
-                            .flat_map(|descr| {
-                                event
-                                    .chunk
-                                    .row_ids()
-                                    .map(move |row_id| StoredBlobCacheKey::new(row_id, &descr))
-                            }),
-                    )
-                } else {
-                    Either::Right(std::iter::empty())
-                }
-            })
-            .collect();
-
+        let cache_key_removed = filter_blob_removed_events(events);
         self.0
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }

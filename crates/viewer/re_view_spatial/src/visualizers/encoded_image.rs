@@ -172,16 +172,18 @@ impl EncodedImageVisualizer {
                 colormap,
                 multiplicative_tint,
                 EncodedImage::name(),
-                &mut self.data,
             ) {
-                self.data.pickable_rects.push(PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: None,
+                self.data.add_pickable_rect(
+                    PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Image {
+                            image,
+                            depth_meter: None,
+                        },
                     },
-                });
+                    spatial_ctx.view_class_identifier,
+                );
             }
         }
     }
