@@ -15,6 +15,7 @@ use ffmpeg_sidecar::{
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
+use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
 use crate::{
@@ -24,7 +25,7 @@ use crate::{
         ffmpeg_h264::{
             FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
         },
-        nalu::{NAL_START_CODE, NalHeader, NalUnitType},
+        nalu::NAL_START_CODE,
     },
 };
 
@@ -454,9 +455,9 @@ fn write_ffmpeg_input(
                 // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
                 let end_nals: Vec<u8> = [
                     NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndSequence, 0).0],
+                    &[UnitType::EndOfSeq.id()],
                     NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndStream, 0).0],
+                    &[UnitType::EndOfStream.id()],
                 ]
                 .concat();
                 write_bytes(ffmpeg_stdin, &end_nals).ok();
@@ -1026,7 +1027,7 @@ fn write_avc_chunk_to_nalu_stream(
     write_bytes(
         nalu_stream,
         &[
-            NalHeader::new(NalUnitType::AccessUnitDelimiter, 3).0,
+            UnitType::AccessUnitDelimiter.id(), // TODO: used to use idc of 3 here, should we keep it?
             // Two arbitrary bytes? 0000 worked as well, but this is what
             // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
             0xFF,

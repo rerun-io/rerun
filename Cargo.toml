@@ -224,6 +224,7 @@ getrandom = "0.2"
 glam = { version = "0.30.3", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
+h264-reader = "0.8"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "16.0.0"
 home = "=0.5.9"
