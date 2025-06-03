@@ -11,7 +11,7 @@ use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types_core::ComponentName;
+use re_types::ComponentDescriptor;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
@@ -27,7 +27,7 @@ pub(crate) enum HideColumnAction {
 
     Component {
         entity_path: EntityPath,
-        component_name: ComponentName,
+        descr: ComponentDescriptor,
     },
 }
 
@@ -302,7 +302,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                         ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
                             entity_path: desc.entity_path.clone(),
-                            component_name: desc.component_name,
+                            descr: desc.component_descriptor(),
                         }),
                     };
 
