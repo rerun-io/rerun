@@ -1,9 +1,9 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
+//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
 //!
-//! The entry point is [`VideoData::load_from_bytes`]
-//! which produces an instance of [`VideoData`] from any supported video container.
+//! The entry point is [`VideoDataDescription::load_from_bytes`]
+//! which produces an instance of [`VideoDataDescription`] from any supported video container.
 
 pub mod mp4;
 
@@ -590,7 +590,7 @@ pub enum VideoLoadError {
         provided_or_detected_media_type: String,
     },
 
-    /// Not used in `re_video` itself, but useful for media type detection ahead of calling [`VideoData::load_from_bytes`].
+    /// Not used in `re_video` itself, but useful for media type detection ahead of calling [`VideoDataDescription::load_from_bytes`].
     #[error("Could not detect MIME type from the video contents")]
     UnrecognizedMimeType,
 
