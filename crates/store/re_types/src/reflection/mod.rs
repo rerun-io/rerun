@@ -1115,7 +1115,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoCodec as Component>::name(),
             ComponentReflection {
-                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).",
+                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoCodec::arrow_datatype(),
@@ -1125,7 +1125,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoSample as Component>::name(),
             ComponentReflection {
-                docstring_md: "Video sample data (also known as \"video chunk\").\n\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nKeyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).",
+                docstring_md: "Video sample data (also known as \"video chunk\").\n\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nKeyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link).",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoSample::arrow_datatype(),
@@ -2260,7 +2260,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "sample".into(), display_name :
                     "Sample", component_name : "rerun.components.VideoSample".into(),
                     docstring_md :
-                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link) for codec specific requirements.",
                     is_required : true, }, ArchetypeFieldReflection { name : "codec"
                     .into(), display_name : "Codec", component_name :
                     "rerun.components.VideoCodec".into(), docstring_md :

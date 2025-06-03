@@ -8,7 +8,7 @@ Video sample data (also known as "video chunk").
 Each video sample must contain enough data for exactly one video frame
 (this restriction may be relaxed in the future for some codecs).
 
-Keyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).
+Keyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link).
 
 ## Rerun datatype
 [`Blob`](../datatypes/blob.md)
@@ -20,11 +20,11 @@ List<uint8>
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `VideoSample`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VideoSample.html)
- * 🐍 [Python API docs for `VideoSample`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VideoSample)
- * 🦀 [Rust API docs for `VideoSample`](https://docs.rs/rerun/latest/rerun/components/struct.VideoSample.html)
+ * 🌊 [C++ API docs for `VideoSample`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VideoSample.html?speculative-link)
+ * 🐍 [Python API docs for `VideoSample`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.VideoSample)
+ * 🦀 [Rust API docs for `VideoSample`](https://docs.rs/rerun/latest/rerun/components/struct.VideoSample.html?speculative-link)
 
 
 ## Used by
 
-* [`VideoStream`](../archetypes/video_stream.md)
+* [`VideoStream`](../archetypes/video_stream.md?speculative-link)

@@ -7,6 +7,7 @@ namespace rerun.components;
 ///
 /// Keyframes may require additional data, for details see [components.VideoCodec].
 table VideoSample (
+  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",
   "attr.python.array_aliases": "bytes, npt.NDArray[np.uint8]",

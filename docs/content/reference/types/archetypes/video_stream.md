@@ -28,7 +28,7 @@ TODO(#7484): Add snippet.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `VideoStream`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoStream.html)
- * 🐍 [Python API docs for `VideoStream`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VideoStream)
- * 🦀 [Rust API docs for `VideoStream`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoStream.html)
+ * 🌊 [C++ API docs for `VideoStream`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoStream.html?speculative-link)
+ * 🐍 [Python API docs for `VideoStream`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.VideoStream)
+ * 🦀 [Rust API docs for `VideoStream`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoStream.html?speculative-link)
 

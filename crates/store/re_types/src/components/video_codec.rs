@@ -141,7 +141,7 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::H264 => {
-                "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)"
+                "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)"
             }
         }
     }

@@ -21,4 +21,4 @@ List<uint8>
 
 * [`Blob`](../components/blob.md)
 * [`ImageBuffer`](../components/image_buffer.md)
-* [`VideoSample`](../components/video_sample.md)
+* [`VideoSample`](../components/video_sample.md?speculative-link)

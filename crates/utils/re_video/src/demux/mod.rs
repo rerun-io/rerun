@@ -556,10 +556,10 @@ pub struct SampleMetadata {
     /// Index of the data buffer in which this sample is stored.
     pub buffer_index: usize,
 
-    /// Offset within the data buffer addressed by [`Sample::buffer_index`].
+    /// Offset within the data buffer addressed by [`SampleMetadata::buffer_index`].
     pub byte_offset: u32,
 
-    /// Length of sample starting at [`Sample::byte_offset`].
+    /// Length of sample starting at [`SampleMetadata::byte_offset`].
     pub byte_length: u32,
 }
 
