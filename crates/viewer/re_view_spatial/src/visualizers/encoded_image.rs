@@ -137,18 +137,14 @@ impl EncodedImageVisualizer {
                 .and_then(|media_types| media_types.first().cloned())
                 .map(|media_type| MediaType(media_type.into()));
 
-            let image = ctx
-                .viewer_ctx
-                .store_context
-                .caches
-                .entry(|c: &mut ImageDecodeCache| {
-                    c.entry(
-                        tensor_data_row_id,
-                        &EncodedImage::descriptor_blob(),
-                        blob,
-                        media_type.as_ref(),
-                    )
-                });
+            let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+                c.entry(
+                    tensor_data_row_id,
+                    &EncodedImage::descriptor_blob(),
+                    blob,
+                    media_type.as_ref(),
+                )
+            });
 
             let image = match image {
                 Ok(image) => image,
@@ -169,7 +165,7 @@ impl EncodedImageVisualizer {
             let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
                 &image,
@@ -195,7 +191,7 @@ impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         // Color images should be transparent whenever they're on top of other images,
         // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() else {
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };
 

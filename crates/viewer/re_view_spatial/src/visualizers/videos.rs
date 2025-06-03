@@ -162,7 +162,7 @@ impl VideoFrameReferenceVisualizer {
                     .as_str()
                     .into()
             });
-        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
+        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
@@ -191,7 +191,7 @@ impl VideoFrameReferenceVisualizer {
                     video_resolution = glam::vec2(video.width() as _, video.height() as _);
 
                     match video.frame_at(
-                        ctx.viewer_ctx.render_ctx(),
+                        ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
                         &video_data,
@@ -214,7 +214,7 @@ impl VideoFrameReferenceVisualizer {
 
                             if is_pending {
                                 // Keep polling for a fresh texture
-                                ctx.viewer_ctx.egui_ctx().request_repaint();
+                                ctx.egui_ctx().request_repaint();
                             }
 
                             if show_spinner {
@@ -272,7 +272,7 @@ impl VideoFrameReferenceVisualizer {
         }
 
         if spatial_ctx.view_class_identifier == SpatialView2D::identifier() {
-            let bounding_box = re_math::BoundingBox::from_min_size(
+            let bounding_box = macaw::BoundingBox::from_min_size(
                 world_from_entity.transform_point3(glam::Vec3::ZERO),
                 video_resolution.extend(0.0),
             );
@@ -290,20 +290,19 @@ impl VideoFrameReferenceVisualizer {
         video_size: glam::Vec2,
         entity_path: &EntityPath,
     ) {
-        let render_ctx = ctx.viewer_ctx.render_ctx();
+        let render_ctx = ctx.render_ctx();
 
-        let video_error_image = match re_ui::icons::VIDEO_ERROR
-            .load_image(ctx.viewer_ctx.egui_ctx(), egui::SizeHint::default())
-        {
-            Err(err) => {
-                re_log::error_once!("Failed to load video error icon: {err}");
-                return;
-            }
-            Ok(egui::load::ImagePoll::Ready { image }) => image,
-            Ok(egui::load::ImagePoll::Pending { .. }) => {
-                return; // wait for it to load
-            }
-        };
+        let video_error_image =
+            match re_ui::icons::VIDEO_ERROR.load_image(ctx.egui_ctx(), egui::SizeHint::default()) {
+                Err(err) => {
+                    re_log::error_once!("Failed to load video error icon: {err}");
+                    return;
+                }
+                Ok(egui::load::ImagePoll::Ready { image }) => image,
+                Ok(egui::load::ImagePoll::Pending { .. }) => {
+                    return; // wait for it to load
+                }
+            };
 
         let video_error_texture_result = render_ctx
             .texture_manager_2d
@@ -338,7 +337,7 @@ impl VideoFrameReferenceVisualizer {
         );
         // If we're in a 2D view, make the error rect take a fixed amount of view space.
         // This makes it look a lot nicer for very small & very large videos.
-        if let Some(state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() {
+        if let Some(state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() {
             if let Some(bounds) = state.visual_bounds_2d {
                 // Aim for 1/8 of the larger visual bounds axis.
                 let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;

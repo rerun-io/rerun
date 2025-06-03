@@ -96,12 +96,12 @@ pub fn textured_rect_from_image(
     }
 }
 
-fn bounding_box_for_textured_rect(textured_rect: &renderer::TexturedRect) -> re_math::BoundingBox {
+fn bounding_box_for_textured_rect(textured_rect: &renderer::TexturedRect) -> macaw::BoundingBox {
     let left_top = textured_rect.top_left_corner_position;
     let extent_u = textured_rect.extent_u;
     let extent_v = textured_rect.extent_v;
 
-    re_math::BoundingBox::from_points(
+    macaw::BoundingBox::from_points(
         [
             left_top,
             left_top + extent_u,

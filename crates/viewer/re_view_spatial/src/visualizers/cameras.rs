@@ -76,7 +76,7 @@ impl CamerasVisualizer {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
-                world_from_camera: re_math::IsoTransform::IDENTITY,
+                world_from_camera: macaw::IsoTransform::IDENTITY,
                 pinhole: Some(pinhole_properties.pinhole),
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
@@ -104,8 +104,7 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) =
-            re_math::IsoTransform::from_mat4(&world_from_camera.into())
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return;
         };
@@ -309,7 +308,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
-        let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return Default::default();
         };
 
@@ -338,7 +337,7 @@ impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualize
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
         // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx, ctx.query, ctx.target_entity_path)
+        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
             // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
             // TODO(andreas): We should display a warning about this somewhere.
             // Since it's not a required component, logging a warning about this might be too noisy.

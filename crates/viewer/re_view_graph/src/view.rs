@@ -16,8 +16,9 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -135,12 +136,13 @@ impl ViewClass for GraphView {
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceLink>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceManyBody>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForcePosition>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceCenter>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<VisualBounds2D>(&ctx, ui, self);
+            view_property_force_ui::<ForceLink>(&ctx, ui, self);
+            view_property_force_ui::<ForceManyBody>(&ctx, ui, self);
+            view_property_force_ui::<ForcePosition>(&ctx, ui, self);
+            view_property_force_ui::<ForceCenter>(&ctx, ui, self);
+            view_property_force_ui::<ForceCollisionRadius>(&ctx, ui, self);
         });
 
         Ok(())
@@ -168,7 +170,8 @@ impl ViewClass for GraphView {
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
-        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let params = ForceLayoutParams::get(&view_ctx, self)?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -176,7 +179,7 @@ impl ViewClass for GraphView {
             query.view_id,
         );
         let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
-            .component_or_fallback(ctx, self, state, &VisualBounds2D::descriptor_range())?;
+            .component_or_fallback(&view_ctx, self, &VisualBounds2D::descriptor_range())?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());

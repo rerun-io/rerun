@@ -10,7 +10,7 @@ use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::{UiExt as _, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, UiLayout, ViewClassExt as _, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
     VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
@@ -30,6 +30,7 @@ pub fn visualizer_ui(
         ui.error_label("Entity not found in view");
         return;
     };
+    let all_visualizers = ctx.new_visualizer_collection();
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
     let available_inactive_visualizers = available_inactive_visualizers(
         ctx,
@@ -37,6 +38,7 @@ pub fn visualizer_ui(
         view,
         &data_result,
         &active_visualizers,
+        &all_visualizers,
     );
 
     let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
@@ -74,7 +76,7 @@ specific to the visualizer and the current view type.";
         .button(button)
         .help_markdown(markdown)
         .show(ui, |ui| {
-            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
+            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
         });
 }
 
@@ -83,6 +85,7 @@ pub fn visualizer_ui_impl(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) {
     let override_path = data_result.override_path();
 
@@ -114,7 +117,7 @@ pub fn visualizer_ui_impl(
             let default_open = true;
 
             // List all components that the visualizer may consume.
-            if let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) {
+            if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
                 ui.list_item()
                     .interactive(false)
                     .show_hierarchical_with_children(
@@ -247,7 +250,7 @@ fn visualizer_components(
                 #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_unit) = match value_source {
                     ValueSource::Override => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         override_path.clone(),
                         result_override.unwrap(),
@@ -259,7 +262,7 @@ fn visualizer_components(
                         result_store.unwrap(),
                     ),
                     ValueSource::Default => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         ViewBlueprint::defaults_path(ctx.view_id),
                         result_default.unwrap(),
@@ -440,10 +443,10 @@ fn editable_blueprint_component_list_item(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let allow_multiline = false;
-                query_ctx.viewer_ctx.component_ui_registry().edit_ui_raw(
+                query_ctx.viewer_ctx().component_ui_registry().edit_ui_raw(
                     query_ctx,
                     ui,
-                    query_ctx.viewer_ctx.blueprint_db(),
+                    query_ctx.viewer_ctx().blueprint_db(),
                     blueprint_path_clone,
                     component_descr,
                     row_id,
@@ -453,7 +456,7 @@ fn editable_blueprint_component_list_item(
             })
             .action_button(&re_ui::icons::CLOSE, || {
                 query_ctx
-                    .viewer_ctx
+                    .viewer_ctx()
                     .clear_blueprint_component(blueprint_path, component_descr.clone());
             }),
     )
@@ -566,6 +569,7 @@ fn available_inactive_visualizers(
     view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) -> Vec<ViewSystemIdentifier> {
     // TODO(jleibs): This has already been computed for the View this frame. Maybe We
     // should do this earlier and store it with the View?
@@ -579,7 +583,7 @@ fn available_inactive_visualizers(
         .determine_visualizable_entities(
             &maybe_visualizable_entities,
             entity_db,
-            &ctx.visualizer_collection,
+            all_visualizers,
             &view.space_origin,
         );
 

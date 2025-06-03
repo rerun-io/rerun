@@ -1,7 +1,7 @@
 use re_log_types::{StoreId, TableId};
 
 #[derive(Clone, Debug)]
-pub enum StoreHubEntry {
+pub enum RecordingOrTable {
     Recording {
         store_id: StoreId,
         // TODO(grtlr): Add `applicationId` here.
@@ -11,19 +11,19 @@ pub enum StoreHubEntry {
     },
 }
 
-impl From<StoreId> for StoreHubEntry {
+impl From<StoreId> for RecordingOrTable {
     fn from(store_id: StoreId) -> Self {
         Self::Recording { store_id }
     }
 }
 
-impl From<TableId> for StoreHubEntry {
+impl From<TableId> for RecordingOrTable {
     fn from(table_id: TableId) -> Self {
         Self::Table { table_id }
     }
 }
 
-impl StoreHubEntry {
+impl RecordingOrTable {
     pub fn recording_ref(&self) -> Option<&StoreId> {
         match self {
             Self::Recording { store_id } => Some(store_id),
