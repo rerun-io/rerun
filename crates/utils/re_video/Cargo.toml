@@ -48,6 +48,7 @@ re_tracing.workspace = true
 bit-vec.workspace = true
 crossbeam.workspace = true
 econtext.workspace = true
+h264-reader.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
