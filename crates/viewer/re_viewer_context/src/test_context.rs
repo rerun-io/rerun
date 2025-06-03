@@ -558,9 +558,9 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
-                | SystemCommand::ActivateEntry(_)
+                | SystemCommand::ActivateRecordingOrTable(_)
                 | SystemCommand::CloseApp(_)
-                | SystemCommand::CloseEntry(_)
+                | SystemCommand::CloseRecordingOrTable(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }

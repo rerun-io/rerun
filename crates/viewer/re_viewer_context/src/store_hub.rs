@@ -1,15 +1,14 @@
 use ahash::{HashMap, HashMapExt as _, HashSet};
-
 use anyhow::Context as _;
 use itertools::Itertools as _;
-
 use nohash_hasher::IntMap;
+
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
-use re_global_context::StoreHubEntry;
+use re_global_context::RecordingOrTable;
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
 use re_query::CachesStats;
 use re_types::{archetypes, components::Timestamp};
@@ -42,7 +41,7 @@ pub struct StoreHub {
     /// How we load and save blueprints.
     persistence: BlueprintPersistence,
 
-    active_entry: Option<StoreHubEntry>,
+    active_recording_or_table: Option<RecordingOrTable>,
     active_application_id: Option<ApplicationId>,
 
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
@@ -152,7 +151,7 @@ impl StoreHub {
 
         Self {
             persistence,
-            active_entry: None,
+            active_recording_or_table: None,
             active_application_id: None,
 
             default_blueprint_by_app_id,
@@ -243,13 +242,16 @@ impl StoreHub {
                 .and_then(|id| self.store_bundle.get(id));
 
             // Calls `store_bundle.get()` internally and can therefore vary from the active entry.
-            let recording = self.active_entry.as_ref().and_then(|id| match id {
-                StoreHubEntry::Recording { store_id } => self.store_bundle.get(store_id),
-                StoreHubEntry::Table { .. } => None,
-            });
+            let recording = self
+                .active_recording_or_table
+                .as_ref()
+                .and_then(|id| match id {
+                    RecordingOrTable::Recording { store_id } => self.store_bundle.get(store_id),
+                    RecordingOrTable::Table { .. } => None,
+                });
 
-            if recording.is_none() && self.active_entry.is_none() {
-                self.active_entry = None;
+            if recording.is_none() && self.active_recording_or_table.is_none() {
+                self.active_recording_or_table = None;
             }
 
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
@@ -327,12 +329,12 @@ impl StoreHub {
         }
     }
 
-    pub fn remove(&mut self, entry: &StoreHubEntry) {
+    pub fn remove(&mut self, entry: &RecordingOrTable) {
         match entry {
-            StoreHubEntry::Recording { store_id } => {
+            RecordingOrTable::Recording { store_id } => {
                 self.remove_store(store_id);
             }
-            StoreHubEntry::Table { table_id } => {
+            RecordingOrTable::Table { table_id } => {
                 self.table_stores.remove(table_id);
             }
         }
@@ -351,7 +353,7 @@ impl StoreHub {
             })
             .collect();
         for store in stores_to_remove {
-            self.remove(&StoreHubEntry::Recording { store_id: store });
+            self.remove(&RecordingOrTable::Recording { store_id: store });
         }
     }
 
@@ -400,7 +402,7 @@ impl StoreHub {
         // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
         if Self::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
             self.active_application_id = Some(app_id.clone());
-            self.active_entry = None;
+            self.active_recording_or_table = None;
         }
 
         // Find any matching recording and activate it
@@ -411,7 +413,7 @@ impl StoreHub {
         }) {
             if rec.app_id() == Some(&app_id) {
                 self.active_application_id = Some(app_id.clone());
-                self.active_entry = Some(StoreHubEntry::Recording {
+                self.active_recording_or_table = Some(RecordingOrTable::Recording {
                     store_id: rec.store_id().clone(),
                 });
                 return;
@@ -456,21 +458,23 @@ impl StoreHub {
     /// The recording id for the active recording.
     #[inline]
     pub fn active_recording_id(&self) -> Option<&StoreId> {
-        self.active_entry.as_ref().and_then(|e| e.recording_ref())
+        self.active_recording_or_table
+            .as_ref()
+            .and_then(|e| e.recording_ref())
     }
 
     /// Directly access the [`EntityDb`] for the active recording.
     #[inline]
     pub fn active_recording(&self) -> Option<&EntityDb> {
-        match self.active_entry.as_ref() {
-            Some(StoreHubEntry::Recording { store_id }) => self.store_bundle.get(store_id),
+        match self.active_recording_or_table.as_ref() {
+            Some(RecordingOrTable::Recording { store_id }) => self.store_bundle.get(store_id),
             _ => None,
         }
     }
 
-    /// Currently active entry if any.
-    pub fn active_entry(&self) -> Option<&StoreHubEntry> {
-        self.active_entry.as_ref()
+    /// Currently active recording or table, if any.
+    pub fn active_recording_or_table(&self) -> Option<&RecordingOrTable> {
+        self.active_recording_or_table.as_ref()
     }
 
     /// Directly access the [`Caches`] for the active recording.
@@ -508,7 +512,7 @@ impl StoreHub {
             self.set_active_app(app_id);
         }
 
-        self.active_entry = Some(StoreHubEntry::Recording {
+        self.active_recording_or_table = Some(RecordingOrTable::Recording {
             store_id: recording_id.clone(),
         });
 

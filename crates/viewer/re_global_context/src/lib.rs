@@ -6,7 +6,7 @@ mod command_sender;
 mod contents;
 mod file_dialog;
 mod item;
-mod store_hub_entry;
+mod recording_or_table;
 
 pub use self::{
     app_options::AppOptions,
@@ -17,7 +17,7 @@ pub use self::{
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     file_dialog::santitize_file_name,
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
-    store_hub_entry::StoreHubEntry,
+    recording_or_table::RecordingOrTable,
 };
 
 use re_log_types::TableId;
