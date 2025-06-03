@@ -34,7 +34,7 @@ use datatype_uis::{
 };
 
 use re_types::blueprint::components::{RootContainer, ViewMaximized};
-use re_types::components::{SeriesVisible, Timestamp};
+use re_types::components::{SeriesVisible, Timestamp, VideoCodec};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
@@ -126,6 +126,17 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     );
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<VideoCodec>(|ctx, ui, value| {
+        // Hack to make this field never editable.
+        // Editing the codec rarely makes sense and isn't supported by the visualizer.
+        // (to change this we'd have to do a blueprint query, but `VideoStreamCache` needs more context for that
+        // and the result is almost certainly just decoding failure)
+        edit_view_enum(
+            ctx,
+            ui,
+            &mut re_viewer_context::MaybeMutRef::Ref(value.as_ref()),
+        )
+    });
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     // Vec2 components:

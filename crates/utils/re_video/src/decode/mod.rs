@@ -93,6 +93,11 @@ pub use ffmpeg_h264::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
+mod gop_detection;
+mod nalu;
+
+pub use gop_detection::{StartOfGopDetectionFailure, is_sample_start_of_gop};
+
 use crate::Time;
 
 #[derive(thiserror::Error, Debug, Clone)]

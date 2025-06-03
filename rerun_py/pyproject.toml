@@ -87,6 +87,7 @@ extend-exclude = [
 
   # generated
   "examples/python/objectron/objectron/proto/objectron/proto.py",
+  "tests/python/video_mcap/CompressedVideo_pb2.py",
 
   # Copied from https://github.com/huggingface/diffusers/blob/fc9fecc217e58d72c0d5796575c72088251ff4df/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
   "examples/python/depth_guided_stable_diffusion/depth_guided_stable_diffusion/huggingface_pipeline.py",

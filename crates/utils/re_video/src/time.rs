@@ -3,6 +3,8 @@
 pub struct Timescale(u64);
 
 impl Timescale {
+    pub const NO_SCALE: Self = Self(1);
+
     pub(crate) fn new(v: u64) -> Self {
         Self(v)
     }

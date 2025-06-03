@@ -42,7 +42,10 @@ pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
-    cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoAssetCache},
+    cache::{
+        Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoAssetCache,
+        VideoStreamCache,
+    },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,

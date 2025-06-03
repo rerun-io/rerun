@@ -36,3 +36,4 @@ float32
 * [`Points2D`](../archetypes/points2d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md)
+* [`VideoStream`](../archetypes/video_stream.md)

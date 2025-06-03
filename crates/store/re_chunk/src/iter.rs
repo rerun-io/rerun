@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrowPrimitiveType, BooleanArray as ArrowBooleanArray,
-        FixedSizeListArray as ArrowFixedSizeListArray, ListArray as ArrowListArray,
-        PrimitiveArray as ArrowPrimitiveArray, StringArray as ArrowStringArray,
-        StructArray as ArrowStructArray,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType,
+        BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
+        ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StringArray as ArrowStringArray, StructArray as ArrowStructArray,
     },
     buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::ArrowNativeType,
@@ -28,6 +28,18 @@ use crate::{Chunk, RowId, TimeColumn};
 // * Any layers beyond that follow the same pattern: `Left` doesn't have something, while `Right` does.
 
 impl Chunk {
+    /// Return the raw component list array values for a given component.
+    ///
+    /// Use with great care: Component data may have arbitrary gaps.
+    pub fn raw_component_array(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<&ArrowArrayRef> {
+        self.components
+            .get(component_descr)
+            .map(|list_array| list_array.values())
+    }
+
     /// Returns an iterator over the indices (`(TimeInt, RowId)`) of a [`Chunk`], for a given timeline.
     ///
     /// If the chunk is static, `timeline` will be ignored.
