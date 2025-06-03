@@ -924,7 +924,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let cur_index_value = match state.unique_index_values.get(row_idx as usize) {
             Some(index_value) => index_value,
             None => {
-                println!("row_idx {row_idx} being skipped");
                 return None;
             }
         };
