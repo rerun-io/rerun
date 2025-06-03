@@ -86,7 +86,7 @@ fn test_clamped_vec() {
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
-    view_ctx: &ViewContextCollection,
+    context_systems: &ViewContextCollection,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -97,9 +97,9 @@ where
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
-    let transforms = view_ctx.get::<TransformTreeContext>()?;
-    let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
-    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let transforms = context_systems.get::<TransformTreeContext>()?;
+    let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
+    let annotations = context_systems.get::<AnnotationSceneContext>()?;
 
     let latest_at = query.latest_at_query();
 
@@ -124,7 +124,7 @@ where
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
-            view_class_identifier: view_ctx.view_class_identifier(),
+            view_class_identifier: context_systems.view_class_identifier(),
         };
 
         let results = data_result.query_archetype_with_history::<A>(ctx, query);
