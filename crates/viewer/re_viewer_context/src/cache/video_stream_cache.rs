@@ -4,9 +4,9 @@ use std::sync::{
 };
 
 use ahash::HashMap;
-
 use arrow::buffer::Buffer as ArrowBuffer;
 use parking_lot::RwLock;
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{ChunkId, EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
@@ -339,26 +339,15 @@ fn read_samples_from_chunk(
             }),
     );
 
-    // Any new samples actually added?
+    // Any new samples actually added? Early out if not.
     if sample_base_idx == samples.next_index() {
         return Ok(());
     }
 
-    // Fill out frame durations.
-    // Last frame of the previous round of adding samples:
-    // TODO: do checked access with early out, removing above arly out
-    let timestamp_first_new_sample = samples[sample_base_idx].presentation_timestamp;
-    if sample_base_idx != 0 {
-        // Note that the old sample might have been removed by now via GC, so it's important we check.
-        if let Some(previously_last_sample) = samples.get_mut(sample_base_idx - 1) {
-            previously_last_sample.duration =
-                Some(timestamp_first_new_sample - previously_last_sample.presentation_timestamp);
-        }
-    }
-
-    // Durations for all new samples (except the last one since we don't know how long it will last)
-    // TODO: window itertools iterators
-    for sample in sample_base_idx..samples.next_index() - 1 {
+    // Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
+    // (We set the duration for the last sample to `None` since we don't know how long it will last.)
+    // (Note that we can't use tuple_windows here because it can't handle mutable references)
+    for sample in sample_base_idx.saturating_sub(1)..samples.next_index() - 1 {
         samples[sample].duration = Some(
             samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
         );
