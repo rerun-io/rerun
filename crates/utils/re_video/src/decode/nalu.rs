@@ -100,7 +100,7 @@ impl NalHeader {
 ///
 /// See <https://membrane.stream/learn/h264/3> for an explanation of Annex B.
 /// Skips empty separators, i.e. you can assume that each returned slice will be non-empty.
-pub fn iter_annex_b_nal_units<'a>(sample_data: &'a [u8]) -> impl Iterator<Item = &'a [u8]> {
+pub fn iter_annex_b_nal_units(sample_data: &[u8]) -> impl Iterator<Item = &[u8]> {
     let Some(start_pos) = annex_b_next_nal_unit_start_pos(sample_data) else {
         return itertools::Either::Left(std::iter::empty());
     };
