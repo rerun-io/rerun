@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use arrow::array::NullArray;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
@@ -177,7 +180,15 @@ impl ViewProperty {
                 return value;
             }
         }
-        fallback_provider.fallback_for(&self.query_context(ctx), component_descr.component_name)
+
+        if let Some(component_name) = component_descr.component_name {
+            fallback_provider.fallback_for(&self.query_context(ctx), component_name)
+        } else {
+            re_log::warn!(
+                "cannot find fallback for component descriptor without component name: {component_descr}"
+            );
+            Arc::new(NullArray::new(0))
+        }
     }
 
     /// Save change to a blueprint component.
