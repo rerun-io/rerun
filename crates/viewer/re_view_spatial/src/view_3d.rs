@@ -11,9 +11,10 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _, ViewClassRegistryError,
+    ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -422,8 +423,9 @@ impl ViewClass for SpatialView3D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            view_property_ui::<Background>(ctx, ui, view_id, self, state);
-            view_property_ui_grid3d(ctx, ui, view_id, self, state);
+            let view_ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<Background>(&view_ctx, ui, self);
+            view_property_ui_grid3d(&view_ctx, ui, self);
         });
 
         Ok(())
@@ -451,18 +453,17 @@ impl ViewClass for SpatialView3D {
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
 fn view_property_ui_grid3d(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    view_id: ViewId,
     fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-    view_state: &dyn ViewState,
 ) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
-        ctx.blueprint_query,
-        view_id,
+        ctx.blueprint_query(),
+        ctx.view_id,
     );
-    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
             "Missing reflection data for archetype {:?}.",
             property.archetype_name
@@ -470,7 +471,7 @@ fn view_property_ui_grid3d(
         return;
     };
 
-    let query_ctx = property.query_context(ctx, view_state);
+    let query_ctx = property.query_context(ctx);
     let sub_prop_ui = |ui: &mut egui::Ui| {
         for field in &reflection.fields {
             // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
@@ -487,7 +488,6 @@ fn view_property_ui_grid3d(
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
                                 fallback_provider,
-                                view_state,
                                 &LineGrid3D::descriptor_color(),
                             )
                         else {
@@ -504,7 +504,7 @@ fn view_property_ui_grid3d(
                         {
                             let color = re_types::components::Color::from(edit_color);
                             property.save_blueprint_component(
-                                ctx,
+                                ctx.viewer_ctx,
                                 &LineGrid3D::descriptor_color(),
                                 &color,
                             );

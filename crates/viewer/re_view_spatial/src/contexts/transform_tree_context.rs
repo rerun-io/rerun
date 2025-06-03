@@ -17,7 +17,7 @@ use crate::{
         CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
         TransformCacheStoreSubscriber,
     },
-    visualizers::image_view_coordinates,
+    visualizers::{CamerasVisualizer, image_view_coordinates},
 };
 
 // TODO(andreas): this is struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
@@ -378,6 +378,7 @@ fn lookup_image_plane_distance(
                 )
                 .get_mono_with_fallback::<ImagePlaneDistance>(
                     &archetypes::Pinhole::descriptor_image_plane_distance(),
+                    &CamerasVisualizer::default(),
                 )
         })
         .unwrap_or_default()

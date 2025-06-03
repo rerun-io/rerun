@@ -1,8 +1,6 @@
 use ahash::HashMap;
 
-use re_viewer_context::{
-    Contents, ViewClassExt as _, ViewerContext, VisitorControlFlow, test_context::TestContext,
-};
+use re_viewer_context::{Contents, ViewerContext, VisitorControlFlow, test_context::TestContext};
 
 use crate::{ViewportBlueprint, view_contents::DataQueryPropertyResolver};
 

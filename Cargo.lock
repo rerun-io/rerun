@@ -7789,7 +7789,6 @@ name = "re_view"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "egui",
  "glam",
  "itertools 0.14.0",

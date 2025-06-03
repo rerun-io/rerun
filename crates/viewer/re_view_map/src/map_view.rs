@@ -15,7 +15,7 @@ use re_types::{
 };
 use re_ui::{Help, IconText, icon_text, icons, list_item};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
+    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemRegistrator, ViewerContext, gpu_bridge,
@@ -177,8 +177,9 @@ impl ViewClass for MapView {
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            re_view::view_property_ui::<MapZoom>(ctx, ui, view_id, self, state);
-            re_view::view_property_ui::<MapBackground>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            re_view::view_property_ui::<MapZoom>(&ctx, ui, self);
+            re_view::view_property_ui::<MapBackground>(&ctx, ui, self);
         });
 
         Ok(())
@@ -214,10 +215,10 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(
-            ctx,
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let map_provider = map_background.component_or_fallback(
+            &view_ctx,
             self,
-            state,
             &MapBackground::descriptor_provider(),
         )?;
         if state.selected_provider != map_provider {

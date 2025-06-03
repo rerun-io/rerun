@@ -22,7 +22,8 @@ use re_view::controls::{
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext, gpu_bridge,
+    Item, ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
+    ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -673,13 +674,15 @@ impl SpatialView3D {
             view_builder.queue_draw(draw_data);
         }
 
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.view_id,
         );
-        if let Some(draw_data) = self.setup_grid_3d(ctx, &grid_config, state)? {
+        if let Some(draw_data) = self.setup_grid_3d(&view_ctx, &grid_config)? {
             view_builder.queue_draw(draw_data);
         }
 
@@ -692,7 +695,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, ctx.render_ctx(), self, state)?;
+            crate::configure_background(&view_ctx, &background, self)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -720,14 +723,12 @@ impl SpatialView3D {
 
     fn setup_grid_3d(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         grid_config: &ViewProperty,
-        state: &SpatialViewState,
     ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
         if !**grid_config.component_or_fallback::<Visible>(
             ctx,
             self,
-            state,
             &LineGrid3D::descriptor_visible(),
         )? {
             return Ok(None);
@@ -736,26 +737,22 @@ impl SpatialView3D {
         let spacing = **grid_config.component_or_fallback::<GridSpacing>(
             ctx,
             self,
-            state,
             &LineGrid3D::descriptor_spacing(),
         )?;
         let thickness_ui = **grid_config
             .component_or_fallback::<re_types::components::StrokeWidth>(
                 ctx,
                 self,
-                state,
                 &LineGrid3D::descriptor_stroke_width(),
             )?;
         let color = grid_config.component_or_fallback::<re_types::components::Color>(
             ctx,
             self,
-            state,
             &LineGrid3D::descriptor_color(),
         )?;
         let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
             ctx,
             self,
-            state,
             &LineGrid3D::descriptor_plane(),
         )?;
 
