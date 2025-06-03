@@ -3590,9 +3590,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.28.0"
+version = "0.30.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
+checksum = "6b46b9ca4690308844c644e7c634d68792467260e051c8543e0c7871662b3ba7"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3878,12 +3878,13 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hexasphere"
-version = "14.1.0"
+version = "16.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "344d5bf5d6b6da1020fcfd4014d44e0cc695356c603db9c774b30bd6d385ad2b"
+checksum = "29a164ceff4500f2a72b1d21beaa8aa8ad83aec2b641844c659b190cb3ea2e0b"
 dependencies = [
  "constgebra",
  "glam",
+ "tinyvec",
 ]
 
 [[package]]
@@ -4841,6 +4842,17 @@ dependencies = [
  "cc",
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "macaw"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c96b82556b0d4aa25cd4771b64ef9bde7c120afb588a083fcb242bf01e4a09b"
+dependencies = [
+ "glam",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -6790,6 +6802,7 @@ dependencies = [
  "arrow",
  "crossbeam",
  "image",
+ "indexmap 2.8.0",
  "itertools 0.14.0",
  "notify",
  "once_cell",
@@ -7212,16 +7225,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_math"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "999db5029a2879efeddb538f2e486aabf33adf7a0b3708c6df5c1cae13b3af49"
-dependencies = [
- "glam",
- "serde",
-]
-
-[[package]]
 name = "re_memory"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
@@ -7393,6 +7396,7 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "js-sys",
+ "macaw",
  "never",
  "notify",
  "ordered-float 4.4.0",
@@ -7403,7 +7407,6 @@ dependencies = [
  "re_build_tools",
  "re_error",
  "re_log",
- "re_math",
  "re_tracing",
  "re_video",
  "serde",
@@ -7434,10 +7437,10 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.14.0",
+ "macaw",
  "pollster 0.4.0",
  "rand",
  "re_log",
- "re_math",
  "re_renderer",
  "wasm-bindgen-futures",
  "web-sys",
@@ -7627,6 +7630,7 @@ dependencies = [
  "infer",
  "itertools 0.14.0",
  "linked-hash-map",
+ "macaw",
  "mime_guess2",
  "mint",
  "ndarray",
@@ -7640,7 +7644,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_math",
  "re_tracing",
  "re_types_builder",
  "re_types_core",
@@ -7789,7 +7792,6 @@ name = "re_view"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "egui",
  "glam",
  "itertools 0.14.0",
@@ -7889,11 +7891,11 @@ dependencies = [
  "egui",
  "glam",
  "itertools 0.14.0",
+ "macaw",
  "re_data_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_math",
  "re_query",
  "re_renderer",
  "re_tracing",
@@ -7920,6 +7922,7 @@ dependencies = [
  "image",
  "insta",
  "itertools 0.14.0",
+ "macaw",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -7932,7 +7935,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_math",
  "re_query",
  "re_renderer",
  "re_tracing",
@@ -8142,6 +8144,7 @@ dependencies = [
  "indexmap 2.8.0",
  "itertools 0.14.0",
  "linked-hash-map",
+ "macaw",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -8155,7 +8158,6 @@ dependencies = [
  "re_grpc_client",
  "re_log",
  "re_log_types",
- "re_math",
  "re_query",
  "re_renderer",
  "re_smart_channel",
@@ -9881,9 +9883,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "445e881f4f6d382d5f27c034e25eb92edd7c784ceab92a0937db7f2e9471b938"
+checksum = "09b3661f17e86524eccd4371ab0429194e0d7c008abb45f7a7495b1719463c71"
 dependencies = [
  "tinyvec_macros",
 ]

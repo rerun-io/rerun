@@ -40,6 +40,7 @@ anyhow.workspace = true
 arrow.workspace = true
 crossbeam.workspace = true
 image.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 notify.workspace = true
 once_cell.workspace = true

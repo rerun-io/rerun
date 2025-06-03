@@ -81,8 +81,7 @@ impl DepthImageVisualizer {
                 .unwrap_or_else(|| {
                     // Don't use fallback provider since it has to query information we already have.
                     let image_stats = ctx
-                        .viewer_ctx
-                        .store_context
+                        .store_ctx()
                         .caches
                         .entry(|c: &mut ImageStatsCache| c.entry(&image));
                     ColormapWithRange::default_range_for_depth_images(&image_stats)
@@ -96,7 +95,7 @@ impl DepthImageVisualizer {
             // Even if we end up only showing a depth cloud,
             // we still need most of this for ui interaction which still shows the image!
             let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 entity_path,
                 ent_context,
                 &image,
@@ -173,7 +172,7 @@ impl DepthImageVisualizer {
         // Consequently we should also advertise the components on the archetype!
         let Some((pinhole, camera_xyz)) =
             crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 ctx.query,
                 &twod_in_threed_info.parent_pinhole,
             )
@@ -393,7 +392,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                     format.0,
                     ImageKind::Depth,
                 );
-                let cache = ctx.viewer_ctx.store_context.caches;
+                let cache = ctx.store_ctx().caches;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                 let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();

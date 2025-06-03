@@ -142,7 +142,7 @@ where
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-        let mut world_space_bounding_box = re_math::BoundingBox::NOTHING;
+        let mut world_space_bounding_box = macaw::BoundingBox::nothing();
 
         let world_from_instances = reference_from_instances
             .iter()
@@ -177,7 +177,7 @@ where
 
             match fill_mode {
                 FillMode::MajorWireframe | FillMode::DenseWireframe => {
-                    let Some(wireframe_mesh) = query_context.viewer_ctx.store_context.caches.entry(
+                    let Some(wireframe_mesh) = query_context.store_ctx().caches.entry(
                         |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
                     ) else {
                         return Err(ViewSystemExecutionError::DrawDataCreationError(
@@ -210,9 +210,12 @@ where
                     }
                 }
                 FillMode::Solid => {
-                    let Some(solid_mesh) = query_context.viewer_ctx.store_context.caches.entry(
-                        |c: &mut proc_mesh::SolidCache| c.entry(proc_mesh_key, self.render_ctx),
-                    ) else {
+                    let store_ctx = query_context.store_ctx();
+                    let Some(solid_mesh) =
+                        store_ctx.caches.entry(|c: &mut proc_mesh::SolidCache| {
+                            c.entry(proc_mesh_key, self.render_ctx)
+                        })
+                    else {
                         return Err(ViewSystemExecutionError::DrawDataCreationError(
                             "Failed to allocate solid mesh".into(),
                         ));

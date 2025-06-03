@@ -14,7 +14,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
         // Color is a fairly common component, make sure this is the right context.
         if ctx.archetype_name == Some(Background::name()) {
-            ctx.viewer_ctx
+            ctx.viewer_ctx()
                 .egui_ctx()
                 .style()
                 .visuals
@@ -38,7 +38,7 @@ fn valid_bound(rect: &egui::Rect) -> bool {
 
 impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
-        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return VisualBounds2D::default();
         };
 
