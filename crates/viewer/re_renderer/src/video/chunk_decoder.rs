@@ -158,7 +158,7 @@ impl VideoSampleDecoder {
             #[cfg(target_arch = "wasm32")]
             {
                 video_texture.source_pixel_format =
-                    copy_web_video_frame_to_texture(render_ctx, &frame.content, &gpu_texture)?;
+                    copy_web_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
             }
             #[cfg(not(target_arch = "wasm32"))]
             {

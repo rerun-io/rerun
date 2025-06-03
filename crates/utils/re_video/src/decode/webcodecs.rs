@@ -114,9 +114,9 @@ impl WebVideoDecoder {
         let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
 
         Ok(Self {
-            codec: video.codec.clone(),
+            codec: video.codec,
             stsd: video.stsd.clone(),
-            coded_dimensions: video.coded_dimensions.clone(),
+            coded_dimensions: video.coded_dimensions,
             timescale: video.timescale,
             decoder,
             hw_acceleration,
