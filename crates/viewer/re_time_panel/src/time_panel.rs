@@ -17,8 +17,8 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, SyntaxHighlighting as _, UiExt as _,
-    design_tokens_of_visuals, filter_widget, icon_text, icons, list_item,
+    ContextExt as _, Help, SyntaxHighlighting as _, UiExt as _, filter_widget, icon_text, icons,
+    list_item,
 };
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
@@ -837,6 +837,7 @@ impl TimePanel {
             ui.list_item()
                 .with_y_offset(1.0)
                 .with_height(20.0)
+                .interactive(false)
                 .show_hierarchical(
                     ui,
                     list_item::LabelContent::new(

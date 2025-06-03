@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
@@ -6,9 +5,7 @@ use re_types::ComponentDescriptor;
 use smallvec::SmallVec;
 
 use re_chunk_store::ChunkStore;
-use re_data_ui::{
-    ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui, sorted_component_list_for_ui,
-};
+use re_data_ui::{ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
 use re_ui::filter_widget::{FilterMatcher, PathRanges};

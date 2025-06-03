@@ -5,7 +5,6 @@
 use re_log_types::EntityPath;
 use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{UiLayout, ViewerContext};
-use std::collections::BTreeMap;
 
 mod annotation_context;
 mod app_id;
@@ -43,7 +42,8 @@ pub fn sorted_component_list_for_ui<'a>(
     components
 }
 
-pub type ArchetypeComponentMap = BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
+pub type ArchetypeComponentMap =
+    std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 
 /// Components grouped by archetype.
 pub fn sorted_component_list_by_archetype_for_ui<'a>(
@@ -52,14 +52,14 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
     let mut map = iter
         .into_iter()
         .filter(|d| !d.component_name.is_indicator_component())
-        .fold(BTreeMap::default(), |mut acc, descriptor| {
-            acc.entry(descriptor.archetype_name.clone())
-                .or_insert_with(Vec::new)
+        .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
+            acc.entry(descriptor.archetype_name)
+                .or_default()
                 .push(descriptor.clone());
             acc
         });
 
-    for (_, components) in map.iter_mut() {
+    for components in map.values_mut() {
         // Sort by the short name, as that is what is shown in the UI.
         components.sort_by_key(|c| c.display_name());
     }
