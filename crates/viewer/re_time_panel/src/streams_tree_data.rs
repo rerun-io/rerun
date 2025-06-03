@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
@@ -5,7 +6,9 @@ use re_types::ComponentDescriptor;
 use smallvec::SmallVec;
 
 use re_chunk_store::ChunkStore;
-use re_data_ui::sorted_component_list_for_ui;
+use re_data_ui::{
+    ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui, sorted_component_list_for_ui,
+};
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
@@ -221,13 +224,15 @@ impl EntityData {
                 child.visit(store, visitor)?;
             }
 
-            for component_descriptor in components_for_entity(store, &self.entity_path) {
-                // these cannot have children
-                let _ = visitor(EntityOrComponentData::Component {
-                    entity_data: self,
-                    component_descriptor,
-                })
-                .visit_children()?;
+            for (_, component_descriptors) in components_for_entity(store, &self.entity_path) {
+                for component_descriptor in component_descriptors {
+                    // these cannot have children
+                    let _ = visitor(EntityOrComponentData::Component {
+                        entity_data: self,
+                        component_descriptor,
+                    })
+                    .visit_children()?;
+                }
             }
         }
 
@@ -249,11 +254,11 @@ impl EntityData {
 pub fn components_for_entity(
     store: &ChunkStore,
     entity_path: &EntityPath,
-) -> impl Iterator<Item = ComponentDescriptor> + use<> {
+) -> ArchetypeComponentMap {
     if let Some(components) = store.all_components_for_entity(entity_path) {
-        itertools::Either::Left(sorted_component_list_for_ui(components.iter()).into_iter())
+        sorted_component_list_by_archetype_for_ui(components.iter())
     } else {
-        itertools::Either::Right(std::iter::empty())
+        ArchetypeComponentMap::default()
     }
 }
 
