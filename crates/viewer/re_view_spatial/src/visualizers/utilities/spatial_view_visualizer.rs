@@ -14,7 +14,7 @@ pub struct SpatialViewVisualizerData {
     pub ui_labels: Vec<UiLabel>,
 
     /// Bounding boxes of all visualizations that the visualizer showed.
-    pub bounding_boxes: Vec<(EntityPathHash, re_math::BoundingBox)>,
+    pub bounding_boxes: Vec<(EntityPathHash, macaw::BoundingBox)>,
 
     /// Textured rectangles that the visualizer produced which can be interacted with.
     pub pickable_rects: Vec<PickableTexturedRect>,
@@ -37,7 +37,7 @@ impl SpatialViewVisualizerData {
     pub fn add_bounding_box(
         &mut self,
         entity: EntityPathHash,
-        bbox: re_math::BoundingBox,
+        bbox: macaw::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
         self.bounding_boxes
@@ -53,7 +53,7 @@ impl SpatialViewVisualizerData {
         re_tracing::profile_function!();
         self.add_bounding_box(
             entity,
-            re_math::BoundingBox::from_points(points),
+            macaw::BoundingBox::from_points(points),
             world_from_obj,
         );
     }

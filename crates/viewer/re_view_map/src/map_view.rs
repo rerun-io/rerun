@@ -373,7 +373,7 @@ fn create_view_builder(
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
-            view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+            view_from_world: macaw::IsoTransform::from_translation(-glam::vec3(
                 view_rect.left(),
                 view_rect.top(),
                 0.0,
