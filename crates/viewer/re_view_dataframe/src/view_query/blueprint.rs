@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
-use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
+use re_log_types::{ResolvedTimeRange, Timeline, TimelineName};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 use re_types::blueprint::archetypes::DataframeQuery;
 use re_types::blueprint::{components, datatypes};
@@ -94,11 +94,17 @@ impl Query {
         Ok(self
             .filter_is_not_null_raw()?
             .filter(|filter_is_not_null| filter_is_not_null.active())
-            .map(|filter| {
-                ComponentColumnSelector::new_for_component_name(
-                    filter.entity_path(),
-                    filter.component_name(),
-                )
+            .and_then(|filter| {
+                let maybe_selector = ComponentColumnSelector::try_new_from_column_name(
+                    &filter.entity_path(),
+                    &filter.component_name(),
+                );
+
+                if let Err(err) = maybe_selector.as_ref() {
+                    re_log::warn!("Could not parse filter {filter:?}: {err}");
+                }
+
+                maybe_selector.ok()
             }))
     }
 
@@ -163,7 +169,8 @@ impl Query {
                 ColumnSelector::Component(selector) => {
                     let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
                         &selector.entity_path,
-                        &selector.component_name,
+                        // TODO(#10065): Needs to be a proper column name:
+                        &selector.qualified_archetype_field_name(),
                     );
 
                     selected_columns
@@ -228,12 +235,7 @@ impl Query {
             .collect();
         let selected_component_columns = component_columns
             .iter()
-            .map(|selector| {
-                (
-                    EntityPath::from(selector.entity_path.as_str()),
-                    selector.component.as_str(),
-                )
-            })
+            .map(|selector| selector.column_name())
             .collect::<HashSet<_>>();
 
         let query_timeline_name = self.timeline_name(ctx)?;
@@ -252,13 +254,13 @@ impl Query {
                     // Check against both the full name and short name, as the user might have used
                     // the latter in the blueprint API.
                     //
-                    // TODO(ab): this means that if the user chooses `"/foo/bar:Scalar"`, it will
-                    // select both `rerun.components.Scalar` and `Scalar`, should both of these
+                    // TODO(grtlr): this means that if the user chooses `"/foo/bar:Points3D:positions"`, it will
+                    // select both `rerun.archetype.Points3D` and `Points3D`, should both of these
                     // exist.
                     selected_component_columns
-                        .contains(&(desc.entity_path.clone(), desc.component_name.full_name()))
+                        .contains(&desc.column_name(re_sorbet::BatchType::Dataframe))
                         || selected_component_columns
-                            .contains(&(desc.entity_path.clone(), desc.component_name.short_name()))
+                            .contains(&desc.column_name_qualified(re_sorbet::BatchType::Dataframe))
                 }
             })
             .cloned()
@@ -299,14 +301,13 @@ impl Query {
                     });
                 }
 
-                HideColumnAction::Component {
-                    entity_path,
-                    component_name,
-                } => {
+                HideColumnAction::Component { entity_path, descr } => {
                     selected_columns.retain(|column| {
                         if let ColumnSelector::Component(selector) = column {
                             selector.entity_path != entity_path
-                                || !component_name.matches(&selector.component_name)
+                                || selector.archetype_name != descr.archetype_name
+                                || selector.archetype_field_name
+                                    != descr.archetype_field_name.to_string()
                         } else {
                             true
                         }
