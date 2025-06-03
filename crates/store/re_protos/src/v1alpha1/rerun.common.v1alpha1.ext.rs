@@ -132,6 +132,12 @@ impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
     }
 }
 
+impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
+    fn from(value: PartitionId) -> Self {
+        Self { id: Some(value.id) }
+    }
+}
+
 // shortcuts
 
 impl From<String> for crate::common::v1alpha1::PartitionId {

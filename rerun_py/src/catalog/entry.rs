@@ -87,6 +87,7 @@ impl TryFrom<EntryKind> for PyEntryKind {
         }
     }
 }
+
 impl From<PyEntryKind> for EntryKind {
     fn from(value: PyEntryKind) -> Self {
         match value {
