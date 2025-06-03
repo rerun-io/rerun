@@ -515,7 +515,7 @@ fn log_geometry(
         Geometry::Cylinder { radius, length } => {
             // URDF and Rerun both use Z as the main axis
             re_log::warn_once!(
-                "Respresitng URDF cylinder as a capsule instead, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
+                "Representing URDF cylinder as a capsule instead, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
             ); // TODO(#1361): support cylinders
             send_archetype(
                 tx,
