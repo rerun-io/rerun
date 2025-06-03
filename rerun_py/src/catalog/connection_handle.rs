@@ -427,6 +427,7 @@ impl ConnectionHandle {
                     .insert_chunk(&std::sync::Arc::new(chunk))
                     .map_err(to_py_err)?;
             }
+            println!("Finished getting all chunks as far as python is concerned");
 
             Ok::<_, PyErr>(())
         })?;
