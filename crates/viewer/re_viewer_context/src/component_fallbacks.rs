@@ -72,7 +72,7 @@ pub trait ComponentFallbackProvider {
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        ctx.viewer_ctx.placeholder_for(component)
+        ctx.viewer_ctx().placeholder_for(component_name)
     }
 }
 
