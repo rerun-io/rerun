@@ -90,13 +90,13 @@ def capture_webcam_h264() -> None:
         buffer = b""
         current_frame_data = b""
 
-        def get_nal_unit_type(nal_data):
+        def get_nal_unit_type(nal_data: bytes) -> int | None:
             """Extract NAL unit type from the first byte after start code."""
             if len(nal_data) < 5:  # start code (4 bytes) + at least 1 byte
                 return None
             return nal_data[4] & 0x1F  # Lower 5 bits contain the NAL unit type
 
-        def is_frame_chunk_start(nal_type):
+        def is_frame_chunk_start(nal_type: int) -> bool:
             """Check if this NAL unit type indicates the start of a new frame."""
             # NAL unit types that start a new Access Unit (frame):
             # 1: Non-IDR picture slice
@@ -108,6 +108,8 @@ def capture_webcam_h264() -> None:
 
         while process.poll() is None:
             # Read data from FFmpeg stdout
+            if process.stdout is None:
+                break
             chunk = process.stdout.read(4096)
             if not chunk:
                 break
