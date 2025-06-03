@@ -81,7 +81,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
                 datatype: BackgroundKind::arrow_datatype(),
                 verify_arrow_array: BackgroundKind::verify_arrow_array,
             },
@@ -111,7 +111,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(ContainerKind::default().to_arrow()?),
                 datatype: ContainerKind::arrow_datatype(),
                 verify_arrow_array: ContainerKind::verify_arrow_array,
             },
@@ -121,7 +121,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(Corner2D::default().to_arrow()?),
                 datatype: Corner2D::arrow_datatype(),
                 verify_arrow_array: Corner2D::verify_arrow_array,
             },
@@ -231,7 +231,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(MapProvider::default().to_arrow()?),
                 datatype: MapProvider::arrow_datatype(),
                 verify_arrow_array: MapProvider::verify_arrow_array,
             },
@@ -251,7 +251,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(PanelState::default().to_arrow()?),
                 datatype: PanelState::arrow_datatype(),
                 verify_arrow_array: PanelState::verify_arrow_array,
             },
@@ -333,7 +333,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(ViewFit::default().to_arrow()?),
                 datatype: ViewFit::arrow_datatype(),
                 verify_arrow_array: ViewFit::verify_arrow_array,
             },
@@ -415,7 +415,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
                 datatype: AggregationPolicy::arrow_datatype(),
                 verify_arrow_array: AggregationPolicy::verify_arrow_array,
             },
@@ -495,7 +495,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(Colormap::default().to_arrow()?),
                 datatype: Colormap::arrow_datatype(),
                 verify_arrow_array: Colormap::verify_arrow_array,
             },
@@ -535,7 +535,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(FillMode::default().to_arrow()?),
                 datatype: FillMode::arrow_datatype(),
                 verify_arrow_array: FillMode::verify_arrow_array,
             },
@@ -715,7 +715,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
                 datatype: MagnificationFilter::arrow_datatype(),
                 verify_arrow_array: MagnificationFilter::verify_arrow_array,
             },
@@ -725,7 +725,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(MarkerShape::default().to_arrow()?),
                 datatype: MarkerShape::arrow_datatype(),
                 verify_arrow_array: MarkerShape::verify_arrow_array,
             },
@@ -1057,7 +1057,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(TransformRelation::default().to_arrow()?),
                 datatype: TransformRelation::arrow_datatype(),
                 verify_arrow_array: TransformRelation::verify_arrow_array,
             },
