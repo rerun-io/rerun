@@ -195,7 +195,7 @@ pub struct TargetConfiguration {
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
-    pub view_from_world: re_math::IsoTransform,
+    pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
 
     /// Defines a viewport transformation from the projected space to the final image space.

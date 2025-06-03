@@ -76,7 +76,7 @@ impl CamerasVisualizer {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
-                world_from_camera: re_math::IsoTransform::IDENTITY,
+                world_from_camera: macaw::IsoTransform::IDENTITY,
                 pinhole: Some(pinhole_properties.pinhole),
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
@@ -104,8 +104,7 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) =
-            re_math::IsoTransform::from_mat4(&world_from_camera.into())
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return;
         };

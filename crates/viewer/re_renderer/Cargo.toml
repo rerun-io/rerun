@@ -53,7 +53,7 @@ serde = ["dep:serde"]
 [dependencies]
 re_error.workspace = true
 re_log.workspace = true
-re_math.workspace = true
+macaw.workspace = true
 re_tracing.workspace = true
 re_video = { workspace = true, default-features = true }
 

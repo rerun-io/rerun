@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Rect, lerp};
 use glam::{Mat4, Quat, Vec3, vec3};
 
-use re_math::IsoTransform;
+use macaw::IsoTransform;
 
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
@@ -86,7 +86,7 @@ impl Eye {
 
     /// Picking ray for a given pointer in the parent space
     /// (i.e. prior to camera transform, "world" space)
-    pub fn picking_ray(&self, screen_rect: Rect, pointer: glam::Vec2) -> re_math::Ray3 {
+    pub fn picking_ray(&self, screen_rect: Rect, pointer: glam::Vec2) -> macaw::Ray3 {
         if let Some(fov_y) = self.fov_y {
             let (w, h) = (screen_rect.width(), screen_rect.height());
             let aspect_ratio = w / h;
@@ -96,7 +96,7 @@ impl Eye {
             let ray_dir = self
                 .world_from_rub_view
                 .transform_vector3(glam::vec3(px, py, -1.0));
-            re_math::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
+            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
         } else {
             // The ray originates on the camera plane, not from the camera position
             let ray_dir = self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Z);
@@ -105,7 +105,7 @@ impl Eye {
                 + self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
                 + ray_dir * self.near();
 
-            re_math::Ray3::from_origin_dir(origin, ray_dir)
+            macaw::Ray3::from_origin_dir(origin, ray_dir)
         }
     }
 

@@ -99,7 +99,7 @@ impl framework::Example for Render2D {
             view_builder::TargetConfiguration {
                 name: "3D".into(),
                 resolution_in_pixel: resolution,
-                view_from_world: re_math::IsoTransform::look_at_rh(
+                view_from_world: macaw::IsoTransform::look_at_rh(
                     glam::Vec3::Z * 2.0 * self.distance_scale,
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,

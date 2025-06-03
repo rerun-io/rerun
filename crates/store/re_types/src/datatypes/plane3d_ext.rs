@@ -33,15 +33,15 @@ impl Plane3D {
 }
 
 #[cfg(feature = "glam")]
-impl From<re_math::Plane3> for Plane3D {
+impl From<macaw::Plane3> for Plane3D {
     #[inline]
-    fn from(plane: re_math::Plane3) -> Self {
+    fn from(plane: macaw::Plane3) -> Self {
         Self([plane.normal.x, plane.normal.y, plane.normal.z, plane.d])
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<Plane3D> for re_math::Plane3 {
+impl From<Plane3D> for macaw::Plane3 {
     #[inline]
     fn from(plane: Plane3D) -> Self {
         Self {

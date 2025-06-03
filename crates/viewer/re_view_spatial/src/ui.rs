@@ -1,7 +1,7 @@
 use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
+use macaw::BoundingBox;
 use re_format::format_f32;
-use re_math::BoundingBox;
 use re_types::{
     blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };

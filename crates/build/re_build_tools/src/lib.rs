@@ -1,4 +1,5 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
+#![allow(clippy::disallowed_methods, clippy::disallowed_types)] // False positives for using files on Wasm
 #![warn(missing_docs)]
 
 //! This crate is to be used from `build.rs` build scripts.

@@ -715,6 +715,7 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
@@ -821,6 +822,7 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new_handle`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,

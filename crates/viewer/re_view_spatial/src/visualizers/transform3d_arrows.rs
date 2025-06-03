@@ -140,7 +140,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0.add_bounding_box(
                 data_result.entity_path.hash(),
-                re_math::BoundingBox::ZERO,
+                macaw::BoundingBox::ZERO,
                 world_from_obj,
             );
 
