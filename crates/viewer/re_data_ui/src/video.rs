@@ -190,7 +190,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                 |mut row| {
                     let sample_idx = row.index() + video_descr.samples.min_index();
                     let sample = &video_descr.samples[sample_idx];
-                    let re_video::Sample {
+                    let re_video::SampleMetadata {
                         is_sync,
                         frame_nr,
                         decode_timestamp,

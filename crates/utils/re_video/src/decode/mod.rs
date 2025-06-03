@@ -238,9 +238,9 @@ pub fn new_decoder(
     }
 }
 
-/// One chunk of encoded video data, representing a single [`crate::Sample`].
+/// One chunk of encoded video data, representing a single [`crate::SampleMetadata`].
 ///
-/// For details on how to interpret the data, see [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::SampleMetadata`].
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {

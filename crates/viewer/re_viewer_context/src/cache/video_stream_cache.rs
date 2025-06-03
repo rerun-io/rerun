@@ -237,7 +237,7 @@ fn read_samples_from_chunk(
     chunk: &re_chunk::Chunk,
     codec: re_video::VideoCodec,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
-    samples: &mut StableIndexDeque<re_video::Sample>,
+    samples: &mut StableIndexDeque<re_video::SampleMetadata>,
     gops: &mut StableIndexDeque<re_video::demux::GroupOfPictures>,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
@@ -320,7 +320,7 @@ fn read_samples_from_chunk(
                     });
                 }
 
-                Some(re_video::Sample {
+                Some(re_video::SampleMetadata {
                     is_sync,
 
                     // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.

@@ -138,7 +138,7 @@ pub struct VideoDataDescription {
     ///
     /// To facilitate streaming, samples may be removed from the beginning and added at the end,
     /// but individual samples are never supposed to change.
-    pub samples: StableIndexDeque<Sample>,
+    pub samples: StableIndexDeque<SampleMetadata>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
@@ -181,7 +181,7 @@ impl SamplesStatistics {
         has_sample_highest_pts_so_far: None,
     };
 
-    pub fn new(samples: &StableIndexDeque<Sample>) -> Self {
+    pub fn new(samples: &StableIndexDeque<SampleMetadata>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
@@ -387,7 +387,7 @@ impl VideoDataDescription {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &StableIndexDeque<Sample>,
+        samples: &StableIndexDeque<SampleMetadata>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
         samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
@@ -395,7 +395,7 @@ impl VideoDataDescription {
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &StableIndexDeque<Sample>,
+        samples: &StableIndexDeque<SampleMetadata>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<SampleIndex> {
@@ -515,7 +515,7 @@ pub struct GroupOfPictures {
 /// > A set of NAL units in a specified form is referred to as an access unit.
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
-pub struct Sample {
+pub struct SampleMetadata {
     /// Is this the start of a new (closed) [`GroupOfPictures`]?
     ///
     /// What this means in detail is dependent on the codec but they are generally
@@ -563,7 +563,7 @@ pub struct Sample {
     pub byte_length: u32,
 }
 
-impl Sample {
+impl SampleMetadata {
     /// Read the sample from the video data.
     ///
     /// For video assets, `data` _must_ be a reference to the original asset
@@ -670,7 +670,7 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .map(|(pts, dts)| Sample {
+            .map(|(pts, dts)| SampleMetadata {
                 is_sync: false,
                 frame_nr: 0, // unused
                 decode_timestamp: Time(dts),

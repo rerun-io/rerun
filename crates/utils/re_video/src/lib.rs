@@ -10,7 +10,7 @@ pub use self::stable_index_deque::StableIndexDeque;
 pub use self::{
     decode::{Chunk, Frame, PixelFormat, is_sample_start_of_gop},
     demux::{
-        GopIndex, Sample, SampleIndex, SamplesStatistics, VideoCodec, VideoDataDescription,
+        GopIndex, SampleIndex, SampleMetadata, SamplesStatistics, VideoCodec, VideoDataDescription,
         VideoLoadError,
     },
     time::{Time, Timescale},

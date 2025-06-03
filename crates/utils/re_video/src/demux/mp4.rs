@@ -2,7 +2,7 @@
 
 use itertools::Itertools as _;
 
-use super::{GroupOfPictures, Sample, VideoDataDescription, VideoLoadError};
+use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
 use crate::{StableIndexDeque, Time, Timescale, demux::SamplesStatistics};
 
@@ -26,7 +26,7 @@ impl VideoDataDescription {
 
         let timescale = Timescale::new(track.timescale);
         let duration = Time::new(track.duration as i64);
-        let mut samples = StableIndexDeque::<Sample>::with_capacity(track.samples.len());
+        let mut samples = StableIndexDeque::<SampleMetadata>::with_capacity(track.samples.len());
         let mut gops = StableIndexDeque::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
 
@@ -51,7 +51,7 @@ impl VideoDataDescription {
                 let byte_offset = sample.offset as u32;
                 let byte_length = sample.size as u32;
 
-                samples.push_back(Sample {
+                samples.push_back(SampleMetadata {
                     is_sync: sample.is_sync,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
@@ -98,7 +98,10 @@ impl VideoDataDescription {
         {
             re_tracing::profile_scope!("Sanity-check samples");
             let mut samples_are_in_decode_order = true;
-            for (a, b) in samples.iter().tuple_windows::<(&Sample, &Sample)>() {
+            for (a, b) in samples
+                .iter()
+                .tuple_windows::<(&SampleMetadata, &SampleMetadata)>()
+            {
                 samples_are_in_decode_order &= a.decode_timestamp <= b.decode_timestamp;
             }
             if !samples_are_in_decode_order {
