@@ -86,7 +86,7 @@ impl SyncDav1dDecoder {
             chunk.data,
             None,
             Some(chunk.presentation_timestamp.0),
-            Some(chunk.duration.0),
+            chunk.duration.map(|d| d.0),
         ) {
             Ok(()) => {}
             Err(err) => {
@@ -258,12 +258,15 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
             format,
         },
         info: FrameInfo {
-            is_sync: None,    // TODO(emilk)
-            sample_idx: None, // TODO(emilk),
-            frame_nr: None,   // TODO(emilk),
-            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
-            duration: Time(picture.duration()),
+            // TODO(andreas): dav1d has a user-data field that isn't exposed yet.
+            // We should us that to populate these fields.
+            is_sync: None,
+            sample_idx: None,
+            frame_nr: None,
             latest_decode_timestamp: None,
+
+            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
+            duration: (picture.duration() == 0).then_some(Time(picture.duration())),
         },
     })
 }
