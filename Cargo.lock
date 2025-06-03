@@ -7789,7 +7789,6 @@ dependencies = [
  "re_rav1d",
  "re_tracing",
  "serde",
- "smallvec",
  "thiserror 1.0.65",
  "wasm-bindgen",
  "web-sys",
