@@ -921,7 +921,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let state = self.state.get_or_init(move || self.init_(store, cache));
 
         let row_idx = state.cur_row.fetch_add(1, Ordering::Relaxed);
-        let cur_index_value = state.unique_index_values.get(row_idx as usize)?;
+        let cur_index_value = match state.unique_index_values.get(row_idx as usize) {
+            Some(index_value) => index_value,
+            None => {
+                return None;
+            }
+        };
 
         // First, we need to find, among all the chunks available for the current view contents,
         // what is their index value for the current row?
