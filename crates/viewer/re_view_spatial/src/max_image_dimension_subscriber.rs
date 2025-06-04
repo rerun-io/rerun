@@ -118,12 +118,12 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             // Handle `ImageEncoded`, `AssetVideo`…
             for (blob_descr, _blob_list_array) in components
                 .iter()
-                .filter(|(descr, _)| descr.component_name == Blob::name())
+                .filter(|(descr, _)| descr.component_name == Some(Blob::name()))
             {
                 let blobs = chunk.iter_slices::<&[u8]>(blob_descr.clone());
 
                 let media_type_descr = components.keys().find(|desc| {
-                    desc.component_name == MediaType::name()
+                    desc.component_name == Some(MediaType::name())
                         && desc.archetype_name == blob_descr.archetype_name
                 });
                 let media_types = media_type_descr.map_or(Vec::new(), |media_type_descr| {
