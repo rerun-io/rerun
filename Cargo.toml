@@ -756,7 +756,7 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
