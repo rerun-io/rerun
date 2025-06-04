@@ -634,10 +634,7 @@ impl std::fmt::Debug for VideoDataDescription {
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("gops", &self.gops)
-            .field(
-                "samples",
-                &self.samples.iter().enumerate().collect::<Vec<_>>(),
-            )
+            .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
             .finish()
     }
 }
@@ -695,13 +692,13 @@ mod tests {
         };
 
         // Check that query for all exact positions works as expected using brute force search as the reference.
-        for (idx, sample) in samples.iter().enumerate() {
+        for (idx, sample) in samples.iter_indexed() {
             assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
         }
 
         // Check that for slightly offsetted positions the query is still correct.
         // This works because for this dataset we know the minimum presentation timesetampe distance is always 256.
-        for (idx, sample) in samples.iter().enumerate() {
+        for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
                 Some(idx),
                 query_pts(sample.presentation_timestamp + Time(1))

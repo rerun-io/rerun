@@ -495,18 +495,14 @@ impl Cache for VideoStreamCache {
                         {
                             let last_invalid_buffer =
                                 &video_sample_buffers[last_invalid_buffer_idx];
-                            let first_valid_sample_idx = last_invalid_buffer.sample_index_range.end;
+                            let last_invalid_sample_idx =
+                                last_invalid_buffer.sample_index_range.end.saturating_sub(1);
 
-                            while first_valid_sample_idx > video_data.samples.min_index() {
-                                debug_assert!(!video_data.samples.is_empty());
-                                video_data.samples.pop_front();
-                            }
-
-                            while last_invalid_buffer_idx >= video_sample_buffers.min_index() {
-                                debug_assert!(!video_sample_buffers.is_empty());
-                                video_sample_buffers.pop_front();
-                            }
-
+                            video_data
+                                .samples
+                                .remove_all_with_index_smaller_equal(last_invalid_sample_idx);
+                            video_sample_buffers
+                                .remove_all_with_index_smaller_equal(last_invalid_buffer_idx);
                             adjust_gops_for_removed_samples_front(video_data);
 
                             re_log::trace!(
