@@ -66,6 +66,7 @@ pub enum ProcMeshKey {
         /// flat faces.
         subdivisions: usize,
     },
+
     /// The cylinder always has radius 1. It should be scaled to obtain the desired radius.
     /// It always extends along the positive direction of the Z axis.
     Cylinder {
