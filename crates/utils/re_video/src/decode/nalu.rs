@@ -1,4 +1,4 @@
-/// In Annex-B before every NAL unit is a nal start code.
+/// In Annex-B before every NAL unit is a NAL start code.
 ///
 /// Can also be 3 bytes of 0x00, see [`NAL_START_CODE_SHORT`].
 ///
@@ -138,15 +138,13 @@ fn annex_b_next_nal_unit_start_pos(sample_data: &[u8]) -> Option<AnnexBSeparator
     let mut pos = 0;
 
     while pos + NAL_START_CODE_SHORT.len() <= sample_data.len() {
-        if &sample_data[pos..pos + NAL_START_CODE_SHORT.len()] == NAL_START_CODE_SHORT {
+        if sample_data[pos..].starts_with(NAL_START_CODE_SHORT) {
             return Some(AnnexBSeparatorPos {
                 separator_pos: pos,
                 separator_len: NAL_START_CODE_SHORT.len(),
             });
         }
-        if pos + NAL_START_CODE.len() < sample_data.len()
-            && &sample_data[pos..pos + NAL_START_CODE.len()] == NAL_START_CODE
-        {
+        if sample_data[pos..].starts_with(NAL_START_CODE) {
             return Some(AnnexBSeparatorPos {
                 separator_pos: pos,
                 separator_len: NAL_START_CODE.len(),
