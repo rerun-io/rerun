@@ -266,7 +266,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
             latest_decode_timestamp: None,
 
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
-            duration: (picture.duration() == 0).then_some(Time(picture.duration())),
+            duration: (picture.duration() != 0).then_some(Time(picture.duration())),
         },
     })
 }
