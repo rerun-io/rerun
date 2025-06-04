@@ -25,6 +25,9 @@ namespace rerun::components {
     ///
     /// Support of these codecs by the Rerun Viewer is platform dependent.
     /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     enum class VideoCodec : uint8_t {
 
         /// Advanced Video Coding (AVC/H.264)

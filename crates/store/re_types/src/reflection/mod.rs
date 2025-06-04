@@ -1115,7 +1115,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoCodec as Component>::name(),
             ComponentReflection {
-                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).",
+                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoCodec::arrow_datatype(),

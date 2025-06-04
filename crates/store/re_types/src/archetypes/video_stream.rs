@@ -28,6 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// `sample` is then logged repeatedly for each frame on the timeline.
 ///
 /// TODO(#7484): Add snippet.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct VideoStream {
     /// Video sample data (also known as "video chunk").
