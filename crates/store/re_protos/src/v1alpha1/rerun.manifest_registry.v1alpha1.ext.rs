@@ -1,24 +1,22 @@
 use std::sync::Arc;
 
-use arrow::array::Array;
 use arrow::{
-    array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
+    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::EntityPath;
+use re_sorbet::ComponentColumnDescriptor;
 
-use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
-use crate::common::v1alpha1::ComponentDescriptor;
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart};
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
-    RegisterWithDatasetResponse, ScanPartitionTableResponse,
+    RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
 use crate::{TypeConversionError, invalid_field, missing_field};
-
-use re_sorbet::ComponentColumnDescriptor;
 
 // --- QueryDataset ---
 
@@ -465,6 +463,15 @@ impl ScanPartitionTableResponse {
         ];
 
         RecordBatch::try_new(schema, columns)
+    }
+
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self.data.as_ref().ok_or_else(|| {
+            missing_field!(
+                crate::manifest_registry::v1alpha1::ScanPartitionTableResponse,
+                "data"
+            )
+        })?)
     }
 }
 
