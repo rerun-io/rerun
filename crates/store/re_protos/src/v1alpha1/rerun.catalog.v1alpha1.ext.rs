@@ -78,6 +78,19 @@ pub struct DatasetDetails {
     pub default_blueprint: Option<PartitionId>,
 }
 
+impl DatasetDetails {
+    /// Returns the default blueprint for this dataset.
+    ///
+    /// Both `blueprint_dataset` and `default_blueprint` must be set.
+    pub fn default_bluprint(&self) -> Option<(EntryId, PartitionId)> {
+        self.blueprint_dataset.as_ref().and_then(|blueprint| {
+            self.default_blueprint
+                .as_ref()
+                .map(|default| (blueprint.clone(), default.clone()))
+        })
+    }
+}
+
 impl TryFrom<crate::catalog::v1alpha1::DatasetDetails> for DatasetDetails {
     type Error = TypeConversionError;
 
