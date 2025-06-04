@@ -29,7 +29,6 @@ service FrontendService {
   rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(rerun.catalog.v1alpha1.UpdateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.UpdateDatasetEntryResponse) {}
-  
 
   rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
 
