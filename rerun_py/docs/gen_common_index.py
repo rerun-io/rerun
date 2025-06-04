@@ -211,6 +211,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",
             "archetypes.Capsules3D",
+            "archetypes.Cylinders3D",
             "archetypes.Ellipsoids3D",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",
