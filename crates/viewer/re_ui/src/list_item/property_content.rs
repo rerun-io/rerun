@@ -333,7 +333,13 @@ impl ListItemContent for PropertyContent<'_> {
         let text_pos = Align2::LEFT_CENTER
             .align_size_within_rect(galley.size(), label_rect)
             .min;
-        ui.painter().galley(text_pos, galley, visuals.text_color());
+        let mut visuals_for_label = visuals;
+        visuals_for_label.interactive = false;
+        ui.painter()
+            .galley(text_pos, galley, visuals_for_label.text_color());
+
+        let mut visuals_for_value = visuals;
+        visuals_for_value.strong = true;
 
         // Draw value
         let is_completely_collapsed = context.list_item.collapse_openness.is_none_or(|o| o == 0.0);
@@ -349,7 +355,8 @@ impl ListItemContent for PropertyContent<'_> {
                         .max_rect(value_rect)
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                 );
-                value_fn(&mut child_ui, visuals);
+                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+                value_fn(&mut child_ui, visuals_for_value);
 
                 context.layout_info.register_property_content_max_width(
                     child_ui.ctx(),
