@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{ChunkId, EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
-use re_log_types::EntityPathHash;
+use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
 use re_video::{StableIndexDeque, decode::DecodeSettings};
 
@@ -33,14 +33,14 @@ struct SampleBuffer {
 /// * raw video stream data (pointers into all live rerun-chunks holding video frame data)
 /// * metadata with that we know about the stream (where are I-frames etc.)
 /// * active players for this stream and their state
-pub struct PlayableStoreVideoStream {
+pub struct PlayableVideoStream {
     pub video_renderer: re_renderer::video::Video,
 
     /// All buffers (each mapping 1:1 to a rerun chunk) that have samples for this video stream.
     video_sample_buffers: StableIndexDeque<SampleBuffer>,
 }
 
-impl PlayableStoreVideoStream {
+impl PlayableVideoStream {
     pub fn sample_buffer_slices(&self) -> StableIndexDeque<&[u8]> {
         StableIndexDeque::from_iter_with_offset(
             self.video_sample_buffers.min_index(),
@@ -56,7 +56,7 @@ impl PlayableStoreVideoStream {
 /// Keeps track of usage so we know when to remove from the cache.
 struct VideoStreamCacheEntry {
     used_this_frame: AtomicBool,
-    video_stream: Arc<RwLock<PlayableStoreVideoStream>>,
+    video_stream: Arc<RwLock<PlayableVideoStream>>,
 }
 
 /// Identifies a video stream.
@@ -106,7 +106,7 @@ impl VideoStreamCache {
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
-    ) -> Result<Arc<RwLock<PlayableStoreVideoStream>>, VideoStreamProcessingError> {
+    ) -> Result<Arc<RwLock<PlayableVideoStream>>, VideoStreamProcessingError> {
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
@@ -126,7 +126,7 @@ impl VideoStreamCache {
                 );
                 vacant_entry.insert(VideoStreamCacheEntry {
                     used_this_frame: AtomicBool::new(true),
-                    video_stream: Arc::new(RwLock::new(PlayableStoreVideoStream {
+                    video_stream: Arc::new(RwLock::new(PlayableVideoStream {
                         video_renderer: video,
                         video_sample_buffers,
                     })),
@@ -155,8 +155,8 @@ fn load_video_data_from_chunks(
 > {
     re_tracing::profile_function!();
 
-    let frame_sample_descr = VideoStream::descriptor_sample();
-    let codec_chunk_descr = VideoStream::descriptor_codec();
+    let sample_descr = VideoStream::descriptor_sample();
+    let codec_descr = VideoStream::descriptor_codec();
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
@@ -169,22 +169,20 @@ fn load_video_data_from_chunks(
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        &[frame_sample_descr.clone(), codec_chunk_descr.clone()],
+        &[sample_descr.clone(), codec_descr.clone()],
     );
-    let video_chunks = query_results
-        .get_required(&frame_sample_descr)
+    let sample_chunks = query_results
+        .get_required(&sample_descr)
         .map_err(|_err| VideoStreamProcessingError::NoVideoSamplesFound)?;
     let codec_chunks = query_results
-        .get_required(&codec_chunk_descr)
+        .get_required(&codec_descr)
         .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
 
     // Translate codec by looking at the last codec.
     // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
     let last_codec = codec_chunks
         .last()
-        .and_then(|chunk| {
-            chunk.component_instance::<components::VideoCodec>(&codec_chunk_descr, 0, 0)
-        })
+        .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(&codec_descr, 0, 0))
         .ok_or(VideoStreamProcessingError::MissingCodec)?
         .map_err(VideoStreamProcessingError::FailedReadingCodec)?;
     let codec = match last_codec {
@@ -197,13 +195,12 @@ fn load_video_data_from_chunks(
 
     // Extract all video samples.
     let mut video_sample_buffers = StableIndexDeque::new();
-    let mut samples = StableIndexDeque::with_capacity(video_chunks.len()); // Number of video chunks is minimum number of samples.
+    let mut samples = StableIndexDeque::with_capacity(sample_chunks.len()); // Number of video chunks is minimum number of samples.
     let mut gops = StableIndexDeque::new();
 
-    for chunk in video_chunks {
+    for chunk in sample_chunks {
         read_samples_from_chunk(
             timeline,
-            &frame_sample_descr,
             chunk,
             codec,
             &mut video_sample_buffers,
@@ -212,12 +209,21 @@ fn load_video_data_from_chunks(
         )?;
     }
 
+    let timeline_typ = store
+        .timelines()
+        .get(&timeline)
+        .map_or(TimeType::DurationNs, |t| t.typ());
+    let timescale = match timeline_typ {
+        TimeType::Sequence => re_video::Timescale::IDENTITY, // Can't translate the sequence time to real durations
+        TimeType::DurationNs | TimeType::TimestampNs => re_video::Timescale::NANOSECOND,
+    };
+
     Ok((
         re_video::VideoDataDescription {
             codec,
-            stsd: None,                               // Only on mp4s have this.
-            coded_dimensions: None,                   // Unknown so far.
-            timescale: re_video::Timescale::IDENTITY, // We use raw rerun timestamps, so we don't have to scale time.
+            stsd: None,             // Only mp4s have this.
+            coded_dimensions: None, // Unknown so far.
+            timescale,
             duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
             gops,
             samples,
@@ -233,7 +239,6 @@ fn load_video_data_from_chunks(
 /// Rejects out of order samples - new samples must have a higher timestamp than the previous ones.
 fn read_samples_from_chunk(
     timeline: TimelineName,
-    frame_chunk_descr: &re_types::ComponentDescriptor,
     chunk: &re_chunk::Chunk,
     codec: re_video::VideoCodec,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
@@ -242,7 +247,8 @@ fn read_samples_from_chunk(
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
-    let Some(raw_array) = chunk.raw_component_array(frame_chunk_descr) else {
+    let sample_descr = VideoStream::descriptor_sample();
+    let Some(raw_array) = chunk.raw_component_array(&sample_descr) else {
         // This chunk doesn't have any video chunks.
         return Ok(());
     };
@@ -273,8 +279,8 @@ fn read_samples_from_chunk(
     // Extract sample metadata.
     samples.extend(
         chunk
-            .iter_component_offsets(frame_chunk_descr)
-            .zip(chunk.iter_component_indices(&timeline, frame_chunk_descr))
+            .iter_component_offsets(&sample_descr)
+            .zip(chunk.iter_component_indices(&timeline, &sample_descr))
             .filter_map(move |((idx, len), (time, _row_id))| {
                 debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
 
@@ -408,14 +414,10 @@ impl Cache for VideoStreamCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let frame_chunk_descr = VideoStream::descriptor_sample();
+        let sample_descr = VideoStream::descriptor_sample();
 
         for event in events {
-            if !event
-                .chunk
-                .components()
-                .contains_component(&frame_chunk_descr)
-            {
+            if !event.chunk.components().contains_component(&sample_descr) {
                 continue;
             }
 
@@ -430,7 +432,7 @@ impl Cache for VideoStreamCache {
                 };
 
                 let mut video_stream = entry.video_stream.write();
-                let PlayableStoreVideoStream {
+                let PlayableVideoStream {
                     video_renderer,
                     video_sample_buffers,
                 } = &mut *video_stream;
@@ -473,7 +475,6 @@ impl Cache for VideoStreamCache {
 
                         if let Err(err) = read_samples_from_chunk(
                             *timeline,
-                            &frame_chunk_descr,
                             chunk,
                             video_data.codec,
                             video_sample_buffers,
