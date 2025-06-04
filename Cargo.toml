@@ -332,6 +332,7 @@ tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
+urdf-rs = "0.9.0"
 ureq = "2.9.2"
 url = "2.3"
 uuid = "1.1"

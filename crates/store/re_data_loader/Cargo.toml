@@ -33,7 +33,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["image", "video"] }
+re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
 ahash.workspace = true
 anyhow.workspace = true
@@ -49,6 +49,7 @@ rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+urdf-rs.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
