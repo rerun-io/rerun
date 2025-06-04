@@ -4,7 +4,10 @@ namespace rerun.components;
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
-enum VideoCodec: ubyte ("attr.docs.unreleased", "attr.rerun.state": "unstable") { // TODO(#7484): use fourcc values. Requires us to support non-ubyte enums.
+enum VideoCodec: ubyte ( // TODO(#7484): use fourcc values. Requires us to support non-ubyte enums.
+    "attr.docs.unreleased",
+    "attr.rerun.state": "unstable"
+) {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 
