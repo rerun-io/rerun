@@ -102,22 +102,16 @@ impl DataUi for InstancePath {
         }
 
         if ui_layout.is_single_line() {
-            let indicator_count = unordered_components
-                .iter()
-                .filter(|c| c.component_name.is_indicator_component())
-                .count();
+            let archetype_count = components_by_archetype.len();
+            let component_count = unordered_components.len();
             ui_layout.label(
                 ui,
                 format!(
-                    "{} component{} (including {} indicator component{})",
-                    unordered_components.len(),
-                    if unordered_components.len() > 1 {
-                        "s"
-                    } else {
-                        ""
-                    },
-                    indicator_count,
-                    if indicator_count > 1 { "s" } else { "" }
+                    "{} archetype{} with {} total component{})",
+                    archetype_count,
+                    if archetype_count > 1 { "s" } else { "" },
+                    component_count,
+                    if component_count > 1 { "s" } else { "" }
                 ),
             );
         } else {
