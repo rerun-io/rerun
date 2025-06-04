@@ -340,6 +340,7 @@ impl ListItemContent for PropertyContent<'_> {
 
         let mut visuals_for_value = visuals;
         visuals_for_value.strong = true;
+        visuals_for_value.interactive = true; // interactive false would override strong
 
         // Draw value
         let is_completely_collapsed = context.list_item.collapse_openness.is_none_or(|o| o == 0.0);

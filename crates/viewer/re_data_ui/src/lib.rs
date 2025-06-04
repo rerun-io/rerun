@@ -29,19 +29,6 @@ pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 use re_types_core::ArchetypeName;
 
-/// Sort components for display in the UI.
-pub fn sorted_component_list_for_ui<'a>(
-    iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
-) -> Vec<ComponentDescriptor> {
-    let mut components: Vec<ComponentDescriptor> = iter.into_iter().cloned().collect();
-
-    // Put indicator components first.
-    // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.display_name()));
-
-    components
-}
-
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 

@@ -69,15 +69,6 @@ impl DataUi for InstancePath {
                 .cache()
                 .latest_at(query, entity_path, &unordered_components);
 
-        let (component_count, indicator_count) = {
-            let components = crate::sorted_component_list_for_ui(&unordered_components);
-            let indicator_count = components
-                .iter()
-                .filter(|c| c.component_name.is_indicator_component())
-                .count();
-            (components.len(), indicator_count)
-        };
-
         // Keep previously established order.
         let mut components_by_archetype: BTreeMap<
             Option<ArchetypeName>,
@@ -109,13 +100,21 @@ impl DataUi for InstancePath {
         }
 
         if ui_layout.is_single_line() {
+            let indicator_count = unordered_components
+                .iter()
+                .filter(|c| c.component_name.is_indicator_component())
+                .count();
             // TODO: Change this text to somehting like "2 archetypes with 7 components total"?
             ui_layout.label(
                 ui,
                 format!(
                     "{} component{} (including {} indicator component{})",
-                    component_count,
-                    if component_count > 1 { "s" } else { "" },
+                    unordered_components.len(),
+                    if unordered_components.len() > 1 {
+                        "s"
+                    } else {
+                        ""
+                    },
                     indicator_count,
                     if indicator_count > 1 { "s" } else { "" }
                 ),

@@ -1,13 +1,14 @@
+use egui::RichText;
 use itertools::Itertools as _;
 
 use re_chunk::{RowId, UnitChunkShared};
-use re_data_ui::{DataUi as _, sorted_component_list_for_ui};
+use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::ComponentDescriptor;
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types_core::external::arrow::array::ArrayRef;
-use re_ui::{UiExt as _, list_item};
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
@@ -114,22 +115,24 @@ pub fn visualizer_ui_impl(
         }
 
         for &visualizer_id in active_visualizers {
-            let default_open = true;
-
             // List all components that the visualizer may consume.
             if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
                 ui.list_item()
+                    .with_y_offset(1.0)
+                    .with_height(20.0)
                     .interactive(false)
-                    .show_hierarchical_with_children(
+                    .show_flat(
                         ui,
-                        ui.make_persistent_id(visualizer_id),
-                        default_open,
-                        list_item::LabelContent::new(visualizer_id.as_str())
-                            .min_desired_width(150.0)
-                            .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
-                            .always_show_buttons(true),
-                        |ui| visualizer_components(ctx, ui, data_result, visualizer),
+                        list_item::LabelContent::new(
+                            RichText::new(format!("{visualizer_id}:")).size(10.0).color(
+                                design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
+                            ),
+                        )
+                        .min_desired_width(150.0)
+                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                        .always_show_buttons(true),
                     );
+                visualizer_components(ctx, ui, data_result, visualizer);
             } else {
                 ui.list_item_flat_noninteractive(
                     list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
@@ -189,7 +192,10 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_descr in sorted_component_list_for_ui(query_info.queried.iter()) {
+    for component_descr in sorted_component_list_by_archetype_for_ui(query_info.queried.iter())
+        .values()
+        .flatten()
+    {
         if component_descr.component_name.is_indicator_component() {
             continue;
         }
