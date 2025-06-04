@@ -254,7 +254,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         .into_inner()
         .try_into()?;
 
-    let blueprint_dataset = response.dataset_entry.blueprint_dataset;
+    let blueprint_dataset = response.dataset_entry.dataset_details.blueprint_dataset;
 
     if let Some(blueprint_dataset) = blueprint_dataset {
         if is_dataset_empty(&mut client, blueprint_dataset)
