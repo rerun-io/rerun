@@ -11,8 +11,6 @@ For points whose radii are for visualization purposes, use [`archetypes.Points3D
 
 Orienting and placing cylinders forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 
-TODO(gijsd): Add example here
-
 ## Fields
 ### Required
 * `lengths`: [`Length`](../components/length.md)
@@ -41,4 +39,18 @@ TODO(gijsd): Add example here
  * 🌊 [C++ API docs for `Cylinders3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Cylinders3D.html)
  * 🐍 [Python API docs for `Cylinders3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Cylinders3D)
  * 🦀 [Rust API docs for `Cylinders3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Cylinders3D.html)
+
+## Example
+
+### Batch of cylinders
+
+snippet: archetypes/cylinders3d_batch
+
+<picture data-inline-viewer="snippets/cylinders3d_batch">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png">
+  <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png">
+</picture>
 

@@ -27,7 +27,55 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Orienting and placing cylinders forms a separate transform that is applied prior to [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D].
 ///
-/// TODO(gijsd): Add example here
+/// ## Example
+///
+/// ### Batch of cylinders
+/// ```ignore
+/// use rerun::external::glam::vec3;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_cylinders3d_batch").spawn()?;
+///
+///     rec.log(
+///         "cylinders",
+///         &rerun::Cylinders3D::from_lengths_and_radii(
+///             [0.0, 2.0, 4.0, 6.0, 8.0],
+///             [1.0, 0.5, 0.5, 0.5, 1.0],
+///         )
+///         .with_colors([
+///             rerun::Color::from_rgb(255, 0, 0),
+///             rerun::Color::from_rgb(188, 188, 0),
+///             rerun::Color::from_rgb(0, 255, 0),
+///             rerun::Color::from_rgb(0, 188, 188),
+///             rerun::Color::from_rgb(0, 0, 255),
+///         ])
+///         .with_centers([
+///             vec3(0., 0., 0.),
+///             vec3(2., 0., 0.),
+///             vec3(4., 0., 0.),
+///             vec3(6., 0., 0.),
+///             vec3(8., 0., 0.),
+///         ])
+///         .with_rotation_axis_angles((0..5).map(|i| {
+///             rerun::RotationAxisAngle::new(
+///                 [1.0, 0.0, 0.0],
+///                 rerun::Angle::from_degrees(i as f32 * -22.5),
+///             )
+///         })),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png">
+///   <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Cylinders3D {
     /// Lengths of the cylinders, defined as the distance between the centers of the endcaps.

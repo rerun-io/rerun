@@ -10,7 +10,7 @@ namespace rerun.archetypes;
 ///
 /// Orienting and placing cylinders forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
 ///
-/// TODO(gijsd): Add example here
+/// \example archetypes/cylinders3d_batch title="Batch of cylinders" image="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png"
 table Cylinders3D (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
