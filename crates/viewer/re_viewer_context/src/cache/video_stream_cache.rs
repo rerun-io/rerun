@@ -91,6 +91,8 @@ pub enum VideoStreamProcessingError {
     FailedReadingCodec(re_chunk::ChunkError),
 }
 
+pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
+
 impl VideoStreamCache {
     /// Looks up a video stream + players.
     ///
@@ -106,7 +108,7 @@ impl VideoStreamCache {
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
-    ) -> Result<Arc<RwLock<PlayableVideoStream>>, VideoStreamProcessingError> {
+    ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
@@ -234,9 +236,11 @@ fn load_video_data_from_chunks(
     ))
 }
 
-/// Reads all samples from a chunk and appends them to a list.
+/// Reads all video samples from a chunk into an existing video description.
 ///
 /// Rejects out of order samples - new samples must have a higher timestamp than the previous ones.
+/// Since samples within a chunk are guaranteed to be ordered, this can only happen if a new chunk
+/// is inserted that has is timestamped to be older than the data in the last added chunk.
 fn read_samples_from_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
@@ -253,6 +257,40 @@ fn read_samples_from_chunk(
         return Ok(());
     };
 
+    let mut previous_max_presentation_timestamp = samples
+        .back()
+        .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
+
+    // Validate whether this chunk is an insertion into existing data.
+    // If so, discard it and warn the user.
+    let time_ranges = chunk.time_range_per_component();
+    match time_ranges
+        .get(&timeline)
+        .and_then(|time_range| time_range.get(&sample_descr))
+    {
+        Some(time_range) => {
+            if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
+                re_log::warn_once!(
+                    "Out of order logging on video streams is not supported. Ignoring any out of order samples."
+                );
+                return Ok(());
+            }
+        }
+        None => {
+            // This chunk doesn't have any data on this timeline.
+            return Ok(());
+        }
+    }
+
+    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
+    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
+    // (each VideoStream has exactly one VideoSample instance per time)`.
+    //
+    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
+    // what you call values below (could use a better name btw).
+    //
+    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
+    // i.e. get out a Vec<ByteRange>.
     let inner_list_array = raw_array
         .downcast_array_ref::<arrow::array::ListArray>()
         .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
@@ -267,14 +305,10 @@ fn read_samples_from_chunk(
     let values = values.values().inner();
 
     let offsets = inner_list_array.offsets();
-    let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
+    let lengths = offsets.lengths().collect::<Vec<_>>();
 
     let buffer_index = chunk_buffers.next_index();
     let sample_base_idx = samples.next_index();
-
-    let mut previous_max_presentation_timestamp = samples
-        .back()
-        .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
 
     // Extract sample metadata.
     samples.extend(
@@ -282,31 +316,31 @@ fn read_samples_from_chunk(
             .iter_component_offsets(&sample_descr)
             .zip(chunk.iter_component_indices(&timeline, &sample_descr))
             .filter_map(move |((idx, len), (time, _row_id))| {
-                debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
-
-                let sample_idx = sample_base_idx + idx;
-                let byte_offset = &offsets[idx..idx + len];
-                let byte_length = &lengths[idx..idx + len];
-                let decode_timestamp = re_video::Time(time.as_i64());
-
-                // Make sure samples are in order.
-                // Within a chunk we know that, but we want to check whether the *previous* samples
-                // (from prior calls to this method) are also in order with the new one.
-                if previous_max_presentation_timestamp > decode_timestamp {
-                    re_log::warn_once!("Out of order insertion into video streams is not supported. Ignoring any out of order samples.");
+                if len == 0 {
+                    // Ignore empty samples.
                     return None;
                 }
+                if len != 1 {
+                    re_log::warn_once!(
+                        "Expected only a single VideoSample per row (it is a mono-component)"
+                    );
+                    return None;
+                }
+
+                let sample_idx = sample_base_idx + idx;
+                let byte_offset = offsets[idx] as usize;
+                let byte_length = lengths[idx];
+
+                // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
+                // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
+                let decode_timestamp = re_video::Time(time.as_i64());
+
+                // Samples within a chunk are expected to be always in order.
+                debug_assert!(decode_timestamp > previous_max_presentation_timestamp);
                 previous_max_presentation_timestamp = decode_timestamp;
 
-                // Only a single sample/blob is expected per timestamp.
-                // It should not be possible to log more than one.
-                debug_assert_eq!(byte_offset.len(), 1);
-                debug_assert_eq!(byte_length.len(), 1);
-                let byte_offset = byte_offset[0] as u32;
-                let byte_length = byte_length[0] as u32;
-
                 let is_sync_result = re_video::is_sample_start_of_gop(
-                    &values[byte_offset as usize..(byte_offset + byte_length) as usize],
+                    &values[byte_offset..(byte_offset + byte_length)],
                     codec,
                 );
                 // TODO(andreas): Do something with the error?
@@ -339,8 +373,8 @@ fn read_samples_from_chunk(
 
                     // We're using offsets directly into the chunk data.
                     buffer_index,
-                    byte_offset,
-                    byte_length,
+                    byte_offset: byte_offset as u32,
+                    byte_length: byte_length as u32,
                 })
             }),
     );
