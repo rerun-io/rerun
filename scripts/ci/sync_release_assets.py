@@ -75,7 +75,7 @@ def fetch_binary_assets(
                 #     if "arm64" in name:
                 #         name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
                 #
-                # if "manylinux_2_31_x86_64" in name:
+                # if "manylinux_2_28_x86_64" in name:
                 #     if "x86_64" in name:
                 #         name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
                 #

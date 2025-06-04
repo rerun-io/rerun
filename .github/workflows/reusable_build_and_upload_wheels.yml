@@ -114,31 +114,31 @@ jobs:
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
                 container="'rerunio/ci_docker:0.15.0'" # Required to be manylinux compatible
-                compat="manylinux_2_31"
+                compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              compat="manylinux_2_31"
+              compat="manylinux_2_28"
               container="'rerunio/ci_docker:0.15.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
-              compat="manylinux_2_31"
+              compat="manylinux_2_28"
               ;;
             macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
-              compat="manylinux_2_31"
+              compat="manylinux_2_28"
               ;;
             macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
-              compat="manylinux_2_31"
+              compat="manylinux_2_28"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
