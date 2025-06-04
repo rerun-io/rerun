@@ -344,14 +344,14 @@ fn is_executable(path: &std::path::Path) -> bool {
         return false;
     }
 
-    let Ok(metadata) = std::fs::metadata(path) else {
+    let Ok(_metadata) = std::fs::metadata(path) else {
         return false;
     };
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        let permissions = metadata.permissions();
+        let permissions = _metadata.permissions();
         permissions.mode() & 0o111 != 0
     }
 

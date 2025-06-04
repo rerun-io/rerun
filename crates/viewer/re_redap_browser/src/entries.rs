@@ -17,8 +17,8 @@ use re_types::archetypes::RecordingProperties;
 use re_types::components::{Name, Timestamp};
 use re_ui::{UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry, SystemCommand, SystemCommandSender as _,
-    ViewerContext, external::re_entity_db::EntityDb,
+    AsyncRuntimeHandle, DisplayMode, Item, RecordingOrTable, SystemCommand,
+    SystemCommandSender as _, ViewerContext, external::re_entity_db::EntityDb,
 };
 
 use crate::context::Context;
@@ -214,11 +214,12 @@ impl EntryKind {
         match self {
             Self::Remote { .. } => {
                 for db in dbs {
-                    ctx.command_sender().send_system(SystemCommand::CloseEntry(
-                        StoreHubEntry::Recording {
-                            store_id: db.store_id(),
-                        },
-                    ));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::CloseRecordingOrTable(
+                            RecordingOrTable::Recording {
+                                store_id: db.store_id(),
+                            },
+                        ));
                 }
             }
             Self::Local(app_id) => {

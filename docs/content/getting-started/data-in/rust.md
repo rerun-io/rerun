@@ -25,9 +25,9 @@ For this example in particular, we're going to need all of these:
 
 ```toml
 [dependencies]
-rerun = "0.9"
-itertools = "0.11"
-rand = "0.8"
+rerun = "0.23"
+itertools = "0.14"
+rand = "0.9"
 ```
 
 While we're at it, let's get imports out of the way:
@@ -36,7 +36,7 @@ While we're at it, let's get imports out of the way:
 use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
-
+use rand::Rng as _;
 use rerun::{
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
@@ -181,17 +181,16 @@ rec.log(
 Which only leaves the beads:
 
 ```rust
-use rand::Rng as _;
-let mut rng = rand::thread_rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.gen::<f32>()).collect_vec();
+let mut rng = rand::rng();
+let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
 
 let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
     .iter()
     .enumerate()
     .map(|(n, &[p1, p2])| {
-        let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
+        let c = bounce_lerp(80.0, 230.0, offsets[n] * 2.0) as u8;
         (
-            rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
+            rerun::Position3D::from(bounce_lerp(p1, p2, offsets[n])),
             rerun::Color::from_rgb(c, c, c),
         )
     })
@@ -308,13 +307,15 @@ simply add a second loop like this:
 
 ```rust
 for i in 0..400 {
-    // …everything else…
+    let time = i as f32 * 0.01;
+
+    rec.set_duration_secs("stable_time", time);
 
     rec.log(
         "dna/structure",
         &rerun::archetypes::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
             glam::Vec3::Z,
-            rerun::Angle::Radians(time / 4.0 * TAU),
+            rerun::Angle::from_radians(time / 4.0 * TAU),
         )),
     )?;
 }

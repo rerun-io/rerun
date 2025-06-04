@@ -15,8 +15,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
-    StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
@@ -466,19 +466,19 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateEntry(entry) => match &entry {
-                StoreHubEntry::Recording { store_id } => {
+            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
+                RecordingOrTable::Recording { store_id } => {
                     self.state.navigation.replace(DisplayMode::LocalRecordings);
                     store_hub.set_active_recording_id(store_id.clone());
                 }
-                StoreHubEntry::Table { table_id } => {
+                RecordingOrTable::Table { table_id } => {
                     self.state
                         .navigation
                         .replace(DisplayMode::LocalTable(table_id.clone()));
                 }
             },
 
-            SystemCommand::CloseEntry(entry) => {
+            SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
             }
@@ -522,7 +522,7 @@ impl App {
                 if self
                     .store_hub
                     .as_ref()
-                    .is_none_or(|store_hub| store_hub.active_entry().is_none())
+                    .is_none_or(|store_hub| store_hub.active_recording_or_table().is_none())
                 {
                     self.state
                         .navigation
@@ -937,7 +937,7 @@ impl App {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
-                        .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
+                        .send_system(SystemCommand::CloseRecordingOrTable(cur_rec.clone().into()));
                 }
             }
             UICommand::CloseAllEntries => {
@@ -2359,13 +2359,13 @@ impl eframe::App for App {
                 // set_active_app will also activate a new entry.
                 // Select this entry so it's more obvious to the user which recording
                 // is now active.
-                match store_hub.active_entry() {
-                    Some(StoreHubEntry::Recording { store_id }) => {
+                match store_hub.active_recording_or_table() {
+                    Some(RecordingOrTable::Recording { store_id }) => {
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(store_id.clone()));
                     }
-                    Some(StoreHubEntry::Table { table_id }) => {
+                    Some(RecordingOrTable::Table { table_id }) => {
                         self.state
                             .selection_state
                             .set_selection(Item::TableId(table_id.clone()));

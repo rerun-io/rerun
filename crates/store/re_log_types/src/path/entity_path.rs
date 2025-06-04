@@ -440,6 +440,45 @@ where
         &self.parts[index]
     }
 }
+
+// ----------------------------------------------------------------------------
+
+impl std::ops::Div<Self> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: Self) -> Self::Output {
+        self.join(&other)
+    }
+}
+
+impl std::ops::Div<Self> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: Self) -> Self::Output {
+        self.join(other)
+    }
+}
+
+impl std::ops::Div<EntityPathPart> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: EntityPathPart) -> Self::Output {
+        self.join(&Self::new(vec![other]))
+    }
+}
+
+impl std::ops::Div<EntityPathPart> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: EntityPathPart) -> Self::Output {
+        self.join(&EntityPath::new(vec![other]))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;

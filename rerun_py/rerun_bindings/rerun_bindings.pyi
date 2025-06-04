@@ -940,6 +940,9 @@ def send_recording(rrd: Recording, recording: Optional[PyRecordingStream] = None
 def version() -> str:
     """Return a verbose version string."""
 
+def is_dev_build() -> bool:
+    """Return True if the Rerun SDK is a dev/debug build."""
+
 def get_app_url() -> str:
     """
     Get an url to an instance of the web-viewer.
