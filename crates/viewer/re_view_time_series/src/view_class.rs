@@ -474,6 +474,10 @@ impl ViewClass for TimeSeriesView {
                 }
             });
 
+        if state.reset_bounds_next_frame {
+            plot = plot.reset();
+        }
+
         // Sharing the same cursor is always nice:
         plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
 
