@@ -509,11 +509,8 @@ impl ViewClass for TimeSeriesView {
 
             plot_double_clicked = plot_ui.response().double_clicked();
 
-            let current_bounds = plot_ui.plot_bounds();
-            plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
-                [current_bounds.min()[0], y_range.start()],
-                [current_bounds.max()[0], y_range.end()],
-            ));
+            // Let the user pick y_range from the blueprint:
+            plot_ui.set_plot_bounds_y(y_range);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
