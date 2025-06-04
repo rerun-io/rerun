@@ -371,7 +371,7 @@ impl VideoDataDescription {
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
             self.samples
-                .iter_index_range(&seg.sample_range)
+                .iter_index_range_clamped(&seg.sample_range)
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
                 .map(|pts| pts.into_nanos(self.timescale))

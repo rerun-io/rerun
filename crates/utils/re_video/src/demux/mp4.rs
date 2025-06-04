@@ -98,9 +98,8 @@ impl VideoDataDescription {
         {
             re_tracing::profile_scope!("Sanity-check samples");
             let mut samples_are_in_decode_order = true;
-            for window in samples.iter().tuple_windows::<(&Sample, &Sample)>() {
-                samples_are_in_decode_order &=
-                    window.0.decode_timestamp <= window.1.decode_timestamp;
+            for (a, b) in samples.iter().tuple_windows::<(&Sample, &Sample)>() {
+                samples_are_in_decode_order &= a.decode_timestamp <= b.decode_timestamp;
             }
             if !samples_are_in_decode_order {
                 re_log::warn!(

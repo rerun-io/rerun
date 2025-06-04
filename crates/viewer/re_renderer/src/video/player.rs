@@ -349,7 +349,7 @@ impl VideoPlayer {
 
         let samples = video_description
             .samples
-            .iter_index_range(&gop.sample_range);
+            .iter_index_range_clamped(&gop.sample_range);
 
         for (sample_offset, sample) in samples.enumerate() {
             let sample_idx = gop.sample_range.start + sample_offset;

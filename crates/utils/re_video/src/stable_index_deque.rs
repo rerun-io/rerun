@@ -41,12 +41,12 @@ impl<T> StableIndexDeque<T> {
     ///
     /// ```
     /// # use re_video::StableIndexDeque;
-    /// let v = StableIndexDeque::from_iter_with_offset(0..2, 1);
+    /// let v = StableIndexDeque::from_iter_with_offset(1, 0..2);
     /// assert_eq!(v.get(0), None);
     /// assert_eq!(v.get(1), Some(&0));
     /// assert_eq!(v.get(2), Some(&1));
     /// ```
-    pub fn from_iter_with_offset(iter: impl IntoIterator<Item = T>, index_offset: usize) -> Self {
+    pub fn from_iter_with_offset(index_offset: usize, iter: impl IntoIterator<Item = T>) -> Self {
         Self {
             vec: VecDeque::from_iter(iter),
             index_offset,
@@ -95,15 +95,36 @@ impl<T> StableIndexDeque<T> {
     }
 
     /// See [`VecDeque::iter`].
+    ///
+    /// Beware of using `.iter().enumerate()` as it will not respect the index offset.
+    /// Use [`Self::iter_indexed`] instead.
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.vec.iter()
     }
 
     /// See [`VecDeque::iter_mut`].
+    ///
+    /// Beware of using `.iter().enumerate()` as it will not respect the index offset.
+    /// Use [`Self::iter_indexed`] instead.
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.vec.iter_mut()
+    }
+
+    /// Like `iter().enumerate()` but with the index offset applied.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &1)]);
+    /// ```
+    pub fn iter_indexed(&self) -> impl Iterator<Item = (usize, &T)> {
+        self.vec
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i + self.index_offset, v))
     }
 
     /// See [`VecDeque::back`].
@@ -130,22 +151,41 @@ impl<T> StableIndexDeque<T> {
         self.vec.front_mut()
     }
 
-    /// Truncates to the deque to only contain data prior (!) to the given index.
+    /// Removes all elements with an index larger than or equal to the given index.
+    ///
+    /// Truncates to the deque starting to only contain data prior (!) to the given index.
     ///
     /// ```
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..4).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// v.truncate_to_index(2);
+    /// v.remove_all_with_index_larger_equal(2);
     /// assert_eq!(v.num_elements(), 1);
     /// assert_eq!(v.get(0), None);
     /// assert_eq!(v.get(1), Some(&1));
     /// assert_eq!(v.get(2), None);
     /// assert_eq!(v.get(3), None);
     /// ```
-    pub fn truncate_to_index(&mut self, first_index_not_contained: usize) {
+    pub fn remove_all_with_index_larger_equal(&mut self, first_index_not_contained: usize) {
         let new_len = first_index_not_contained.saturating_sub(self.index_offset);
         self.vec.truncate(new_len);
+    }
+
+    /// Removes all elements with an index smaller than the given index.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..4).collect::<StableIndexDeque<i32>>();
+    /// v.remove_all_with_index_smaller(2);
+    /// assert_eq!(v.get(0), None);
+    /// assert_eq!(v.get(1), None);
+    /// assert_eq!(v.get(2), Some(&2));
+    /// assert_eq!(v.get(3), Some(&3));
+    /// ```
+    pub fn remove_all_with_index_smaller(&mut self, first_index_contained: usize) {
+        while !self.vec.is_empty() && first_index_contained > self.index_offset {
+            self.pop_front();
+        }
     }
 
     /// [`Iterator::position`] but with the index offset applied.
@@ -279,7 +319,10 @@ impl<T> StableIndexDeque<T> {
     /// assert_eq!(v.iter_index_range(&(3..5)).cloned().collect::<Vec<_>>(), vec![3, 4]);
     /// ```
     #[inline]
-    pub fn iter_index_range(&self, range: &std::ops::Range<usize>) -> impl Iterator<Item = &T> {
+    pub fn iter_index_range_clamped(
+        &self,
+        range: &std::ops::Range<usize>,
+    ) -> impl Iterator<Item = &T> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
         self.vec.iter().skip(range_start).take(num_elements)
