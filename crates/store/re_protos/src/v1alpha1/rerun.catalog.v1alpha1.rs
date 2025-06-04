@@ -199,6 +199,8 @@ impl ::prost::Name for EntryDetails {
 pub struct DatasetEntry {
     #[prost(message, optional, tag = "1")]
     pub details: ::core::option::Option<EntryDetails>,
+    #[prost(message, optional, tag = "3")]
+    pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Read-only
     #[prost(message, optional, tag = "2")]
     pub dataset_handle: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
@@ -260,6 +262,7 @@ pub enum EntryKind {
     DatasetView = 2,
     Table = 3,
     TableView = 4,
+    BlueprintDataset = 5,
 }
 impl EntryKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -273,6 +276,7 @@ impl EntryKind {
             Self::DatasetView => "ENTRY_KIND_DATASET_VIEW",
             Self::Table => "ENTRY_KIND_TABLE",
             Self::TableView => "ENTRY_KIND_TABLE_VIEW",
+            Self::BlueprintDataset => "ENTRY_KIND_BLUEPRINT_DATASET",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -283,6 +287,7 @@ impl EntryKind {
             "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
             "ENTRY_KIND_TABLE" => Some(Self::Table),
             "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
+            "ENTRY_KIND_BLUEPRINT_DATASET" => Some(Self::BlueprintDataset),
             _ => None,
         }
     }

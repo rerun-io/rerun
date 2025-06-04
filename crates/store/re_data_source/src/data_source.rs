@@ -271,8 +271,10 @@ impl DataSource {
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
-                    re_grpc_client::stream_partition_async(client, tx, uri_clone, on_cmd, on_msg)
-                        .await
+                    re_grpc_client::stream_blueprint_and_partition_from_server(
+                        client, tx, uri_clone, on_cmd, on_msg,
+                    )
+                    .await
                 };
 
                 spawn_future(async move {
