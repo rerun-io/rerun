@@ -186,15 +186,18 @@ impl VideoFrameReferenceVisualizer {
                 );
             }
 
-            Some((video, video_data)) => match video.as_ref() {
+            Some((video, video_buffer)) => match video.as_ref() {
                 Ok(video) => {
-                    video_resolution = glam::vec2(video.width() as _, video.height() as _);
+                    if let Some(coded_dimensions) = video.data_descr().coded_dimensions {
+                        video_resolution =
+                            glam::vec2(coded_dimensions[0] as _, coded_dimensions[1] as _);
+                    }
 
                     match video.frame_at(
                         ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
-                        &video_data,
+                        &std::iter::once(video_buffer.as_ref()).collect(),
                     ) {
                         Ok(VideoFrameTexture {
                             texture,
@@ -226,24 +229,28 @@ impl VideoFrameReferenceVisualizer {
                                 });
                             }
 
-                            let textured_rect = TexturedRect {
-                                top_left_corner_position,
-                                extent_u,
-                                extent_v,
-                                colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-                                options: RectangleOptions {
-                                    texture_filter_magnification: TextureFilterMag::Nearest,
-                                    texture_filter_minification: TextureFilterMin::Linear,
-                                    outline_mask: spatial_ctx.highlight.overall,
-                                    depth_offset: spatial_ctx.depth_offset,
-                                    ..Default::default()
-                                },
-                            };
-                            self.data.pickable_rects.push(PickableTexturedRect {
-                                ent_path: entity_path.clone(),
-                                textured_rect,
-                                source_data: PickableRectSourceData::Video,
-                            });
+                            if let Some(texture) = texture {
+                                let textured_rect = TexturedRect {
+                                    top_left_corner_position,
+                                    extent_u,
+                                    extent_v,
+                                    colormapped_texture: ColormappedTexture::from_unorm_rgba(
+                                        texture,
+                                    ),
+                                    options: RectangleOptions {
+                                        texture_filter_magnification: TextureFilterMag::Nearest,
+                                        texture_filter_minification: TextureFilterMin::Linear,
+                                        outline_mask: spatial_ctx.highlight.overall,
+                                        depth_offset: spatial_ctx.depth_offset,
+                                        ..Default::default()
+                                    },
+                                };
+                                self.data.pickable_rects.push(PickableTexturedRect {
+                                    ent_path: entity_path.clone(),
+                                    textured_rect,
+                                    source_data: PickableRectSourceData::Video,
+                                });
+                            }
                         }
 
                         Err(err) => {

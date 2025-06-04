@@ -1,9 +1,9 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
+//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
 //!
-//! The entry point is [`VideoData::load_from_bytes`]
-//! which produces an instance of [`VideoData`] from any supported video container.
+//! The entry point is [`VideoDataDescription::load_from_bytes`]
+//! which produces an instance of [`VideoDataDescription`] from any supported video container.
 
 pub mod mp4;
 
@@ -14,7 +14,7 @@ use itertools::Itertools as _;
 
 use super::{Time, Timescale};
 
-use crate::{Chunk, TrackId, TrackKind};
+use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChromaSubsamplingModes {
@@ -38,20 +38,88 @@ impl std::fmt::Display for ChromaSubsamplingModes {
     }
 }
 
-/// Decoded video data.
+/// The basic codec family used to encode the video.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VideoCodec {
+    /// Advanced Video Coding (AVC/H.264)
+    ///
+    /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
+    H264,
+
+    /// High Efficiency Video Coding (HEVC/H.265)
+    ///
+    /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
+    H265,
+
+    /// AOMedia Video 1 (AV1)
+    ///
+    /// See <https://en.wikipedia.org/wiki/AV1>
+    AV1,
+
+    /// VP8
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP8>
+    VP8,
+
+    /// VP9
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP9>
+    VP9,
+}
+
+impl VideoCodec {
+    /// Base part of the web codec string, without additional parameters.
+    ///
+    /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
+    pub fn base_webcodec_string(&self) -> &'static str {
+        match self {
+            // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
+            Self::AV1 => "av01",
+
+            // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
+            // avc3 is valid as well.
+            Self::H264 => "avc1",
+
+            // https://www.w3.org/TR/webcodecs-hevc-codec-registration/#fully-qualified-codec-strings
+            // hvc1 is valid as well.
+            Self::H265 => "hev1",
+
+            // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
+            // Special! This *is* the fully qualified codec string.
+            Self::VP8 => "vp8",
+
+            // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
+            Self::VP9 => "vp09",
+        }
+    }
+}
+
+/// Description of video data.
+///
+/// Store various metadata about a video.
+/// Doesn't contain the actual data, but rather refers to samples with a byte offset.
 #[derive(Clone)]
-pub struct VideoData {
-    pub config: Config,
+pub struct VideoDataDescription {
+    /// The codec used to encode the video.
+    pub codec: VideoCodec,
+
+    /// Encoded width & height if known.
+    pub coded_dimensions: Option<[u16; 2]>,
 
     /// How many time units are there per second.
     pub timescale: Timescale,
 
-    /// Duration of the video, in time units.
-    pub duration: Time,
+    /// Duration of the video, in time units if known.
+    ///
+    /// For open ended video streams rather than video files this is generally unknown.
+    pub duration: Option<Time>,
 
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub gops: Vec<GroupOfPictures>,
+    ///
+    /// To facilitate streaming, gops at the beginning of the queue may be discarded over time
+    /// and new ones may be added. Also, the most recent gop may grow over time.
+    pub gops: StableIndexDeque<GroupOfPictures>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -60,11 +128,19 @@ pub struct VideoData {
     /// Samples must be decoded in decode-timestamp order,
     /// and should be presented in composition-timestamp order.
     ///
-    /// In MP4, one sample is one frame.
-    pub samples: Vec<Sample>,
+    /// We assume one sample yields exactly one frame from the decoder.
+    ///
+    /// To facilitate streaming, samples may be removed from the beginning and added at the end,
+    /// but individual samples are never supposed to change.
+    pub samples: StableIndexDeque<Sample>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
+
+    /// Optional mp4 stsd box.
+    ///
+    /// Contains info about the codec, bit depth, etc.
+    pub stsd: Option<re_mp4::StsdBox>,
 
     /// All the tracks in the mp4; not just the video track.
     ///
@@ -83,11 +159,23 @@ pub struct SamplesStatistics {
     /// If `dts_always_equal_pts` is false, then this gives for each sample whether its PTS is the highest seen so far.
     /// If `dts_always_equal_pts` is true, then this is left as `None`.
     /// This is used for optimizing PTS search.
+    ///
+    /// TODO(andreas): We don't have a mechanism for shrinking this bitvec when dropping samples, i.e. it will keep growing.
+    /// ([`StableIndexDeque`] makes sure that indices in the bitvec will still match up with the samples even when samples are dropped from the front.)
     pub has_sample_highest_pts_so_far: Option<BitVec>,
 }
 
 impl SamplesStatistics {
-    pub fn new(samples: &[Sample]) -> Self {
+    /// Special case for videos that have no h264/h265 B-frames.
+    ///
+    /// This is the most common case for video streams.
+    // TODO(andreas): so, av1 bframes are possible with this config, right?! confirm and then maybe come up with a better name.
+    pub const NO_BFRAMES: Self = Self {
+        dts_always_equal_pts: true,
+        has_sample_highest_pts_so_far: None,
+    };
+
+    pub fn new(samples: &StableIndexDeque<Sample>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
@@ -116,7 +204,7 @@ impl SamplesStatistics {
     }
 }
 
-impl VideoData {
+impl VideoDataDescription {
     /// Loads a video from the given data.
     ///
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
@@ -140,63 +228,59 @@ impl VideoData {
         }
     }
 
-    /// Length of the video.
+    /// Length of the video if known.
+    ///
+    /// For video streams (as opposed to video files) this is generally unknown.
     #[inline]
-    pub fn duration(&self) -> std::time::Duration {
-        self.duration.duration(self.timescale)
-    }
-
-    /// Natural width and height of the video
-    #[inline]
-    pub fn dimensions(&self) -> [u32; 2] {
-        [self.width(), self.height()]
-    }
-
-    /// Natural width of the video.
-    #[inline]
-    pub fn width(&self) -> u32 {
-        self.config.coded_width as u32
-    }
-
-    /// Natural height of the video.
-    #[inline]
-    pub fn height(&self) -> u32 {
-        self.config.coded_height as u32
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        self.duration.map(|d| d.duration(self.timescale))
     }
 
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
-        let human_readable = match &self.config.stsd.contents {
-            re_mp4::StsdBoxContent::Av01(_) => "AV1",
-            re_mp4::StsdBoxContent::Avc1(_) => "H.264",
-            re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
-            re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
-            re_mp4::StsdBoxContent::Vp08(_) => "VP8",
-            re_mp4::StsdBoxContent::Vp09(_) => "VP9",
-            re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
-            re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
-            re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
-        };
+        if let Some(stsd) = self.stsd.as_ref() {
+            let human_readable = match &stsd.contents {
+                re_mp4::StsdBoxContent::Av01(_) => "AV1",
+                re_mp4::StsdBoxContent::Avc1(_) => "H.264",
+                re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
+                re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
+                re_mp4::StsdBoxContent::Vp08(_) => "VP8",
+                re_mp4::StsdBoxContent::Vp09(_) => "VP9",
+                re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
+                re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
+                re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
+            };
 
-        if let Some(codec) = self.config.stsd.contents.codec_string() {
-            format!("{human_readable} ({codec})")
+            if let Some(codec) = stsd.contents.codec_string() {
+                format!("{human_readable} ({codec})")
+            } else {
+                human_readable.to_owned()
+            }
         } else {
-            human_readable.to_owned()
+            match &self.codec {
+                VideoCodec::AV1 => "AV1",
+                // TODO(andreas): if we found an SPS in the stream, we could show more information.
+                VideoCodec::H264 => "H.265 HVC1",
+                VideoCodec::H265 => "H.265 HEV1",
+                VideoCodec::VP8 => "VP8",
+                VideoCodec::VP9 => "VP9",
+            }
+            .to_owned()
         }
     }
 
     /// The number of samples in the video.
     #[inline]
     pub fn num_samples(&self) -> usize {
-        self.samples.len()
+        self.samples.num_elements()
     }
 
     /// Returns the subsampling mode of the video.
     ///
     /// Returns None if not detected or unknown.
     pub fn subsampling_mode(&self) -> Option<ChromaSubsamplingModes> {
-        match &self.config.stsd.contents {
+        match &self.stsd.as_ref()?.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => {
                 // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
                 match (
@@ -254,13 +338,13 @@ impl VideoData {
     ///
     /// Usually 8, but 10 for HDR (for example).
     pub fn bit_depth(&self) -> Option<u8> {
-        self.config.stsd.contents.bit_depth()
+        self.stsd.as_ref()?.contents.bit_depth()
     }
 
     /// Returns None if the mp4 doesn't specify whether the video is monochrome or
     /// we haven't yet implemented the logic to determine this.
     pub fn is_monochrome(&self) -> Option<bool> {
-        match &self.config.stsd.contents {
+        match &self.stsd.as_ref()?.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
             re_mp4::StsdBoxContent::Avc1(_)
             | re_mp4::StsdBoxContent::Hvc1(_)
@@ -286,8 +370,8 @@ impl VideoData {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
-            self.samples[seg.sample_range_usize()]
-                .iter()
+            self.samples
+                .iter_index_range_clamped(&seg.sample_range)
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
                 .map(|pts| pts.into_nanos(self.timescale))
@@ -297,15 +381,15 @@ impl VideoData {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &[Sample],
+        samples: &StableIndexDeque<Sample>,
         decode_time: Time,
     ) -> Option<usize> {
-        latest_at_idx(samples, |sample| sample.decode_timestamp, &decode_time)
+        samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &[Sample],
+        samples: &StableIndexDeque<Sample>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<usize> {
@@ -322,7 +406,7 @@ impl VideoData {
             debug_assert!(sample_statistics.dts_always_equal_pts);
             return Some(decode_sample_idx);
         };
-        debug_assert!(has_sample_highest_pts_so_far.len() == samples.len());
+        debug_assert!(has_sample_highest_pts_so_far.len() == samples.next_index());
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
@@ -375,7 +459,8 @@ impl VideoData {
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
-        latest_at_idx(&self.gops, |gop| gop.decode_start_time, &decode_time)
+        self.gops
+            .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
     }
 
     /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -394,26 +479,18 @@ impl VideoData {
     }
 }
 
-/// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
+/// A Group of Pictures (GOP) always starts with an I(DR)-frame, followed by delta-frames.
 ///
 /// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
+/// We generally refer to "closed GOPs" only, such that they are re-entrant for decoders
+/// (as opposed to "open GOPs" which may refer to frames from other GOPs).
 #[derive(Debug, Clone)]
 pub struct GroupOfPictures {
     /// Decode timestamp of the first sample in this GOP, in time units.
     pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
-    pub sample_range: Range<u32>,
-}
-
-impl GroupOfPictures {
-    /// The GOP's `sample_range` mapped to `usize` for slicing.
-    pub fn sample_range_usize(&self) -> Range<usize> {
-        Range {
-            start: self.sample_range.start as usize,
-            end: self.sample_range.end as usize,
-        }
-    }
+    pub sample_range: Range<usize>,
 }
 
 /// A single sample in a video.
@@ -433,17 +510,12 @@ impl GroupOfPictures {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Is this the start of a new [`GroupOfPictures`]?
+    /// Is this the start of a new (closed) [`GroupOfPictures`]?
     ///
-    /// This probably means this is a _keyframe_, and that and entire frame
-    /// can be decoded from only this one sample (though I'm not 100% sure).
+    /// What this means in detail is dependent on the codec but they are generally
+    /// at least I(DR)-frames and often have additional metadata such that
+    /// a decoder can restart at this frame.
     pub is_sync: bool,
-
-    /// Which sample is this in the video?
-    ///
-    /// This is the order of which the samples appear in the container,
-    /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: usize,
 
     /// Which frame does this sample belong to?
     ///
@@ -451,7 +523,9 @@ pub struct Sample {
     /// which is true for MP4.
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
-    pub frame_nr: usize,
+    ///
+    /// Do **not** ever use this for indexing into the array of samples.
+    pub frame_nr: u32,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
@@ -461,17 +535,22 @@ pub struct Sample {
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
-    /// Often synonymous with `presentation_timestamp`.
     ///
     /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    /// Duration of the sample, in time units.
-    pub duration: Time,
+    /// Duration of the sample.
+    ///
+    /// Typically the time difference in presentation timestamp to the next sample.
+    /// May be unknown if this is the last sample in an ongoing video stream.
+    pub duration: Option<Time>,
 
-    /// Offset into the video data.
+    /// Index of the data buffer in which this sample is stored.
+    pub buffer_index: usize,
+
+    /// Offset within the data buffer addressed by [`Sample::buffer_index`].
     pub byte_offset: u32,
 
     /// Length of sample starting at [`Sample::byte_offset`].
@@ -481,50 +560,28 @@ pub struct Sample {
 impl Sample {
     /// Read the sample from the video data.
     ///
-    /// Note that `data` _must_ be a reference to the original MP4 file
-    /// from which the [`VideoData`] was loaded.
+    /// For video assets, `data` _must_ be a reference to the original asset
+    /// from which the [`VideoDataDescription`] was loaded.
+    /// For video streams, `data` refers to the currently available data
+    /// which is described by the [`VideoDataDescription`].
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &[u8]) -> Option<Chunk> {
-        let data = data
+    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
+        let buffer = *buffers.get(self.buffer_index)?;
+        let data = buffer
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
             .to_vec();
+
         Some(Chunk {
             data,
-            sample_idx: self.sample_idx,
+            sample_idx,
             frame_nr: self.frame_nr,
             decode_timestamp: self.decode_timestamp,
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
         })
-    }
-}
-
-/// Configuration of a video.
-#[derive(Debug, Clone)]
-pub struct Config {
-    /// Contains info about the codec, bit depth, etc.
-    pub stsd: re_mp4::StsdBox,
-
-    /// Codec-specific configuration.
-    pub description: Vec<u8>,
-
-    /// Natural height of the video.
-    pub coded_height: u16,
-
-    /// Natural width of the video.
-    pub coded_width: u16,
-}
-
-impl Config {
-    pub fn is_av1(&self) -> bool {
-        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
-    }
-
-    pub fn is_h264(&self) -> bool {
-        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Avc1 { .. })
     }
 }
 
@@ -553,7 +610,7 @@ pub enum VideoLoadError {
         provided_or_detected_media_type: String,
     },
 
-    /// Not used in `re_video` itself, but useful for media type detection ahead of calling [`VideoData::load_from_bytes`].
+    /// Not used in `re_video` itself, but useful for media type detection ahead of calling [`VideoDataDescription::load_from_bytes`].
     #[error("Could not detect MIME type from the video contents")]
     UnrecognizedMimeType,
 
@@ -562,10 +619,12 @@ pub enum VideoLoadError {
     UnsupportedCodec(re_mp4::FourCC),
 }
 
-impl std::fmt::Debug for VideoData {
+impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
-            .field("config", &self.config)
+            .field("codec", &self.codec)
+            .field("stsd", &self.stsd)
+            .field("coded_dimensions", &self.coded_dimensions)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("gops", &self.gops)
@@ -577,48 +636,9 @@ impl std::fmt::Debug for VideoData {
     }
 }
 
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -644,25 +664,24 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .enumerate()
-            .map(|(sample_idx, (pts, dts))| Sample {
+            .map(|(pts, dts)| Sample {
                 is_sync: false,
-                sample_idx,
                 frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
-                duration: Time(1),
+                duration: Some(Time(1)),
+                buffer_index: 0,
                 byte_offset: 0,
                 byte_length: 0,
             })
-            .collect::<Vec<_>>();
+            .collect::<StableIndexDeque<_>>();
 
         let sample_statistics = SamplesStatistics::new(&samples);
         assert!(!sample_statistics.dts_always_equal_pts);
 
         // Test queries on the samples.
         let query_pts = |pts| {
-            VideoData::latest_sample_index_at_presentation_timestamp_internal(
+            VideoDataDescription::latest_sample_index_at_presentation_timestamp_internal(
                 &samples,
                 &sample_statistics,
                 pts,

@@ -42,7 +42,7 @@ impl VideoCache {
         debug_name: String,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        video_data: &re_types::datatypes::Blob,
+        video_buffer: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
@@ -57,7 +57,7 @@ impl VideoCache {
         // loading & building the cache key.
         let Some(media_type) = media_type
             .cloned()
-            .or_else(|| MediaType::guess_from_data(video_data))
+            .or_else(|| MediaType::guess_from_data(video_buffer))
         else {
             return Arc::new(Err(VideoLoadError::UnrecognizedMimeType));
         };
@@ -70,8 +70,9 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video = re_video::VideoData::load_from_bytes(video_data, &media_type)
-                    .map(|data| Video::load(debug_name, Arc::new(data), decode_settings));
+                let video =
+                    re_video::VideoDataDescription::load_from_bytes(video_buffer, &media_type)
+                        .map(|data| Video::load(debug_name, data, decode_settings));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),

@@ -1,7 +1,7 @@
 mod chunk_decoder;
 mod player;
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -10,7 +10,7 @@ use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{VideoData, decode::DecodeSettings};
+use re_video::{StableIndexDeque, VideoDataDescription, decode::DecodeSettings};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -49,7 +49,7 @@ pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
     /// The texture to show.
-    pub texture: GpuTexture2D,
+    pub texture: Option<GpuTexture2D>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
@@ -76,7 +76,10 @@ pub struct VideoPlayerStreamId(pub u64);
 
 struct PlayerEntry {
     player: player::VideoPlayer,
-    frame_index: u64,
+
+    /// The global `re_renderer` frame index at which the player was last used.
+    /// (this is NOT a video frame index of any kind)
+    last_global_frame_idx: u64,
 }
 
 /// Video data + decoder(s).
@@ -84,7 +87,7 @@ struct PlayerEntry {
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
     debug_name: String,
-    data: Arc<re_video::VideoData>,
+    video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_settings: DecodeSettings,
 }
@@ -94,33 +97,40 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
+    pub fn load(
+        debug_name: String,
+        video_description: VideoDataDescription,
+        decode_settings: DecodeSettings,
+    ) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
-            data,
+            video_description,
             players,
             decode_settings,
         }
     }
 
-    /// The video data
+    /// The video description.
     #[inline]
-    pub fn data(&self) -> &Arc<re_video::VideoData> {
-        &self.data
+    pub fn data_descr(&self) -> &re_video::VideoDataDescription {
+        &self.video_description
     }
 
-    /// Natural width of the video.
+    /// Mutable access to the video data.
+    ///
+    /// Use with care. It's valid to add samples and groups of pictures, but arbitrary
+    /// changes may interfere with subsequent decoding on existing video streams.
     #[inline]
-    pub fn width(&self) -> u32 {
-        self.data.width()
+    pub fn data_descr_mut(&mut self) -> &mut re_video::VideoDataDescription {
+        &mut self.video_description
     }
 
-    /// Natural height of the video.
+    /// Natural dimensions of the video if known.
     #[inline]
-    pub fn height(&self) -> u32 {
-        self.data.height()
+    pub fn dimensions(&self) -> Option<[u16; 2]> {
+        self.video_description.coded_dimensions
     }
 
     /// Returns a texture with the latest frame at the given time since video start.
@@ -137,7 +147,7 @@ impl Video {
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         time_since_video_start_in_secs: f64,
-        video_data: &[u8],
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -154,21 +164,23 @@ impl Video {
             Entry::Vacant(vacant_entry) => {
                 let new_player = player::VideoPlayer::new(
                     &self.debug_name,
-                    render_context,
-                    self.data.clone(),
+                    &self.video_description,
                     &self.decode_settings,
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
-                    frame_index: global_frame_idx,
+                    last_global_frame_idx: global_frame_idx,
                 })
             }
         };
 
-        decoder_entry.frame_index = render_context.active_frame_idx();
-        decoder_entry
-            .player
-            .frame_at(render_context, time_since_video_start_in_secs, video_data)
+        decoder_entry.last_global_frame_idx = render_context.active_frame_idx();
+        decoder_entry.player.frame_at(
+            render_context,
+            time_since_video_start_in_secs,
+            &self.video_description,
+            video_buffers,
+        )
     }
 
     /// Removes all decoders that have been unused in the last frame.
@@ -180,6 +192,6 @@ impl Video {
         }
 
         let mut players = self.players.lock();
-        players.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
+        players.retain(|_, decoder| decoder.last_global_frame_idx >= active_frame_idx - 1);
     }
 }

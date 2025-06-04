@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
+use re_mp4::{StsdBox, StsdBoxContent};
 use wasm_bindgen::{JsCast as _, closure::Closure};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
@@ -11,7 +12,7 @@ use web_sys::{
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
-use crate::{Config, Time, Timescale, VideoData};
+use crate::{Time, Timescale, VideoCodec, VideoDataDescription};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -33,7 +34,9 @@ impl std::ops::Deref for WebVideoFrame {
 }
 
 pub struct WebVideoDecoder {
-    video_config: Config,
+    codec: VideoCodec,
+    stsd: Option<StsdBox>,
+    coded_dimensions: Option<[u16; 2]>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -103,16 +106,18 @@ impl Drop for WebVideoDecoder {
 
 impl WebVideoDecoder {
     pub fn new(
-        video: &VideoData,
+        video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         let on_output = Arc::new(on_output);
-        let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
+        let decoder = init_video_decoder(on_output.clone(), video_descr.timescale)?;
 
         Ok(Self {
-            video_config: video.config.clone(),
-            timescale: video.timescale,
+            codec: video_descr.codec,
+            stsd: video_descr.stsd.clone(),
+            coded_dimensions: video_descr.coded_dimensions,
+            timescale: video_descr.timescale,
             decoder,
             hw_acceleration,
             on_output,
@@ -137,9 +142,11 @@ impl AsyncDecoder for WebVideoDecoder {
             type_,
         );
 
-        let duration_millis =
-            1e-3 * video_chunk.duration.duration(self.timescale).as_nanos() as f64;
-        web_chunk.set_duration(duration_millis);
+        if let Some(duration) = video_chunk.duration {
+            let duration_millis = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
+            web_chunk.set_duration(duration_millis);
+        }
+
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
             .map_err(|err| Error::CreateChunk(js_error_to_string(&err)))?;
         self.decoder
@@ -162,7 +169,9 @@ impl AsyncDecoder for WebVideoDecoder {
 
         self.decoder
             .configure(&js_video_decoder_config(
-                &self.video_config,
+                &self.codec,
+                &self.stsd,
+                &self.coded_dimensions,
                 self.hw_acceleration,
             ))
             .map_err(|err| Error::ConfigureFailure(js_error_to_string(&err)))?;
@@ -195,7 +204,7 @@ impl AsyncDecoder for WebVideoDecoder {
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
         // TODO(#8848): For some h264 videos (which??) we need to enqueue more samples, otherwise Safari will not provide us with any frames.
         // (The same happens with FFmpeg-cli decoder for the affected videos)
-        if self.video_config.is_h264() && *IS_SAFARI {
+        if self.codec == VideoCodec::H264 && *IS_SAFARI {
             16 // Safari needs more samples queued for h264
         } else {
             // No such workaround are needed anywhere else,
@@ -220,7 +229,7 @@ fn init_video_decoder(
             // and does not represent demuxed "raw" presentation timestamps.
             let presentation_timestamp =
                 Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-            let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+            let duration = frame.duration().map(|d| Time::from_micros(d, timescale));
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
@@ -254,15 +263,51 @@ fn init_video_decoder(
 }
 
 fn js_video_decoder_config(
-    config: &Config,
+    codec: &VideoCodec,
+    stsd: &Option<StsdBox>,
+    coded_dimensions: &Option<[u16; 2]>,
     hw_acceleration: DecodeHardwareAcceleration,
 ) -> VideoDecoderConfig {
-    let js = VideoDecoderConfig::new(&config.stsd.contents.codec_string().unwrap_or_default());
-    js.set_coded_width(config.coded_width as u32);
-    js.set_coded_height(config.coded_height as u32);
-    let description = Uint8Array::new_with_length(config.description.len() as u32);
-    description.copy_from(&config.description[..]);
-    js.set_description(&description);
+    let codec_string = stsd
+        .as_ref()
+        .and_then(|stsd| stsd.contents.codec_string())
+        .unwrap_or_else(|| {
+            // TODO(#7484): This is neat, but doesn't work. Need the full codec string as described by the spec.
+            // For h.264, we have to extract this from the first SPS we find.
+            codec.base_webcodec_string().to_owned()
+        });
+
+    let js = VideoDecoderConfig::new(&codec_string);
+
+    if let Some(coded_dimensions) = coded_dimensions {
+        js.set_coded_width(coded_dimensions[0] as u32);
+        js.set_coded_height(coded_dimensions[1] as u32);
+    }
+
+    if let Some(stsd) = stsd {
+        let description = match &stsd.contents {
+            StsdBoxContent::Av01(content) => Some(content.av1c.raw.clone()),
+            StsdBoxContent::Avc1(content) => Some(content.avcc.raw.clone()),
+            StsdBoxContent::Hev1(content) | StsdBoxContent::Hvc1(content) => {
+                Some(content.hvcc.raw.clone())
+            }
+            StsdBoxContent::Vp08(content) => Some(content.vpcc.raw.clone()),
+            StsdBoxContent::Vp09(content) => Some(content.vpcc.raw.clone()),
+            StsdBoxContent::Mp4a(_) | StsdBoxContent::Tx3g(_) | StsdBoxContent::Unknown(_) => {
+                if cfg!(debug_assertions) {
+                    unreachable!("Unknown codec should be caught earlier.")
+                }
+                None
+            }
+        };
+
+        if let Some(description_raw) = description {
+            let description = Uint8Array::new_with_length(description_raw.len() as u32);
+            description.copy_from(&description_raw[..]);
+            js.set_description(&description);
+        }
+    }
+
     js.set_optimize_for_latency(true);
 
     match hw_acceleration {

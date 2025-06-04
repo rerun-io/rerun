@@ -8,12 +8,12 @@ use parking_lot::Mutex;
 
 use crate::{
     RenderContext,
-    resource_managers::SourceImageDataFormat,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::{
         VideoPlayerError,
         player::{TimedDecodingError, VideoTexture},
     },
-    wgpu_resources::GpuTexture,
+    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
 };
 
 #[derive(Default)]
@@ -26,12 +26,12 @@ struct DecoderOutput {
 
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
 // TODO(andreas): Meld this into `super::player::VideoPlayer`.
-pub struct VideoChunkDecoder {
+pub struct VideoSampleDecoder {
     decoder: Box<dyn re_video::decode::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
-impl VideoChunkDecoder {
+impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
@@ -121,7 +121,7 @@ impl VideoChunkDecoder {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = re_video::demux::latest_at_idx(
+        let Some(frame_idx) = latest_at_idx(
             frames,
             |frame| frame.info.presentation_timestamp,
             &presentation_timestamp,
@@ -137,29 +137,33 @@ impl VideoChunkDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_time_range = frame.info.presentation_time_range();
+        let frame_presentation_timestamp = frame.info.presentation_timestamp;
+
+        let gpu_texture = video_texture.texture.get_or_insert_with(|| {
+            alloc_video_frame_texture(
+                &render_ctx.device,
+                &render_ctx.gpu_resources.textures,
+                frame.content.width(),
+                frame.content.height(),
+            )
+        });
 
         let is_up_to_date = video_texture
             .frame_info
             .as_ref()
-            .is_some_and(|info| info.presentation_time_range() == frame_time_range);
+            // We assume that every frame is uniquely identified by its presentation timestamp.
+            .is_some_and(|info| info.presentation_timestamp == frame_presentation_timestamp);
 
-        if frame_time_range.contains(&presentation_timestamp) && !is_up_to_date {
+        if !is_up_to_date {
             #[cfg(target_arch = "wasm32")]
             {
-                video_texture.source_pixel_format = copy_web_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
+                video_texture.source_pixel_format =
+                    copy_web_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
-                video_texture.source_pixel_format = copy_native_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
+                video_texture.source_pixel_format =
+                    copy_native_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
             }
 
             video_texture.frame_info = Some(frame.info.clone());
@@ -183,6 +187,40 @@ impl VideoChunkDecoder {
     pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
+}
+
+fn alloc_video_frame_texture(
+    device: &wgpu::Device,
+    pool: &GpuTexturePool,
+    width: u32,
+    height: u32,
+) -> GpuTexture2D {
+    let Some(texture) = GpuTexture2D::new(pool.alloc(
+        device,
+        &TextureDesc {
+            label: "video".into(),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
+            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
+            usage: wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        },
+    )) else {
+        // We set the dimension to `2D` above, so this should never happen.
+        unreachable!();
+    };
+
+    texture
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -299,4 +337,50 @@ fn copy_native_video_frame_to_texture(
     )?;
 
     Ok(format)
+}
+
+/// Returns the index of:
+/// - The index of `needle` in `v`, if it exists
+/// - The index of the first element in `v` that is lesser than `needle`, if it exists
+/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+///
+/// Like `re_video::latest_at_idx`, but works with regular slices.
+pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+    if v.is_empty() {
+        return None;
+    }
+
+    let idx = v.partition_point(|x| key(x) <= *needle);
+
+    if idx == 0 {
+        // If idx is 0, then all elements are greater than the needle
+        if &key(&v[0]) > needle {
+            return None;
+        }
+    }
+
+    Some(idx.saturating_sub(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::latest_at_idx;
+
+    #[test]
+    fn test_latest_at_idx() {
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
+        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
+        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
+        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
+        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
+        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
+        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
+        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
+        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
+        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
+        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
+    }
 }
