@@ -46,8 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_colors([rerun::Color::from_rgb(128, 128, 128)]),
     )?;
 
-    let mut rng = rand::rng();
-    let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
+    let mut rng = rand::thread_rng();
+    let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
 
     for i in 0..400 {
         let time = i as f32 * 0.01;

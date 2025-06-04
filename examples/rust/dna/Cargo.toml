@@ -10,4 +10,4 @@ publish = false
 rerun = { path = "../../../crates/top/rerun" }
 
 itertools = "0.14"
-rand = "0.9"
+rand = "0.8"
