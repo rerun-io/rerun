@@ -210,36 +210,36 @@ impl SelectionPanel {
                     ));
                 }
 
-                if let Some(archetype_field_name) = archetype_field_name {
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Archetype field")
-                            .value_text(archetype_field_name.to_string()),
-                    );
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Archetype field")
+                        .value_text(archetype_field_name.to_string()),
+                );
+
+                if let Some(component_name) = component_name {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
+                        |ui, _| {
+                            ui.label(component_name.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(component_name.full_name());
+
+                                // Only show the first line of the docs:
+                                if let Some(markdown) = ctx
+                                    .reflection()
+                                    .components
+                                    .get(component_name)
+                                    .map(|info| info.docstring_md)
+                                {
+                                    ui.markdown_ui(markdown);
+                                }
+
+                                if let Some(doc_url) = component_name.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        },
+                    ));
                 }
-
-                ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
-                    |ui, _| {
-                        ui.label(component_name.short_name()).on_hover_ui(|ui| {
-                            ui.spacing_mut().item_spacing.y = 12.0;
-
-                            ui.strong(component_name.full_name());
-
-                            // Only show the first line of the docs:
-                            if let Some(markdown) = ctx
-                                .reflection()
-                                .components
-                                .get(component_name)
-                                .map(|info| info.docstring_md)
-                            {
-                                ui.markdown_ui(markdown);
-                            }
-
-                            if let Some(doc_url) = component_name.doc_url() {
-                                ui.re_hyperlink("Full documentation", doc_url, true);
-                            }
-                        });
-                    },
-                ));
 
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
