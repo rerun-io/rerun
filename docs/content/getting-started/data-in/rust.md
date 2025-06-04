@@ -172,7 +172,7 @@ let lines: Vec<[glam::Vec3; 2]> = points1
 rec.log(
     "dna/structure/scaffolding",
     &rerun::LineStrips3D::new(lines.iter().cloned())
-        .with_colors([rerun::Color::from([128, 128, 128, 255])]),
+        .with_colors([rerun::Color::from_rgb(128, 128, 128)]),
 )?;
 ```
 
