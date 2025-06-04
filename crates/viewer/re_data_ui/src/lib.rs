@@ -27,6 +27,7 @@ pub mod item_ui;
 pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
+use re_types_core::ArchetypeName;
 
 /// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(
@@ -39,6 +40,31 @@ pub fn sorted_component_list_for_ui<'a>(
     components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.display_name()));
 
     components
+}
+
+pub type ArchetypeComponentMap =
+    std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
+
+/// Components grouped by archetype.
+pub fn sorted_component_list_by_archetype_for_ui<'a>(
+    iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
+) -> ArchetypeComponentMap {
+    let mut map = iter
+        .into_iter()
+        .filter(|d| !d.component_name.is_indicator_component())
+        .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
+            acc.entry(descriptor.archetype_name)
+                .or_default()
+                .push(descriptor.clone());
+            acc
+        });
+
+    for components in map.values_mut() {
+        // Sort by the short name, as that is what is shown in the UI.
+        components.sort_by_key(|c| c.display_name());
+    }
+
+    map
 }
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
