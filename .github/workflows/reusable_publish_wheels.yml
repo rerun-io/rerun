@@ -161,6 +161,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.41.4
+          cache: false
 
       - id: "auth"
         uses: google-github-actions/auth@v2

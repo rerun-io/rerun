@@ -79,6 +79,7 @@ jobs:
         with:
           pixi-version: v0.41.4
           environments: wheel-test
+          cache: false
 
       # built by `reusable_build_and_publish_wheels`
       - name: Download Wheel

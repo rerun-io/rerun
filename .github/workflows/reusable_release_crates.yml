@@ -35,6 +35,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.41.4
+          cache: false
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
