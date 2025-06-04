@@ -327,7 +327,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, go back to the top of your main and initialize your timeline before logging the initial structure:
 
 ```cpp
-rec.set_time_secs("stable_time", 0.0f);
+rec.set_time_duration_secs("stable_time", 0.0f);
 
 rec.log(
     "dna/structure/left",
@@ -364,7 +364,9 @@ simply add a second loop like this:
 
 ```cpp
 for (int t = 0; t < 400; t++) {
-    float time = static_cast<float>(t) * 0.01f;
+    auto time = std::chrono::duration<float>(t) * 0.01f;
+ 
+    rec.set_time_duration("stable_time", time);
 
     rec.log(
         "dna/structure",
