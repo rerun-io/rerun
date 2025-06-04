@@ -365,7 +365,7 @@ simply add a second loop like this:
 ```cpp
 for (int t = 0; t < 400; t++) {
     auto time = std::chrono::duration<float>(t) * 0.01f;
- 
+
     rec.set_time_duration("stable_time", time);
 
     rec.log(

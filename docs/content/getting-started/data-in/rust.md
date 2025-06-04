@@ -308,7 +308,7 @@ simply add a second loop like this:
 ```rust
 for i in 0..400 {
     let time = i as f32 * 0.01;
-    
+
     rec.set_duration_secs("stable_time", time);
 
     rec.log(
