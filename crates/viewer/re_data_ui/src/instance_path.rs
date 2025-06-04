@@ -107,7 +107,7 @@ impl DataUi for InstancePath {
             ui_layout.label(
                 ui,
                 format!(
-                    "{} archetype{} with {} total component{})",
+                    "{} archetype{} with {} total component{}",
                     archetype_count,
                     if archetype_count > 1 { "s" } else { "" },
                     component_count,
