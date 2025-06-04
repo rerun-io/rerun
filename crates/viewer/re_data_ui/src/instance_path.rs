@@ -104,7 +104,6 @@ impl DataUi for InstancePath {
                 .iter()
                 .filter(|c| c.component_name.is_indicator_component())
                 .count();
-            // TODO: Change this text to somehting like "2 archetypes with 7 components total"?
             ui_layout.label(
                 ui,
                 format!(
