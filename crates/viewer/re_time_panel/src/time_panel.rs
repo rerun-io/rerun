@@ -847,8 +847,7 @@ impl TimePanel {
                                 .unwrap_or("Without Archetype"),
                         )
                         .size(10.0),
-                    )
-                    .subdued(true),
+                    ),
                 );
 
             for component_descr in components {
