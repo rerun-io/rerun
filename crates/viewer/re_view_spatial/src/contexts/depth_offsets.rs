@@ -141,9 +141,16 @@ fn determine_default_draworder(
         return DrawOrder::default();
     };
 
+    let Some(component_name) = draw_order_descriptor.component_name else {
+        re_log::warn_once!(
+            "cannot determine draw order for component descriptors without component name: {draw_order_descriptor}"
+        );
+        return Default::default();
+    };
+
     let draw_order_array = visualizer
         .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor.component_name);
+        .fallback_for(ctx, component_name);
     let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
         .ok()
         .unwrap_or_default();

@@ -62,7 +62,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         Some(Box::new(Transform3DVisualizabilityFilter {
             visualizability_trigger_components: Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
         }))
     }
