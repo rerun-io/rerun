@@ -474,6 +474,9 @@ impl ViewClass for TimeSeriesView {
                 }
             });
 
+        // Sharing the same cursor is always nice:
+        plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
+
         if *legend_visible.0 {
             plot = plot.legend(
                 Legend::default()
