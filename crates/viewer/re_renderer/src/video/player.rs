@@ -127,7 +127,7 @@ impl VideoPlayer {
         render_ctx: &RenderContext,
         time_since_video_start_in_secs: f64,
         video_description: &re_video::VideoDataDescription,
-        video_data: &StableIndexDeque<&[u8]>,
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if time_since_video_start_in_secs < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
@@ -139,7 +139,7 @@ impl VideoPlayer {
         }
 
         let error_on_last_frame_at = self.last_error.is_some();
-        self.enqueue_samples(video_description, presentation_timestamp, video_data)?;
+        self.enqueue_samples(video_description, presentation_timestamp, video_buffers)?;
 
         update_video_texture(
             render_ctx,
@@ -197,7 +197,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         presentation_timestamp: Time,
-        video_data: &StableIndexDeque<&[u8]>,
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
 
@@ -318,7 +318,7 @@ impl VideoPlayer {
                 break;
             }
 
-            self.enqueue_gop(video_description, next_gop_idx, video_data)?;
+            self.enqueue_gop(video_description, next_gop_idx, video_buffers)?;
         }
 
         self.last_requested_sample_idx = requested_sample_idx;
@@ -334,7 +334,7 @@ impl VideoPlayer {
         &mut self,
         video_description: &re_video::VideoDataDescription,
         gop_idx: usize,
-        video_data: &StableIndexDeque<&[u8]>,
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         let Some(gop) = video_description.gops.get(gop_idx) else {
             return Ok(());
@@ -354,7 +354,7 @@ impl VideoPlayer {
         for (sample_offset, sample) in samples.enumerate() {
             let sample_idx = gop.sample_range.start + sample_offset;
             let chunk = sample
-                .get(video_data, sample_idx)
+                .get(video_buffers, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
             self.chunk_decoder.decode(chunk)?;
         }

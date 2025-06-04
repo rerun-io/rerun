@@ -186,9 +186,9 @@ impl VideoFrameReferenceVisualizer {
                 );
             }
 
-            Some((video, video_data)) => match video.as_ref() {
+            Some((video, video_buffer)) => match video.as_ref() {
                 Ok(video) => {
-                    if let Some(coded_dimensions) = video.data().coded_dimensions {
+                    if let Some(coded_dimensions) = video.data_descr().coded_dimensions {
                         video_resolution =
                             glam::vec2(coded_dimensions[0] as _, coded_dimensions[1] as _);
                     }
@@ -197,7 +197,7 @@ impl VideoFrameReferenceVisualizer {
                         ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
-                        &std::iter::once(video_data.as_ref()).collect(),
+                        &std::iter::once(video_buffer.as_ref()).collect(),
                     ) {
                         Ok(VideoFrameTexture {
                             texture,

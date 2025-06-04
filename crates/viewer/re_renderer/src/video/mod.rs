@@ -99,22 +99,22 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         debug_name: String,
-        data: VideoDataDescription,
+        video_description: VideoDataDescription,
         decode_settings: DecodeSettings,
     ) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
-            video_description: data,
+            video_description,
             players,
             decode_settings,
         }
     }
 
-    /// The video data.
+    /// The video description.
     #[inline]
-    pub fn data(&self) -> &re_video::VideoDataDescription {
+    pub fn data_descr(&self) -> &re_video::VideoDataDescription {
         &self.video_description
     }
 
@@ -123,7 +123,7 @@ impl Video {
     /// Use with care. It's valid to add samples and groups of pictures, but arbitrary
     /// changes may interfere with subsequent decoding on existing video streams.
     #[inline]
-    pub fn data_mut(&mut self) -> &mut re_video::VideoDataDescription {
+    pub fn data_descr_mut(&mut self) -> &mut re_video::VideoDataDescription {
         &mut self.video_description
     }
 
@@ -147,7 +147,7 @@ impl Video {
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         time_since_video_start_in_secs: f64,
-        video_data: &StableIndexDeque<&[u8]>,
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -179,7 +179,7 @@ impl Video {
             render_context,
             time_since_video_start_in_secs,
             &self.video_description,
-            video_data,
+            video_buffers,
         )
     }
 

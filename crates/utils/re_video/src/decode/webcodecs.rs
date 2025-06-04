@@ -106,18 +106,18 @@ impl Drop for WebVideoDecoder {
 
 impl WebVideoDecoder {
     pub fn new(
-        video: &VideoDataDescription,
+        video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         let on_output = Arc::new(on_output);
-        let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
+        let decoder = init_video_decoder(on_output.clone(), video_descr.timescale)?;
 
         Ok(Self {
-            codec: video.codec,
-            stsd: video.stsd.clone(),
-            coded_dimensions: video.coded_dimensions,
-            timescale: video.timescale,
+            codec: video_descr.codec,
+            stsd: video_descr.stsd.clone(),
+            coded_dimensions: video_descr.coded_dimensions,
+            timescale: video_descr.timescale,
             decoder,
             hw_acceleration,
             on_output,

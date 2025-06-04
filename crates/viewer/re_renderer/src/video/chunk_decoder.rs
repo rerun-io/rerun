@@ -151,7 +151,7 @@ impl VideoSampleDecoder {
         let is_up_to_date = video_texture
             .frame_info
             .as_ref()
-            // We assume that every frame has a unique presentation timestamp.
+            // We assume that every frame is uniquely identified by its presentation timestamp.
             .is_some_and(|info| info.presentation_timestamp == frame_presentation_timestamp);
 
         if !is_up_to_date {
