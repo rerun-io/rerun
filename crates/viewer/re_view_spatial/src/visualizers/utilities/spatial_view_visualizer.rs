@@ -69,7 +69,7 @@ impl SpatialViewVisualizerData {
         if class_identifier == SpatialView2D::identifier() {
             self.bounding_boxes.push((
                 pickable_rect.ent_path.hash(),
-                bounding_box_for_textured_rect(&pickable_rect.textured_rect),
+                pickable_rect.textured_rect.bounding_box(),
             ));
         }
     }
@@ -91,22 +91,4 @@ impl SpatialViewVisualizerData {
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-}
-
-fn bounding_box_for_textured_rect(
-    textured_rect: &re_renderer::renderer::TexturedRect,
-) -> macaw::BoundingBox {
-    let left_top = textured_rect.top_left_corner_position;
-    let extent_u = textured_rect.extent_u;
-    let extent_v = textured_rect.extent_v;
-
-    macaw::BoundingBox::from_points(
-        [
-            left_top,
-            left_top + extent_u,
-            left_top + extent_v,
-            left_top + extent_v + extent_u,
-        ]
-        .into_iter(),
-    )
 }
