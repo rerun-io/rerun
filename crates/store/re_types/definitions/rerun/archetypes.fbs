@@ -10,6 +10,7 @@ include "./archetypes/boxes2d.fbs";
 include "./archetypes/boxes3d.fbs";
 include "./archetypes/capsules3d.fbs";
 include "./archetypes/clear.fbs";
+include "./archetypes/cylinders3d.fbs";
 include "./archetypes/depth_image.fbs";
 include "./archetypes/ellipsoids3d.fbs";
 include "./archetypes/encoded_image.fbs";

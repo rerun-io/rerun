@@ -13,9 +13,6 @@ namespace rerun.archetypes;
 /// Orienting and placing capsules forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
 ///
 /// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
-//
-// TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
-// cones, and tapered capsules -- all common shapes based on expanding a line segment circularly.
 table Capsules3D (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
@@ -30,8 +27,6 @@ table Capsules3D (
   lengths: [rerun.components.Length] ("attr.rerun.component_required", order: 1000);
 
   /// Radii of the capsules.
-  //
-  // TODO(#1361): This should eventually become two radii, to generate truncated cones and tapered capsules.
   radii: [rerun.components.Radius] ("attr.rerun.component_required", order: 1100);
 
   // --- Recommended ---

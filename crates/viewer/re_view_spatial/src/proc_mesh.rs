@@ -66,6 +66,27 @@ pub enum ProcMeshKey {
         /// flat faces.
         subdivisions: usize,
     },
+    /// The cylinder always has radius 1. It should be scaled to obtain the desired radius.
+    /// It always extends along the positive direction of the Z axis.
+    Cylinder {
+        /// The length of the capsule; the distance between the centers of its endpoints.
+        /// This length must be non-negative.
+        //
+        // TODO(#1361): This is a bad approach to rendering capsules of arbitrary
+        // length, because it fills the cache with many distinct meshes.
+        // Instead, the renderers should be extended to support “bones” such that a mesh
+        // can have parts which are independently offset, thus allowing us to stretch a
+        // single sphere/capsule mesh into an arbitrary length and radius capsule.
+        // (Tapered capsules will still need distinct meshes.)
+        length: NotNan<f32>,
+
+        /// Number of triangle subdivisions to use to create a finer, rounder mesh.
+        ///
+        /// The cylinder part of the capsule is approximated as a mesh with (N + 1) × 4
+        /// flat faces.
+        subdivisions: usize,
+        axes_only: bool,
+    },
 }
 
 impl ProcMeshKey {
@@ -87,6 +108,14 @@ impl ProcMeshKey {
             } => macaw::BoundingBox::from_min_max(
                 Vec3::new(-1.0, -1.0, -1.0),
                 Vec3::new(1.0, 1.0, 1.0 + length.into_inner()),
+            ),
+            Self::Cylinder {
+                subdivisions: _,
+                length,
+                axes_only: _,
+            } => macaw::BoundingBox::from_center_size(
+                Vec3::ZERO,
+                Vec3::new(2.0, 2.0, length.into_inner()),
             ),
         }
     }
@@ -288,6 +317,73 @@ fn generate_wireframe(
             // that agrees with the solid algorithm.
             return Err(GenError::UnimplementedWireframe);
         }
+        ProcMeshKey::Cylinder {
+            length,
+            subdivisions,
+            axes_only,
+        } => {
+            let n = ((subdivisions + 1) * 4).max(3);
+            let delta = std::f32::consts::TAU / (n as f32);
+            let half_height = length.into_inner() / 2.0;
+            let mut line_strips: Vec<Vec<Vec3>> = Vec::new();
+
+            // bottom cap
+            let mut bottom_loop = Vec::with_capacity(n + 1);
+            for i in 0..n {
+                let theta = i as f32 * delta;
+                let x = theta.cos(); // radius = 1
+                let y = theta.sin();
+                bottom_loop.push(Vec3::new(x, y, -half_height));
+            }
+
+            bottom_loop.push(bottom_loop[0]);
+            line_strips.push(bottom_loop);
+
+            // top cap
+            let mut top_loop = Vec::with_capacity(n + 1);
+            for i in 0..n {
+                let theta = i as f32 * delta;
+                let x = theta.cos();
+                let y = theta.sin();
+                top_loop.push(Vec3::new(x, y, half_height));
+            }
+
+            // close the loop
+            top_loop.push(top_loop[0]);
+            line_strips.push(top_loop);
+
+            let num_spokes = if axes_only { 6 } else { n };
+            let delta = std::f32::consts::TAU / (num_spokes as f32);
+
+            let bottom_center = Vec3::new(0.0, 0.0, -half_height);
+            let top_center = Vec3::new(0.0, 0.0, half_height);
+
+            for i in 0..num_spokes {
+                let theta = (i as f32) * delta;
+                let x = theta.cos();
+                let y = theta.sin();
+
+                line_strips.push(vec![
+                    Vec3::new(x, y, -half_height),
+                    Vec3::new(x, y, half_height),
+                ]);
+
+                // for `FillMode::DenseWireframe` we also draw a line from rim -> center
+                if !axes_only {
+                    // from bottom rim to bottom center
+                    line_strips.push(vec![Vec3::new(x, y, -half_height), bottom_center]);
+
+                    // from top rim to top center
+                    line_strips.push(vec![Vec3::new(x, y, half_height), top_center]);
+                }
+            }
+
+            WireframeMesh {
+                bbox: key.simple_bounding_box(),
+                vertex_count: line_strips.iter().map(|strip| strip.len()).sum(),
+                line_strips,
+            }
+        }
     };
 
     Ok(mesh)
@@ -412,6 +508,18 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             );
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
         }
+        ProcMeshKey::Cylinder {
+            length,
+            subdivisions,
+            axes_only: _, // not used for solid mesh
+        } => {
+            let mg_subdivisions = (subdivisions + 1) * 4;
+
+            let mut mg = macaw::MeshGen::new();
+
+            push_cylinder_solid(&mut mg, 1.0, length.into_inner(), mg_subdivisions);
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+        }
     };
 
     mesh.sanity_check()?;
@@ -420,6 +528,77 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         bbox: key.simple_bounding_box(),
         gpu_mesh: Arc::new(GpuMesh::new(render_ctx, &mesh)?),
     })
+}
+
+/// Creates a cylinder aligned along the Y axis, centered vertically.
+fn push_cylinder_solid(mesh_gen: &mut MeshGen, radius: f32, height: f32, subdivisions: usize) {
+    let index_offset = mesh_gen.positions.len() as u32;
+    let n = subdivisions.max(3) as u32;
+    let half_height = height * 0.5;
+    let delta = 2.0 * std::f32::consts::PI / n as f32;
+
+    // top and bottom center positions
+    mesh_gen.positions.push(Vec3::new(0.0, 0.0, half_height));
+    mesh_gen.normals.push(Vec3::new(0.0, 0.0, 1.0));
+    mesh_gen.positions.push(Vec3::new(0.0, 0.0, -half_height));
+    mesh_gen.normals.push(Vec3::new(0.0, 0.0, -1.0));
+
+    // for each slice, push rim‐and‐side vertices (4 per slice)
+    for i in 0..n {
+        let theta = i as f32 * delta;
+        let (cos_theta, sin_theta) = (theta.cos(), theta.sin());
+        let x = radius * cos_theta;
+        let y = radius * sin_theta;
+
+        // top rim point
+        mesh_gen.positions.push(Vec3::new(x, y, half_height));
+        mesh_gen.normals.push(Vec3::new(0.0, 0.0, 1.0));
+
+        // bottom rim point
+        mesh_gen.positions.push(Vec3::new(x, y, -half_height));
+        mesh_gen.normals.push(Vec3::new(0.0, 0.0, -1.0));
+
+        // side‐top point
+        mesh_gen.positions.push(Vec3::new(x, y, half_height));
+        mesh_gen.normals.push(Vec3::new(cos_theta, sin_theta, 0.0));
+
+        // side‐bottom point
+        mesh_gen.positions.push(Vec3::new(x, y, -half_height));
+        mesh_gen.normals.push(Vec3::new(cos_theta, sin_theta, 0.0));
+    }
+
+    // build top and bottom caps
+    for i in 0..n {
+        let top_center = index_offset;
+        let bot_center = index_offset + 1;
+        let top_rim = index_offset + 2 + i * 4;
+        let next_top = index_offset + 2 + ((i + 1) % n) * 4;
+
+        mesh_gen
+            .indices
+            .extend_from_slice(&[top_center, top_rim, next_top]);
+
+        let bot_rim = index_offset + 3 + i * 4;
+        let next_bot = index_offset + 3 + ((i + 1) % n) * 4;
+        mesh_gen
+            .indices
+            .extend_from_slice(&[bot_center, next_bot, bot_rim]);
+    }
+
+    // build side quads (split into two triangles each)
+    let side_base = index_offset + 4;
+    for i in 0..n {
+        let top = side_base + i * 4;
+        let bot = side_base + i * 4 + 1;
+        let next_top = side_base + ((i + 1) % n) * 4;
+        let next_bot = side_base + ((i + 1) % n) * 4 + 1;
+
+        mesh_gen.indices.extend_from_slice(&[top, bot, next_top]);
+
+        mesh_gen
+            .indices
+            .extend_from_slice(&[next_top, bot, next_bot]);
+    }
 }
 
 fn mesh_from_mesh_gen(

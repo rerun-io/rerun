@@ -6,15 +6,15 @@ from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 
-class Capsules3DExt:
-    """Extension for [Capsules3D][rerun.archetypes.Capsules3D]."""
+class Cylinders3DExt:
+    """Extension for [Cylinders3D][rerun.archetypes.Cylinders3D]."""
 
     def __init__(
         self: Any,
         *,
         lengths: datatypes.Float32ArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
-        translations: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
@@ -23,36 +23,40 @@ class Capsules3DExt:
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
-        Create a new instance of the Capsules3D archetype.
+        Create a new instance of the Cylinders3D archetype.
 
         Parameters
         ----------
         lengths:
-            All lengths of the capsules.
+            All lengths of the cylinders.
         radii:
-            All radii of the capsules.
-        translations:
-            Optional translations of the capsules.
+            All radii of the cylinders.
+        centers:
+            Optional centers of the cylinders.
 
-            If not specified, each capsule will be centered at (0, 0, 0).
+            If not specified, each cylinder will be centered at (0, 0, 0).
         rotation_axis_angles:
             Rotations via axis + angle.
 
-            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
             Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
-            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
             Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
-            Optional colors for the capsules.
+            Optional colors for the cylinders.
+        line_radii:
+            Optional radii for the lines that make up the cylinders.
+        fill_mode:
+            Optionally choose whether the cylinders are drawn with lines or solid.
         labels:
-            Optional text labels for the capsules.
+            Optional text labels for the cylinders.
         show_labels:
             Optional choice of whether the text labels should be shown by default.
         class_ids:
-            Optional `ClassId`s for the capsules.
+            Optional `ClassId`s for the cylinders.
 
             The class ID provides colors and labels if not specified explicitly.
 
@@ -62,7 +66,7 @@ class Capsules3DExt:
             self.__attrs_init__(
                 lengths=lengths,
                 radii=radii,
-                translations=translations,
+                centers=centers,
                 rotation_axis_angles=rotation_axis_angles,
                 quaternions=quaternions,
                 colors=colors,

@@ -26,3 +26,4 @@ float32
 ## Used by
 
 * [`Capsules3D`](../archetypes/capsules3d.md)
+* [`Cylinders3D`](../archetypes/cylinders3d.md)

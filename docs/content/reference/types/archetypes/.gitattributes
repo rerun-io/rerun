@@ -11,6 +11,7 @@ boxes2d.md linguist-generated=true
 boxes3d.md linguist-generated=true
 capsules3d.md linguist-generated=true
 clear.md linguist-generated=true
+cylinders3d.md linguist-generated=true
 depth_image.md linguist-generated=true
 ellipsoids3d.md linguist-generated=true
 encoded_image.md linguist-generated=true
