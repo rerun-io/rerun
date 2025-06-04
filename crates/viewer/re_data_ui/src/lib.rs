@@ -60,7 +60,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
                     .iter()
                     .position(|field| field.component_name == c.component_name)
                     .unwrap_or(usize::MAX)
-            })
+            });
         } else {
             // As a fallback, sort by the short name, as that is what is shown in the UI.
             components.sort_by_key(|c| c.display_name());
