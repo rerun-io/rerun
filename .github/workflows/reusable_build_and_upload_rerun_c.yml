@@ -89,13 +89,13 @@ jobs:
             linux-arm64)
               runner="buildjet-16vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.15.1-manylinux'"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.15.1-manylinux'"
               lib_name="librerun_c.a"
               ;;
             windows-x64)
