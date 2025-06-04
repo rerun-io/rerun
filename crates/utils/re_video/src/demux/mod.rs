@@ -41,11 +41,30 @@ impl std::fmt::Display for ChromaSubsamplingModes {
 /// The basic codec family used to encode the video.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VideoCodec {
-    Av1,
+    /// Advanced Video Coding (AVC/H.264)
+    ///
+    /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
     H264,
+
+    /// High Efficiency Video Coding (HEVC/H.265)
+    ///
+    /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
     H265,
-    Vp8,
-    Vp9,
+
+    /// AOMedia Video 1 (AV1)
+    ///
+    /// See <https://en.wikipedia.org/wiki/AV1>
+    AV1,
+
+    /// VP8
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP8>
+    VP8,
+
+    /// VP9
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP9>
+    VP9,
 }
 
 impl VideoCodec {
@@ -55,7 +74,7 @@ impl VideoCodec {
     pub fn base_webcodec_string(&self) -> &'static str {
         match self {
             // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
-            Self::Av1 => "av01",
+            Self::AV1 => "av01",
 
             // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
             // avc3 is valid as well.
@@ -67,10 +86,10 @@ impl VideoCodec {
 
             // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
             // Special! This *is* the fully qualified codec string.
-            Self::Vp8 => "vp8",
+            Self::VP8 => "vp8",
 
             // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
-            Self::Vp9 => "vp09",
+            Self::VP9 => "vp09",
         }
     }
 }
@@ -240,12 +259,12 @@ impl VideoDataDescription {
             }
         } else {
             match &self.codec {
-                VideoCodec::Av1 => "AV1",
+                VideoCodec::AV1 => "AV1",
                 // TODO(andreas): if we found an SPS in the stream, we could show more information.
                 VideoCodec::H264 => "H.265 HVC1",
                 VideoCodec::H265 => "H.265 HEV1",
-                VideoCodec::Vp8 => "VP8",
-                VideoCodec::Vp9 => "VP9",
+                VideoCodec::VP8 => "VP8",
+                VideoCodec::VP9 => "VP9",
             }
             .to_owned()
         }

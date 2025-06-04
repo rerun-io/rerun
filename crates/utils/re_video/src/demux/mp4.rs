@@ -121,13 +121,13 @@ impl VideoDataDescription {
         let samples_statistics = SamplesStatistics::new(&samples);
 
         let codec = match &stsd.contents {
-            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::Av1,
+            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
             re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
             re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
                 crate::VideoCodec::H265
             }
-            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::Vp8,
-            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::Vp9,
+            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
             _ => {
                 return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
                     &mp4, track,

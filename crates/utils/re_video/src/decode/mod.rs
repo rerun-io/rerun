@@ -194,7 +194,7 @@ pub fn new_decoder(
     #[cfg(not(target_arch = "wasm32"))]
     match video.codec {
         #[cfg(feature = "av1")]
-        crate::VideoCodec::Av1 => {
+        crate::VideoCodec::AV1 => {
             #[cfg(linux_arm64)]
             {
                 return Err(Error::NoDav1dOnLinuxArm64);
