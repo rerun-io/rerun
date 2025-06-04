@@ -192,9 +192,12 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_descr in sorted_component_list_by_archetype_for_ui(query_info.queried.iter())
-        .values()
-        .flatten()
+    for component_descr in sorted_component_list_by_archetype_for_ui(
+        ctx.viewer_ctx.reflection(),
+        query_info.queried.iter(),
+    )
+    .values()
+    .flatten()
     {
         if component_descr.component_name.is_indicator_component() {
             continue;

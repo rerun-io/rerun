@@ -61,8 +61,10 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components_by_archetype =
-            crate::sorted_component_list_by_archetype_for_ui(&unordered_components);
+        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
+            ctx.reflection(),
+            &unordered_components,
+        );
 
         let mut query_results =
             db.storage_engine()

@@ -28,12 +28,14 @@ pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 use re_types_core::ArchetypeName;
+use re_types_core::reflection::Reflection;
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 
 /// Components grouped by archetype.
 pub fn sorted_component_list_by_archetype_for_ui<'a>(
+    reflection: &Reflection,
     iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
 ) -> ArchetypeComponentMap {
     let mut map = iter
@@ -46,9 +48,23 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
             acc
         });
 
-    for components in map.values_mut() {
-        // Sort by the short name, as that is what is shown in the UI.
-        components.sort_by_key(|c| c.display_name());
+    for (archetype, components) in &mut map {
+        if let Some(reflection) = archetype
+            .as_ref()
+            .and_then(|a| reflection.archetypes.get(a))
+        {
+            // Sort components by their importance
+            components.sort_by_key(|c| {
+                reflection
+                    .fields
+                    .iter()
+                    .position(|field| field.component_name == c.component_name)
+                    .unwrap_or(usize::MAX)
+            })
+        } else {
+            // As a fallback, sort by the short name, as that is what is shown in the UI.
+            components.sort_by_key(|c| c.display_name());
+        }
     }
 
     map
