@@ -9,15 +9,15 @@ impl CustomPoints3D {
     fn overridden_position_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("user.CustomPoints3D".into()),
-            archetype_field_name: Some("custom_positions".into()),
-            component_name: "user.CustomPosition3D".into(),
+            archetype_field_name: "custom_positions".into(),
+            component_name: Some("user.CustomPosition3D".into()),
         }
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new(<rerun::components::Color as rerun::Component>::name())
+        ComponentDescriptor::partial("colors")
             .or_with_archetype_name(|| "user.CustomPoints3D".into())
-            .or_with_archetype_field_name(|| "colors".into())
+            .or_with_component_name(<rerun::components::Color as rerun::Component>::name)
     }
 }
 
@@ -92,13 +92,13 @@ fn check_tags(rec: &rerun::RecordingStream) {
         let expected = vec![
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
-                archetype_field_name: Some("colors".into()),
-                component_name: "rerun.components.Color".into(),
+                archetype_field_name: "colors".into(),
+                component_name: Some("rerun.components.Color".into()),
             },
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
-                archetype_field_name: Some("custom_positions".into()),
-                component_name: "user.CustomPosition3D".into(),
+                archetype_field_name: "custom_positions".into(),
+                component_name: Some("user.CustomPosition3D".into()),
             },
         ];
 

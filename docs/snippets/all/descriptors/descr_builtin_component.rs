@@ -10,8 +10,10 @@ fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error
             rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized(
                 ComponentDescriptor {
                     archetype_name: Some("user.CustomPoints3D".into()),
-                    archetype_field_name: Some("points".into()),
-                    component_name: <rerun::components::Position3D as rerun::Component>::name(),
+                    archetype_field_name: "points".into(),
+                    component_name: Some(
+                        <rerun::components::Position3D as rerun::Component>::name(),
+                    ),
                 },
             )?,
         ],
@@ -62,8 +64,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
         let expected = vec![
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
-                archetype_field_name: Some("points".into()),
-                component_name: <rerun::components::Position3D as rerun::Component>::name(),
+                archetype_field_name: "points".into(),
+                component_name: Some(<rerun::components::Position3D as rerun::Component>::name()),
             }, //
         ];
 

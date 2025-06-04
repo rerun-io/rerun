@@ -26,8 +26,8 @@ impl rerun::AsComponents for CustomPoints3D {
                 std::iter::once(self.confidences.as_ref().and_then(|batch| {
                     batch.serialized(ComponentDescriptor {
                         archetype_name: Some("user.CustomPoints3D".into()),
-                        archetype_field_name: Some("confidences".into()),
-                        component_name: <Confidence as rerun::Component>::name(),
+                        archetype_field_name: "confidences".into(),
+                        component_name: Some(<Confidence as rerun::Component>::name()),
                     })
                 }))
                 .flatten(),
