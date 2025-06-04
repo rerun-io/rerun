@@ -102,7 +102,6 @@ impl DepthImageVisualizer {
                 Some(&colormap_with_range),
                 re_renderer::Rgba::WHITE,
                 DepthImage::name(),
-                &mut self.data,
             ) else {
                 // If we can't create a textured rect from this, we don't have to bother with clouds either.
                 return;
@@ -146,14 +145,17 @@ impl DepthImageVisualizer {
                 };
             }
 
-            self.data.pickable_rects.push(PickableTexturedRect {
-                ent_path: entity_path.clone(),
-                textured_rect,
-                source_data: PickableRectSourceData::Image {
-                    image,
-                    depth_meter: Some(depth_meter),
+            self.data.add_pickable_rect(
+                PickableTexturedRect {
+                    ent_path: entity_path.clone(),
+                    textured_rect,
+                    source_data: PickableRectSourceData::Image {
+                        image,
+                        depth_meter: Some(depth_meter),
+                    },
                 },
-            });
+                ent_context.view_class_identifier,
+            );
         }
     }
 

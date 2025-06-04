@@ -152,7 +152,7 @@ pub fn blob_preview_and_save_ui(
             let video_result =
                 ctx.store_context
                     .caches
-                    .entry(|c: &mut re_viewer_context::VideoCache| {
+                    .entry(|c: &mut re_viewer_context::VideoAssetCache| {
                         let debug_name = entity_path.to_string();
                         c.entry(
                             debug_name,

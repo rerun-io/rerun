@@ -8,8 +8,8 @@ impl DrawOrder {
     /// Draw order used for depth image when they're not shown as a 3D point cloud and no draw order was specified.
     pub const DEFAULT_DEPTH_IMAGE: Self = Self(Float32(-20.0));
 
-    /// Draw order used for images if no draw order was specified.
-    pub const DEFAULT_VIDEO_FRAME_REFERENCE: Self = Self(Float32(-15.0));
+    /// Draw order used for videos (both streams and assets) if no draw order was specified.
+    pub const DEFAULT_VIDEO: Self = Self(Float32(-15.0));
 
     /// Draw order used for images if no draw order was specified.
     pub const DEFAULT_IMAGE: Self = Self(Float32(-10.0));
