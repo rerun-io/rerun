@@ -314,9 +314,9 @@ impl<T> StableIndexDeque<T> {
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// assert_eq!(v.iter_index_range(&(0..5)).cloned().collect::<Vec<_>>(), vec![1, 2, 3, 4]);
-    /// assert_eq!(v.iter_index_range(&(2..4)).cloned().collect::<Vec<_>>(), vec![2, 3]);
-    /// assert_eq!(v.iter_index_range(&(3..5)).cloned().collect::<Vec<_>>(), vec![3, 4]);
+    /// assert_eq!(v.iter_index_range_clamped(&(0..5)).cloned().collect::<Vec<_>>(), vec![1, 2, 3, 4]);
+    /// assert_eq!(v.iter_index_range_clamped(&(2..4)).cloned().collect::<Vec<_>>(), vec![2, 3]);
+    /// assert_eq!(v.iter_index_range_clamped(&(3..5)).cloned().collect::<Vec<_>>(), vec![3, 4]);
     /// ```
     #[inline]
     pub fn iter_index_range_clamped(
