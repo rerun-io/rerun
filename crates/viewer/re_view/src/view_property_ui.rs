@@ -36,42 +36,29 @@ fn view_property_ui_impl(
     };
 
     let query_ctx = property.query_context(ctx);
-    // If the property archetype only has a single component, don't show an additional hierarchy level!
-    if reflection.fields.len() == 1 {
-        let field = &reflection.fields[0];
 
-        view_property_component_ui(
-            &query_ctx,
-            ui,
-            property,
-            reflection.display_name,
-            field,
-            fallback_provider,
-        );
-    } else {
-        let sub_prop_ui = |ui: &mut egui::Ui| {
-            for field in &reflection.fields {
-                view_property_component_ui(
-                    &query_ctx,
-                    ui,
-                    property,
-                    field.display_name,
-                    field,
-                    fallback_provider,
-                );
-            }
-        };
-
-        ui.list_item()
-            .interactive(false)
-            .show_hierarchical_with_children(
+    let sub_prop_ui = |ui: &mut egui::Ui| {
+        for field in &reflection.fields {
+            view_property_component_ui(
+                &query_ctx,
                 ui,
-                ui.make_persistent_id(property.archetype_name.full_name()),
-                true,
-                list_item::LabelContent::new(reflection.display_name),
-                sub_prop_ui,
+                property,
+                field.display_name,
+                field,
+                fallback_provider,
             );
-    }
+        }
+    };
+
+    ui.list_item()
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            ui.make_persistent_id(property.archetype_name.full_name()),
+            true,
+            list_item::LabelContent::new(reflection.display_name),
+            sub_prop_ui,
+        );
 }
 
 /// Draw view property ui for a single component of a view property archetype.
