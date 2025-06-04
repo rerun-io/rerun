@@ -1,0 +1,15 @@
+namespace rerun.blueprint.archetypes;
+
+
+// ---
+
+/// Configuration for the time (Y) axis of a plot.
+table TimeAxis (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// If true, link the X/time axis to all other plots where this is enabled.
+    link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2200);
+}

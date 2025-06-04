@@ -217,6 +217,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LinkAxis as Component>::name(),
+            ComponentReflection {
+                docstring_md: "If true, link the X/time axis to all other plots where this is enabled.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(LinkAxis::default().to_arrow()?),
+                datatype: LinkAxis::arrow_datatype(),
+                verify_arrow_array: LinkAxis::verify_arrow_array,
+            },
+        ),
+        (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -2671,6 +2681,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "scaling".into(), display_name :
                     "Scaling", component_name : "rerun.blueprint.components.ViewFit"
                     .into(), docstring_md : "How the image is scaled to fit the view.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimeAxis"),
+            ArchetypeReflection {
+                display_name: "Time axis",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "link".into(), display_name :
+                    "Link", component_name : "rerun.blueprint.components.LinkAxis"
+                    .into(), docstring_md :
+                    "If true, link the X/time axis to all other plots where this is enabled.",
                     is_required : false, },
                 ],
             },

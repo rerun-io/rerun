@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+    /// If true, link the X/time axis to all other plots where this is enabled.
+struct LinkAxis (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  link_axis: rerun.datatypes.Bool (order: 100);
+}

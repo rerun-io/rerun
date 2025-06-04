@@ -21,6 +21,7 @@ scalar_axis.rs linguist-generated=true
 tensor_scalar_mapping.rs linguist-generated=true
 tensor_slice_selection.rs linguist-generated=true
 tensor_view_fit.rs linguist-generated=true
+time_axis.rs linguist-generated=true
 view_blueprint.rs linguist-generated=true
 view_contents.rs linguist-generated=true
 viewport_blueprint.rs linguist-generated=true
