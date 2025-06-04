@@ -204,14 +204,14 @@ fn visualizer_components(
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(&component_descr);
-        let raw_override = non_empty_component_batch_raw(result_override, &component_descr);
+        let result_override = query_result.overrides.get(component_descr);
+        let raw_override = non_empty_component_batch_raw(result_override, component_descr);
 
-        let result_store = query_result.results.get(&component_descr);
-        let raw_store = non_empty_component_batch_raw(result_store, &component_descr);
+        let result_store = query_result.results.get(component_descr);
+        let raw_store = non_empty_component_batch_raw(result_store, component_descr);
 
-        let result_default = query_result.defaults.get(&component_descr);
-        let raw_default = non_empty_component_batch_raw(result_default, &component_descr);
+        let result_default = query_result.defaults.get(component_descr);
+        let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
         let raw_fallback = visualizer
             .fallback_provider()
@@ -283,7 +283,7 @@ fn visualizer_components(
                             &store_query,
                             ctx.recording(),
                             &data_result.entity_path,
-                            &component_descr,
+                            component_descr,
                             current_value_row_id,
                             raw_current_value.as_ref(),
                         );
@@ -312,7 +312,7 @@ fn visualizer_components(
                         ui,
                         "Override",
                         override_path.clone(),
-                        &component_descr,
+                        component_descr,
                         *row_id,
                         raw_override.as_ref(),
                     )
@@ -353,7 +353,7 @@ fn visualizer_components(
                         ui,
                         "Default",
                         ViewBlueprint::defaults_path(ctx.view_id),
-                        &component_descr,
+                        component_descr,
                         *row_id,
                         raw_default.as_ref(),
                     )
@@ -376,7 +376,7 @@ fn visualizer_components(
                                 &store_query,
                                 ctx.recording(),
                                 &data_result.entity_path,
-                                &component_descr,
+                                component_descr,
                                 None,
                                 raw_fallback.as_ref(),
                             );
@@ -396,7 +396,7 @@ fn visualizer_components(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(&component_descr),
+                ui.make_persistent_id(component_descr),
                 default_open,
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
