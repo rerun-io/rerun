@@ -384,7 +384,7 @@ impl VideoDataDescription {
         samples: &StableIndexDeque<Sample>,
         decode_time: Time,
     ) -> Option<usize> {
-        latest_at_idx(samples, |sample| sample.decode_timestamp, &decode_time)
+        samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
@@ -459,7 +459,8 @@ impl VideoDataDescription {
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
-        latest_at_idx(&self.gops, |gop| gop.decode_start_time, &decode_time)
+        self.gops
+            .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
     }
 
     /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -566,8 +567,8 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
-        let buffer = *data.get(self.buffer_index)?;
+    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
+        let buffer = *buffers.get(self.buffer_index)?;
         let data = buffer
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
             .to_vec();
@@ -635,68 +636,9 @@ impl std::fmt::Debug for VideoDataDescription {
     }
 }
 
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-fn latest_at_idx<T, K: Ord>(
-    v: &StableIndexDeque<T>,
-    key: impl Fn(&T) -> K,
-    needle: &K,
-) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == v.min_index() {
-        // If idx is the smallest possible value, then all elements are greater than the needle
-        if &key(&v[idx]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let mut v = (1..11).collect::<StableIndexDeque<i32>>();
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-
-        // Index offset should be respected.
-        v.pop_front();
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {

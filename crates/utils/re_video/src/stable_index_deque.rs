@@ -245,6 +245,29 @@ impl<T> StableIndexDeque<T> {
         self.vec.len()
     }
 
+    /// Returns the index of the latest element in the deque that is less than or equal to the given key.
+    ///
+    /// Returns the index of:
+    /// - The index of `needle` in `v`, if it exists
+    /// - The index of the first element in `v` that is lesser than `needle`, if it exists
+    /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+    pub fn latest_at_idx<K: Ord>(&self, key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let idx = self.partition_point(|x| key(x) <= *needle);
+
+        if idx == self.min_index() {
+            // If idx is the smallest possible value, then all elements are greater than the needle
+            if &key(&self[idx]) > needle {
+                return None;
+            }
+        }
+
+        Some(idx.saturating_sub(1))
+    }
+
     /// Iterates over an index range which is truncated to a valid range in the list.
     ///
     /// ```
@@ -293,7 +316,7 @@ mod tests {
     use super::StableIndexDeque;
 
     #[test]
-    fn test_vec_with_offset() {
+    fn test_stable_index_deque() {
         let mut vec = StableIndexDeque::new();
         vec.push_back(1);
         vec.push_back(2);
@@ -318,5 +341,39 @@ mod tests {
         assert_eq!(vec.next_index(), 2);
         assert_eq!(vec.num_elements(), 0);
         assert_eq!(vec.min_index(), 2);
+    }
+
+    #[test]
+    fn test_latest_at_idx() {
+        let mut v = (1..11).collect::<StableIndexDeque<i32>>();
+        assert_eq!(v.latest_at_idx(|v| *v, &0), None);
+        assert_eq!(v.latest_at_idx(|v| *v, &1), Some(0));
+        assert_eq!(v.latest_at_idx(|v| *v, &2), Some(1));
+        assert_eq!(v.latest_at_idx(|v| *v, &3), Some(2));
+        assert_eq!(v.latest_at_idx(|v| *v, &4), Some(3));
+        assert_eq!(v.latest_at_idx(|v| *v, &5), Some(4));
+        assert_eq!(v.latest_at_idx(|v| *v, &6), Some(5));
+        assert_eq!(v.latest_at_idx(|v| *v, &7), Some(6));
+        assert_eq!(v.latest_at_idx(|v| *v, &8), Some(7));
+        assert_eq!(v.latest_at_idx(|v| *v, &9), Some(8));
+        assert_eq!(v.latest_at_idx(|v| *v, &10), Some(9));
+        assert_eq!(v.latest_at_idx(|v| *v, &11), Some(9));
+        assert_eq!(v.latest_at_idx(|v| *v, &1000), Some(9));
+
+        // Index offset should be respected.
+        v.pop_front();
+        assert_eq!(v.latest_at_idx(|v| *v, &0), None);
+        assert_eq!(v.latest_at_idx(|v| *v, &1), None);
+        assert_eq!(v.latest_at_idx(|v| *v, &2), Some(1));
+        assert_eq!(v.latest_at_idx(|v| *v, &3), Some(2));
+        assert_eq!(v.latest_at_idx(|v| *v, &4), Some(3));
+        assert_eq!(v.latest_at_idx(|v| *v, &5), Some(4));
+        assert_eq!(v.latest_at_idx(|v| *v, &6), Some(5));
+        assert_eq!(v.latest_at_idx(|v| *v, &7), Some(6));
+        assert_eq!(v.latest_at_idx(|v| *v, &8), Some(7));
+        assert_eq!(v.latest_at_idx(|v| *v, &9), Some(8));
+        assert_eq!(v.latest_at_idx(|v| *v, &10), Some(9));
+        assert_eq!(v.latest_at_idx(|v| *v, &11), Some(9));
+        assert_eq!(v.latest_at_idx(|v| *v, &1000), Some(9));
     }
 }
