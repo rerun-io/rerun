@@ -185,7 +185,7 @@ let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
 let beads = lines
     .iter()
     .zip(&offsets)
-    .map(|(&[p1, p2], &offset)| rerun::Position3D::from(bounce_lerp(p1, p2, offset)))
+    .map(|(&[p1, p2], &offset)| bounce_lerp(p1, p2, offset))
     .collect_vec();
 let colors = offsets
     .iter()
@@ -244,7 +244,7 @@ for i in 0..400 {
     let beads = lines
         .iter()
         .zip(&times)
-        .map(|(&[p1, p2], &time)| rerun::Position3D::from(bounce_lerp(p1, p2, time)))
+        .map(|(&[p1, p2], &time)| bounce_lerp(p1, p2, time))
         .collect_vec();
     let colors = times
         .iter()
