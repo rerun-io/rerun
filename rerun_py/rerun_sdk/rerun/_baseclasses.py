@@ -164,7 +164,7 @@ class DescribedComponentBatch:
         The partitioned component batch as a column.
 
         """
-        return ComponentColumn(self, lengths=lengths)
+        return ComponentColumn(self._descriptor, self, lengths=lengths)
 
 
 @runtime_checkable
@@ -390,7 +390,13 @@ class ComponentColumn:
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
-    def __init__(self, component_batch: DescribedComponentBatch, *, lengths: npt.ArrayLike | None = None) -> None:
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        component_batch: ComponentBatchLike,
+        *,
+        lengths: npt.ArrayLike | None = None,
+    ) -> None:
         """
         Construct a new component column.
 
@@ -401,6 +407,8 @@ class ComponentColumn:
 
         Parameters
         ----------
+        descriptor:
+            The component descriptor for this component batch.
         component_batch:
             The component batch to partition into a column.
 
@@ -410,9 +418,15 @@ class ComponentColumn:
             If left unspecified, it will default to unit-length batches.
 
         """
+        if isinstance(descriptor, str):
+            descriptor = ComponentDescriptor(descriptor)
+        elif isinstance(descriptor, ComponentDescriptor):
+            descriptor = descriptor
+
+        self.descriptor = descriptor
         self.component_batch = component_batch
 
-        if "Indicator" in component_batch.component_descriptor().component_name:
+        if "Indicator" in descriptor.component_name:
             if lengths is None:
                 # Indicator component, no lengths -> zero-sized batches by default
                 self.lengths = np.zeros(len(component_batch.as_arrow_array()), dtype=np.int32)
@@ -436,7 +450,7 @@ class ComponentColumn:
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self.component_batch.component_descriptor()
+        return self.descriptor
 
     def as_arrow_array(self) -> pa.Array:
         """
@@ -467,7 +481,7 @@ class ComponentColumn:
         The (re)partitioned column.
 
         """
-        return ComponentColumn(self.component_batch, lengths=lengths)
+        return ComponentColumn(self.descriptor, self.component_batch, lengths=lengths)
 
 
 class ComponentColumnList(Iterable[ComponentColumn]):
@@ -544,7 +558,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         The partitioned component batch as a column.
 
         """
-        return ComponentColumn(self, lengths=lengths)
+        return ComponentColumn(self.component_name(), self, lengths=lengths)
 
 
 class ComponentMixin(ComponentBatchLike):
