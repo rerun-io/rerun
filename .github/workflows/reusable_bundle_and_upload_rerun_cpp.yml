@@ -51,7 +51,7 @@ jobs:
 
       - name: Install python gcs library
         run: |
-          python3 -m pip install google-cloud-storage
+          pip3 install google-cloud-storage
 
       - name: Get sha
         id: get-sha

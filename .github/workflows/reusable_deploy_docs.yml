@@ -164,7 +164,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
-        run: pip install ghp-import
+        run: pip3 install ghp-import
 
       - name: Patch in a redirect page
         run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
