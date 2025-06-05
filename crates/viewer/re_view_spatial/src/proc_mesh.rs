@@ -73,18 +73,16 @@ pub enum ProcMeshKey {
         /// The length of the capsule; the distance between the centers of its endpoints.
         /// This length must be non-negative.
         //
-        // TODO(#1361): This is a bad approach to rendering capsules of arbitrary
+        // TODO(#1361): This is a bad approach to rendering cylinders of arbitrary
         // length, because it fills the cache with many distinct meshes.
         // Instead, the renderers should be extended to support “bones” such that a mesh
         // can have parts which are independently offset, thus allowing us to stretch a
         // single sphere/capsule mesh into an arbitrary length and radius capsule.
-        // (Tapered capsules will still need distinct meshes.)
         length: NotNan<f32>,
 
         /// Number of triangle subdivisions to use to create a finer, rounder mesh.
         ///
-        /// The cylinder part of the capsule is approximated as a mesh with (N + 1) × 4
-        /// flat faces.
+        /// The cylinder is approximated as a mesh with (N + 1) × 4 flat faces.
         subdivisions: usize,
         axes_only: bool,
     },
@@ -568,7 +566,7 @@ fn push_cylinder_solid(mesh_gen: &mut MeshGen, radius: f32, height: f32, subdivi
         mesh_gen.normals.push(Vec3::new(cos_theta, sin_theta, 0.0));
     }
 
-    // build top and bottom caps
+    // build triangle for top and bottom caps
     for i in 0..n {
         let top_center = index_offset;
         let bot_center = index_offset + 1;
