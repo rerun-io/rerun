@@ -399,7 +399,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
             });
 
-            header_ui(ui, |ui| {
+            header_ui(ui, true, |ui| {
                 egui::Sides::new()
                     .show(
                         ui,
@@ -454,7 +454,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        cell_ui(ui, |ui| {
+        cell_ui(ui, false, |ui| {
             // find record batch
             let mut row_index = cell.row_nr as usize;
 

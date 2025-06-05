@@ -245,7 +245,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         ui.set_truncate_style();
 
         if cell.row_nr == 0 {
-            header_ui(ui, |ui| {
+            header_ui(ui, false, |ui| {
                 if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
                     //TODO(ab): factor this into a helper as soon as we use it elsewhere
                     let text = entity_path.to_string();
@@ -286,6 +286,13 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         } else if cell.row_nr == 1 {
             let column = &self.selected_columns[cell.col_range.start];
 
+            let next_column = self.selected_columns.get(cell.col_range.end);
+            let connected_to_next_cell = next_column.is_some_and(|next_column| {
+                next_column.entity_path() == column.entity_path()
+                    && next_column.archetype_name() == column.archetype_name()
+                    && column.archetype_name().is_some()
+            });
+
             // TODO(ab): actual static-only support
             let filtered_index = self
                 .query_handle
@@ -309,7 +316,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 }),
             };
 
-            header_ui(ui, |ui| {
+            header_ui(ui, connected_to_next_cell, |ui| {
                 let header_content = |ui: &mut egui::Ui| {
                     let text = egui::RichText::new(column.display_name())
                         .strong()
@@ -480,7 +487,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 };
 
                 // Draw the cell content with some margin.
-                cell_ui(ui, |ui| {
+                cell_ui(ui, false, |ui| {
                     line_ui(
                         ui,
                         expanded_rows,
