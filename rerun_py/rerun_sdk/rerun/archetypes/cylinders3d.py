@@ -130,7 +130,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         lengths:
-            Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+            The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
         radii:
             Radii of the cylinders.
         centers:
@@ -219,7 +219,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
         Parameters
         ----------
         lengths:
-            Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+            The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
         radii:
             Radii of the cylinders.
         centers:
@@ -319,7 +319,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
         default=None,
         converter=components.LengthBatch._converter,  # type: ignore[misc]
     )
-    # Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+    # The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

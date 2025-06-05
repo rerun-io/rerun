@@ -78,7 +78,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Cylinders3D {
-    /// Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+    /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
     pub lengths: Option<SerializedComponentBatch>,
 
     /// Radii of the cylinders.
@@ -634,7 +634,7 @@ impl Cylinders3D {
         self.columns(std::iter::repeat(1).take(len))
     }
 
-    /// Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+    /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
     #[inline]
     pub fn with_lengths(
         mut self,

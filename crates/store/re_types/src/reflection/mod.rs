@@ -1502,7 +1502,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "lengths".into(), display_name :
                     "Lengths", component_name : "rerun.components.Length".into(),
                     docstring_md :
-                    "Lengths of the cylinders, defined as the distance between the centers of the endcaps.",
+                    "The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.",
                     is_required : true, }, ArchetypeFieldReflection { name : "radii"
                     .into(), display_name : "Radii", component_name :
                     "rerun.components.Radius".into(), docstring_md :

@@ -76,7 +76,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Cylinders3D {
-        /// Lengths of the cylinders, defined as the distance between the centers of the endcaps.
+        /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
         std::optional<ComponentBatch> lengths;
 
         /// Radii of the cylinders.
@@ -184,172 +184,173 @@ namespace rerun::archetypes {
         /// For multiple cylinders, you should generally follow this with
         /// `Cylinders3D::with_centers()` and one of the rotation methods, in order to move them
         /// apart from each other.
-        //
-        // TODO(andreas): This should not take an std::vector.
         static Cylinders3D from_lengths_and_radii(
-            const std::vector<float>& lengths, const std::vector<float>& radii
+            const Collection<rerun::components::Length>& lengths,
+            const Collection<rerun::components::Radius>& radii
         ) {
-            return Cylinders3D().with_lengths(std::move(lengths)).with_radii(std::move(radii));
-        }
+            return Cylinders3D().with_lengths(lengths).with_radii(radii);
 
-        // END of extensions from cylinders3d_ext.cpp, start of generated code:
+            // END of extensions from cylinders3d_ext.cpp, start of generated code:
 
-      public:
-        Cylinders3D() = default;
-        Cylinders3D(Cylinders3D&& other) = default;
-        Cylinders3D(const Cylinders3D& other) = default;
-        Cylinders3D& operator=(const Cylinders3D& other) = default;
-        Cylinders3D& operator=(Cylinders3D&& other) = default;
+          public:
+            Cylinders3D() = default;
+            Cylinders3D(Cylinders3D && other) = default;
+            Cylinders3D(const Cylinders3D& other) = default;
+            Cylinders3D& operator=(const Cylinders3D& other) = default;
+            Cylinders3D& operator=(Cylinders3D&& other) = default;
 
-        /// Update only some specific fields of a `Cylinders3D`.
-        static Cylinders3D update_fields() {
-            return Cylinders3D();
-        }
+            /// Update only some specific fields of a `Cylinders3D`.
+            static Cylinders3D update_fields() {
+                return Cylinders3D();
+            }
 
-        /// Clear all the fields of a `Cylinders3D`.
-        static Cylinders3D clear_fields();
+            /// Clear all the fields of a `Cylinders3D`.
+            static Cylinders3D clear_fields();
 
-        /// Lengths of the cylinders, defined as the distance between the centers of the endcaps.
-        Cylinders3D with_lengths(const Collection<rerun::components::Length>& _lengths) && {
-            lengths = ComponentBatch::from_loggable(_lengths, Descriptor_lengths).value_or_throw();
-            return std::move(*this);
-        }
+            /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
+            Cylinders3D with_lengths(const Collection<rerun::components::Length>& _lengths)&& {
+                lengths =
+                    ComponentBatch::from_loggable(_lengths, Descriptor_lengths).value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Radii of the cylinders.
-        Cylinders3D with_radii(const Collection<rerun::components::Radius>& _radii) && {
-            radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
-            return std::move(*this);
-        }
+            /// Radii of the cylinders.
+            Cylinders3D with_radii(const Collection<rerun::components::Radius>& _radii)&& {
+                radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional centers of the cylinders.
-        ///
-        /// If not specified, each cylinder will be centered at (0, 0, 0).
-        Cylinders3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers
-        ) && {
-            centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional centers of the cylinders.
+            ///
+            /// If not specified, each cylinder will be centered at (0, 0, 0).
+            Cylinders3D with_centers(
+                const Collection<rerun::components::PoseTranslation3D>& _centers
+            )&& {
+                centers =
+                    ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Rotations via axis + angle.
-        ///
-        /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-        Cylinders3D with_rotation_axis_angles(
-            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
-        ) && {
-            rotation_axis_angles = ComponentBatch::from_loggable(
-                                       _rotation_axis_angles,
-                                       Descriptor_rotation_axis_angles
-            )
-                                       .value_or_throw();
-            return std::move(*this);
-        }
+            /// Rotations via axis + angle.
+            ///
+            /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
+            Cylinders3D with_rotation_axis_angles(
+                const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
+            )&& {
+                rotation_axis_angles = ComponentBatch::from_loggable(
+                                           _rotation_axis_angles,
+                                           Descriptor_rotation_axis_angles
+                )
+                                           .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Rotations via quaternion.
-        ///
-        /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-        Cylinders3D with_quaternions(
-            const Collection<rerun::components::PoseRotationQuat>& _quaternions
-        ) && {
-            quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
-                              .value_or_throw();
-            return std::move(*this);
-        }
+            /// Rotations via quaternion.
+            ///
+            /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
+            Cylinders3D with_quaternions(
+                const Collection<rerun::components::PoseRotationQuat>& _quaternions
+            )&& {
+                quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
+                                  .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional colors for the cylinders.
-        Cylinders3D with_colors(const Collection<rerun::components::Color>& _colors) && {
-            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional colors for the cylinders.
+            Cylinders3D with_colors(const Collection<rerun::components::Color>& _colors)&& {
+                colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
-        Cylinders3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii) && {
-            line_radii =
-                ComponentBatch::from_loggable(_line_radii, Descriptor_line_radii).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+            Cylinders3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii
+            )&& {
+                line_radii = ComponentBatch::from_loggable(_line_radii, Descriptor_line_radii)
+                                 .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optionally choose whether the cylinders are drawn with lines or solid.
-        Cylinders3D with_fill_mode(const rerun::components::FillMode& _fill_mode) && {
-            fill_mode =
-                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optionally choose whether the cylinders are drawn with lines or solid.
+            Cylinders3D with_fill_mode(const rerun::components::FillMode& _fill_mode)&& {
+                fill_mode = ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode)
+                                .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// This method makes it possible to pack multiple `fill_mode` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_fill_mode` should
-        /// be used when logging a single row's worth of data.
-        Cylinders3D with_many_fill_mode(const Collection<rerun::components::FillMode>& _fill_mode
-        ) && {
-            fill_mode =
-                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
-            return std::move(*this);
-        }
+            /// This method makes it possible to pack multiple `fill_mode` in a single component batch.
+            ///
+            /// This only makes sense when used in conjunction with `columns`. `with_fill_mode` should
+            /// be used when logging a single row's worth of data.
+            Cylinders3D with_many_fill_mode(
+                const Collection<rerun::components::FillMode>& _fill_mode
+            )&& {
+                fill_mode = ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode)
+                                .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional text labels for the cylinders, which will be located at their centers.
-        Cylinders3D with_labels(const Collection<rerun::components::Text>& _labels) && {
-            labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional text labels for the cylinders, which will be located at their centers.
+            Cylinders3D with_labels(const Collection<rerun::components::Text>& _labels)&& {
+                labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional choice of whether the text labels should be shown by default.
-        Cylinders3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
-            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
-                              .value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional choice of whether the text labels should be shown by default.
+            Cylinders3D with_show_labels(const rerun::components::ShowLabels& _show_labels)&& {
+                show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                                  .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// This method makes it possible to pack multiple `show_labels` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
-        /// be used when logging a single row's worth of data.
-        Cylinders3D with_many_show_labels(
-            const Collection<rerun::components::ShowLabels>& _show_labels
-        ) && {
-            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
-                              .value_or_throw();
-            return std::move(*this);
-        }
+            /// This method makes it possible to pack multiple `show_labels` in a single component batch.
+            ///
+            /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
+            /// be used when logging a single row's worth of data.
+            Cylinders3D with_many_show_labels(
+                const Collection<rerun::components::ShowLabels>& _show_labels
+            )&& {
+                show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                                  .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Optional class ID for the ellipsoids.
-        ///
-        /// The class ID provides colors and labels if not specified explicitly.
-        Cylinders3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
-            class_ids =
-                ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            return std::move(*this);
-        }
+            /// Optional class ID for the ellipsoids.
+            ///
+            /// The class ID provides colors and labels if not specified explicitly.
+            Cylinders3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids)&& {
+                class_ids = ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids)
+                                .value_or_throw();
+                return std::move(*this);
+            }
 
-        /// Partitions the component data into multiple sub-batches.
-        ///
-        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
-        /// instead, via `ComponentBatch::partitioned`.
-        ///
-        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
-        ///
-        /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+            /// Partitions the component data into multiple sub-batches.
+            ///
+            /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+            /// instead, via `ComponentBatch::partitioned`.
+            ///
+            /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+            ///
+            /// The specified `lengths` must sum to the total length of the component batch.
+            Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
 
-        /// Partitions the component data into unit-length sub-batches.
-        ///
-        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
-        /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
-    };
+            /// Partitions the component data into unit-length sub-batches.
+            ///
+            /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+            /// where `n` is automatically guessed.
+            Collection<ComponentColumn> columns();
+        };
 
-} // namespace rerun::archetypes
+    } namespace rerun {
+        /// \private
+        template <typename T>
+        struct AsComponents;
 
-namespace rerun {
-    /// \private
-    template <typename T>
-    struct AsComponents;
-
-    /// \private
-    template <>
-    struct AsComponents<archetypes::Cylinders3D> {
-        /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(
-            const archetypes::Cylinders3D& archetype
-        );
-    };
-} // namespace rerun
+        /// \private
+        template <>
+        struct AsComponents<archetypes::Cylinders3D> {
+            /// Serialize all set component batches.
+            static Result<Collection<ComponentBatch>> as_batches(
+                const archetypes::Cylinders3D& archetype
+            );
+        };
+    }
