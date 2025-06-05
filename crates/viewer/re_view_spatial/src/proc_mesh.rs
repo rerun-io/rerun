@@ -70,16 +70,6 @@ pub enum ProcMeshKey {
     /// The cylinder always has radius 1. It should be scaled to obtain the desired radius.
     /// It always extends along the positive direction of the Z axis.
     Cylinder {
-        /// The length of the capsule; the distance between the centers of its endpoints.
-        /// This length must be non-negative.
-        //
-        // TODO(#1361): This is a bad approach to rendering cylinders of arbitrary
-        // length, because it fills the cache with many distinct meshes.
-        // Instead, the renderers should be extended to support “bones” such that a mesh
-        // can have parts which are independently offset, thus allowing us to stretch a
-        // single sphere/capsule mesh into an arbitrary length and radius capsule.
-        length: NotNan<f32>,
-
         /// Number of triangle subdivisions to use to create a finer, rounder mesh.
         ///
         /// The cylinder is approximated as a mesh with (N + 1) × 4 flat faces.
@@ -110,12 +100,11 @@ impl ProcMeshKey {
             ),
             Self::Cylinder {
                 subdivisions: _,
-                length,
                 axes_only: _,
-            } => macaw::BoundingBox::from_center_size(
-                Vec3::ZERO,
-                Vec3::new(2.0, 2.0, length.into_inner()),
-            ),
+            } => {
+                // cylinder's radius is 1, so its size is 2
+                macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
+            }
         }
     }
 }
@@ -317,13 +306,13 @@ fn generate_wireframe(
             return Err(GenError::UnimplementedWireframe);
         }
         ProcMeshKey::Cylinder {
-            length,
             subdivisions,
             axes_only,
         } => {
             let n = ((subdivisions + 1) * 4).max(3);
             let delta = std::f32::consts::TAU / (n as f32);
-            let half_height = length.into_inner() / 2.0;
+            // cylinder’s radius is 1
+            let half_height = 1.0;
             let mut line_strips: Vec<Vec<Vec3>> = Vec::new();
 
             // bottom cap
@@ -508,7 +497,6 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
         }
         ProcMeshKey::Cylinder {
-            length,
             subdivisions,
             axes_only: _, // not used for solid mesh
         } => {
@@ -516,7 +504,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
 
             let mut mg = macaw::MeshGen::new();
 
-            push_cylinder_solid(&mut mg, 1.0, length.into_inner(), mg_subdivisions);
+            push_cylinder_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
         }
     };
