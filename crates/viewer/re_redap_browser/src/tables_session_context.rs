@@ -104,7 +104,7 @@ async fn register_all_table_entries(
 
     for entry in entries {
         let table_provider = match entry.kind {
-            EntryKind::Dataset => Some(
+            EntryKind::Dataset | EntryKind::BlueprintDataset => Some(
                 PartitionTableProvider::new(client.clone(), entry.id)
                     .into_provider()
                     .await?,

@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class Range1D(datatypes.Range1D, ComponentMixin):
 
 
 class Range1DBatch(datatypes.Range1DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Range1D")
+    _COMPONENT_NAME: str = "rerun.components.Range1D"
 
 
 # This is patched in late to avoid circular dependencies.

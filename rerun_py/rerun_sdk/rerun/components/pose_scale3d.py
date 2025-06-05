@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .pose_scale3d_ext import PoseScale3DExt
@@ -32,7 +31,7 @@ class PoseScale3D(PoseScale3DExt, datatypes.Vec3D, ComponentMixin):
 
 
 class PoseScale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.PoseScale3D")
+    _COMPONENT_NAME: str = "rerun.components.PoseScale3D"
 
 
 # This is patched in late to avoid circular dependencies.

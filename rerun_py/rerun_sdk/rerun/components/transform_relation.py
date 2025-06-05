@@ -13,7 +13,6 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["TransformRelation", "TransformRelationArrayLike", "TransformRelationBatch", "TransformRelationLike"]
@@ -72,7 +71,7 @@ TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRela
 
 class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.TransformRelation")
+    _COMPONENT_NAME: str = "rerun.components.TransformRelation"
 
     @staticmethod
     def _native_to_pa_array(data: TransformRelationArrayLike, data_type: pa.DataType) -> pa.Array:

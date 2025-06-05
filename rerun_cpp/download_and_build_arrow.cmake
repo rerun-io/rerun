@@ -5,7 +5,7 @@
 function(download_and_build_arrow)
     include(ExternalProject)
 
-    set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
+    set(ARROW_DOWNLOAD_PATH ${CMAKE_CURRENT_BINARY_DIR}/arrow)
 
     set(ARROW_LIB_PATH ${ARROW_DOWNLOAD_PATH}/lib)
     set(ARROW_BIN_PATH ${ARROW_DOWNLOAD_PATH}/bin)

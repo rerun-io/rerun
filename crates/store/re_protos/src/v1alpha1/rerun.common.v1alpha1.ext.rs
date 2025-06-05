@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
-use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
+use re_log_types::{StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
@@ -132,6 +132,12 @@ impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
     }
 }
 
+impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
+    fn from(value: PartitionId) -> Self {
+        Self { id: Some(value.id) }
+    }
+}
+
 // shortcuts
 
 impl From<String> for crate::common::v1alpha1::PartitionId {
@@ -153,12 +159,18 @@ impl From<&str> for crate::common::v1alpha1::PartitionId {
 #[derive(Debug, Clone)]
 pub struct DatasetHandle {
     pub id: Option<re_log_types::EntryId>,
+    pub store_kind: StoreKind,
     pub url: url::Url,
 }
 
 impl DatasetHandle {
-    pub fn new(url: url::Url) -> Self {
-        Self { id: None, url }
+    /// Create a new dataset handle
+    pub fn new(url: url::Url, store_kind: StoreKind) -> Self {
+        Self {
+            id: None,
+            store_kind,
+            url,
+        }
     }
 }
 
@@ -168,6 +180,7 @@ impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
     fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.entry_id.map(|id| id.try_into()).transpose()?,
+            store_kind: crate::common::v1alpha1::StoreKind::try_from(value.store_kind)?.into(),
             url: value
                 .dataset_url
                 .ok_or(missing_field!(
@@ -186,6 +199,7 @@ impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
     fn from(value: DatasetHandle) -> Self {
         Self {
             entry_id: value.id.map(Into::into),
+            store_kind: crate::common::v1alpha1::StoreKind::from(value.store_kind) as i32,
             dataset_url: Some(value.url.to_string()),
         }
     }

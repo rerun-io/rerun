@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -30,7 +29,7 @@ class Opacity(datatypes.Float32, ComponentMixin):
 
 
 class OpacityBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Opacity")
+    _COMPONENT_NAME: str = "rerun.components.Opacity"
 
 
 # This is patched in late to avoid circular dependencies.
