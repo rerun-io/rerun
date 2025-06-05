@@ -539,7 +539,6 @@ impl DesignTokens {
     }
 
     // TODO(lucasmerlin): Update all tables to the new design
-    #[deprecated]
     pub fn deprecated_table_line_height(&self) -> f32 {
         20.0
     }
@@ -549,7 +548,6 @@ impl DesignTokens {
     }
 
     // TODO(lucasmerlin): Update all tables to the new design
-    #[deprecated]
     pub fn deprecated_table_header_height(&self) -> f32 {
         20.0
     }
