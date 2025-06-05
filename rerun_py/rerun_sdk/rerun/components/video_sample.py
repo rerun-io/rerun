@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -32,7 +31,7 @@ class VideoSample(datatypes.Blob, ComponentMixin):
 
 
 class VideoSampleBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.VideoSample")
+    _COMPONENT_NAME: str = "rerun.components.VideoSample"
 
 
 # This is patched in late to avoid circular dependencies.

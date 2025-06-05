@@ -13,7 +13,6 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["VideoCodec", "VideoCodecArrayLike", "VideoCodecBatch", "VideoCodecLike"]
@@ -71,7 +70,7 @@ VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
 
 class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.VideoCodec")
+    _COMPONENT_NAME: str = "rerun.components.VideoCodec"
 
     @staticmethod
     def _native_to_pa_array(data: VideoCodecArrayLike, data_type: pa.DataType) -> pa.Array:
