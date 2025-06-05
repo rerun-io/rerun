@@ -31,7 +31,7 @@ fn multiline_view_geo_line_string(
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(Column::initial(100.0).clip(true), 2)
-        .header(tokens.table_header_height(), |mut header| {
+        .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.label("Latitude");
@@ -42,7 +42,7 @@ fn multiline_view_geo_line_string(
         })
         .body(|mut body| {
             tokens.setup_table_body(&mut body);
-            let row_height = tokens.table_line_height();
+            let row_height = tokens.deprecated_table_line_height();
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {

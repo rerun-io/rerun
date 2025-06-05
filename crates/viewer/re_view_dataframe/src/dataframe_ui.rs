@@ -3,13 +3,13 @@ use std::ops::Range;
 
 use anyhow::Context as _;
 use arrow::array::ArrayRef;
-use egui::NumExt as _;
+use egui::{NumExt as _, RichText};
 use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
-use re_dataframe_ui::table_utils::{CELL_MARGIN, apply_table_style_fixes, cell_ui, header_ui};
+use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
@@ -110,7 +110,8 @@ pub(crate) fn dataframe_ui(
                     height: tokens.table_header_height(),
                     groups: header_groups,
                 },
-                egui_table::HeaderRow::new(tokens.table_header_height()),
+                // This one has extra space for the archetype name
+                egui_table::HeaderRow::new(tokens.table_header_height() + 10.0),
             ])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -243,8 +244,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
         ui.set_truncate_style();
 
-        header_ui(ui, |ui| {
-            if cell.row_nr == 0 {
+        if cell.row_nr == 0 {
+            header_ui(ui, |ui| {
                 if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
                     //TODO(ab): factor this into a helper as soon as we use it elsewhere
                     let text = entity_path.to_string();
@@ -281,34 +282,39 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                     // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
                 }
-            } else if cell.row_nr == 1 {
-                let column = &self.selected_columns[cell.col_range.start];
+            });
+        } else if cell.row_nr == 1 {
+            let column = &self.selected_columns[cell.col_range.start];
 
-                // TODO(ab): actual static-only support
-                let filtered_index = self
-                    .query_handle
-                    .query()
-                    .filtered_index
-                    .unwrap_or_else(|| TimelineName::new(""));
+            // TODO(ab): actual static-only support
+            let filtered_index = self
+                .query_handle
+                .query()
+                .filtered_index
+                .unwrap_or_else(|| TimelineName::new(""));
 
-                // if this column can actually be hidden, then that's the corresponding action
-                let hide_action = match column {
-                    ColumnDescriptor::RowId(_) => Some(HideColumnAction::RowId),
+            // if this column can actually be hidden, then that's the corresponding action
+            let hide_action = match column {
+                ColumnDescriptor::RowId(_) => Some(HideColumnAction::RowId),
 
-                    ColumnDescriptor::Time(desc) => {
-                        (desc.timeline_name() != filtered_index).then(|| HideColumnAction::Time {
-                            timeline_name: desc.timeline_name(),
-                        })
-                    }
+                ColumnDescriptor::Time(desc) => {
+                    (desc.timeline_name() != filtered_index).then(|| HideColumnAction::Time {
+                        timeline_name: desc.timeline_name(),
+                    })
+                }
 
-                    ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
-                        entity_path: desc.entity_path.clone(),
-                        component_name: desc.component_name,
-                    }),
-                };
+                ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
+                    entity_path: desc.entity_path.clone(),
+                    component_name: desc.component_name,
+                }),
+            };
 
-                let header_ui = |ui: &mut egui::Ui| {
-                    let text = egui::RichText::new(column.display_name()).strong();
+            header_ui(ui, |ui| {
+                let header_content = |ui: &mut egui::Ui| {
+                    let text = egui::RichText::new(column.display_name())
+                        .strong()
+                        .monospace();
+                    let archetype = column.archetype_name().map_or("", |a| a.short_name());
 
                     let is_selected = match column {
                         ColumnDescriptor::RowId(_) => {
@@ -325,7 +331,17 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             )),
                     };
 
-                    let response = ui.selectable_label(is_selected, text);
+                    let response = ui
+                        .vertical(|ui| {
+                            ui.spacing_mut().item_spacing.y = 2.0;
+                            ui.label(
+                                RichText::new(archetype)
+                                    .size(10.0)
+                                    .color(ui.tokens().text_subdued),
+                            );
+                            ui.selectable_label(is_selected, text)
+                        })
+                        .inner;
 
                     match column {
                         ColumnDescriptor::RowId(_) => {}
@@ -357,20 +373,20 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         ui,
                         &re_ui::icons::VISIBLE,
                         CellStyle::Header,
-                        header_ui,
+                        header_content,
                     );
 
                     if hide_clicked {
                         self.hide_column_actions.push(hide_action);
                     }
                 } else {
-                    header_ui(ui);
+                    header_content(ui);
                 }
-            } else {
-                // this should never happen
-                error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
-            }
-        });
+            });
+        } else {
+            // this should never happen
+            error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
+        }
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {

@@ -17,9 +17,7 @@ use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
     ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
-use crate::table_utils::{
-    CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
-};
+use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
@@ -328,7 +326,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
-                tokens.table_header_height() + CELL_MARGIN.sum().y,
+                tokens.table_header_height(),
             )])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);

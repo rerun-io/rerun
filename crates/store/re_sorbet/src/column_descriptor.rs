@@ -8,7 +8,7 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
-use re_types_core::ComponentName;
+use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
@@ -128,6 +128,13 @@ impl ColumnDescriptor {
             .iter()
             .map(|field| Self::try_from_arrow_field(chunk_entity_path, field.as_ref()))
             .collect()
+    }
+
+    pub fn archetype_name(&self) -> Option<ArchetypeName> {
+        match self {
+            Self::Component(component) => component.archetype_name,
+            _ => None,
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 #![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
-use egui::{Color32, Stroke, Theme, Vec2};
+use egui::{Color32, Margin, Stroke, Theme, Vec2};
 
 use crate::{
     CUSTOM_WINDOW_DECORATIONS,
@@ -528,13 +528,30 @@ impl DesignTokens {
         4.0
     }
 
+    pub fn table_cell_margin(&self) -> Margin {
+        Margin::symmetric(8, 6)
+    }
+
     pub fn table_line_height(&self) -> f32 {
-        32.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
-        // and some margin
+        // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+        // and the cell margin
+        32.0
+    }
+
+    // TODO(lucasmerlin): Update all tables to the new design
+    #[deprecated]
+    pub fn deprecated_table_line_height(&self) -> f32 {
+        20.0
     }
 
     pub fn table_header_height(&self) -> f32 {
         32.0
+    }
+
+    // TODO(lucasmerlin): Update all tables to the new design
+    #[deprecated]
+    pub fn deprecated_table_header_height(&self) -> f32 {
+        20.0
     }
 
     pub fn top_bar_margin(&self) -> egui::Margin {

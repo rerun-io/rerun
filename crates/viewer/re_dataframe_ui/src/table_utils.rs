@@ -2,8 +2,6 @@ use ahash::HashSet;
 use egui::{Context, Frame, Id, Margin, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
-pub const CELL_MARGIN: Margin = Margin::symmetric(8, 6);
-
 /// This applies some fixes so that the column resize bar is correctly displayed.
 ///
 /// TODO(lucasmerlin): this might affect widgets within the table, and should probably be reverted
@@ -42,7 +40,9 @@ pub fn header_ui<R>(
     ui.painter()
         .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
-    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, content);
+    let response = Frame::new()
+        .inner_margin(ui.tokens().table_cell_margin())
+        .show(ui, content);
 
     ui.painter().hline(
         rect.x_range(),
@@ -57,7 +57,9 @@ pub fn cell_ui<R>(
     ui: &mut egui::Ui,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, content);
+    let response = Frame::new()
+        .inner_margin(ui.tokens().table_cell_margin())
+        .show(ui, content);
 
     let rect = ui.max_rect();
 

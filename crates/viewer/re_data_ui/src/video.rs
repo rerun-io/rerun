@@ -154,7 +154,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
         .max_scroll_height(611.0) // Odd value so the user can see half-hidden rows
         .columns(Column::auto(), 8)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .header(tokens.table_header_height(), |mut header| {
+        .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Sample");
@@ -185,7 +185,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
             tokens.setup_table_body(&mut body);
 
             body.rows(
-                tokens.table_line_height(),
+                tokens.deprecated_table_line_height(),
                 video_descr.samples.num_elements(),
                 |mut row| {
                     let sample_idx = row.index() + video_descr.samples.min_index();
