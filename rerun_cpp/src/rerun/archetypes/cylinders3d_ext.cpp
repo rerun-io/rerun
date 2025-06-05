@@ -13,6 +13,7 @@ namespace rerun::archetypes {
     static Cylinders3D from_lengths_and_radii(
         const Collection<rerun::components::Length>& lengths, const Collection<rerun::components::Radius>& radii) {
         return Cylinders3D().with_lengths(lengths).with_radii(radii);
+    }
 
     // </CODEGEN_COPY_TO_HEADER>
 } // namespace rerun::archetypes
