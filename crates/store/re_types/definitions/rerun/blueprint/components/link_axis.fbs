@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-    /// If true, link the X/time axis to all other plots where this is enabled.
+/// If true, link the X/time axis to all other plots where this is enabled.
 struct LinkAxis (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
