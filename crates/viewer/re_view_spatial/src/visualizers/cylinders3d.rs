@@ -1,6 +1,5 @@
 use std::iter;
 
-use ordered_float::NotNan;
 use re_types::{
     Archetype as _, ArrowString,
     archetypes::Cylinders3D,
@@ -48,9 +47,12 @@ impl Cylinders3DVisualizer {
             let lengths_iter = clamped_or_nothing(batch.lengths, num_instances);
             let radii_iter = clamped_or_nothing(batch.radii, num_instances);
 
-            let half_sizes: Vec<HalfSize3D> = radii_iter
-                .clone()
-                .map(|&Radius(radius)| HalfSize3D::splat(clean_length(radius.0)))
+            let half_sizes: Vec<HalfSize3D> = lengths_iter
+                .zip(radii_iter)
+                .map(|(&Length(length), &Radius(radius))| {
+                    let radius = clean_length(radius.0);
+                    HalfSize3D::new(radius, radius, length.0 / 2.0)
+                })
                 .collect();
 
             let subdivisions = match batch.fill_mode {
@@ -64,23 +66,10 @@ impl Cylinders3DVisualizer {
                 FillMode::DenseWireframe | FillMode::Solid => false,
             };
 
-            let meshes = lengths_iter
-                .zip(radii_iter)
-                .map(|(&Length(length), &Radius(radius))| {
-                    let ratio = clean_length(length.0 / radius.0);
-
-                    // Avoid generating extremely similar meshes by rounding the ratio.
-                    // Note: This will cause jitter in the displayed length of the capsule.
-                    // TODO(kpreid): Replace this entirely with stretchable meshes.
-                    let granularity = 2.0f32.powi(-4); // a round number in base 2
-                    let ratio = (ratio / granularity).round() * granularity;
-
-                    proc_mesh::ProcMeshKey::Cylinder {
-                        subdivisions,
-                        length: NotNan::new(ratio).unwrap(), // ok because of clean_length()
-                        axes_only,
-                    }
-                });
+            let proc_mesh_key = proc_mesh::ProcMeshKey::Cylinder {
+                subdivisions,
+                axes_only,
+            };
 
             builder.add_batch(
                 query_context,
@@ -89,7 +78,7 @@ impl Cylinders3DVisualizer {
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: &half_sizes,
-                    meshes,
+                    meshes: iter::repeat(proc_mesh_key),
                     fill_modes: iter::repeat(batch.fill_mode),
                     line_radii: batch.line_radii,
                     colors: batch.colors,
