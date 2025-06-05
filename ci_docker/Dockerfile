@@ -10,7 +10,7 @@ RUN set -eux; \
   dnf install -y ca-certificates wget; \
   dnf install -y https://packages.apache.org/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm; \
   dnf config-manager --set-enabled epel; \
-  dnf config-manager --set-enabled powertools;
+  dnf config-manager --set-enabled powertools; \
   dnf update -y; \
   dnf install -y \
     arrow-devel \
