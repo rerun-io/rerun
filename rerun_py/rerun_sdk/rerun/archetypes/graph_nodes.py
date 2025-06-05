@@ -83,7 +83,7 @@ class GraphNodes(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         radii:
             Optional radii for nodes.
 
@@ -151,7 +151,7 @@ class GraphNodes(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         radii:
             Optional radii for nodes.
 
@@ -215,7 +215,7 @@ class GraphNodes(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         radii:
             Optional radii for nodes.
 
@@ -318,7 +318,7 @@ class GraphNodes(Archetype):
     # Whether the text labels should be shown.
     #
     # If not set, labels will automatically appear when there is exactly one label for this entity
-    # or the number of instances on this entity is under a certain threshhold.
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

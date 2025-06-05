@@ -61,7 +61,7 @@ table Cylinders3D (
   /// Whether the text labels should be shown.
   ///
   /// If not set, labels will automatically appear when there is exactly one label for this entity
-  /// or the number of instances on this entity is under a certain threshhold.
+  /// or the number of instances on this entity is under a certain threshold.
   show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional class ID for the ellipsoids.

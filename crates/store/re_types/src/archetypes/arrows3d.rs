@@ -90,7 +90,7 @@ pub struct Arrows3D {
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
-    /// or the number of instances on this entity is under a certain threshhold.
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional class Ids for the points.
@@ -542,7 +542,7 @@ impl Arrows3D {
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
-    /// or the number of instances on this entity is under a certain threshhold.
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

@@ -145,7 +145,7 @@ class LineStrips3D(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -213,7 +213,7 @@ class LineStrips3D(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -282,7 +282,7 @@ class LineStrips3D(Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -390,7 +390,7 @@ class LineStrips3D(Archetype):
     # Whether the text labels should be shown.
     #
     # If not set, labels will automatically appear when there is exactly one label for this entity
-    # or the number of instances on this entity is under a certain threshhold.
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

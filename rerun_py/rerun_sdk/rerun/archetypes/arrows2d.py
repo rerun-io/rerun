@@ -121,7 +121,7 @@ class Arrows2D(Arrows2DExt, Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -205,7 +205,7 @@ class Arrows2D(Arrows2DExt, Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -335,7 +335,7 @@ class Arrows2D(Arrows2DExt, Archetype):
     # Whether the text labels should be shown.
     #
     # If not set, labels will automatically appear when there is exactly one label for this entity
-    # or the number of instances on this entity is under a certain threshhold.
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

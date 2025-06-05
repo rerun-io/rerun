@@ -157,7 +157,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -249,7 +249,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
             Whether the text labels should be shown.
 
             If not set, labels will automatically appear when there is exactly one label for this entity
-            or the number of instances on this entity is under a certain threshhold.
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -415,7 +415,7 @@ class Cylinders3D(Cylinders3DExt, Archetype):
     # Whether the text labels should be shown.
     #
     # If not set, labels will automatically appear when there is exactly one label for this entity
-    # or the number of instances on this entity is under a certain threshhold.
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
