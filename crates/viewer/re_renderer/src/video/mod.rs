@@ -146,7 +146,7 @@ impl Video {
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
-        time_since_video_start_in_secs: f64,
+        video_time: re_video::Time,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
@@ -177,7 +177,7 @@ impl Video {
         decoder_entry.last_global_frame_idx = render_context.active_frame_idx();
         decoder_entry.player.frame_at(
             render_context,
-            time_since_video_start_in_secs,
+            video_time,
             &self.video_description,
             video_buffers,
         )

@@ -92,6 +92,8 @@ from .triangle_indices import TriangleIndices, TriangleIndicesBatch
 from .value_range import ValueRange, ValueRangeBatch
 from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
+from .video_codec import VideoCodec, VideoCodecArrayLike, VideoCodecBatch, VideoCodecLike
+from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
@@ -259,6 +261,12 @@ __all__ = [
     "Vector2DBatch",
     "Vector3D",
     "Vector3DBatch",
+    "VideoCodec",
+    "VideoCodecArrayLike",
+    "VideoCodecBatch",
+    "VideoCodecLike",
+    "VideoSample",
+    "VideoSampleBatch",
     "VideoTimestamp",
     "VideoTimestampBatch",
     "ViewCoordinates",
