@@ -132,11 +132,7 @@ class DescribedComponentBatch:
         self._descriptor = descriptor
 
     def component_descriptor(self) -> ComponentDescriptor:
-        """
-        Returns the complete descriptor of the component.
-
-        Part of the `ComponentBatchLike` logging interface.
-        """
+        """Returns the complete descriptor of the component."""
         return self._descriptor
 
     def as_arrow_array(self) -> pa.Array:
@@ -174,10 +170,6 @@ class DescribedComponentBatch:
 @runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""
-
-    def component_descriptor(self) -> ComponentDescriptor:
-        """Returns the complete descriptor of the component."""
-        ...
 
     def as_arrow_array(self) -> pa.Array:
         """Returns a `pyarrow.Array` of the component data."""
@@ -264,7 +256,7 @@ class Archetype(AsComponents):
                 comp = getattr(self, fld.name)
                 if comp is not None:
                     descr = ComponentDescriptor(
-                        comp.component_descriptor().component_name,
+                        comp._COMPONENT_NAME,
                         archetype_name=self.archetype_name(),
                         archetype_field_name=fld.name,
                     )
@@ -398,7 +390,7 @@ class ComponentColumn:
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
-    def __init__(self, component_batch: ComponentBatchLike, *, lengths: npt.ArrayLike | None = None) -> None:
+    def __init__(self, component_batch: DescribedComponentBatch, *, lengths: npt.ArrayLike | None = None) -> None:
         """
         Construct a new component column.
 
@@ -519,67 +511,17 @@ class ComponentColumnList(Iterable[ComponentColumn]):
 
 
 class ComponentBatchMixin(ComponentBatchLike):
-    def component_descriptor(self) -> ComponentDescriptor:
+    def component_name(self) -> str:
         """
-        Returns the complete descriptor of the component.
+        Returns the name of the component.
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._COMPONENT_DESCRIPTOR  # type: ignore[attr-defined, no-any-return]
+        return self._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
 
-    def described(self, descriptor: ComponentDescriptor | None = None) -> DescribedComponentBatch:
-        """Wraps the current `ComponentBatchLike` in a `DescribedComponentBatch` with the given descriptor or, if None, the component's descriptor."""
-        if descriptor is None:
-            descriptor = self.component_descriptor()
-        return DescribedComponentBatch(self, descriptor)
-
-    def with_descriptor(self, descriptor: ComponentDescriptor) -> DescribedComponentBatch:
+    def described(self, descriptor: ComponentDescriptor) -> DescribedComponentBatch:
         """Wraps the current `ComponentBatchLike` in a `DescribedComponentBatch` with the given descriptor."""
         return DescribedComponentBatch(self, descriptor)
-
-    def with_descriptor_overrides(
-        self,
-        *,
-        archetype_name: str | None,
-        archetype_field_name: str | None,
-    ) -> DescribedComponentBatch:
-        """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
-        descriptor = self.component_descriptor()
-        component_name = descriptor.component_name
-        archetype_name = archetype_name if archetype_name is not None else descriptor.archetype_name
-        archetype_field_name = (
-            archetype_field_name if archetype_field_name is not None else descriptor.archetype_field_name
-        )
-        return DescribedComponentBatch(
-            self,
-            ComponentDescriptor(
-                component_name,
-                archetype_name=archetype_name,
-                archetype_field_name=archetype_field_name,
-            ),
-        )
-
-    def or_with_descriptor_overrides(
-        self,
-        *,
-        archetype_name: str | None,
-        archetype_field_name: str | None,
-    ) -> DescribedComponentBatch:
-        """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
-        descriptor = self.component_descriptor()
-        component_name = descriptor.component_name
-        archetype_name = descriptor.archetype_name if descriptor.archetype_name is not None else archetype_name
-        archetype_field_name = (
-            descriptor.archetype_field_name if descriptor.archetype_field_name is not None else archetype_field_name
-        )
-        return DescribedComponentBatch(
-            self,
-            ComponentDescriptor(
-                component_name,
-                archetype_name=archetype_name,
-                archetype_field_name=archetype_field_name,
-            ),
-        )
 
     def partition(self, lengths: npt.ArrayLike | None = None) -> ComponentColumn:
         """
@@ -623,13 +565,13 @@ class ComponentMixin(ComponentBatchLike):
         """
         return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
-    def component_descriptor(self) -> ComponentDescriptor:
+    def component_name(self) -> str:
         """
-        Returns the complete descriptor of the component.
+        Returns the name of the component.
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE._COMPONENT_DESCRIPTOR  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
 
     def as_arrow_array(self) -> pa.Array:
         """
