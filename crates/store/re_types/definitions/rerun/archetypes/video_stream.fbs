@@ -13,8 +13,7 @@ table VideoStream (
   "attr.docs.unreleased",
   "attr.rerun.state": "unstable",
   "attr.docs.category": "Video",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
-  "attr.rerun.state": "stable"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
 ) {
     // --- Required ---
 

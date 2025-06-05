@@ -5,6 +5,7 @@ use std::sync::{
 
 use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
+use egui::NumExt;
 use parking_lot::RwLock;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -387,20 +388,23 @@ fn read_samples_from_chunk(
     // Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
     // (We set the duration for the last sample to `None` since we don't know how long it will last.)
     // (Note that we can't use tuple_windows here because it can't handle mutable references)
-    for sample in sample_base_idx.saturating_sub(1)..samples.next_index() - 1 {
-        samples[sample].duration = Some(
-            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
-        );
+    {
+        let start = sample_base_idx
+            .saturating_sub(1)
+            .at_least(samples.min_index());
+        let end = samples.next_index().saturating_sub(1);
+        for sample in start..end {
+            samples[sample].duration = Some(
+                samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
+            );
+        }
     }
 
     // Sanity checks on chunk buffers.
     if let Some(last_buffer) = chunk_buffers.back() {
-        debug_assert!(
-            last_buffer.sample_index_range.end == sample_base_idx,
-            "Sample range of each chunk buffer must be non-overlapping and without gaps. \
-                (last_buffer.sample_range.end: {}, sample_base_idx: {})",
-            last_buffer.sample_index_range.end,
-            sample_base_idx
+        debug_assert_eq!(
+            last_buffer.sample_index_range.end, sample_base_idx,
+            "Sample range of each chunk buffer must be non-overlapping and without gaps."
         );
     }
 
@@ -562,12 +566,12 @@ impl Cache for VideoStreamCache {
 
 /// Adjust GOPs for removed samples at the back of the sample list.
 fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDescription) {
-    let max_sample_index = video_data.samples.next_index();
+    let end_sample_index = video_data.samples.next_index();
     while let Some(gop) = video_data.gops.back_mut() {
-        if gop.sample_range.start >= max_sample_index {
+        if gop.sample_range.start >= end_sample_index {
             video_data.gops.pop_back();
         } else {
-            gop.sample_range.end = max_sample_index;
+            gop.sample_range.end = end_sample_index;
             break;
         }
     }
@@ -575,12 +579,12 @@ fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDesc
 
 /// Adjust GOPs for removed samples at the front of the sample list.
 fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
-    let min_sample_index = video_data.samples.min_index();
+    let start_sample_index = video_data.samples.min_index();
     while let Some(gop) = video_data.gops.front_mut() {
-        if gop.sample_range.end < min_sample_index {
+        if gop.sample_range.end < start_sample_index {
             video_data.gops.pop_front();
         } else {
-            gop.sample_range.start = min_sample_index;
+            gop.sample_range.start = start_sample_index;
             break;
         }
     }

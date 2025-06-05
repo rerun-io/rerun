@@ -19,7 +19,7 @@ enum VideoCodec: ubyte ( // TODO(#7484): use fourcc values. Requires us to suppo
     /// (Note that this is different from AVCC format found in MP4 files.
     /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
-    H264,
+    H264 = 1,
 
     /// High Efficiency Video Coding (HEVC/H.265)
     ///
