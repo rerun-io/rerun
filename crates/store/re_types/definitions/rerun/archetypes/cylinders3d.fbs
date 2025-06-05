@@ -58,7 +58,10 @@ table Cylinders3D (
   /// Optional text labels for the cylinders, which will be located at their centers.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional choice of whether the text labels should be shown by default.
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshhold.
   show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional class ID for the ellipsoids.

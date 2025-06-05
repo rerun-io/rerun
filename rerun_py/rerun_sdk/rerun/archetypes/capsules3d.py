@@ -148,7 +148,10 @@ class Capsules3D(Capsules3DExt, Archetype):
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshhold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -229,7 +232,10 @@ class Capsules3D(Capsules3DExt, Archetype):
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshhold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -370,7 +376,10 @@ class Capsules3D(Capsules3DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshhold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

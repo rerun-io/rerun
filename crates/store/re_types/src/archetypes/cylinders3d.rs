@@ -111,7 +111,10 @@ pub struct Cylinders3D {
     /// Optional text labels for the cylinders, which will be located at their centers.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshhold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional class ID for the ellipsoids.
@@ -745,7 +748,10 @@ impl Cylinders3D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshhold.
     #[inline]
     pub fn with_show_labels(
         mut self,

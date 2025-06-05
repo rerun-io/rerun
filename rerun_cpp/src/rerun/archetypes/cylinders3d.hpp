@@ -109,7 +109,10 @@ namespace rerun::archetypes {
         /// Optional text labels for the cylinders, which will be located at their centers.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshhold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
@@ -295,7 +298,10 @@ namespace rerun::archetypes {
                 return std::move(*this);
             }
 
-            /// Optional choice of whether the text labels should be shown by default.
+            /// Whether the text labels should be shown.
+            ///
+            /// If not set, labels will automatically appear when there is exactly one label for this entity
+            /// or the number of instances on this entity is under a certain threshhold.
             Cylinders3D with_show_labels(const rerun::components::ShowLabels& _show_labels)&& {
                 show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                                   .value_or_throw();

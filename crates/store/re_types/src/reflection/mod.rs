@@ -1219,7 +1219,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1262,7 +1262,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1362,7 +1362,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1418,7 +1418,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1467,7 +1467,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1539,7 +1539,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1630,7 +1630,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "show_labels".into(), display_name
                     : "Show labels", component_name : "rerun.components.ShowLabels"
                     .into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1759,7 +1759,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "radii"
                     .into(), display_name : "Radii", component_name :
                     "rerun.components.Radius".into(), docstring_md :
@@ -1848,7 +1848,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1887,7 +1887,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -2002,7 +2002,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -2046,7 +2046,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Whether the text labels should be shown.\n\nIf not set, labels will automatically appear when there is exactly one label for this entity\nor the number of instances on this entity is under a certain threshhold.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
