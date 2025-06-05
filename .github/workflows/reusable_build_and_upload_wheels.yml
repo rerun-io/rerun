@@ -113,14 +113,14 @@ jobs:
             linux-arm64)
                 runner="buildjet-16vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
-                container="'rerunio/ci_docker:0.15.1-manylinux'" # Required to be manylinux compatible
+                container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
                 compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_28"
-              container="'rerunio/ci_docker:0.15.1-manylinux'" # Required to be manylinux compatible
+              container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-8-cores"

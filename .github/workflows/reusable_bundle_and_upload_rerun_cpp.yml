@@ -31,7 +31,7 @@ jobs:
     name: Bundle and upload rerun_cpp_sdk.zip
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.15.1-manylinux # Need container for arrow dependency.
+      image: rerunio/ci_docker:0.16.0 # Need container for arrow dependency.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
