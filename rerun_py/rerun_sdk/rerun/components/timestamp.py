@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class Timestamp(datatypes.TimeInt, ComponentMixin):
 
 
 class TimestampBatch(datatypes.TimeIntBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Timestamp")
+    _COMPONENT_NAME: str = "rerun.components.Timestamp"
 
 
 # This is patched in late to avoid circular dependencies.

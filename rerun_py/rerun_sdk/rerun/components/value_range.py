@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class ValueRange(datatypes.Range1D, ComponentMixin):
 
 
 class ValueRangeBatch(datatypes.Range1DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.ValueRange")
+    _COMPONENT_NAME: str = "rerun.components.ValueRange"
 
 
 # This is patched in late to avoid circular dependencies.

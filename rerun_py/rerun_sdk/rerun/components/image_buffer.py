@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class ImageBuffer(datatypes.Blob, ComponentMixin):
 
 
 class ImageBufferBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.ImageBuffer")
+    _COMPONENT_NAME: str = "rerun.components.ImageBuffer"
 
 
 # This is patched in late to avoid circular dependencies.

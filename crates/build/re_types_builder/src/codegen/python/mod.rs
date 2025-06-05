@@ -1942,7 +1942,7 @@ fn quote_arrow_support_from_obj(
             r#"
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_DATATYPE = {datatype}
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_NAME: str = "{fqname}"
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
@@ -1955,7 +1955,7 @@ fn quote_arrow_support_from_obj(
         unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_NAME: str = "{fqname}"
             "#
         ))
     }

@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class EntityPath(datatypes.EntityPath, ComponentMixin):
 
 
 class EntityPathBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.EntityPath")
+    _COMPONENT_NAME: str = "rerun.components.EntityPath"
 
 
 # This is patched in late to avoid circular dependencies.
