@@ -10,13 +10,9 @@ namespace rerun::archetypes {
     /// For multiple cylinders, you should generally follow this with
     /// `Cylinders3D::with_centers()` and one of the rotation methods, in order to move them
     /// apart from each other.
-    //
-    // TODO(andreas): This should not take an std::vector.
     static Cylinders3D from_lengths_and_radii(
-        const std::vector<float>& lengths, const std::vector<float>& radii
-    ) {
-        return Cylinders3D().with_lengths(std::move(lengths)).with_radii(std::move(radii));
-    }
+        const Collection<rerun::components::Length>& lengths, const Collection<rerun::components::Radius>& radii) {
+        return Cylinders3D().with_lengths(lengths).with_radii(radii);
 
     // </CODEGEN_COPY_TO_HEADER>
 } // namespace rerun::archetypes

@@ -34,7 +34,7 @@ class Capsules3DExt:
         translations:
             Optional translations of the capsules.
 
-            If not specified, each capsule will be centered at (0, 0, 0).
+            If not specified, one end of each capsule will be at (0, 0, 0).
         rotation_axis_angles:
             Rotations via axis + angle.
 
