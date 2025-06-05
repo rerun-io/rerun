@@ -6,7 +6,7 @@ use re_types::{
     components::{Blob, MediaType, VideoTimestamp},
 };
 use re_ui::{
-    UiExt as _,
+    UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
@@ -175,7 +175,13 @@ pub fn blob_preview_and_save_ui(
             } else {
                 "Save blob…"
             };
-            if ui.button(text).clicked() {
+            if ui
+                .add(egui::Button::image_and_text(
+                    icons::DOWNLOAD.as_image(),
+                    text,
+                ))
+                .clicked()
+            {
                 let mut file_name = entity_path
                     .last()
                     .map_or("blob", |name| name.unescaped_str())

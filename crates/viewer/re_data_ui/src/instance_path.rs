@@ -1,4 +1,5 @@
-use egui::Rangef;
+use egui::{Rangef, RichText};
+use std::collections::BTreeMap;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
@@ -8,7 +9,7 @@ use re_types::{
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
-use re_ui::UiExt as _;
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{
     ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
     gpu_bridge::image_data_range_heuristic,
@@ -48,7 +49,7 @@ impl DataUi for InstancePath {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
         };
-        let Some(components) = component else {
+        let Some(unordered_components) = component else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -60,24 +61,34 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
-        let indicator_count = components
-            .iter()
-            .filter(|c| c.component_name.is_indicator_component())
-            .count();
+        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
+            ctx.reflection(),
+            &unordered_components,
+        );
 
         let mut query_results =
             db.storage_engine()
                 .cache()
-                .latest_at(query, entity_path, &components);
+                .latest_at(query, entity_path, &unordered_components);
 
         // Keep previously established order.
-        let mut components: Vec<(ComponentDescriptor, UnitChunkShared)> = components
+        let mut components_by_archetype: BTreeMap<
+            Option<ArchetypeName>,
+            Vec<(ComponentDescriptor, UnitChunkShared)>,
+        > = components_by_archetype
             .into_iter()
-            .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
+            .map(|(archetype, components)| {
+                (
+                    archetype,
+                    components
+                        .into_iter()
+                        .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
+                        .collect(),
+                )
+            })
             .collect();
 
-        if components.is_empty() {
+        if components_by_archetype.is_empty() {
             let typ = db.timeline_type(&query.timeline());
             ui_layout.label(
                 ui,
@@ -91,14 +102,16 @@ impl DataUi for InstancePath {
         }
 
         if ui_layout.is_single_line() {
+            let archetype_count = components_by_archetype.len();
+            let component_count = unordered_components.len();
             ui_layout.label(
                 ui,
                 format!(
-                    "{} component{} (including {} indicator component{})",
-                    components.len(),
-                    if components.len() > 1 { "s" } else { "" },
-                    indicator_count,
-                    if indicator_count > 1 { "s" } else { "" }
+                    "{} archetype{} with {} total component{}",
+                    archetype_count,
+                    if archetype_count > 1 { "s" } else { "" },
+                    component_count,
+                    if component_count > 1 { "s" } else { "" }
                 ),
             );
         } else {
@@ -112,9 +125,11 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                components.retain(|(component, _chunk)| {
-                    component.component_name != components::GraphEdge::name()
-                });
+                for components in components_by_archetype.values_mut() {
+                    components.retain(|(component, _chunk)| {
+                        component.component_name != components::GraphEdge::name()
+                    });
+                }
             }
 
             component_list_ui(
@@ -125,13 +140,15 @@ impl DataUi for InstancePath {
                 db,
                 entity_path,
                 instance,
-                &components,
+                &components_by_archetype,
             );
         }
 
         if instance.is_all() {
-            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &components);
-            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
+            for components in components_by_archetype.values() {
+                preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, components);
+                preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, components);
+            }
         }
     }
 }
@@ -145,64 +162,56 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
+    components: &BTreeMap<Option<ArchetypeName>, Vec<(ComponentDescriptor, UnitChunkShared)>>,
 ) {
-    let indicator_count = components
-        .iter()
-        .filter(|(c, _)| c.component_name.is_indicator_component())
-        .count();
-
-    let show_indicator_comps = match ui_layout {
-        UiLayout::Tooltip => {
-            // Skip indicator components in hover ui (unless there are no other
-            // types of components).
-            indicator_count == components.len()
-        }
-        UiLayout::SelectionPanel => true,
-        UiLayout::List => false, // unreachable
-    };
-
     let interactive = ui_layout != UiLayout::Tooltip;
 
     re_ui::list_item::list_item_scope(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (component_descr, unit) in components {
-                if !show_indicator_comps && component_descr.component_name.is_indicator_component()
-                {
-                    continue;
-                }
-
-                let component_path =
-                    ComponentPath::new(entity_path.clone(), component_descr.clone());
-
-                let is_static = db
-                    .storage_engine()
-                    .store()
-                    .entity_has_static_component(entity_path, component_descr);
-                let icon = if is_static {
-                    &re_ui::icons::COMPONENT_STATIC
-                } else {
-                    &re_ui::icons::COMPONENT_TEMPORAL
-                };
-                let item = Item::ComponentPath(component_path);
-
-                let mut list_item = ui.list_item().interactive(interactive);
-
-                if interactive {
-                    let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
-                        == HoverHighlight::Hovered;
-                    list_item = list_item.force_hovered(is_hovered);
-                }
-
-                let response = if component_descr.component_name.is_indicator_component() {
-                    list_item.show_flat(
+            for (archetype, components) in components {
+                ui.list_item()
+                    .with_y_offset(1.0)
+                    .with_height(20.0)
+                    .interactive(false)
+                    .show_flat(
                         ui,
-                        re_ui::list_item::LabelContent::new(component_descr.display_name())
-                            .with_icon(icon),
-                    )
-                } else {
+                        list_item::LabelContent::new(
+                            RichText::new(format!(
+                                "{}:",
+                                archetype
+                                    .map(|a| a.short_name())
+                                    .unwrap_or("Without Archetype")
+                            ))
+                            .size(10.0)
+                            .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
+                        ),
+                    );
+
+                for (component_descr, unit) in components {
+                    let component_path =
+                        ComponentPath::new(entity_path.clone(), component_descr.clone());
+
+                    let is_static = db
+                        .storage_engine()
+                        .store()
+                        .entity_has_static_component(entity_path, component_descr);
+                    let icon = if is_static {
+                        &re_ui::icons::COMPONENT_STATIC
+                    } else {
+                        &re_ui::icons::COMPONENT_TEMPORAL
+                    };
+                    let item = Item::ComponentPath(component_path);
+
+                    let mut list_item = ui.list_item().interactive(interactive);
+
+                    if interactive {
+                        let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
+                            == HoverHighlight::Hovered;
+                        list_item = list_item.force_hovered(is_hovered);
+                    }
+
                     let content =
                         re_ui::list_item::PropertyContent::new(component_descr.display_name())
                             .with_icon(icon)
@@ -237,26 +246,27 @@ fn component_list_ui(
                                 }
                             });
 
-                    list_item.show_flat(ui, content)
-                };
+                    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
+                        component_descr.component_name.data_ui_recording(
+                            ctx,
+                            ui,
+                            UiLayout::Tooltip,
+                        );
 
-                let response = response.on_hover_ui(|ui| {
-                    component_descr
-                        .component_name
-                        .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                        if let Some(data) = unit.component_batch_raw(component_descr) {
+                            re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
+                                ui.list_item_flat_noninteractive(
+                                    re_ui::list_item::PropertyContent::new("Data type").value_text(
+                                        re_arrow_util::format_data_type(data.data_type()),
+                                    ),
+                                );
+                            });
+                        }
+                    });
 
-                    if let Some(data) = unit.component_batch_raw(component_descr) {
-                        re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
-                            ui.list_item_flat_noninteractive(
-                                re_ui::list_item::PropertyContent::new("Data type")
-                                    .value_text(re_arrow_util::format_data_type(data.data_type())),
-                            );
-                        });
+                    if interactive {
+                        ctx.handle_select_hover_drag_interactions(&response, item, false);
                     }
-                });
-
-                if interactive {
-                    ctx.handle_select_hover_drag_interactions(&response, item, false);
                 }
             }
         },
