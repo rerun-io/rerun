@@ -27,7 +27,7 @@ For this example in particular, we're going to need all of these:
 [dependencies]
 rerun = "0.23"
 itertools = "0.14"
-rand = "0.9"
+rand = "0.8"
 ```
 
 While we're at it, let's get imports out of the way:
@@ -179,8 +179,8 @@ rec.log(
 Which only leaves the beads:
 
 ```rust
-let mut rng = rand::rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
+let mut rng = rand::thread_rng();
+let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
 
 let beads = lines
     .iter()
