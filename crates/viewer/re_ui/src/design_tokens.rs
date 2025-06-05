@@ -529,11 +529,12 @@ impl DesignTokens {
     }
 
     pub fn table_line_height(&self) -> f32 {
-        20.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+        32.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+        // and some margin
     }
 
     pub fn table_header_height(&self) -> f32 {
-        20.0
+        32.0
     }
 
     pub fn top_bar_margin(&self) -> egui::Margin {

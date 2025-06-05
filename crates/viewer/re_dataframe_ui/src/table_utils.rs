@@ -38,15 +38,11 @@ pub fn header_ui<R>(
     ui: &mut egui::Ui,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new()
-        .inner_margin(CELL_MARGIN)
-        .fill(ui.tokens().table_header_bg_fill)
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            content(ui)
-        });
+    let rect = ui.max_rect();
+    ui.painter()
+        .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
-    let rect = response.response.rect;
+    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, content);
 
     ui.painter().hline(
         rect.x_range(),
@@ -61,12 +57,9 @@ pub fn cell_ui<R>(
     ui: &mut egui::Ui,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        content(ui)
-    });
+    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, content);
 
-    let rect = response.response.rect;
+    let rect = ui.max_rect();
 
     ui.painter().hline(
         rect.x_range(),
