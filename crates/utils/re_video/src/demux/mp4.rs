@@ -141,7 +141,7 @@ impl VideoDataDescription {
             codec,
             stsd: Some(stsd),
             coded_dimensions: Some([track.width, track.height]),
-            timescale,
+            timescale: Some(timescale),
             duration: Some(duration),
             samples_statistics,
             gops,

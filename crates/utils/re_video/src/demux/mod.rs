@@ -113,7 +113,10 @@ pub struct VideoDataDescription {
     pub coded_dimensions: Option<[u16; 2]>,
 
     /// How many time units are there per second.
-    pub timescale: Timescale,
+    ///
+    /// `None` if the time units used don't have a defined relationship to seconds.
+    /// This happens for streams logged on a non-temporal timeline.
+    pub timescale: Option<Timescale>,
 
     /// Duration of the video, in time units if known.
     ///
@@ -239,7 +242,9 @@ impl VideoDataDescription {
     /// For video streams (as opposed to video files) this is generally unknown.
     #[inline]
     pub fn duration(&self) -> Option<std::time::Duration> {
-        self.duration.map(|d| d.duration(self.timescale))
+        let timescale = self.timescale?;
+        let duration = self.duration?;
+        Some(duration.duration(timescale))
     }
 
     /// The codec used to encode the video.
@@ -371,17 +376,20 @@ impl VideoDataDescription {
 
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
+    /// Returns None if the video has no timescale.
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    pub fn frame_timestamps_nanos(&self) -> impl Iterator<Item = i64> + '_ {
+    pub fn frame_timestamps_nanos(&self) -> Option<impl Iterator<Item = i64> + '_> {
+        let timescale = self.timescale?;
+
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        self.gops.iter().flat_map(|seg| {
+        Some(self.gops.iter().flat_map(move |seg| {
             self.samples
                 .iter_index_range_clamped(&seg.sample_range)
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
-                .map(|pts| pts.into_nanos(self.timescale))
-        })
+                .map(move |pts| pts.into_nanos(timescale))
+        }))
     }
 
     /// For a given decode (!) timestamp, returns the index of the first sample whose
@@ -605,6 +613,11 @@ pub enum VideoLoadError {
 
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
+
+    #[error(
+        "Video file has no timescale, which is required to determine frame timestamps in time units"
+    )]
+    NoTimescale,
 
     #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
     MimeTypeIsNotAVideo {

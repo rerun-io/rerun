@@ -73,7 +73,10 @@ pub use self::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
-    utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
+    utils::{
+        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
+        video_timestamp_component_to_video_time,
+    },
     view::{
         DataBasedVisualizabilityFilter, DataResult, IdentifiedViewSystem,
         OptionalViewEntityHighlight, OverridePath, PerSystemDataResults, PerSystemEntities,

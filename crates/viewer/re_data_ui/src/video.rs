@@ -220,19 +220,18 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         }
                     });
                     row.col(|ui| {
-                        timestamp_ui(ui, video_descr, decode_timestamp);
+                        timestamp_ui(ui, video_descr.timescale, decode_timestamp);
                     });
                     row.col(|ui| {
-                        timestamp_ui(ui, video_descr, presentation_timestamp);
+                        timestamp_ui(ui, video_descr.timescale, presentation_timestamp);
                     });
 
                     row.col(|ui| {
-                        if let Some(duration) = duration {
+                        if let (Some(duration), Some(timescale)) = (duration, video_descr.timescale)
+                        {
                             ui.monospace(
-                                re_log_types::Duration::from(
-                                    duration.duration(video_descr.timescale),
-                                )
-                                .to_string(),
+                                re_log_types::Duration::from(duration.duration(timescale))
+                                    .to_string(),
                             );
                         } else {
                             ui.monospace("unknown");
@@ -246,46 +245,56 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
         });
 }
 
-fn timestamp_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription, timestamp: re_video::Time) {
-    ui.monospace(re_format::format_int(timestamp.0))
-        .on_hover_ui(|ui| {
+fn timestamp_ui(
+    ui: &mut egui::Ui,
+    timescale: Option<re_video::Timescale>,
+    timestamp: re_video::Time,
+) {
+    let response = ui.monospace(re_format::format_int(timestamp.0));
+    if let Some(timescale) = timescale {
+        response.on_hover_ui(|ui| {
             ui.monospace(re_format::format_timestamp_secs(
-                timestamp.into_secs(video_descr.timescale),
+                timestamp.into_secs(timescale),
             ));
         });
+    }
 }
 
 pub fn show_decoded_frame_info(
-    render_ctx: &re_renderer::RenderContext,
+    ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_timestamp: Option<VideoTimestamp>,
     blob: &re_types::datatypes::Blob,
 ) {
-    let timestamp_in_secs = if let Some(video_timestamp) = video_timestamp {
-        video_timestamp.as_secs()
-    } else {
+    let video_timestamp = video_timestamp.unwrap_or_else(|| {
         // TODO(emilk): Some time controls would be nice,
         // but the point here is not to have a nice viewer,
         // but to show the user what they have selected
         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
         let time = ui.input(|i| i.time);
+
         if let Some(duration) = video.data_descr().duration() {
-            time % duration.as_secs_f64()
+            VideoTimestamp::from_secs(time % duration.as_secs_f64())
         } else {
             // TODO(#7484): show something more useful here
-            f64::INFINITY
+            VideoTimestamp::from_nanos(i64::MAX)
         }
-    };
+    });
+    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+        ctx,
+        video_timestamp,
+        video.data_descr().timescale,
+    );
 
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
     match video.frame_at(
-        render_ctx,
+        ctx.render_ctx(),
         player_stream_id,
-        timestamp_in_secs,
+        video_time,
         &std::iter::once(blob.as_ref()).collect(),
     ) {
         Ok(VideoFrameTexture {
@@ -323,7 +332,7 @@ pub fn show_decoded_frame_info(
 
             let response = if let Some(texture) = texture {
                 crate::image::texture_preview_ui(
-                    render_ctx,
+                    ctx.render_ctx(),
                     ui,
                     ui_layout,
                     "video_preview",
@@ -398,15 +407,18 @@ fn frame_info_ui(
     }
 
     let presentation_time_range = frame_info.presentation_time_range();
-    ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
-        "{} - {}",
-        re_format::format_timestamp_secs(presentation_time_range.start.into_secs(
-            video_descr.timescale
-        )),
-        re_format::format_timestamp_secs(presentation_time_range.end.into_secs(
-            video_descr.timescale
-        )),
-    )))
+    if let Some(timescale) = video_descr.timescale {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+            "{} - {}",
+            re_format::format_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
+            re_format::format_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
+        )))
+    } else {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+            "{} - {}",
+            presentation_time_range.start.0, presentation_time_range.end.0,
+        )))
+    }
     .on_hover_text("Time range in which this frame is valid.");
 
     fn value_fn_for_time(
@@ -414,7 +426,7 @@ fn frame_info_ui(
         video_descr: &re_video::VideoDataDescription,
     ) -> impl FnOnce(&mut egui::Ui, list_item::ListVisuals) + '_ {
         move |ui, _| {
-            timestamp_ui(ui, video_descr, time);
+            timestamp_ui(ui, video_descr.timescale, time);
         }
     }
 

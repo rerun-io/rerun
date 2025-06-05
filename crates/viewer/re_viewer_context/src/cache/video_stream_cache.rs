@@ -5,7 +5,7 @@ use std::sync::{
 
 use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
-use egui::NumExt;
+use egui::NumExt as _;
 use parking_lot::RwLock;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -212,21 +212,12 @@ fn load_video_data_from_chunks(
         )?;
     }
 
-    let timeline_typ = store
-        .timelines()
-        .get(&timeline)
-        .map_or(TimeType::DurationNs, |t| t.typ());
-    let timescale = match timeline_typ {
-        TimeType::Sequence => re_video::Timescale::IDENTITY, // Can't translate the sequence time to real durations
-        TimeType::DurationNs | TimeType::TimestampNs => re_video::Timescale::NANOSECOND,
-    };
-
     Ok((
         re_video::VideoDataDescription {
             codec,
             stsd: None,             // Only mp4s have this.
             coded_dimensions: None, // Unknown so far.
-            timescale,
+            timescale: timescale_for_timeline(store, timeline),
             duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
             gops,
             samples,
@@ -235,6 +226,17 @@ fn load_video_data_from_chunks(
         },
         video_sample_buffers,
     ))
+}
+
+fn timescale_for_timeline(
+    store: &re_entity_db::EntityDb,
+    timeline: TimelineName,
+) -> Option<re_video::Timescale> {
+    let timeline_typ = store.timelines().get(&timeline).map(|t| t.typ());
+    match timeline_typ {
+        Some(TimeType::Sequence) | None => None, // Can't translate the sequence time to real durations
+        Some(TimeType::DurationNs | TimeType::TimestampNs) => Some(re_video::Timescale::NANOSECOND),
+    }
 }
 
 /// Reads all video samples from a chunk into an existing video description.

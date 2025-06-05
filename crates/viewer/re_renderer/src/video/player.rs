@@ -125,15 +125,14 @@ impl VideoPlayer {
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        time_since_video_start_in_secs: f64,
+        video_time: Time,
         video_description: &re_video::VideoDataDescription,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if time_since_video_start_in_secs < 0.0 {
+        if video_time.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let mut presentation_timestamp =
-            Time::from_secs(time_since_video_start_in_secs, video_description.timescale);
+        let mut presentation_timestamp = video_time;
         if let Some(duration) = video_description.duration {
             presentation_timestamp = presentation_timestamp.min(duration); // Don't seek past the end of the video.
         }
@@ -170,13 +169,16 @@ impl VideoPlayer {
                 true
             } else if presentation_timestamp < time_range.end {
                 false // it is an active frame
-            } else {
+            } else if let Some(timescale) = video_description.timescale {
                 let how_outdated = presentation_timestamp - time_range.end;
-                if how_outdated.duration(video_description.timescale) < DECODING_GRACE_DELAY {
+                if how_outdated.duration(timescale) < DECODING_GRACE_DELAY {
                     false // Just outdated by a little bit - show no spinner
                 } else {
                     true // Very old frame - show spinner
                 }
+            } else {
+                // TODO(andreas): Too much spinner? configure this from the outside in video time units!
+                true // No timescale - show spinner too often rather than too late
             };
             (is_pending, show_spinner)
         } else {

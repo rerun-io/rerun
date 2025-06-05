@@ -1,4 +1,3 @@
-use re_log_types::TimeType;
 use re_types::{
     Archetype as _,
     archetypes::VideoStream,
@@ -117,16 +116,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
             // Video streams are handled like "infinite" videos both forward and backwards in time.
             // Therefore, the "time in the video" is whatever time we have on the timeline right now.
-            let timeline_typ = query_context
-                .recording()
-                .timelines()
-                .get(&query_context.query.timeline())
-                .map_or(TimeType::DurationNs, |t| t.typ());
-            let time_raw = query_context.query.at().as_f64();
-            let time_since_video_start_in_secs = match timeline_typ {
-                TimeType::Sequence => time_raw,
-                TimeType::DurationNs | TimeType::TimestampNs => time_raw * 1e-9,
-            };
+            // Video streams are always using the timeline directly for their timestamps,
+            // therefore, we can use the unaltered time for all timeline types.
+            let video_time = re_video::Time::new(query_context.query.at().as_i64());
 
             let frame_result = {
                 let video = video.read();
@@ -138,7 +130,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
-                    time_since_video_start_in_secs,
+                    video_time,
                     &video.sample_buffer_slices(),
                 )
             };

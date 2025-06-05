@@ -51,10 +51,17 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
     let timestamps_nanos_memory = alloc_func(alloc_context, num_timestamps as u32);
     let timestamps_nanos =
         unsafe { std::slice::from_raw_parts_mut(timestamps_nanos_memory, num_timestamps) };
-    for (segment, timestamp_nanos) in video
-        .frame_timestamps_nanos()
-        .zip(timestamps_nanos.iter_mut())
-    {
+
+    let Some(video_timestamps_iter) = video.frame_timestamps_nanos() else {
+        CError::new(
+            CErrorCode::VideoLoadError,
+            &re_video::VideoLoadError::NoTimescale.to_string(),
+        )
+        .write_error(error);
+        return std::ptr::null_mut();
+    };
+
+    for (segment, timestamp_nanos) in video_timestamps_iter.zip(timestamps_nanos.iter_mut()) {
         *timestamp_nanos = segment;
     }
 

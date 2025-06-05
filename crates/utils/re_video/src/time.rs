@@ -3,10 +3,9 @@
 pub struct Timescale(u64);
 
 impl Timescale {
-    pub const IDENTITY: Self = Self(1);
     pub const NANOSECOND: Self = Self(1_000_000_000);
 
-    pub(crate) fn new(v: u64) -> Self {
+    pub fn new(v: u64) -> Self {
         Self(v)
     }
 }
