@@ -18,7 +18,7 @@ class CustomPoints3D(rr.AsComponents):
             ),
         )
         self.colors = rr.components.ColorBatch(colors).described(
-            rr.ComponentDescriptor("rerun.components.Colors").with_overrides(
+            rr.ComponentDescriptor("rerun.components.Color").with_overrides(
                 archetype_name="user.CustomPoints3D",
                 archetype_field_name="colors",
             )
