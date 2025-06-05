@@ -10,16 +10,18 @@ import rerun as rr  # pip install rerun-sdk
 
 class CustomPoints3D(rr.AsComponents):
     def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
-        self.positions = rr.components.Position3DBatch(positions).with_descriptor(
+        self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(
                 "user.CustomPosition3D",
                 archetype_name="user.CustomPoints3D",
                 archetype_field_name="custom_positions",
             ),
         )
-        self.colors = rr.components.ColorBatch(colors).or_with_descriptor_overrides(
-            archetype_name="user.CustomPoints3D",
-            archetype_field_name="colors",
+        self.colors = rr.components.ColorBatch(colors).described(
+            rr.ComponentDescriptor("rerun.components.Colors").with_overrides(
+                archetype_name="user.CustomPoints3D",
+                archetype_field_name="colors",
+            )
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:

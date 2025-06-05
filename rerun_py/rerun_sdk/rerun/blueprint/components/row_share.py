@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class RowShare(datatypes.Float32, ComponentMixin):
 
 
 class RowShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.RowShare")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.RowShare"
 
 
 # This is patched in late to avoid circular dependencies.

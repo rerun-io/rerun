@@ -13,7 +13,6 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["MagnificationFilter", "MagnificationFilterArrayLike", "MagnificationFilterBatch", "MagnificationFilterLike"]
@@ -67,7 +66,7 @@ MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[Magnifica
 
 class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.MagnificationFilter")
+    _COMPONENT_NAME: str = "rerun.components.MagnificationFilter"
 
     @staticmethod
     def _native_to_pa_array(data: MagnificationFilterArrayLike, data_type: pa.DataType) -> pa.Array:
