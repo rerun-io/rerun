@@ -283,6 +283,9 @@ fn read_samples_from_chunk(
         }
     }
 
+    // Make sure our index is sorted by the timeline we're interested in.
+    let chunk = chunk.sorted_by_timeline_if_unsorted(&timeline);
+
     // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
     // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
     // (each VideoStream has exactly one VideoSample instance per time)`.
@@ -336,7 +339,7 @@ fn read_samples_from_chunk(
                 // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
                 let decode_timestamp = re_video::Time(time.as_i64());
 
-                // Samples within a chunk are expected to be always in order.
+                // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
                 debug_assert!(decode_timestamp > previous_max_presentation_timestamp);
                 previous_max_presentation_timestamp = decode_timestamp;
 
