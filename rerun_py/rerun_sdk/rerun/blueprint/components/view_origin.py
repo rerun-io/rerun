@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class ViewOrigin(datatypes.EntityPath, ComponentMixin):
 
 
 class ViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ViewOrigin")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewOrigin"
 
 
 # This is patched in late to avoid circular dependencies.

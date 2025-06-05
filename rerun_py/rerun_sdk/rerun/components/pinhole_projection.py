@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -38,7 +37,7 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
 
 
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.PinholeProjection")
+    _COMPONENT_NAME: str = "rerun.components.PinholeProjection"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from rerun._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -24,7 +23,7 @@ class AffixFuzzer6(datatypes.AffixFuzzer1, ComponentMixin):
 
 
 class AffixFuzzer6Batch(datatypes.AffixFuzzer1Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer6")
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer6"
 
 
 # This is patched in late to avoid circular dependencies.

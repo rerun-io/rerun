@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class StrokeWidth(datatypes.Float32, ComponentMixin):
 
 
 class StrokeWidthBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.StrokeWidth")
+    _COMPONENT_NAME: str = "rerun.components.StrokeWidth"
 
 
 # This is patched in late to avoid circular dependencies.

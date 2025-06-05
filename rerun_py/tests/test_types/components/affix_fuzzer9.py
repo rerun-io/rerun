@@ -15,7 +15,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -50,7 +49,7 @@ AffixFuzzer9ArrayLike = Union[
 
 class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.utf8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer9")
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer9"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
