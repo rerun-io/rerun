@@ -114,7 +114,7 @@ def main() -> None:
     parser.add_argument(
         "--compat",
         type=str,
-        help='The platform tag for linux, e.g. "manylinux_2_31"',
+        help='The platform tag for linux, e.g. "manylinux_2_28"',
     )
     parser.add_argument("--upload-gcs", action="store_true", default=False, help="Upload the wheel to GCS")
     args = parser.parse_args()
