@@ -29,6 +29,7 @@ RUN set -eux; \
     xcb-util-devel \
     xcb-util-wm-devel \
     libxkbcommon-devel \
+    python3-pip \
     sudo; \
   dnf clean all;
 
