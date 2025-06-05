@@ -1,5 +1,5 @@
 use ahash::HashSet;
-use egui::{Color32, Context, Frame, Id, Margin, RichText, Stroke, Style};
+use egui::{Color32, Context, Frame, Id, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 /// This applies some fixes so that the column resize bar is correctly displayed.

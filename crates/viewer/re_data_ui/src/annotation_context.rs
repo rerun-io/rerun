@@ -1,4 +1,4 @@
-use egui::{NumExt, Vec2, color_picker};
+use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_types::{
