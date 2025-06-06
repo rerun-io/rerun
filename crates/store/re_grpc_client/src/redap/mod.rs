@@ -3,13 +3,18 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{
+    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource,
+};
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin};
+use re_uri::{DatasetDataUri, Origin, TimeRange};
 
 use crate::{ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
 
@@ -52,7 +57,7 @@ pub fn stream_dataset_from_redap(
     ) -> Result<(), StreamError> {
         let client = connection_registry.client(uri.origin.clone()).await?;
 
-        stream_partition_async(client, tx, uri.clone(), on_cmd, on_msg).await
+        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_cmd, on_msg).await
     }
 
     let connection_registry = connection_registry.clone();
@@ -223,39 +228,170 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     })
 }
 
-pub async fn stream_partition_async(
+/// Canonical way to ingest partition data from a Rerun data platform server, dealing with
+/// server-stored blueprints if any.
+///
+/// The current strategy currently consists of _always_ downloading the blueprint first and setting
+/// it as the default blueprint. It does look bruteforce, but it is strictly equivalent to loading
+/// related RRDs which each contain a blueprint (e.g. because `rr.send_blueprint()` was called).
+///
+/// A key advantage of this approach is that it ensures that the default blueprint is always in sync
+/// with the server's version.
+pub async fn stream_blueprint_and_partition_from_server(
     mut client: RedapClient,
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    let re_uri::DatasetDataUri {
-        origin,
-        dataset_id,
-        partition_id,
-        time_range,
-        fragment: _, // Only affects the viewer
-    } = uri;
+    re_log::debug!("Loading {uri}…");
 
-    re_log::debug!("Connecting to {}…", origin);
-
-    re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
-
-    let read_dataset_response: ReadDatasetEntryResponse = client
+    let response: ReadDatasetEntryResponse = client
         .read_dataset_entry(ReadDatasetEntryRequest {
-            id: Some(dataset_id.into()),
+            id: Some(uri.dataset_id.into()),
         })
         .await?
         .into_inner()
         .try_into()?;
 
-    let dataset_name = read_dataset_response.dataset_entry.details.name;
+    let blueprint_dataset = response.dataset_entry.blueprint_dataset;
 
+    if let Some(blueprint_dataset) = blueprint_dataset {
+        if is_dataset_empty(&mut client, blueprint_dataset)
+            .await
+            // TODO(rerun-io/dataplatform#857): we should fail on error here instead, but we do error
+            // with empty datasets, so for now we just assume we don't have a blueprint.
+            .unwrap_or(true)
+        {
+            re_log::debug!("Blueprint dataset {blueprint_dataset} is empty, skipping.");
+        } else {
+            re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
+
+            // It may be tempting to use the partition id to build the `StoreId` here, but we require
+            // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
+            // ids are only unique within a given dataset.
+            // This is a hack be cause
+            let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
+
+            let blueprint_store_info = StoreInfo {
+                application_id: uri.dataset_id.to_string().into(),
+                store_id: blueprint_store_id.clone(),
+                cloned_from: None,
+                store_source: StoreSource::Unknown,
+                store_version: None,
+            };
+
+            stream_partition_from_server(
+                &mut client,
+                blueprint_store_info,
+                &tx,
+                blueprint_dataset,
+                // TODO(rerun-io/dataplatform#858):: we download the entire dataset because we don't
+                // have the ability yet to register the blueprint to a known partition id (e.g.
+                // `__default`).
+                None,
+                None,
+                &on_cmd,
+                on_msg.as_deref(),
+            )
+            .await?;
+
+            if tx
+                .send(LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand {
+                        blueprint_id: blueprint_store_id,
+                        make_active: false,
+                        make_default: true,
+                    },
+                ))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
+            }
+        }
+    } else {
+        re_log::debug!("No blueprint dataset found for {uri}");
+    }
+
+    let store_info = StoreInfo {
+        application_id: uri.dataset_id.to_string().into(),
+        // See note above about `StoreId::random`.
+        store_id: StoreId::random(StoreKind::Recording),
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    let re_uri::DatasetDataUri {
+        origin: _,
+        dataset_id,
+        partition_id,
+        time_range,
+        fragment: _,
+    } = uri;
+
+    stream_partition_from_server(
+        &mut client,
+        store_info,
+        &tx,
+        dataset_id.into(),
+        Some(partition_id.into()),
+        time_range,
+        &on_cmd,
+        on_msg.as_deref(),
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn is_dataset_empty(
+    client: &mut RedapClient,
+    dataset_id: EntryId,
+) -> Result<bool, StreamError> {
+    let mut stream = client
+        .scan_partition_table(tonic::Request::new(
+            ScanPartitionTableRequest {
+                dataset_id,
+                scan_parameters: None,
+            }
+            .into(),
+        ))
+        .await?
+        .into_inner();
+
+    while let Some(resp) = stream.next().await {
+        let record_batch = resp?.data()?.decode()?;
+        if !record_batch.num_rows() > 0 {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
+/// Low-level function to stream data as a chunk store from a server.
+///
+/// Note: If `partition_id` is `None`, the entire dataset is streamed.
+#[expect(clippy::too_many_arguments)]
+async fn stream_partition_from_server(
+    client: &mut RedapClient,
+    store_info: StoreInfo,
+    tx: &re_smart_channel::Sender<LogMsg>,
+    dataset_id: EntryId,
+    partition_id: Option<PartitionId>,
+    time_range: Option<TimeRange>,
+    on_cmd: &(dyn Fn(Command) + Send + Sync),
+    on_msg: Option<&(dyn Fn() + Send + Sync)>,
+) -> Result<(), StreamError> {
     let catalog_chunk_stream = client
         .get_chunks(GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
-            partition_ids: vec![partition_id.clone().into()],
+            partition_ids: partition_id
+                .as_ref()
+                .map(|partition_id| vec![partition_id.clone().into()])
+                .unwrap_or_default(),
             chunk_ids: vec![],
             entity_paths: vec![],
             query: None,
@@ -263,16 +399,7 @@ pub async fn stream_partition_async(
         .await?
         .into_inner();
 
-    drop(client);
-
-    let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
-    let store_info = StoreInfo {
-        application_id: dataset_name.into(),
-        store_id: store_id.clone(),
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
+    let store_id = store_info.store_id.clone();
 
     if let Some(time_range) = time_range {
         on_cmd(Command::SetLoopSelection {

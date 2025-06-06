@@ -1,3 +1,4 @@
+use egui::NumExt as _;
 use egui_extras::Column;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
@@ -8,7 +9,7 @@ use re_ui::{
     UiExt as _,
     list_item::{self, PropertyContent},
 };
-use re_video::{VideoData, decode::FrameInfo};
+use re_video::{VideoDataDescription, decode::FrameInfo};
 use re_viewer_context::UiLayout;
 
 pub fn video_result_ui(
@@ -23,7 +24,7 @@ pub fn video_result_ui(
         Ok(video) => {
             if !ui_layout.is_single_line() {
                 re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
-                    video_data_ui(ui, ui_layout, video.data());
+                    video_data_ui(ui, ui_layout, video.data_descr());
                 });
             }
         }
@@ -48,15 +49,19 @@ pub fn video_result_ui(
     }
 }
 
-fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData) {
+fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoDataDescription) {
     re_tracing::profile_function!();
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Dimensions").value_text(format!(
-        "{}x{}",
-        video_data.width(),
-        video_data.height()
-    )));
-    if let Some(bit_depth) = video_data.config.stsd.contents.bit_depth() {
+    if let Some([w, h]) = &video_descr.coded_dimensions {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Dimensions").value_text(format!("{w}x{h}")),
+        );
+    }
+    if let Some(bit_depth) = video_descr
+        .stsd
+        .as_ref()
+        .and_then(|c| c.contents.bit_depth())
+    {
         ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {
             ui.label(bit_depth.to_string());
             if 8 < bit_depth {
@@ -66,38 +71,41 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
                     ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
                 });
             }
-            if video_data.is_monochrome() == Some(true) {
+            if video_descr.is_monochrome() == Some(true) {
                 ui.label("(monochrome)");
             }
         }));
     }
-    if let Some(subsampling_mode) = video_data.subsampling_mode() {
+    if let Some(subsampling_mode) = video_descr.subsampling_mode() {
         // Don't show subsampling mode for monochrome, doesn't make sense usually.
-        if video_data.is_monochrome() != Some(true) {
+        if video_descr.is_monochrome() != Some(true) {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
             );
         }
     }
-    ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(format!(
-        "{}",
-        re_log_types::Duration::from(video_data.duration())
-    )));
+    if let Some(duration) = video_descr.duration() {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Duration")
+                .value_text(format!("{}", re_log_types::Duration::from(duration))),
+        );
+    }
+
     // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
     // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
     // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
     // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     ui.list_item_flat_noninteractive(
         PropertyContent::new("Frame count")
-            .value_text(re_format::format_uint(video_data.num_samples())),
+            .value_text(re_format::format_uint(video_descr.num_samples())),
     );
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Codec").value_text(video_data.human_readable_codec_string()),
+        PropertyContent::new("Codec").value_text(video_descr.human_readable_codec_string()),
     );
 
-    if ui_layout != UiLayout::Tooltip {
+    if ui_layout != UiLayout::Tooltip && !video_descr.mp4_tracks.is_empty() {
         ui.list_item_collapsible_noninteractive_label("MP4 tracks", false, |ui| {
-            for (track_id, track_kind) in &video_data.mp4_tracks {
+            for (track_id, track_kind) in &video_descr.mp4_tracks {
                 let track_kind_string = match track_kind {
                     Some(re_video::TrackKind::Audio) => "audio",
                     Some(re_video::TrackKind::Subtitle) => "subtitle",
@@ -113,11 +121,11 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
         ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of GOPs")
-                    .value_text(video_data.gops.len().to_string()),
+                    .value_text(video_descr.gops.num_elements().to_string()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
 
-            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_data.samples_statistics;
+            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_descr.samples_statistics;
 
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
@@ -130,13 +138,13 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
                 .resizable([false, true])
                 .max_height(611.0) // Odd value so the user can see half-hidden rows
                 .show(ui, |ui| {
-                    samples_table_ui(ui, video_data);
+                    samples_table_ui(ui, video_descr);
                 });
         });
     }
 }
 
-fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
+fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
     re_tracing::profile_function!();
     let tokens = ui.tokens();
 
@@ -178,21 +186,20 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
 
             body.rows(
                 tokens.table_line_height(),
-                video_data.samples.len(),
+                video_descr.samples.num_elements(),
                 |mut row| {
-                    let sample_idx = row.index();
-                    let sample = &video_data.samples[sample_idx];
-                    let re_video::Sample {
+                    let sample_idx = row.index() + video_descr.samples.min_index();
+                    let sample = &video_descr.samples[sample_idx];
+                    let re_video::SampleMetadata {
                         is_sync,
-                        sample_idx: sample_idx_in_sample,
                         frame_nr,
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
+                        buffer_index: _,
                         byte_offset: _,
                         byte_length,
                     } = *sample;
-                    debug_assert_eq!(sample_idx, sample_idx_in_sample);
 
                     row.col(|ui| {
                         ui.monospace(re_format::format_uint(sample_idx));
@@ -201,7 +208,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                         ui.monospace(re_format::format_uint(frame_nr));
                     });
                     row.col(|ui| {
-                        if let Some(gop_index) = video_data
+                        if let Some(gop_index) = video_descr
                             .gop_index_containing_presentation_timestamp(presentation_timestamp)
                         {
                             ui.monospace(re_format::format_uint(gop_index));
@@ -213,17 +220,22 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                         }
                     });
                     row.col(|ui| {
-                        timestamp_ui(ui, video_data, decode_timestamp);
+                        timestamp_ui(ui, video_descr.timescale, decode_timestamp);
                     });
                     row.col(|ui| {
-                        timestamp_ui(ui, video_data, presentation_timestamp);
+                        timestamp_ui(ui, video_descr.timescale, presentation_timestamp);
                     });
 
                     row.col(|ui| {
-                        ui.monospace(
-                            re_log_types::Duration::from(duration.duration(video_data.timescale))
-                                .to_string(),
-                        );
+                        if let (Some(duration), Some(timescale)) = (duration, video_descr.timescale)
+                        {
+                            ui.monospace(
+                                re_log_types::Duration::from(duration.duration(timescale))
+                                    .to_string(),
+                            );
+                        } else {
+                            ui.monospace("unknown");
+                        }
                     });
                     row.col(|ui| {
                         ui.monospace(re_format::format_bytes(byte_length as _));
@@ -233,37 +245,58 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
         });
 }
 
-fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::Time) {
-    ui.monospace(re_format::format_int(timestamp.0))
-        .on_hover_ui(|ui| {
+fn timestamp_ui(
+    ui: &mut egui::Ui,
+    timescale: Option<re_video::Timescale>,
+    timestamp: re_video::Time,
+) {
+    let response = ui.monospace(re_format::format_int(timestamp.0));
+    if let Some(timescale) = timescale {
+        response.on_hover_ui(|ui| {
             ui.monospace(re_format::format_timestamp_secs(
-                timestamp.into_secs(video_data.timescale),
+                timestamp.into_secs(timescale),
             ));
         });
+    }
 }
 
 pub fn show_decoded_frame_info(
-    render_ctx: &re_renderer::RenderContext,
+    ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_timestamp: Option<VideoTimestamp>,
     blob: &re_types::datatypes::Blob,
 ) {
-    let timestamp_in_secs = if let Some(video_timestamp) = video_timestamp {
-        video_timestamp.as_secs()
-    } else {
+    let video_timestamp = video_timestamp.unwrap_or_else(|| {
         // TODO(emilk): Some time controls would be nice,
         // but the point here is not to have a nice viewer,
         // but to show the user what they have selected
         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
-    };
+        let time = ui.input(|i| i.time);
+
+        if let Some(duration) = video.data_descr().duration() {
+            VideoTimestamp::from_secs(time % duration.as_secs_f64())
+        } else {
+            // TODO(#7484): show something more useful here
+            VideoTimestamp::from_nanos(i64::MAX)
+        }
+    });
+    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+        ctx,
+        video_timestamp,
+        video.data_descr().timescale,
+    );
 
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(render_ctx, player_stream_id, timestamp_in_secs, blob) {
+    match video.frame_at(
+        ctx.render_ctx(),
+        player_stream_id,
+        video_time,
+        &std::iter::once(blob.as_ref()).collect(),
+    ) {
         Ok(VideoFrameTexture {
             texture,
             is_pending,
@@ -289,7 +322,7 @@ pub fn show_decoded_frame_info(
                             list_item::LabelContent::new(label),
                             |ui| {
                                 list_item::list_item_scope(ui, id, |ui| {
-                                    frame_info_ui(ui, &frame_info, video.data());
+                                    frame_info_ui(ui, &frame_info, video.data_descr());
                                     source_image_data_format_ui(ui, &source_pixel_format);
                                 });
                             },
@@ -297,13 +330,20 @@ pub fn show_decoded_frame_info(
                 });
             }
 
-            let response = crate::image::texture_preview_ui(
-                render_ctx,
-                ui,
-                ui_layout,
-                "video_preview",
-                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-            );
+            let response = if let Some(texture) = texture {
+                crate::image::texture_preview_ui(
+                    ctx.render_ctx(),
+                    ui,
+                    ui_layout,
+                    "video_preview",
+                    re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                )
+            } else {
+                ui.allocate_response(
+                    egui::Vec2::splat(ui.available_width().at_most(128.0)),
+                    egui::Sense::hover(),
+                )
+            };
 
             if is_pending {
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
@@ -315,6 +355,7 @@ pub fn show_decoded_frame_info(
                     response.rect.center(),
                     0.75 * response.rect.size(),
                 );
+
                 egui::Spinner::new().paint_at(ui, smaller_rect);
             }
         }
@@ -343,13 +384,17 @@ pub fn show_decoded_frame_info(
     }
 }
 
-fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
+fn frame_info_ui(
+    ui: &mut egui::Ui,
+    frame_info: &FrameInfo,
+    video_descr: &re_video::VideoDataDescription,
+) {
     let FrameInfo {
         is_sync,
         sample_idx,
         frame_nr,
         presentation_timestamp,
-        duration,
+        duration: _,
         latest_decode_timestamp,
     } = *frame_info;
 
@@ -361,24 +406,27 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
             );
     }
 
-    let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
-    ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
-        "{} - {}",
-        re_format::format_timestamp_secs(presentation_time_range.start.into_secs(
-            video_data.timescale
-        )),
-        re_format::format_timestamp_secs(presentation_time_range.end.into_secs(
-            video_data.timescale
-        )),
-    )))
+    let presentation_time_range = frame_info.presentation_time_range();
+    if let Some(timescale) = video_descr.timescale {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+            "{} - {}",
+            re_format::format_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
+            re_format::format_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
+        )))
+    } else {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+            "{} - {}",
+            presentation_time_range.start.0, presentation_time_range.end.0,
+        )))
+    }
     .on_hover_text("Time range in which this frame is valid.");
 
     fn value_fn_for_time(
         time: re_video::Time,
-        video_data: &re_video::VideoData,
+        video_descr: &re_video::VideoDataDescription,
     ) -> impl FnOnce(&mut egui::Ui, list_item::ListVisuals) + '_ {
         move |ui, _| {
-            timestamp_ui(ui, video_data, time);
+            timestamp_ui(ui, video_descr.timescale, time);
         }
     }
 
@@ -400,14 +448,14 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
 
     if let Some(dts) = latest_decode_timestamp {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_data)),
+            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_descr)),
         )
         .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
                         If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_fn(value_fn_for_time(presentation_timestamp, video_data)),
+        PropertyContent::new("PTS").value_fn(value_fn_for_time(presentation_timestamp, video_descr)),
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");
@@ -415,13 +463,13 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     // Judging the following to be a bit too obscure to be of relevance outside of debugging Rerun itself.
     #[cfg(debug_assertions)]
     {
-        if let Some(has_sample_highest_pts_so_far) = video_data
+        if let Some(has_sample_highest_pts_so_far) = video_descr
             .samples_statistics
             .has_sample_highest_pts_so_far
             .as_ref()
         {
             if let Some(sample_idx) =
-                video_data.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+                video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
             {
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
@@ -433,18 +481,18 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     // Information about the current group of pictures this frame is part of.
     // Lookup via decode timestamp is faster, but it may not always be available.
     if let Some(gop_index) =
-        video_data.gop_index_containing_presentation_timestamp(presentation_timestamp)
+        video_descr.gop_index_containing_presentation_timestamp(presentation_timestamp)
     {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("GOP index").value_text(gop_index.to_string()),
         )
         .on_hover_text("The index of the group of picture (GOP) that this sample belongs to.");
 
-        if let Some(gop) = video_data.gops.get(gop_index) {
-            let first_sample = video_data.samples.get(gop.sample_range.start as usize);
-            let last_sample = video_data
+        if let Some(gop) = video_descr.gops.get(gop_index) {
+            let first_sample = video_descr.samples.get(gop.sample_range.start);
+            let last_sample = video_descr
                 .samples
-                .get((gop.sample_range.end as usize).saturating_sub(1));
+                .get(gop.sample_range.end.saturating_sub(1));
 
             if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(

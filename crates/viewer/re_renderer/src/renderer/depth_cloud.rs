@@ -171,7 +171,7 @@ impl DepthCloud {
     ///
     /// Assumes max extent to be the maximum depth used for colormapping
     /// but ignores the minimum depth, using the frustum's origin instead.
-    pub fn world_space_bbox(&self) -> re_math::BoundingBox {
+    pub fn world_space_bbox(&self) -> macaw::BoundingBox {
         let max_depth = self.min_max_depth_in_world[1];
         let w = self.depth_dimensions.x as f32;
         let h = self.depth_dimensions.y as f32;
@@ -187,7 +187,7 @@ impl DepthCloud {
         let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
         let offset = intrinsics.col(2).truncate();
 
-        let mut bbox = re_math::BoundingBox::NOTHING;
+        let mut bbox = macaw::BoundingBox::nothing();
 
         for corner in corners {
             let depth = corner.z;

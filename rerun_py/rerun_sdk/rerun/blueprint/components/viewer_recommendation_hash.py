@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -31,9 +30,7 @@ class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
 
 
 class ViewerRecommendationHashBatch(datatypes.UInt64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor(
-        "rerun.blueprint.components.ViewerRecommendationHash"
-    )
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewerRecommendationHash"
 
 
 # This is patched in late to avoid circular dependencies.

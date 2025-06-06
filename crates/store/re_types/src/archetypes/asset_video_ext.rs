@@ -77,8 +77,9 @@ impl AssetVideo {
         };
 
         Ok(
-            re_video::VideoData::load_from_bytes(blob_bytes, media_type.as_str())?
+            re_video::VideoDataDescription::load_from_bytes(blob_bytes, media_type.as_str())?
                 .frame_timestamps_nanos()
+                .ok_or(re_video::VideoLoadError::NoTimescale)?
                 .collect(),
         )
     }

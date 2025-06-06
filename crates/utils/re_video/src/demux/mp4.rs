@@ -1,10 +1,12 @@
 #![allow(clippy::map_err_ignore)]
 
-use super::{Config, GroupOfPictures, Sample, VideoData, VideoLoadError};
+use itertools::Itertools as _;
 
-use crate::{Time, Timescale, demux::SamplesStatistics};
+use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
-impl VideoData {
+use crate::{StableIndexDeque, Time, Timescale, demux::SamplesStatistics};
+
+impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
@@ -22,38 +24,24 @@ impl VideoData {
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
-        let description = track
-            .raw_codec_config(&mp4)
-            .ok_or_else(|| VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)))?;
-
-        let coded_height = track.height;
-        let coded_width = track.width;
-
-        let config = Config {
-            stsd,
-            description,
-            coded_height,
-            coded_width,
-        };
-
         let timescale = Timescale::new(track.timescale);
         let duration = Time::new(track.duration as i64);
-        let mut samples = Vec::<Sample>::new();
-        let mut gops = Vec::<GroupOfPictures>::new();
+        let mut samples = StableIndexDeque::<SampleMetadata>::with_capacity(track.samples.len());
+        let mut gops = StableIndexDeque::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
-            for (sample_idx, sample) in track.samples.iter().enumerate() {
+            for sample in &track.samples {
                 if sample.is_sync && !samples.is_empty() {
                     let start = samples[gop_sample_start_index].decode_timestamp;
-                    let sample_range = gop_sample_start_index as u32..samples.len() as u32;
-                    gops.push(GroupOfPictures {
+                    let sample_range = gop_sample_start_index..samples.next_index();
+                    gops.push_back(GroupOfPictures {
                         decode_start_time: start,
                         sample_range,
                     });
-                    gop_sample_start_index = samples.len();
+                    gop_sample_start_index = samples.next_index();
                 }
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
@@ -63,13 +51,14 @@ impl VideoData {
                 let byte_offset = sample.offset as u32;
                 let byte_length = sample.size as u32;
 
-                samples.push(Sample {
+                samples.push_back(SampleMetadata {
                     is_sync: sample.is_sync,
-                    sample_idx,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,
-                    duration,
+                    duration: Some(duration),
+                    // There's only a single buffer, which is the raw mp4 video data.
+                    buffer_index: 0,
                     byte_offset,
                     byte_length,
                 });
@@ -99,8 +88,8 @@ impl VideoData {
         // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
             let start = samples[gop_sample_start_index].decode_timestamp;
-            let sample_range = gop_sample_start_index as u32..samples.len() as u32;
-            gops.push(GroupOfPictures {
+            let sample_range = gop_sample_start_index..samples.next_index();
+            gops.push_back(GroupOfPictures {
                 decode_start_time: start,
                 sample_range,
             });
@@ -109,9 +98,11 @@ impl VideoData {
         {
             re_tracing::profile_scope!("Sanity-check samples");
             let mut samples_are_in_decode_order = true;
-            for window in samples.windows(2) {
-                samples_are_in_decode_order &=
-                    window[0].decode_timestamp <= window[1].decode_timestamp;
+            for (a, b) in samples
+                .iter()
+                .tuple_windows::<(&SampleMetadata, &SampleMetadata)>()
+            {
+                samples_are_in_decode_order &= a.decode_timestamp <= b.decode_timestamp;
             }
             if !samples_are_in_decode_order {
                 re_log::warn!(
@@ -125,16 +116,33 @@ impl VideoData {
             let mut samples_sorted_by_pts = samples.iter_mut().collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
-                sample.frame_nr = frame_nr;
+                sample.frame_nr = frame_nr as u32;
             }
         }
 
         let samples_statistics = SamplesStatistics::new(&samples);
 
+        let codec = match &stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
+            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                crate::VideoCodec::H265
+            }
+            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
+            _ => {
+                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
+                    &mp4, track,
+                )));
+            }
+        };
+
         Ok(Self {
-            config,
-            timescale,
-            duration,
+            codec,
+            stsd: Some(stsd),
+            coded_dimensions: Some([track.width, track.height]),
+            timescale: Some(timescale),
+            duration: Some(duration),
             samples_statistics,
             gops,
             samples,

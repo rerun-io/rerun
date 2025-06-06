@@ -1,18 +1,17 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use web_time::Instant;
 
 use re_video::{
-    Time,
+    GopIndex, SampleIndex, StableIndexDeque, Time,
     decode::{DecodeSettings, FrameInfo},
 };
 
-use super::{VideoFrameTexture, chunk_decoder::VideoChunkDecoder};
+use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::VideoPlayerError,
-    wgpu_resources::{GpuTexturePool, TextureDesc},
 };
 
 /// Ignore hickups lasting shorter than this.
@@ -39,8 +38,10 @@ impl TimedDecodingError {
 }
 
 /// A texture of a specific video frame.
+#[derive(Clone)]
 pub struct VideoTexture {
-    pub texture: GpuTexture2D,
+    /// The video texture is created lazily on the first received frame.
+    pub texture: Option<GpuTexture2D>,
     pub frame_info: Option<FrameInfo>,
     pub source_pixel_format: SourceImageDataFormat,
 }
@@ -49,14 +50,13 @@ pub struct VideoTexture {
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
-    data: Arc<re_video::VideoData>,
-    chunk_decoder: VideoChunkDecoder,
+    chunk_decoder: VideoSampleDecoder,
 
     video_texture: VideoTexture,
 
-    last_requested_sample_idx: usize,
-    last_requested_gop_idx: usize,
-    last_enqueued_gop_idx: Option<usize>,
+    last_requested_sample_idx: SampleIndex,
+    last_requested_gop_idx: GopIndex,
+    last_enqueued_gop_idx: Option<GopIndex>,
 
     /// Last error that was encountered during decoding.
     ///
@@ -65,53 +65,50 @@ pub struct VideoPlayer {
 }
 
 impl VideoPlayer {
+    /// Create a new video player for a given video.
+    ///
+    /// The video data description may change over time by adding and removing samples and GOPs,
+    /// but other properties are expected to be stable.
     pub fn new(
         debug_name: &str,
-        render_ctx: &RenderContext,
-        data: Arc<re_video::VideoData>,
+        description: &re_video::VideoDataDescription,
         decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(
             "{debug_name}, codec: {}",
-            data.human_readable_codec_string()
+            description.human_readable_codec_string()
         );
 
-        if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
-            #[allow(clippy::comparison_chain)]
-            if bit_depth < 8 {
-                re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
-            } else if 8 < bit_depth {
-                re_log::warn_once!(
-                    "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
-                );
+        if let Some(stsd) = description.stsd.as_ref() {
+            if let Some(bit_depth) = stsd.contents.bit_depth() {
+                #[allow(clippy::comparison_chain)]
+                if bit_depth < 8 {
+                    re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
+                } else if 8 < bit_depth {
+                    re_log::warn_once!(
+                        "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
+                    );
+                }
             }
         }
 
-        let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, &data, decode_settings, on_output)
+        let chunk_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
+            re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
-        let texture = alloc_video_frame_texture(
-            &render_ctx.device,
-            &render_ctx.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-
         Ok(Self {
-            data,
             chunk_decoder,
 
             video_texture: VideoTexture {
-                texture,
+                texture: None,
                 frame_info: None,
                 source_pixel_format: SourceImageDataFormat::WgpuCompatible(
                     wgpu::TextureFormat::Rgba8Unorm,
                 ),
             },
 
-            last_requested_sample_idx: usize::MAX,
-            last_requested_gop_idx: usize::MAX,
+            last_requested_sample_idx: SampleIndex::MAX,
+            last_requested_gop_idx: GopIndex::MAX,
             last_enqueued_gop_idx: None,
 
             last_error: None,
@@ -122,37 +119,49 @@ impl VideoPlayer {
     ///
     /// This will seek in the video if needed.
     /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
+    ///
+    /// The video data description may change over time by adding and removing samples and GOPs,
+    /// but other properties are expected to be stable.
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        time_since_video_start_in_secs: f64,
-        video_data: &[u8],
+        video_time: Time,
+        video_description: &re_video::VideoDataDescription,
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if time_since_video_start_in_secs < 0.0 {
+        if video_time.0 < 0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp =
-            Time::from_secs(time_since_video_start_in_secs, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+        let mut presentation_timestamp = video_time;
+        if let Some(duration) = video_description.duration {
+            presentation_timestamp = presentation_timestamp.min(duration); // Don't seek past the end of the video.
+        }
 
         let error_on_last_frame_at = self.last_error.is_some();
-        self.enqueue_samples(presentation_timestamp, video_data)?;
-        self.update_video_texture(render_ctx, presentation_timestamp)?;
+        self.enqueue_samples(video_description, presentation_timestamp, video_buffers)?;
 
-        let frame_info = self.video_texture.frame_info.clone();
+        update_video_texture(
+            render_ctx,
+            &self.chunk_decoder,
+            &mut self.last_error,
+            &mut self.video_texture,
+            presentation_timestamp,
+        )?;
 
-        if let Some(frame_info) = frame_info {
+        let (is_pending, show_spinner) = if let (Some(frame_info), Some(video_gpu_texture)) = (
+            self.video_texture.frame_info.clone(),
+            self.video_texture.texture.clone(),
+        ) {
             let time_range = frame_info.presentation_time_range();
             let is_active_frame = time_range.contains(&presentation_timestamp);
 
             let is_pending = !is_active_frame;
-
             let show_spinner = if is_pending && error_on_last_frame_at {
                 // If we switched from error to pending, clear the texture.
                 // This is important to avoid flickering, in particular when switching from
                 // benign errors like DecodingError::NegativeTimestamp.
                 // If we don't do this, we see the last valid texture which can look really weird.
-                clear_texture(render_ctx, &self.video_texture.texture);
+                clear_texture(render_ctx, &video_gpu_texture);
                 self.video_texture.frame_info = None;
                 true
             } else if presentation_timestamp < time_range.start {
@@ -160,36 +169,37 @@ impl VideoPlayer {
                 true
             } else if presentation_timestamp < time_range.end {
                 false // it is an active frame
-            } else {
+            } else if let Some(timescale) = video_description.timescale {
                 let how_outdated = presentation_timestamp - time_range.end;
-                if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
+                if how_outdated.duration(timescale) < DECODING_GRACE_DELAY {
                     false // Just outdated by a little bit - show no spinner
                 } else {
                     true // Very old frame - show spinner
                 }
+            } else {
+                // TODO(andreas): Too much spinner? configure this from the outside in video time units!
+                true // No timescale - show spinner too often rather than too late
             };
-            Ok(VideoFrameTexture {
-                texture: self.video_texture.texture.clone(),
-                is_pending,
-                show_spinner,
-                frame_info: Some(frame_info),
-                source_pixel_format: self.video_texture.source_pixel_format,
-            })
+            (is_pending, show_spinner)
         } else {
-            Ok(VideoFrameTexture {
-                texture: self.video_texture.texture.clone(),
-                is_pending: true,
-                show_spinner: true,
-                frame_info: None,
-                source_pixel_format: self.video_texture.source_pixel_format,
-            })
-        }
+            (true, true)
+        };
+
+        Ok(VideoFrameTexture {
+            texture: self.video_texture.texture.clone(),
+            is_pending,
+            show_spinner,
+            frame_info: self.video_texture.frame_info.clone(),
+            source_pixel_format: self.video_texture.source_pixel_format,
+        })
     }
 
+    // TODO(#7484): Need to revisit this for gops that expand over time due to newly arrived samples.
     fn enqueue_samples(
         &mut self,
+        video_description: &re_video::VideoDataDescription,
         presentation_timestamp: Time,
-        video_data: &[u8],
+        video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
 
@@ -205,16 +215,14 @@ impl VideoPlayer {
         // In the presence of b-frames this order may be different!
 
         // Find sample which when decoded will be presented at the timestamp the user requested.
-        let requested_sample_idx = self
-            .data
+        let requested_sample_idx = video_description
             .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
         // Find the GOP that contains the sample.
-        let requested_gop_idx = self
-            .data
+        let requested_gop_idx = video_description
             .gop_index_containing_decode_timestamp(
-                self.data.samples[requested_sample_idx].decode_timestamp,
+                video_description.samples[requested_sample_idx].decode_timestamp,
             )
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
@@ -227,7 +235,7 @@ impl VideoPlayer {
             //
             // By resetting the current GOP/sample indices, the frame enqueued code below
             // is forced to reset the decoder.
-            self.last_requested_gop_idx = usize::MAX;
+            self.last_requested_gop_idx = GopIndex::MAX;
 
             // If we already have an error set, preserve its occurrence time.
             // Otherwise, set the error using the time at which it was registered.
@@ -248,14 +256,24 @@ impl VideoPlayer {
                 self.reset()?;
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
-            let current_pts =
-                self.data.samples[self.last_requested_sample_idx].presentation_timestamp;
-            let requested_sample = &self.data.samples[requested_sample_idx];
+            let requested_sample = video_description
+                .samples
+                .get(self.last_requested_sample_idx); // If it is not available, it got GC'ed by now.
+            let current_pts = requested_sample
+                .map(|s| s.presentation_timestamp)
+                .unwrap_or(Time::MIN);
 
-            if requested_sample.presentation_timestamp < current_pts {
+            let requested_sample = video_description.samples.get(requested_sample_idx);
+            let requested_sample_pts = requested_sample
+                .map(|s| s.presentation_timestamp)
+                .unwrap_or(Time::MIN);
+
+            if requested_sample_pts < current_pts {
                 re_log::trace!(
                     "Seeking backwards to sample {requested_sample_idx} (frame_nr {})",
-                    requested_sample.frame_nr
+                    requested_sample
+                        .map(|s| s.frame_nr.to_string())
+                        .unwrap_or("<unknown>".to_owned())
                 );
 
                 // special case: handle seeking backwards within a single GOP
@@ -282,9 +300,9 @@ impl VideoPlayer {
             requested_sample_idx + self.chunk_decoder.min_num_samples_to_enqueue_ahead();
         loop {
             let next_gop_idx = if let Some(last_enqueued_gop_idx) = self.last_enqueued_gop_idx {
-                let last_enqueued_gop = self.data.gops.get(last_enqueued_gop_idx);
+                let last_enqueued_gop = video_description.gops.get(last_enqueued_gop_idx);
                 let last_enqueued_sample_idx = last_enqueued_gop
-                    .map(|gop| gop.sample_range_usize().end)
+                    .map(|gop| gop.sample_range.end)
                     .unwrap_or(0);
 
                 if last_enqueued_gop_idx > requested_gop_idx // Enqueue the next GOP after requested as well.
@@ -297,12 +315,12 @@ impl VideoPlayer {
                 requested_gop_idx
             };
 
-            if next_gop_idx >= self.data.gops.len() {
+            if next_gop_idx >= video_description.gops.next_index() {
                 // Reached end of video with a previously enqueued GOP already.
                 break;
             }
 
-            self.enqueue_gop(next_gop_idx, video_data)?;
+            self.enqueue_gop(video_description, next_gop_idx, video_buffers)?;
         }
 
         self.last_requested_sample_idx = requested_sample_idx;
@@ -311,69 +329,40 @@ impl VideoPlayer {
         Ok(())
     }
 
-    fn update_video_texture(
-        &mut self,
-        render_ctx: &RenderContext,
-        presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
-        let result = self.chunk_decoder.update_video_texture(
-            render_ctx,
-            &mut self.video_texture,
-            presentation_timestamp,
-        );
-
-        if let Err(err) = result {
-            if matches!(err, VideoPlayerError::EmptyBuffer) {
-                // No buffered frames
-
-                // Might this be due to an error?
-                //
-                // We only care about decoding errors when we don't find the requested frame,
-                // since we want to keep playing the video fine even if parts of it are broken.
-                // That said, practically we reset the decoder and thus all frames upon error,
-                // so it doesn't make a lot of difference.
-                if let Some(timed_error) = &self.last_error {
-                    if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
-                        // Report the error only if we have been in an error state for a certain amount of time.
-                        // Don't immediately report the error, since we might immediately recover from it.
-                        // Otherwise, this would cause aggressive flickering!
-                        return Err(timed_error.latest_error.clone());
-                    }
-                }
-
-                // Don't return a zeroed texture, because we may just be behind on decoding
-                // and showing an old frame is better than showing a blank frame,
-                // because it causes "black flashes" to appear
-                Ok(())
-            } else {
-                Err(err)
-            }
-        } else {
-            self.last_error = None;
-            Ok(())
-        }
-    }
-
     /// Enqueue all samples in the given GOP.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_gop(&mut self, gop_idx: usize, video_data: &[u8]) -> Result<(), VideoPlayerError> {
-        let Some(gop) = self.data.gops.get(gop_idx) else {
+    fn enqueue_gop(
+        &mut self,
+        video_description: &re_video::VideoDataDescription,
+        gop_idx: GopIndex,
+        video_buffers: &StableIndexDeque<&[u8]>,
+    ) -> Result<(), VideoPlayerError> {
+        let Some(gop) = video_description.gops.get(gop_idx) else {
             return Ok(());
         };
 
         self.last_enqueued_gop_idx = Some(gop_idx);
 
-        let samples = &self.data.samples[gop.sample_range_usize()];
+        re_log::trace!(
+            "Enqueueing GOP {gop_idx} ({} samples)",
+            gop.sample_range.len()
+        );
 
-        re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
+        let samples = video_description
+            .samples
+            .iter_index_range_clamped(&gop.sample_range);
 
-        for sample in samples {
-            let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
+        for (sample_offset, sample) in samples.enumerate() {
+            let sample_idx = gop.sample_range.start + sample_offset;
+            let chunk = sample
+                .get(video_buffers, sample_idx)
+                .ok_or(VideoPlayerError::BadData)?;
             self.chunk_decoder.decode(chunk)?;
         }
 
-        if gop_idx + 1 == self.data.gops.len() {
+        // TODO(#7484): For streaming we need to mark gops as open and do more here.
+        if gop_idx + 1 == video_description.gops.next_index() {
             // Last GOP - there is nothing more to decode,
             // so flush out any pending frames:
             // See https://github.com/rerun-io/rerun/issues/8073
@@ -386,47 +375,57 @@ impl VideoPlayer {
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), VideoPlayerError> {
         self.chunk_decoder.reset()?;
-        self.last_requested_gop_idx = usize::MAX;
-        self.last_requested_sample_idx = usize::MAX;
+        self.last_requested_gop_idx = GopIndex::MAX;
+        self.last_requested_sample_idx = SampleIndex::MAX;
         self.last_enqueued_gop_idx = None;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
 }
 
-#[allow(unused)] // For some feature flags
-fn alloc_video_frame_texture(
-    device: &wgpu::Device,
-    pool: &GpuTexturePool,
-    width: u32,
-    height: u32,
-) -> GpuTexture2D {
-    let Some(texture) = GpuTexture2D::new(pool.alloc(
-        device,
-        &TextureDesc {
-            label: "video".into(),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
-            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
-            usage: wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        },
-    )) else {
-        // We set the dimension to `2D` above, so this should never happen.
-        unreachable!();
-    };
+fn update_video_texture(
+    render_ctx: &RenderContext,
+    chunk_decoder: &VideoSampleDecoder,
+    last_error: &mut Option<TimedDecodingError>,
+    video_texture: &mut VideoTexture,
+    presentation_timestamp: Time,
+) -> Result<(), VideoPlayerError> {
+    let result =
+        chunk_decoder.update_video_texture(render_ctx, video_texture, presentation_timestamp);
 
-    texture
+    match result {
+        Ok(()) => {
+            *last_error = None;
+            Ok(())
+        }
+        Err(err) => {
+            if matches!(err, VideoPlayerError::EmptyBuffer) {
+                // No buffered frames
+
+                // Might this be due to an error?
+                //
+                // We only care about decoding errors when we don't find the requested frame,
+                // since we want to keep playing the video fine even if parts of it are broken.
+                // That said, practically we reset the decoder and thus all frames upon error,
+                // so it doesn't make a lot of difference.
+                if let Some(timed_error) = last_error {
+                    if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
+                        // Report the error only if we have been in an error state for a certain amount of time.
+                        // Don't immediately report the error, since we might immediately recover from it.
+                        // Otherwise, this would cause aggressive flickering!
+                        return Err(timed_error.latest_error.clone());
+                    }
+                }
+
+                // Don't zeroed the texture, because we may just be behind on decoding
+                // and showing an old frame is better than showing a blank frame,
+                // because it causes "black flashes" to appear
+                Ok(())
+            } else {
+                Err(err)
+            }
+        }
+    }
 }
 
 /// Clears the texture that is shown on pending to black.

@@ -21,7 +21,7 @@ pub struct WorldGridConfiguration {
     pub color: Rgba,
 
     /// The plane in which the grid lines are drawn.
-    pub plane: re_math::Plane3,
+    pub plane: macaw::Plane3,
 
     /// How far apart the closest sets of lines are.
     pub spacing: f32,

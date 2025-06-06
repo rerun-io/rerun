@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use re_log_types::TimestampFormat;
 use re_video::decode::{DecodeHardwareAcceleration, DecodeSettings};
 
@@ -125,9 +123,11 @@ impl AppOptions {
     pub fn video_decoder_settings(&self) -> DecodeSettings {
         DecodeSettings {
             hw_acceleration: self.video_decoder_hw_acceleration,
+
+            #[cfg(not(target_arch = "wasm32"))]
             ffmpeg_path: self
                 .video_decoder_override_ffmpeg_path
-                .then(|| PathBuf::from(&self.video_decoder_ffmpeg_path)),
+                .then(|| std::path::PathBuf::from(&self.video_decoder_ffmpeg_path)),
         }
     }
 }

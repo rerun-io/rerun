@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class Position2D(datatypes.Vec2D, ComponentMixin):
 
 
 class Position2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Position2D")
+    _COMPONENT_NAME: str = "rerun.components.Position2D"
 
 
 # This is patched in late to avoid circular dependencies.

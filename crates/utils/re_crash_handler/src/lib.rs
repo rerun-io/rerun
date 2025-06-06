@@ -17,6 +17,7 @@ static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
 /// NOTE: only install these in binaries!
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
+#[allow(clippy::needless_pass_by_value)]
 pub fn install_crash_handlers(build_info: BuildInfo) {
     install_panic_hook(build_info.clone());
 

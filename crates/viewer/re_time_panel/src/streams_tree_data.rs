@@ -5,7 +5,7 @@ use re_types::ComponentDescriptor;
 use smallvec::SmallVec;
 
 use re_chunk_store::ChunkStore;
-use re_data_ui::sorted_component_list_for_ui;
+use re_data_ui::{ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
@@ -70,6 +70,7 @@ impl StreamsTreeData {
     /// components are visited.
     pub fn visit<B>(
         &self,
+        viewer_context: &ViewerContext<'_>,
         entity_db: &re_entity_db::EntityDb,
         mut visitor: impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
@@ -77,7 +78,7 @@ impl StreamsTreeData {
         let store = engine.store();
 
         for child in &self.children {
-            child.visit(store, &mut visitor)?;
+            child.visit(viewer_context, store, &mut visitor)?;
         }
 
         ControlFlow::Continue(())
@@ -213,21 +214,26 @@ impl EntityData {
     /// Visit this entity, included its components in the provided store.
     pub fn visit<B>(
         &self,
+        viewer_context: &ViewerContext<'_>,
         store: &ChunkStore,
         visitor: &mut impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
         if visitor(EntityOrComponentData::Entity(self)).visit_children()? {
             for child in &self.children {
-                child.visit(store, visitor)?;
+                child.visit(viewer_context, store, visitor)?;
             }
 
-            for component_descriptor in components_for_entity(store, &self.entity_path) {
-                // these cannot have children
-                let _ = visitor(EntityOrComponentData::Component {
-                    entity_data: self,
-                    component_descriptor,
-                })
-                .visit_children()?;
+            for (_, component_descriptors) in
+                components_for_entity(viewer_context, store, &self.entity_path)
+            {
+                for component_descriptor in component_descriptors {
+                    // these cannot have children
+                    let _ = visitor(EntityOrComponentData::Component {
+                        entity_data: self,
+                        component_descriptor,
+                    })
+                    .visit_children()?;
+                }
             }
         }
 
@@ -247,13 +253,14 @@ impl EntityData {
 
 /// Lists the components to be displayed for the given entity
 pub fn components_for_entity(
+    viewer_context: &ViewerContext<'_>,
     store: &ChunkStore,
     entity_path: &EntityPath,
-) -> impl Iterator<Item = ComponentDescriptor> + use<> {
+) -> ArchetypeComponentMap {
     if let Some(components) = store.all_components_for_entity(entity_path) {
-        itertools::Either::Left(sorted_component_list_for_ui(components.iter()).into_iter())
+        sorted_component_list_by_archetype_for_ui(viewer_context.reflection(), components.iter())
     } else {
-        itertools::Either::Right(std::iter::empty())
+        ArchetypeComponentMap::default()
     }
 }
 

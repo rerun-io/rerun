@@ -76,11 +76,12 @@ impl Default for ListItem {
 /// Implemented after <https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1>
 #[derive(Debug, Clone, Copy)]
 pub struct ListVisuals {
-    theme: egui::Theme,
-    hovered: bool,
-    selected: bool,
-    active: bool,
-    interactive: bool,
+    pub theme: egui::Theme,
+    pub hovered: bool,
+    pub selected: bool,
+    pub active: bool,
+    pub interactive: bool,
+    pub strong: bool,
 }
 
 impl ListVisuals {
@@ -109,6 +110,8 @@ impl ListVisuals {
             design_tokens.list_item_noninteractive_text
         } else if self.hovered {
             design_tokens.list_item_hovered_text
+        } else if self.strong {
+            design_tokens.list_item_strong_text
         } else {
             design_tokens.list_item_default_text
         }
@@ -488,6 +491,7 @@ impl ListItem {
             selected,
             active,
             interactive,
+            strong: false,
         };
 
         let mut collapse_response = None;

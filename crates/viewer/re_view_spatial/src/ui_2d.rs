@@ -1,5 +1,5 @@
 use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
-use re_math::IsoTransform;
+use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
@@ -11,7 +11,8 @@ use re_types::blueprint::{
 use re_ui::{ContextExt as _, Help, MouseButtonText, icon_text, icons};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
-    ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext, gpu_bridge,
+    ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
+    ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -25,19 +26,14 @@ use crate::{
 
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     response: &egui::Response,
     view_class: &SpatialView2D,
     view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(
-            ctx,
-            view_class,
-            view_state,
-            &VisualBounds2D::descriptor_range(),
-        )
+        .component_or_fallback(ctx, view_class, &VisualBounds2D::descriptor_range())
         .ok_or_log_error()
         .unwrap_or_default();
     view_state.visual_bounds_2d = Some(bounds);
@@ -101,10 +97,11 @@ fn ui_from_scene(
     // Update blueprint if changed
     let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
     if response.double_clicked() {
-        bounds_property.reset_blueprint_component(ctx, VisualBounds2D::descriptor_range());
+        bounds_property
+            .reset_blueprint_component(ctx.viewer_ctx, VisualBounds2D::descriptor_range());
     } else if bounds != updated_bounds {
         bounds_property.save_blueprint_component(
-            ctx,
+            ctx.viewer_ctx,
             &VisualBounds2D::descriptor_range(),
             &updated_bounds,
         );
@@ -182,14 +179,22 @@ impl SpatialView2D {
         );
 
         // Convert ui coordinates to/from scene coordinates.
-        let ui_from_scene = ui_from_scene(ctx, &response, self, state, &bounds_property);
+        let ui_from_scene = {
+            let view_ctx = self.view_context(ctx, query.view_id, state);
+            let mut new_state = state.clone();
+            let ui_from_scene =
+                ui_from_scene(&view_ctx, &response, self, &mut new_state, &bounds_property);
+            *state = new_state;
+
+            ui_from_scene
+        };
         let scene_from_ui = ui_from_scene.inverse();
 
+        let view_ctx = self.view_context(ctx, query.view_id, state);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(
-                ctx,
+                &view_ctx,
                 self,
-                state,
                 &NearClipPlane::descriptor_near_clip_plane(),
             )
             .ok_or_log_error()
@@ -250,6 +255,7 @@ impl SpatialView2D {
         } else {
             state.previous_picking_result = None;
         }
+        let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
 
         for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
@@ -261,7 +267,7 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, ctx.render_ctx(), self, state)?;
+            crate::configure_background(&view_ctx, &background, self)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -367,7 +373,7 @@ fn setup_target_config(
     };
 
     // Position the camera looking straight at the principal point:
-    let view_from_world = re_math::IsoTransform::look_at_rh(
+    let view_from_world = macaw::IsoTransform::look_at_rh(
         pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,

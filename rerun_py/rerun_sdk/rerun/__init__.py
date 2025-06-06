@@ -101,6 +101,7 @@ from .archetypes import (
     TextLog as TextLog,
     Transform3D as Transform3D,
     VideoFrameReference as VideoFrameReference,
+    VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (

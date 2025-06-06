@@ -162,23 +162,25 @@ impl ImageVisualizer {
             let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
                 &image,
                 colormap,
                 multiplicative_tint,
                 Image::name(),
-                &mut self.data,
             ) {
-                self.data.pickable_rects.push(PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: None,
+                self.data.add_pickable_rect(
+                    PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Image {
+                            image,
+                            depth_meter: None,
+                        },
                     },
-                });
+                    spatial_ctx.view_class_identifier,
+                );
             }
         }
     }
@@ -188,7 +190,7 @@ impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         // Color images should be transparent whenever they're on top of other images,
         // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() else {
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };
 

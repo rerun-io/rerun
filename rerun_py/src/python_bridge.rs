@@ -180,6 +180,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
+    m.add_function(wrap_pyfunction!(is_dev_build, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
@@ -1448,6 +1449,12 @@ fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
 #[pyfunction]
 fn version() -> String {
     re_build_info::build_info!().to_string()
+}
+
+/// Return True if the Rerun SDK is a dev/debug build.
+#[pyfunction]
+fn is_dev_build() -> bool {
+    cfg!(debug_assertions)
 }
 
 /// Get an url to an instance of the web-viewer.

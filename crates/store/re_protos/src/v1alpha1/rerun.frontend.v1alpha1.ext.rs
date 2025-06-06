@@ -48,6 +48,15 @@ impl TryFrom<crate::frontend::v1alpha1::ScanPartitionTableRequest> for ScanParti
     }
 }
 
+impl From<ScanPartitionTableRequest> for crate::frontend::v1alpha1::ScanPartitionTableRequest {
+    fn from(value: ScanPartitionTableRequest) -> Self {
+        Self {
+            dataset_id: Some(value.dataset_id.into()),
+            scan_parameters: value.scan_parameters.map(Into::into),
+        }
+    }
+}
+
 // --- GetDatasetSchemaRequest ---
 
 impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {

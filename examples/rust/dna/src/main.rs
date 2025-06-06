@@ -3,7 +3,7 @@
 use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
-
+use rand::Rng as _;
 use rerun::{
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
@@ -34,21 +34,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_radii([0.08]),
     )?;
 
-    let points_interleaved: Vec<[glam::Vec3; 2]> = points1
-        .into_iter()
-        .interleave(points2)
-        .chunks(2)
-        .into_iter()
-        .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
+    let lines: Vec<[glam::Vec3; 2]> = points1
+        .iter()
+        .zip(&points2)
+        .map(|(&p1, &p2)| (p1, p2).into())
         .collect_vec();
 
     rec.log_static(
         "dna/structure/scaffolding",
-        &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
-            .with_colors([rerun::Color::from([128, 128, 128, 255])]),
+        &rerun::LineStrips3D::new(lines.iter().cloned())
+            .with_colors([rerun::Color::from_rgb(128, 128, 128)]),
     )?;
 
-    use rand::Rng as _;
     let mut rng = rand::thread_rng();
     let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
 
@@ -58,17 +55,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_duration_secs("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
-        let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
+        let beads = lines
             .iter()
-            .enumerate()
-            .map(|(n, &[p1, p2])| {
-                let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
-                (
-                    rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
-                    rerun::Color::from_rgb(c, c, c),
-                )
-            })
-            .unzip();
+            .zip(&times)
+            .map(|(&[p1, p2], &time)| bounce_lerp(p1, p2, time))
+            .collect_vec();
+        let colors = times
+            .iter()
+            .map(|time| bounce_lerp(80.0, 230.0, time * 2.0) as u8)
+            .map(|c| rerun::Color::from_rgb(c, c, c))
+            .collect_vec();
 
         rec.log(
             "dna/structure/scaffolding/beads",

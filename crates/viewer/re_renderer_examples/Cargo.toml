@@ -42,7 +42,7 @@ path = "world_grid.rs"
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-re_math.workspace = true
+macaw.workspace = true
 re_renderer = { workspace = true, features = ["import-obj", "import-gltf"] }
 
 ahash.workspace = true

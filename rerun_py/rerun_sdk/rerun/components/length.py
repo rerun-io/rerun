@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -30,7 +29,7 @@ class Length(datatypes.Float32, ComponentMixin):
 
 
 class LengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Length")
+    _COMPONENT_NAME: str = "rerun.components.Length"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -1,4 +1,3 @@
-use arrow::array::ArrayRef;
 use nohash_hasher::IntSet;
 use re_types::ComponentDescriptor;
 
@@ -10,9 +9,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_types_core::Archetype;
-use re_viewer_context::{
-    DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
-};
+use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
 // ---
 
@@ -243,13 +240,6 @@ pub trait DataResultQuery {
     ) -> HybridResults<'a> {
         self.query_components_with_history(ctx, view_query, A::all_components().iter())
     }
-
-    fn best_fallback_for<'a>(
-        &self,
-        query_ctx: &'a QueryContext<'a>,
-        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
-        component: re_types_core::ComponentName,
-    ) -> ArrayRef;
 }
 
 impl DataResultQuery for DataResult {
@@ -300,30 +290,5 @@ impl DataResultQuery for DataResult {
             component_descriptors,
             self,
         )
-    }
-
-    fn best_fallback_for<'a>(
-        &self,
-        query_ctx: &'a QueryContext<'a>,
-        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
-        component: re_types_core::ComponentName,
-    ) -> ArrayRef {
-        // TODO(jleibs): This should be cached somewhere
-        for vis in &self.visualizers {
-            let Ok(vis) = visualizer_collection.get_by_identifier(*vis) else {
-                continue;
-            };
-
-            if vis
-                .visualizer_query_info()
-                .queried
-                .iter()
-                .any(|c| c.component_name == component)
-            {
-                return vis.fallback_provider().fallback_for(query_ctx, component);
-            }
-        }
-
-        query_ctx.viewer_ctx.placeholder_for(component)
     }
 }

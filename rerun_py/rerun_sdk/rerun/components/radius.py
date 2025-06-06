@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .radius_ext import RadiusExt
@@ -35,7 +34,7 @@ class Radius(RadiusExt, datatypes.Float32, ComponentMixin):
 
 
 class RadiusBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Radius")
+    _COMPONENT_NAME: str = "rerun.components.Radius"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -138,7 +138,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.24.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-re_math = "0.20.0"
+re_mp4 = "0.3.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
@@ -221,11 +221,11 @@ flatbuffers = "24.12.23"
 futures = "0.3"
 futures-util = "0.3"
 getrandom = "0.2"
-glam = { version = "0.28", features = ["debug-glam-assert"] }
+glam = { version = "0.30.3", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
 half = { version = "2.3.1", features = ["bytemuck"] }
-hexasphere = "14.1.0"
+hexasphere = "16.0.0"
 home = "=0.5.9"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
@@ -242,11 +242,11 @@ linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
+macaw = "0.30.0"
 memory-stats = "1.1"
 mimalloc = "0.1.43"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-re_mp4 = "0.3.0"
 natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
@@ -332,6 +332,7 @@ tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
+urdf-rs = "0.9.0"
 ureq = "2.9.2"
 url = "2.3"
 uuid = "1.1"

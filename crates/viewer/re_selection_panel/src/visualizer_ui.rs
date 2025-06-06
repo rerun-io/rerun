@@ -1,16 +1,17 @@
+use egui::RichText;
 use itertools::Itertools as _;
 
 use re_chunk::{RowId, UnitChunkShared};
-use re_data_ui::{DataUi as _, sorted_component_list_for_ui};
+use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::ComponentDescriptor;
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types_core::external::arrow::array::ArrayRef;
-use re_ui::{UiExt as _, list_item};
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, UiLayout, ViewClassExt as _, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
     VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
@@ -30,6 +31,7 @@ pub fn visualizer_ui(
         ui.error_label("Entity not found in view");
         return;
     };
+    let all_visualizers = ctx.new_visualizer_collection();
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
     let available_inactive_visualizers = available_inactive_visualizers(
         ctx,
@@ -37,6 +39,7 @@ pub fn visualizer_ui(
         view,
         &data_result,
         &active_visualizers,
+        &all_visualizers,
     );
 
     let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
@@ -74,7 +77,7 @@ specific to the visualizer and the current view type.";
         .button(button)
         .help_markdown(markdown)
         .show(ui, |ui| {
-            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
+            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
         });
 }
 
@@ -83,6 +86,7 @@ pub fn visualizer_ui_impl(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) {
     let override_path = data_result.override_path();
 
@@ -111,22 +115,24 @@ pub fn visualizer_ui_impl(
         }
 
         for &visualizer_id in active_visualizers {
-            let default_open = true;
-
             // List all components that the visualizer may consume.
-            if let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) {
+            if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
                 ui.list_item()
+                    .with_y_offset(1.0)
+                    .with_height(20.0)
                     .interactive(false)
-                    .show_hierarchical_with_children(
+                    .show_flat(
                         ui,
-                        ui.make_persistent_id(visualizer_id),
-                        default_open,
-                        list_item::LabelContent::new(visualizer_id.as_str())
-                            .min_desired_width(150.0)
-                            .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
-                            .always_show_buttons(true),
-                        |ui| visualizer_components(ctx, ui, data_result, visualizer),
+                        list_item::LabelContent::new(
+                            RichText::new(format!("{visualizer_id}:")).size(10.0).color(
+                                design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
+                            ),
+                        )
+                        .min_desired_width(150.0)
+                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                        .always_show_buttons(true),
                     );
+                visualizer_components(ctx, ui, data_result, visualizer);
             } else {
                 ui.list_item_flat_noninteractive(
                     list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
@@ -186,7 +192,13 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_descr in sorted_component_list_for_ui(query_info.queried.iter()) {
+    for component_descr in sorted_component_list_by_archetype_for_ui(
+        ctx.viewer_ctx.reflection(),
+        query_info.queried.iter(),
+    )
+    .values()
+    .flatten()
+    {
         if component_descr.component_name.is_indicator_component() {
             continue;
         }
@@ -195,14 +207,14 @@ fn visualizer_components(
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(&component_descr);
-        let raw_override = non_empty_component_batch_raw(result_override, &component_descr);
+        let result_override = query_result.overrides.get(component_descr);
+        let raw_override = non_empty_component_batch_raw(result_override, component_descr);
 
-        let result_store = query_result.results.get(&component_descr);
-        let raw_store = non_empty_component_batch_raw(result_store, &component_descr);
+        let result_store = query_result.results.get(component_descr);
+        let raw_store = non_empty_component_batch_raw(result_store, component_descr);
 
-        let result_default = query_result.defaults.get(&component_descr);
-        let raw_default = non_empty_component_batch_raw(result_default, &component_descr);
+        let result_default = query_result.defaults.get(component_descr);
+        let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
         let raw_fallback = visualizer
             .fallback_provider()
@@ -247,7 +259,7 @@ fn visualizer_components(
                 #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_unit) = match value_source {
                     ValueSource::Override => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         override_path.clone(),
                         result_override.unwrap(),
@@ -259,7 +271,7 @@ fn visualizer_components(
                         result_store.unwrap(),
                     ),
                     ValueSource::Default => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         ViewBlueprint::defaults_path(ctx.view_id),
                         result_default.unwrap(),
@@ -274,7 +286,7 @@ fn visualizer_components(
                             &store_query,
                             ctx.recording(),
                             &data_result.entity_path,
-                            &component_descr,
+                            component_descr,
                             current_value_row_id,
                             raw_current_value.as_ref(),
                         );
@@ -303,7 +315,7 @@ fn visualizer_components(
                         ui,
                         "Override",
                         override_path.clone(),
-                        &component_descr,
+                        component_descr,
                         *row_id,
                         raw_override.as_ref(),
                     )
@@ -344,7 +356,7 @@ fn visualizer_components(
                         ui,
                         "Default",
                         ViewBlueprint::defaults_path(ctx.view_id),
-                        &component_descr,
+                        component_descr,
                         *row_id,
                         raw_default.as_ref(),
                     )
@@ -367,7 +379,7 @@ fn visualizer_components(
                                 &store_query,
                                 ctx.recording(),
                                 &data_result.entity_path,
-                                &component_descr,
+                                component_descr,
                                 None,
                                 raw_fallback.as_ref(),
                             );
@@ -387,7 +399,7 @@ fn visualizer_components(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(&component_descr),
+                ui.make_persistent_id(component_descr),
                 default_open,
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
@@ -440,10 +452,10 @@ fn editable_blueprint_component_list_item(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let allow_multiline = false;
-                query_ctx.viewer_ctx.component_ui_registry().edit_ui_raw(
+                query_ctx.viewer_ctx().component_ui_registry().edit_ui_raw(
                     query_ctx,
                     ui,
-                    query_ctx.viewer_ctx.blueprint_db(),
+                    query_ctx.viewer_ctx().blueprint_db(),
                     blueprint_path_clone,
                     component_descr,
                     row_id,
@@ -453,7 +465,7 @@ fn editable_blueprint_component_list_item(
             })
             .action_button(&re_ui::icons::CLOSE, || {
                 query_ctx
-                    .viewer_ctx
+                    .viewer_ctx()
                     .clear_blueprint_component(blueprint_path, component_descr.clone());
             }),
     )
@@ -566,6 +578,7 @@ fn available_inactive_visualizers(
     view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) -> Vec<ViewSystemIdentifier> {
     // TODO(jleibs): This has already been computed for the View this frame. Maybe We
     // should do this earlier and store it with the View?
@@ -579,7 +592,7 @@ fn available_inactive_visualizers(
         .determine_visualizable_entities(
             &maybe_visualizable_entities,
             entity_db,
-            &ctx.visualizer_collection,
+            all_visualizers,
             &view.space_origin,
         );
 

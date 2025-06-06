@@ -22,10 +22,9 @@ use crate::{
     decode::{
         AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
         ffmpeg_h264::{
-            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
-            nalu::{NAL_START_CODE, NalHeader, NalUnitType},
-            sps::H264Sps,
+            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
         },
+        nalu::{NAL_START_CODE, NalHeader, NalUnitType},
     },
 };
 
@@ -119,10 +118,10 @@ struct FFmpegFrameInfo {
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: usize,
+    frame_nr: u32,
 
     presentation_timestamp: Time,
-    duration: Time,
+    duration: Option<Time>,
     decode_timestamp: Time,
 }
 
@@ -190,47 +189,52 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
-        avcc: re_mp4::Avc1Box,
+        avcc: Option<re_mp4::Avc1Box>,
         ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        let sps_result = H264Sps::parse_from_avcc(&avcc);
-        if let Ok(sps) = &sps_result {
-            re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
-        }
-
-        let (pixel_format, ffmpeg_pix_fmt) = match sps_result.and_then(|sps| sps.pixel_layout()) {
-            Ok(layout) => {
-                let pixel_format = PixelFormat::Yuv {
-                    layout,
-                    // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
-                    //
-                    // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
-                    // Note that yuvj4xy family of formats fulfill the same function. They according to this post
-                    // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
-                    // they are still not quite passed through everywhere. So we'll just use both.
-                    range: crate::decode::YuvRange::Full,
-                    // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
-                    coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
-                };
-                let ffmpeg_pix_fmt = match layout {
-                    crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
-                    crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
-                    crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
-                    crate::decode::YuvPixelLayout::Y400 => "gray",
-                };
-
-                (pixel_format, ffmpeg_pix_fmt)
+        let (pixel_format, ffmpeg_pix_fmt) = if let Some(avcc) = avcc.as_ref() {
+            let sps_result = H264Sps::parse_from_avcc(avcc);
+            if let Ok(sps) = &sps_result {
+                re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
             }
-            Err(err) => {
-                re_log::warn_once!(
-                    "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
-                );
 
-                // By default play it safe: let ffmpeg convert to rgba.
-                (PixelFormat::Rgba8Unorm, "rgba")
+            match sps_result.and_then(|sps| sps.pixel_layout()) {
+                Ok(layout) => {
+                    let pixel_format = PixelFormat::Yuv {
+                        layout,
+                        // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                        //
+                        // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                        // Note that yuvj4xy family of formats fulfill the same function. They according to this post
+                        // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                        // they are still not quite passed through everywhere. So we'll just use both.
+                        range: crate::decode::YuvRange::Full,
+                        // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                        coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+                    };
+                    let ffmpeg_pix_fmt = match layout {
+                        crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
+                        crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
+                        crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
+                        crate::decode::YuvPixelLayout::Y400 => "gray",
+                    };
+
+                    (pixel_format, ffmpeg_pix_fmt)
+                }
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
+                    );
+
+                    // By default play it safe: let ffmpeg convert to rgba.
+                    (PixelFormat::Rgba8Unorm, "rgba")
+                }
             }
+        } else {
+            // TODO(andreas): If we previously encountered an SPS as part of the stream, we should use it here.
+            (PixelFormat::Rgba8Unorm, "rgba")
         };
 
         let mut ffmpeg_command = if let Some(ffmpeg_path) = ffmpeg_path {
@@ -438,7 +442,7 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
-    avcc: &re_mp4::Avc1Box,
+    avcc: &Option<re_mp4::Avc1Box>,
 ) {
     let mut state = NaluStreamState::default();
 
@@ -465,7 +469,15 @@ fn write_ffmpeg_input(
             }
         };
 
-        if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
+        let write_result = if let Some(avcc) = avcc {
+            write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
+        } else {
+            // If there was no AVCC box, we assume the data is already in Annex B format.
+            // TODO(andreas): feels a bit implicit, would be nice to make this more clear.
+            write_bytes(ffmpeg_stdin, &chunk.data)
+        };
+
+        if let Err(err) = write_result {
             let on_output = on_output.lock();
             if let Some(on_output) = on_output.as_ref() {
                 let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
@@ -580,8 +592,8 @@ impl FrameBuffer {
                 sample_idx: Some(frame_info.sample_idx),
                 frame_nr: Some(frame_info.frame_nr),
                 presentation_timestamp: frame_info.presentation_timestamp,
-                duration: frame_info.duration,
                 latest_decode_timestamp: Some(frame_info.decode_timestamp),
+                duration: frame_info.duration,
             },
         })
     }
@@ -795,7 +807,7 @@ pub struct FFmpegCliH264Decoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    avcc: re_mp4::Avc1Box,
+    avcc: Option<re_mp4::Avc1Box>,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
 }
@@ -803,7 +815,7 @@ pub struct FFmpegCliH264Decoder {
 impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
-        avcc: re_mp4::Avc1Box,
+        avcc: Option<re_mp4::Avc1Box>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
