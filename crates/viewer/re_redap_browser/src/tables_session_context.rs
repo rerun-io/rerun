@@ -103,8 +103,14 @@ async fn register_all_table_entries(
     let mut registered_tables = vec![];
 
     for entry in entries {
+        #[expect(clippy::match_same_arms)]
         let table_provider = match entry.kind {
-            EntryKind::Dataset | EntryKind::BlueprintDataset => Some(
+            // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
+            // some reason, this failure is silent but blocks other tables from being registered.
+            // Since we don't need these tables yet, we just skip them for now.
+            EntryKind::BlueprintDataset => None,
+
+            EntryKind::Dataset => Some(
                 PartitionTableProvider::new(client.clone(), entry.id)
                     .into_provider()
                     .await?,
