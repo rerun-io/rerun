@@ -248,7 +248,9 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::str::FromStr <span class="kw">as _</span>;
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::str::FromStr <span class="kw">as _</span>;
 
 <span class="kw">use </span>pyo3::{
     FromPyObject, Py, PyAny, PyResult, Python,
@@ -365,6 +367,7 @@
         };
 
         <span class="kw">let </span>dataset = PyDataset {
+            dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
 
@@ -388,6 +391,7 @@
         };
 
         <span class="kw">let </span>dataset = PyDataset {
+            dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
 
