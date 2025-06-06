@@ -3,14 +3,15 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-use crate::{ArrowFieldMetadata, BatchType, ColumnKind, MetadataExt as _};
+use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
-/// Describes a data/component column, such as `Position3D`, in a dataframe.
-///
-/// This is an [`ArrowField`] that contains specific meta-data.
+// TODO(#10065): Make the fields of this private and ensure validity of component name during construction.
+// Also ensure that there are only vetted ways to match a component selector to a column descriptor.
+// Describes a data/component column, such as `Position3D`, in a dataframe.
 //
-// TODO(#6889): Fully sorbetize this thing? `ArchetypeName` and such don't make sense in that
-// context. And whatever `archetype_field_name` ends up being, it needs interning.
+// Store the `ComponentDescriptor` directly.
+
+/// This is an [`ArrowField`] that contains specific meta-data.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
@@ -26,7 +27,7 @@ pub struct ComponentColumnDescriptor {
     /// included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    pub component_name: ComponentName,
+    pub component_name: Option<ComponentName>,
 
     /// The path of the entity.
     ///
@@ -49,7 +50,7 @@ pub struct ComponentColumnDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub archetype_field_name: Option<ArchetypeFieldName>,
+    pub archetype_field_name: ArchetypeFieldName,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -151,7 +152,9 @@ impl ComponentColumnDescriptor {
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        self.component_name.sanity_check();
+        if let Some(c) = self.component_name {
+            c.sanity_check();
+        }
         if let Some(archetype_name) = &self.archetype_name {
             archetype_name.sanity_check();
         }
@@ -178,8 +181,19 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
-        &self.entity_path == entity_path && self.component_name.matches(component_name)
+    /// Checks if the current column descriptor matches a given [`ComponentColumnSelector`].
+    ///
+    /// The matching accepts selectors with full _and_ short versions of their [`ArchetypeName`].
+    pub fn matches_weak(&self, selector: &ComponentColumnSelector) -> bool {
+        let matches_archetype_name_weak = || match (self.archetype_name, selector.archetype_name) {
+            (Some(this), Some(sel)) if this != sel => this.short_name() == sel,
+            (lhs, rhs) => lhs == rhs,
+        };
+
+        // We convert down to `str` for comparison to avoid interning new fields.
+        self.entity_path == selector.entity_path
+            && matches_archetype_name_weak()
+            && self.archetype_field_name.as_str() == selector.archetype_field_name
     }
 
     fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {
@@ -202,8 +216,8 @@ impl ComponentColumnDescriptor {
         let mut metadata = std::collections::HashMap::from([
             ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
             (
-                "rerun.component".to_owned(),
-                component_name.full_name().to_owned(),
+                "rerun.archetype_field".to_owned(),
+                archetype_field_name.to_string(),
             ),
         ]);
 
@@ -224,10 +238,10 @@ impl ComponentColumnDescriptor {
             );
         }
 
-        if let Some(archetype_field_name) = archetype_field_name {
+        if let Some(component_name) = component_name {
             metadata.insert(
-                "rerun.archetype_field".to_owned(),
-                archetype_field_name.to_string(),
+                "rerun.component".to_owned(),
+                component_name.full_name().to_owned(),
             );
         }
 
@@ -257,7 +271,7 @@ impl ComponentColumnDescriptor {
         self.component_descriptor().display_name()
     }
 
-    pub fn column_name(&self, batch_type: BatchType) -> String {
+    fn column_name_impl(&self, batch_type: BatchType, short_archetype: bool) -> String {
         self.sanity_check();
 
         match batch_type {
@@ -267,23 +281,31 @@ impl ComponentColumnDescriptor {
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
-                format!(
-                    "{}:{}",
-                    self.entity_path,
-                    self.component_descriptor().column_name()
-                )
-
-                // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
-                // I'm not doing that right now, to avoid breaking changes (and we need to talk about
-                // what the syntax for these fully-qualified paths need to look like first).
-                // let descriptor = ComponentDescriptor {
-                //     archetype_name: self.archetype_name,
-                //     archetype_field_name: self.archetype_field_name,
-                //     component_name: self.component_name,
-                // };
-                // format!("{entity_path}@{}", descriptor.short_name())
+                match self.archetype_name {
+                    Some(archetype_name) => format!(
+                        "{}:{}:{}",
+                        self.entity_path,
+                        if short_archetype {
+                            archetype_name.short_name()
+                        } else {
+                            archetype_name.full_name()
+                        },
+                        self.archetype_field_name
+                    ),
+                    None => format!("{}:{}", self.entity_path, self.archetype_field_name),
+                }
             }
         }
+    }
+
+    /// Uses short [`ArchetypeName`]s, if present.
+    pub fn column_name(&self, batch_type: BatchType) -> String {
+        self.column_name_impl(batch_type, true)
+    }
+
+    /// Uses fully-qualified [`ArchetypeName`]s, if present.
+    pub fn column_name_qualified(&self, batch_type: BatchType) -> String {
+        self.column_name_impl(batch_type, false)
     }
 
     #[inline]
@@ -310,18 +332,19 @@ impl ComponentColumnDescriptor {
             EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
-        let component_name = if let Some(component_name) = field.get_opt("rerun.component") {
-            ComponentName::from(component_name)
-        } else {
-            ComponentName::new(field.name()) // Legacy fallback
-        };
+        let archetype_field_name =
+            if let Some(archetype_field_name) = field.get_opt("rerun.archetype_field") {
+                ArchetypeFieldName::from(archetype_field_name)
+            } else {
+                ArchetypeFieldName::new(field.name()) // fallback
+            };
 
         let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
-            archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
-            archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
-            component_name,
+            archetype_name: field.get_opt("rerun.archetype").map(Into::into),
+            archetype_field_name,
+            component_name: field.get_opt("rerun.component").map(Into::into),
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),
             is_tombstone: field.get_bool("rerun.is_tombstone"),

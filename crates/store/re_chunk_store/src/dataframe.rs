@@ -14,13 +14,12 @@ use itertools::Itertools as _;
 use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
-    ChunkColumnDescriptors, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, IndexColumnDescriptor, TimeColumnSelector,
+    ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
+    IndexColumnDescriptor, TimeColumnSelector,
 };
-use re_types_core::{ComponentDescriptor, ComponentName};
 use tap::Tap as _;
 
-use crate::{ChunkStore, ColumnMetadata};
+use crate::{ChunkStore, ColumnMetadata, store::ColumnIdentifier};
 
 // --- Queries v2 ---
 
@@ -49,24 +48,26 @@ impl std::fmt::Display for SparseFillStrategy {
     }
 }
 
-/// The view contents specify which subset of the database (i.e., which columns) the query runs on,
-/// expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+/// The view contents specify which subset of the database (i.e., which columns) the query runs on.
 ///
-/// Setting an entity's components to `None` means: everything.
+/// Contents are expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ArchetypeFieldName`]s
+/// (plus optional [`re_types_core::ArchetypeName`]s).
+///
+/// Setting an entity's identifier to `None` means: everything.
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
-// very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
+// very annoying. E.g. `--with /world/points:[positions, radius] --with /cam:[pinhole]`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>);
+pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>);
 
 impl ViewContentsSelector {
-    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>> {
+    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>> {
         self.0
     }
 }
 
 impl Deref for ViewContentsSelector {
-    type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+    type Target = BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -81,8 +82,8 @@ impl DerefMut for ViewContentsSelector {
     }
 }
 
-impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContentsSelector {
-    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ComponentName>>)>>(
+impl FromIterator<(EntityPath, Option<BTreeSet<ColumnIdentifier>>)> for ViewContentsSelector {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ColumnIdentifier>>)>>(
         iter: T,
     ) -> Self {
         Self(iter.into_iter().collect())
@@ -106,7 +107,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ## Terminology: view vs. selection vs. filtering vs. sampling
 ///
 /// * The view contents specify which subset of the database (i.e., which columns) the query runs on,
-///   expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+///   expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ComponentName`]s.
 ///
 /// * The filters filter out _rows_ of data from the view contents.
 ///   A filter cannot possibly introduce new rows, it can only remove existing ones from the view contents.
@@ -128,7 +129,7 @@ pub type IndexRange = ResolvedTimeRange;
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
-    /// associated [`ComponentName`]s.
+    /// associated [`re_types_core::ComponentName`]s.
     ///
     /// Defaults to `None`, which means: everything.
     ///
@@ -318,14 +319,13 @@ impl ChunkStore {
         let components = self
             .per_column_metadata
             .iter()
-            .flat_map(|(entity_path, per_name)| {
-                per_name.values().flat_map(move |per_descr| {
-                    per_descr.keys().map(move |descr| (entity_path, descr))
-                })
+            .flat_map(|(entity_path, per_identifier)| {
+                per_identifier
+                    .values()
+                    .map(move |(descr, _, datatype)| (entity_path, descr, datatype))
             })
-            .filter_map(|(entity_path, component_descr)| {
+            .filter_map(|(entity_path, component_descr, datatype)| {
                 let metadata = self.lookup_column_metadata(entity_path, component_descr)?;
-                let datatype = self.lookup_datatype(&component_descr.component_name)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
             })
@@ -337,7 +337,9 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
-                component_descr.component_name.sanity_check();
+                if let Some(c) = component_descr.component_name {
+                    c.sanity_check();
+                }
 
                 ComponentColumnDescriptor {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
@@ -395,87 +397,47 @@ impl ChunkStore {
         &self,
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
-        // Happy path if this string is a valid component
-        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
-        // in long-running servers. In practice this probably doesn't matter.
-        let selected_component_name = ComponentName::from(selector.component_name.clone());
-
-        let column_info = self
-            .per_column_metadata
-            .get(&selector.entity_path)
-            .and_then(|per_name| {
-                per_name.get(&selected_component_name).or_else(|| {
-                    per_name.iter().find_map(|(component_name, per_descr)| {
-                        component_name
-                            .matches(&selector.component_name)
-                            .then_some(per_descr)
-                    })
-                })
-            })
-            .and_then(|per_descr| per_descr.iter().next());
-
-        let component_descr = column_info.map_or(
-            ComponentDescriptor::new(selected_component_name),
-            |(descr, _metadata)| descr.clone(),
-        );
-        component_descr.component_name.sanity_check();
-
-        let ColumnMetadata {
-            is_static,
-            is_indicator,
-            is_tombstone,
-            is_semantically_empty,
-        } = self
-            .lookup_column_metadata(&selector.entity_path, &component_descr)
-            .unwrap_or(ColumnMetadata {
-                is_static: false,
-                is_indicator: false,
-                is_tombstone: false,
-                is_semantically_empty: false,
-            });
-
-        let datatype = self
-            .lookup_datatype(&component_descr.component_name)
-            .unwrap_or(ArrowDatatype::Null);
-
-        ComponentColumnDescriptor {
+        // Unfortunately, we can't return an error here, so we craft a default descriptor and
+        // add information to it that we find.
+        let mut result = ComponentColumnDescriptor {
+            store_datatype: ArrowDatatype::Null,
+            component_name: None,
             entity_path: selector.entity_path.clone(),
-            archetype_name: component_descr.archetype_name,
-            archetype_field_name: component_descr.archetype_field_name,
-            component_name: component_descr.component_name,
-            store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
-                ArrowField::new("item", datatype, true).into(),
-            ),
+            archetype_name: selector.archetype_name,
+            archetype_field_name: selector.archetype_field_name.as_str().into(),
+            is_static: false,
+            is_indicator: false,
+            is_tombstone: false,
+            is_semantically_empty: false,
+        };
+
+        let Some(per_identifier) = self.per_column_metadata.get(&selector.entity_path) else {
+            return result;
+        };
+
+        // We perform a scan over all component descriptors in the queried entity path.
+        let Some((component_descr, _, datatype)) = per_identifier.get(&ColumnIdentifier {
+            archetype_name: selector.archetype_name,
+            archetype_field_name: selector.archetype_field_name.as_str().into(),
+        }) else {
+            return result;
+        };
+        result.store_datatype = datatype.clone();
+
+        if let Some(ColumnMetadata {
             is_static,
             is_indicator,
             is_tombstone,
             is_semantically_empty,
-        }
-    }
+        }) = self.lookup_column_metadata(&selector.entity_path, component_descr)
+        {
+            result.is_static = is_static;
+            result.is_indicator = is_indicator;
+            result.is_tombstone = is_tombstone;
+            result.is_semantically_empty = is_semantically_empty;
+        };
 
-    /// Given a set of [`ColumnSelector`]s, returns the corresponding [`ColumnDescriptor`]s.
-    pub fn resolve_selectors(
-        &self,
-        selectors: impl IntoIterator<Item = impl Into<ColumnSelector>>,
-    ) -> Vec<ColumnDescriptor> {
-        // TODO(jleibs): When, if ever, should this return an error?
-        selectors
-            .into_iter()
-            .map(|selector| {
-                let selector = selector.into();
-                match selector {
-                    ColumnSelector::RowId => ColumnDescriptor::RowId(self.row_id_descriptor()),
-
-                    ColumnSelector::Time(selector) => {
-                        ColumnDescriptor::Time(self.resolve_time_selector(&selector))
-                    }
-
-                    ColumnSelector::Component(selector) => {
-                        ColumnDescriptor::Component(self.resolve_component_selector(&selector))
-                    }
-                }
-            })
-            .collect()
+        result
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].
@@ -507,7 +469,15 @@ impl ChunkStore {
                         .get(&column.entity_path)
                         .is_some_and(|components| {
                             components.as_ref().is_none_or(|components| {
-                                components.contains(&column.component_name)
+                                components.contains(&ColumnIdentifier {
+                                    archetype_name: column.archetype_name,
+                                    archetype_field_name: column.archetype_field_name,
+                                }) || components.contains(&ColumnIdentifier {
+                                    archetype_name: column
+                                        .archetype_name
+                                        .map(|a| a.short_name().into()),
+                                    archetype_field_name: column.archetype_field_name,
+                                })
                             })
                         })
                 })

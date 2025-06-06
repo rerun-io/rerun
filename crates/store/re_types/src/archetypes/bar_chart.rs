@@ -64,8 +64,8 @@ impl BarChart {
     pub fn descriptor_values() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
-            component_name: "rerun.components.TensorData".into(),
-            archetype_field_name: Some("values".into()),
+            component_name: Some("rerun.components.TensorData".into()),
+            archetype_field_name: "values".into(),
         }
     }
 
@@ -76,8 +76,8 @@ impl BarChart {
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "color".into(),
         }
     }
 
@@ -86,8 +86,8 @@ impl BarChart {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.BarChartIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.BarChartIndicator".into(),
         }
     }
 }

@@ -703,7 +703,7 @@ mod tests {
                         "Scenario {i}"
                     );
 
-                    if component_descr.component_name.ends_with("Indicator") {
+                    if component_descr.is_indicator_component() {
                         // Ignore indicators for overrides.
                         continue;
                     }

@@ -375,17 +375,18 @@ fn rr_register_component_type_impl(
     } else {
         None
     };
-    let archetype_field_name = if !archetype_field_name.is_null() {
-        Some(archetype_field_name.as_str("component_type.descriptor.archetype_field_name")?)
+    let archetype_field_name =
+        archetype_field_name.as_str("component_type.descriptor.archetype_field_name")?;
+    let component_name = if !component_name.is_null() {
+        Some(component_name.as_str("component_type.descriptor.component_name")?)
     } else {
         None
     };
-    let component_name = component_name.as_str("component_type.descriptor.component_name")?;
 
     let component_descr = ComponentDescriptor {
         archetype_name: archetype_name.map(Into::into),
-        archetype_field_name: archetype_field_name.map(Into::into),
-        component_name: component_name.into(),
+        archetype_field_name: archetype_field_name.into(),
+        component_name: component_name.map(Into::into),
     };
 
     let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {

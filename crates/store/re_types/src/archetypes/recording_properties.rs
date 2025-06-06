@@ -39,8 +39,8 @@ impl RecordingProperties {
     pub fn descriptor_start_time() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: "rerun.components.Timestamp".into(),
-            archetype_field_name: Some("start_time".into()),
+            component_name: Some("rerun.components.Timestamp".into()),
+            archetype_field_name: "start_time".into(),
         }
     }
 
@@ -51,8 +51,8 @@ impl RecordingProperties {
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: "rerun.components.Name".into(),
-            archetype_field_name: Some("name".into()),
+            component_name: Some("rerun.components.Name".into()),
+            archetype_field_name: "name".into(),
         }
     }
 
@@ -61,8 +61,8 @@ impl RecordingProperties {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.RecordingPropertiesIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.RecordingPropertiesIndicator".into(),
         }
     }
 }

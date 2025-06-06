@@ -87,9 +87,25 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str:
+    def component_name(self) -> str | None:
         """
-        The component name.
+        The component name, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def archetype_name(self) -> str:
+        """
+        The archetype name, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def archetype_field_name(self) -> str:
+        """
+        The archetype field name.
 
         This property is read-only.
         """

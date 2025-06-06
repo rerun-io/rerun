@@ -81,8 +81,8 @@ impl TextLog {
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("text".into()),
+            component_name: Some("rerun.components.Text".into()),
+            archetype_field_name: "text".into(),
         }
     }
 
@@ -93,8 +93,8 @@ impl TextLog {
     pub fn descriptor_level() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.TextLogLevel".into(),
-            archetype_field_name: Some("level".into()),
+            component_name: Some("rerun.components.TextLogLevel".into()),
+            archetype_field_name: "level".into(),
         }
     }
 
@@ -105,8 +105,8 @@ impl TextLog {
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "color".into(),
         }
     }
 
@@ -115,8 +115,8 @@ impl TextLog {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.TextLogIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.TextLogIndicator".into(),
         }
     }
 }

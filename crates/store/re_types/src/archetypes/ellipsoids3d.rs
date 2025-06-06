@@ -133,8 +133,8 @@ impl Ellipsoids3D {
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.HalfSize3D".into(),
-            archetype_field_name: Some("half_sizes".into()),
+            component_name: Some("rerun.components.HalfSize3D".into()),
+            archetype_field_name: "half_sizes".into(),
         }
     }
 
@@ -145,8 +145,8 @@ impl Ellipsoids3D {
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.PoseTranslation3D".into(),
-            archetype_field_name: Some("centers".into()),
+            component_name: Some("rerun.components.PoseTranslation3D".into()),
+            archetype_field_name: "centers".into(),
         }
     }
 
@@ -157,8 +157,8 @@ impl Ellipsoids3D {
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.PoseRotationAxisAngle".into(),
-            archetype_field_name: Some("rotation_axis_angles".into()),
+            component_name: Some("rerun.components.PoseRotationAxisAngle".into()),
+            archetype_field_name: "rotation_axis_angles".into(),
         }
     }
 
@@ -169,8 +169,8 @@ impl Ellipsoids3D {
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.PoseRotationQuat".into(),
-            archetype_field_name: Some("quaternions".into()),
+            component_name: Some("rerun.components.PoseRotationQuat".into()),
+            archetype_field_name: "quaternions".into(),
         }
     }
 
@@ -181,8 +181,8 @@ impl Ellipsoids3D {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
         }
     }
 
@@ -193,8 +193,8 @@ impl Ellipsoids3D {
     pub fn descriptor_line_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("line_radii".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "line_radii".into(),
         }
     }
 
@@ -205,8 +205,8 @@ impl Ellipsoids3D {
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.FillMode".into(),
-            archetype_field_name: Some("fill_mode".into()),
+            component_name: Some("rerun.components.FillMode".into()),
+            archetype_field_name: "fill_mode".into(),
         }
     }
 
@@ -217,8 +217,8 @@ impl Ellipsoids3D {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            component_name: Some("rerun.components.Text".into()),
+            archetype_field_name: "labels".into(),
         }
     }
 
@@ -229,8 +229,8 @@ impl Ellipsoids3D {
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            component_name: Some("rerun.components.ShowLabels".into()),
+            archetype_field_name: "show_labels".into(),
         }
     }
 
@@ -241,8 +241,8 @@ impl Ellipsoids3D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -251,8 +251,8 @@ impl Ellipsoids3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Ellipsoids3DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Ellipsoids3DIndicator".into(),
         }
     }
 }

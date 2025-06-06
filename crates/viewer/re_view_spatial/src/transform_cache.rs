@@ -56,11 +56,11 @@ impl Default for TransformCacheStoreSubscriber {
         Self {
             transform_components: archetypes::Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
             pose_components: archetypes::InstancePoses3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
             pinhole_components: [
                 components::PinholeProjection::name(),
@@ -1008,7 +1008,7 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
 ) -> Vec<Affine3A> {
     debug_assert_eq!(
         descriptor_translations.component_name,
-        components::PoseTranslation3D::name()
+        Some(components::PoseTranslation3D::name())
     );
     debug_assert_eq!(descriptor_translations.archetype_name, Some(archetype_name));
     let descriptor_rotation_axis_angles =

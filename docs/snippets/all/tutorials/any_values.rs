@@ -9,12 +9,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let confidences = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::Float64Array::from(vec![1.2, 3.4, 5.6])),
-        rerun::ComponentDescriptor::new("confidence"),
+        rerun::ComponentDescriptor::partial("confidence"),
     );
 
     let description = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
-        rerun::ComponentDescriptor::new("description"),
+        rerun::ComponentDescriptor::partial("description"),
     );
 
     // URIs will become clickable links
@@ -22,14 +22,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(arrow::array::StringArray::from(vec![
             "https://www.rerun.io",
         ])),
-        rerun::ComponentDescriptor::new("homepage"),
+        rerun::ComponentDescriptor::partial("homepage"),
     );
 
     let repository = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::StringArray::from(vec![
             "https://github.com/rerun-io/rerun",
         ])),
-        rerun::ComponentDescriptor::new("repository"),
+        rerun::ComponentDescriptor::partial("repository"),
     );
 
     rec.log(

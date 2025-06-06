@@ -36,7 +36,7 @@ pub enum DisplayRecordBatchError {
     },
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(String, ArrowDataType),
+    UnexpectedComponentColumnDataType(ComponentDescriptor, ArrowDataType),
 
     #[error(transparent)]
     DeserializationError(#[from] DeserializationError),
@@ -81,7 +81,7 @@ impl ComponentData {
                 Ok(Self::DictionaryArray { dict, values })
             }
             _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
-                descriptor.component_name.to_string(),
+                descriptor.component_descriptor(),
                 column_data.data_type().to_owned(),
             )),
         }
@@ -217,7 +217,7 @@ impl DisplayComponentColumn {
             // because without cache key, the image thumbnail will no be displayed by the component
             // ui.
             if row_id.is_none()
-                && (self.component_descr.component_name == re_types::components::Blob::name())
+                && (self.component_descr.component_name == Some(re_types::components::Blob::name()))
             {
                 re_tracing::profile_scope!("Blob hash");
 

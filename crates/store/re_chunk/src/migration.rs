@@ -9,29 +9,6 @@ use re_types_core::arrow_helpers::as_array_ref;
 use crate::Chunk;
 
 impl Chunk {
-    /// We look for indicator component descriptors that have an archetype name and strip it.
-    ///
-    /// It turns out that too narrow indicator descriptors cause problems while querying.
-    /// More information: <https://github.com/rerun-io/rerun/pull/9938#issuecomment-2888808593>
-    #[inline]
-    pub fn patched_weak_indicator_descriptor_023_compat(&self) -> Self {
-        let mut chunk = self.clone();
-
-        chunk.components = chunk
-            .components
-            .0
-            .drain()
-            .map(|(mut descriptor, list_array)| {
-                if descriptor.component_name.is_indicator_component() {
-                    descriptor.archetype_name = None;
-                }
-                (descriptor, list_array)
-            })
-            .collect();
-
-        chunk
-    }
-
     /// A temporary migration kernel for blueprint data.
     ///
     /// Deals with all the space-view terminology breaking changes (`SpaceView`->`View`, `space_view`->`view`, etc).
@@ -59,8 +36,11 @@ impl Chunk {
                     patched_descriptor.archetype_name =
                         Some(archetype_name.as_str().replace(from, to).into());
                 }
-                patched_descriptor.component_name =
-                    descriptor.component_name.replace(from, to).into();
+
+                if let Some(component_name) = descriptor.component_name {
+                    patched_descriptor.component_name =
+                        Some(component_name.replace(from, to).into());
+                }
             }
             if patched_descriptor != *descriptor {
                 components_descriptor_patched_from_to
@@ -69,7 +49,9 @@ impl Chunk {
 
             // Finally, patch actual data that still uses space-view terminology.
             // As far as we know, this only concerns `IncludedContent` specifically.
-            if descriptor.component_name == "rerun.blueprint.components.IncludedContent" {
+            if descriptor.component_name
+                == Some("rerun.blueprint.components.IncludedContent".into())
+            {
                 let arrays = list_array
                     .iter()
                     .map(|utf8_array| {
