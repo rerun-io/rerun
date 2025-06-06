@@ -833,7 +833,7 @@ impl TimePanel {
         let engine = entity_db.storage_engine();
         let store = engine.store();
 
-        for (archetype, components) in components_for_entity(store, entity_path) {
+        for (archetype, components) in components_for_entity(ctx, store, entity_path) {
             ui.list_item()
                 .with_y_offset(1.0)
                 .with_height(20.0)
@@ -1086,7 +1086,7 @@ impl TimePanel {
         {
             let mut found_current = false;
 
-            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
                 let tree_item = entity_or_component.item();
                 let is_item_collapsed =
                     !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
@@ -1123,7 +1123,7 @@ impl TimePanel {
         {
             let mut last_item = None;
 
-            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
                 let tree_item = entity_or_component.item();
                 let is_item_collapsed =
                     !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
@@ -1221,7 +1221,7 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(entity_db, |entity_or_component| {
+        streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
             let item = entity_or_component.item();
 
             if &item == anchor_item {

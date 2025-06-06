@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class Text(datatypes.Utf8, ComponentMixin):
 
 
 class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Text")
+    _COMPONENT_NAME: str = "rerun.components.Text"
 
 
 # This is patched in late to avoid circular dependencies.

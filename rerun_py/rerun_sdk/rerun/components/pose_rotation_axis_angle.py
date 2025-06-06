@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -30,7 +29,7 @@ class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
 
 
 class PoseRotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.PoseRotationAxisAngle")
+    _COMPONENT_NAME: str = "rerun.components.PoseRotationAxisAngle"
 
 
 # This is patched in late to avoid circular dependencies.

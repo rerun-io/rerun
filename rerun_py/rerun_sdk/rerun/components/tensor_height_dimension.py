@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class TensorHeightDimension(datatypes.TensorDimensionSelection, ComponentMixin):
 
 
 class TensorHeightDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.TensorHeightDimension")
+    _COMPONENT_NAME: str = "rerun.components.TensorHeightDimension"
 
 
 # This is patched in late to avoid circular dependencies.

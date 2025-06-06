@@ -13,7 +13,6 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["FillMode", "FillModeArrayLike", "FillModeBatch", "FillModeLike"]
@@ -79,7 +78,7 @@ FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.FillMode")
+    _COMPONENT_NAME: str = "rerun.components.FillMode"
 
     @staticmethod
     def _native_to_pa_array(data: FillModeArrayLike, data_type: pa.DataType) -> pa.Array:

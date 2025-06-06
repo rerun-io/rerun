@@ -13,7 +13,6 @@ import pyarrow as pa
 from ..._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["ViewFit", "ViewFitArrayLike", "ViewFitBatch", "ViewFitLike"]
@@ -63,7 +62,7 @@ ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ViewFit")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewFit"
 
     @staticmethod
     def _native_to_pa_array(data: ViewFitArrayLike, data_type: pa.DataType) -> pa.Array:

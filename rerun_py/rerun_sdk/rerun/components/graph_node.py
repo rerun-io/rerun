@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +24,7 @@ class GraphNode(datatypes.Utf8, ComponentMixin):
 
 
 class GraphNodeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.GraphNode")
+    _COMPONENT_NAME: str = "rerun.components.GraphNode"
 
 
 # This is patched in late to avoid circular dependencies.

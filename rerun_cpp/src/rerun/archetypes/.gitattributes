@@ -71,5 +71,7 @@ transform3d.cpp linguist-generated=true
 transform3d.hpp linguist-generated=true
 video_frame_reference.cpp linguist-generated=true
 video_frame_reference.hpp linguist-generated=true
+video_stream.cpp linguist-generated=true
+video_stream.hpp linguist-generated=true
 view_coordinates.cpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true

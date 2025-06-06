@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from ...blueprint import datatypes as blueprint_datatypes
@@ -29,9 +28,7 @@ class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, Compo
 
 
 class ComponentColumnSelectorBatch(blueprint_datatypes.ComponentColumnSelectorBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor(
-        "rerun.blueprint.components.ComponentColumnSelector"
-    )
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ComponentColumnSelector"
 
 
 # This is patched in late to avoid circular dependencies.

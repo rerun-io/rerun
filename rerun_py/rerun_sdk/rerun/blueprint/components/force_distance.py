@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -31,7 +30,7 @@ class ForceDistance(datatypes.Float64, ComponentMixin):
 
 
 class ForceDistanceBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ForceDistance")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ForceDistance"
 
 
 # This is patched in late to avoid circular dependencies.
