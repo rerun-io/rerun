@@ -253,7 +253,7 @@ impl LeRobotDatasetMetadata {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LeRobotDatasetInfo {
     /// The type of the robot.
-    pub robot_type: String,
+    pub robot_type: Option<String>,
 
     /// The version of the `LeRobot` codebase the dataset was created for.
     pub codebase_version: String,
