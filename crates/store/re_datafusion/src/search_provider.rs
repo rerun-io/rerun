@@ -8,7 +8,7 @@ use datafusion::{
 };
 use tokio_stream::StreamExt as _;
 
-use re_grpc_client::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     common::v1alpha1::ScanParameters, frontend::v1alpha1::SearchDatasetRequest,
@@ -20,13 +20,14 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct SearchResultsTableProvider {
-    client: RedapClient,
+    //TODO(ab): this should use a `ConnectionRegistryHandle` instead
+    client: ConnectionClient,
     request: SearchDatasetRequest,
 }
 
 impl SearchResultsTableProvider {
     pub fn new(
-        client: RedapClient,
+        client: ConnectionClient,
         request: SearchDatasetRequest,
     ) -> Result<Self, DataFusionError> {
         if request.scan_parameters.is_some() {
@@ -60,6 +61,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         let schema = make_future_send(async move {
             Ok::<_, DataFusionError>(
                 client
+                    .inner()
                     .search_dataset(request)
                     .await
                     .map_err(|err| DataFusionError::External(Box::new(err)))?
@@ -91,7 +93,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.search_dataset(request).await) })
+        make_future_send(async move { Ok(client.inner().search_dataset(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use re_auth::Jwt;
-
+use crate::ConnectionClient;
 use crate::redap::{ConnectionError, RedapClient};
+use re_auth::Jwt;
 
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
@@ -80,12 +80,15 @@ impl ConnectionRegistryHandle {
     /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
     /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
     /// sensitive information.
-    pub async fn client(&self, origin: re_uri::Origin) -> Result<RedapClient, ConnectionError> {
+    pub async fn client(
+        &self,
+        origin: re_uri::Origin,
+    ) -> Result<ConnectionClient, ConnectionError> {
         // happy path
         {
             let inner = self.inner.read().await;
             if let Some(client) = inner.clients.get(&origin) {
-                return Ok(client.clone());
+                return Ok(ConnectionClient::new(client.clone()));
             }
         }
 
@@ -106,7 +109,7 @@ impl ConnectionRegistryHandle {
             Ok(client) => {
                 let mut inner = self.inner.write().await;
                 inner.clients.insert(origin, client.clone());
-                Ok(client)
+                Ok(ConnectionClient::new(client))
             }
             Err(err) => Err(err),
         }

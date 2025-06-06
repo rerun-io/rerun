@@ -6,9 +6,7 @@ use pyo3::{
     exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::manifest_registry::v1alpha1::{
-    RegisterWithDatasetResponse, ScanPartitionTableResponse,
-};
+use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
@@ -18,12 +16,10 @@ use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
 use re_grpc_client::{
-    ConnectionRegistryHandle, RedapClient, get_chunks_response_to_chunk_and_partition_id,
+    ConnectionClient, ConnectionRegistryHandle, get_chunks_response_to_chunk_and_partition_id,
 };
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::{DatasetDetails, UpdateDatasetEntryRequest};
-use re_protos::common::v1alpha1::ext::{IfMissingBehavior, ScanParameters};
-use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
 use re_protos::{
     catalog::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
@@ -56,7 +52,7 @@ impl ConnectionHandle {
         }
     }
 
-    pub async fn client(&self) -> PyResult<RedapClient> {
+    pub async fn client(&self) -> PyResult<ConnectionClient> {
         self.connection_registry
             .client(self.origin.clone())
             .await
@@ -72,8 +68,8 @@ impl ConnectionHandle {
 impl ConnectionHandle {
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         let response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
                     filter: Some(filter),
                 })
@@ -93,8 +89,8 @@ impl ConnectionHandle {
 
     pub fn delete_entry(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         let _response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .delete_entry(DeleteEntryRequest {
                     id: Some(entry_id.into()),
                 })
@@ -107,8 +103,8 @@ impl ConnectionHandle {
 
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
                 .await
                 .map_err(to_py_err)
@@ -123,8 +119,8 @@ impl ConnectionHandle {
 
     pub fn read_dataset(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         let response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .read_dataset_entry(ReadDatasetEntryRequest {
                     id: Some(entry_id.into()),
                 })
@@ -146,8 +142,8 @@ impl ConnectionHandle {
         dataset_details: DatasetDetails,
     ) -> PyResult<DatasetEntry> {
         let response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .update_dataset_entry(tonic::Request::new(
                     UpdateDatasetEntryRequest {
                         id: entry_id,
@@ -166,65 +162,28 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
-    pub fn get_partition_ids(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<Vec<String>> {
-        wait_for_future(py, async { self.get_partition_ids_impl(entry_id).await })
-    }
-
-    // TODO(ab): This split right here shows the way forward. The `impl` method should be removed of
-    // anything py03, and moved to a newtype over `RedapClient` that is provided by the connection
-    // registry. The wrapper in the present file should only convert types to pyo3 and wrap with
-    // `wait_for_future`.
-    async fn get_partition_ids_impl(&self, entry_id: EntryId) -> PyResult<Vec<String>> {
-        let mut stream = self
-            .client()
-            .await?
-            .scan_partition_table(tonic::Request::new(
-                ScanPartitionTableRequest {
-                    dataset_id: entry_id,
-                    scan_parameters: Some(ScanParameters {
-                        columns: vec![ScanPartitionTableResponse::PARTITION_ID.to_owned()],
-                        on_missing_columns: IfMissingBehavior::Error,
-                        ..Default::default()
-                    }),
-                }
-                .into(),
-            ))
-            .await
-            .map_err(to_py_err)?
-            .into_inner();
-
-        let mut partition_ids = Vec::new();
-
-        while let Some(resp) = stream.next().await {
-            let record_batch = resp
+    pub fn get_dataset_partition_ids(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+    ) -> PyResult<Vec<String>> {
+        wait_for_future(py, async {
+            Ok(self
+                .client()
+                .await?
+                .get_dataset_partition_ids(entry_id)
+                .await
                 .map_err(to_py_err)?
-                .data()
-                .map_err(to_py_err)?
-                .decode()
-                .map_err(to_py_err)?;
-
-            let partition_id_col = record_batch
-                .column_by_name(ScanPartitionTableResponse::PARTITION_ID)
-                .ok_or_else(|| PyValueError::new_err("Missing partition_id column in response"))?;
-
-            let partition_id_array = partition_id_col
-                .try_downcast_array_ref::<arrow::array::StringArray>()
-                .map_err(to_py_err)?;
-
-            partition_ids.extend(
-                partition_id_array
-                    .iter()
-                    .filter_map(|opt| opt.map(|s| s.to_owned())),
-            );
-        }
-
-        Ok(partition_ids)
+                .iter()
+                .map(|id| id.id.clone())
+                .collect::<Vec<_>>())
+        })
     }
 
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .read_table_entry(ReadTableEntryRequest {
                     id: Some(entry_id.into()),
                 })
@@ -241,8 +200,8 @@ impl ConnectionHandle {
 
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            self.client()
-                .await?
+            (self.client().await?)
+                .inner()
                 .get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: Some(entry_id.into()),
                 })
@@ -275,6 +234,7 @@ impl ConnectionHandle {
             let response = self
                 .client()
                 .await?
+                .inner()
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: Some(dataset_id.into()),
                     data_sources,
@@ -326,6 +286,7 @@ impl ConnectionHandle {
             let status_table = self
                 .client()
                 .await?
+                .inner()
                 .query_tasks(request)
                 .await
                 .map_err(to_py_err)?
@@ -359,6 +320,7 @@ impl ConnectionHandle {
             let mut response_stream = self
                 .client()
                 .await?
+                .inner()
                 .query_tasks_on_completion(request)
                 .await
                 .map_err(to_py_err)?
@@ -476,6 +438,7 @@ impl ConnectionHandle {
             let get_chunks_response_stream = self
                 .client()
                 .await?
+                .inner()
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: partition_ids
