@@ -21,8 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D cylinders with flat caps.
 ///
-/// This archetype is for cylinders whose dimensions are a key part of the data
-/// (e.g. volumetric data or structural elements).
+/// This archetype is for cylinder primitives defined by their axial length and radius.
 /// For points whose radii are for visualization purposes, use [`archetypes::Points3D`][crate::archetypes::Points3D] instead.
 ///
 /// Orienting and placing cylinders forms a separate transform that is applied prior to [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D].
