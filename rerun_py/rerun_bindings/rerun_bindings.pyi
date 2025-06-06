@@ -1034,14 +1034,12 @@ class Dataset(Entry):
     def arrow_schema(self) -> pa.Schema:
         """Return the Arrow schema of the data contained in the dataset."""
 
-    @property
     def blueprint_dataset_id(self) -> EntryId | None:
         """The ID of the associated blueprint dataset, if any."""
 
     def blueprint_dataset(self) -> Dataset | None:
         """The associated blueprint dataset, if any."""
 
-    @property
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
 

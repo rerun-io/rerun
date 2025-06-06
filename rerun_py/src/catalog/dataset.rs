@@ -58,7 +58,6 @@ impl PyDataset {
     }
 
     /// The ID of the associated blueprint dataset, if any.
-    #[getter]
     fn blueprint_dataset_id(self_: PyRef<'_, Self>) -> Option<PyEntryId> {
         self_.dataset_details.blueprint_dataset.map(Into::into)
     }
@@ -95,7 +94,6 @@ impl PyDataset {
     }
 
     /// The default blueprint partition ID for this dataset, if any.
-    #[getter]
     fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
