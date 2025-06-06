@@ -137,6 +137,8 @@ message DatasetDetails {
 }
 
 message DatasetEntry {
+  reserved 3;
+
   EntryDetails details = 1;
 
   // Dataset-specific information, may be update with `UpdateDatasetEntry`
