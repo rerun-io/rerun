@@ -140,7 +140,7 @@ message DatasetEntry {
   EntryDetails details = 1;
 
   // Dataset-specific information, may be update with `UpdateDatasetEntry`
-  DatasetDetails dataset_details = 3;
+  DatasetDetails dataset_details = 4;
 
   // Read-only
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;

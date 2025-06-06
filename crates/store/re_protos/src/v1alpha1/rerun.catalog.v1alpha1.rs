@@ -254,7 +254,7 @@ pub struct DatasetEntry {
     #[prost(message, optional, tag = "1")]
     pub details: ::core::option::Option<EntryDetails>,
     /// Dataset-specific information, may be update with `UpdateDatasetEntry`
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "4")]
     pub dataset_details: ::core::option::Option<DatasetDetails>,
     /// Read-only
     #[prost(message, optional, tag = "2")]
