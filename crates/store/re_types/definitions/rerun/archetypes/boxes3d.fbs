@@ -56,7 +56,10 @@ table Boxes3D (
   /// Otherwise, each instance will have its own label.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional choice of whether the text labels should be shown by default.
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
   show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
 
   /// Optional [components.ClassId]s for the boxes.
