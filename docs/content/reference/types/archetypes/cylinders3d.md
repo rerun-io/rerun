@@ -35,9 +35,9 @@ Orienting and placing cylinders forms a separate transform that is applied prior
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Cylinders3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Cylinders3D.html)
- * 🐍 [Python API docs for `Cylinders3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Cylinders3D)
- * 🦀 [Rust API docs for `Cylinders3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Cylinders3D.html)
+ * 🌊 [C++ API docs for `Cylinders3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Cylinders3D.html?speculative-link)
+ * 🐍 [Python API docs for `Cylinders3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Cylinders3D)
+ * 🦀 [Rust API docs for `Cylinders3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Cylinders3D.html?speculative-link)
 
 ## Example
 
