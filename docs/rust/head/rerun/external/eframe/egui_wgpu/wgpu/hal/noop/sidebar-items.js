@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Api","Buffer","CommandBuffer","Context","Encoder","Fence","Resource"]};

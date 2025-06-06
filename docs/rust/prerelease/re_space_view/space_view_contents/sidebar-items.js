@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["path_to_group_name"],"struct":["DataBlueprintGroup","DataBlueprints","SpaceViewContents"]};

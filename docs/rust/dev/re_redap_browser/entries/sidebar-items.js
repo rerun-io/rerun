@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EntryError","EntryKind"],"fn":["dataset_and_its_recordings_ui","fetch_dataset_entries","fetch_partition_table","sort_datasets"],"struct":["Dataset","Entries","SortDatasetsResults"],"type":["DatasetRecordings","LocalRecordings","RemoteRecordings"]};

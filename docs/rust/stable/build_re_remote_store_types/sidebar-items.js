@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["INPUT_V1ALPHA1_DIR","OUTPUT_V1ALPHA1_RUST_DIR","PROTOS_DIR"],"fn":["main"]};

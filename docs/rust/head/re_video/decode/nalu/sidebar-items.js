@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["NAL_START_CODE","NAL_START_CODE_SHORT"],"enum":["NalUnitType"],"fn":["annex_b_next_nal_unit_start_pos","iter_annex_b_nal_units"],"struct":["AnnexBSeparatorPos","NalHeader"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["textured_rect_from_image"]};

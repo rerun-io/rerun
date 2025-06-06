@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="CSV Reader"><title>rerun::sdk::external::re_log_types::external::arrow::csv::reader - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../" data-static-root-path="../../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module reader</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#basic-usage" title="Basic Usage">Basic Usage</a></li><li><a href="#async-usage" title="Async Usage">Async Usage</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#functions" title="Functions">Functions</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>sdk::<wbr>external::<wbr>re_<wbr>log_<wbr>types::<wbr>external::<wbr>arrow::<wbr>csv</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../../index.html">sdk</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">re_log_types</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">arrow</a>::<wbr><a href="../index.html">csv</a></span><h1>Module <span>reader</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>CSV Reader</p>
+<h2 id="basic-usage"><a class="doc-anchor" href="#basic-usage">§</a>Basic Usage</h2>
+<p>This CSV reader allows CSV files to be read into the Arrow memory model. Records are
+loaded in batches and are then converted from row-based data to columnar data.</p>
+<p>Example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[
+    Field::new(<span class="string">"city"</span>, DataType::Utf8, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"lat"</span>, DataType::Float64, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"lng"</span>, DataType::Float64, <span class="bool-val">false</span>),
+]);
+
+<span class="kw">let </span>file = File::open(<span class="string">"test/data/uk_cities.csv"</span>).unwrap();
+
+<span class="kw">let </span><span class="kw-2">mut </span>csv = ReaderBuilder::new(Arc::new(schema)).build(file).unwrap();
+<span class="kw">let </span>batch = csv.next().unwrap().unwrap();</code></pre></div>
+<h2 id="async-usage"><a class="doc-anchor" href="#async-usage">§</a>Async Usage</h2>
+<p>The lower-level <a href="../../../../../../../external/re_chunk_store/external/arrow/csv/reader/struct.Decoder.html" title="struct rerun::external::re_chunk_store::external::arrow::csv::reader::Decoder"><code>Decoder</code></a> can be integrated with various forms of async data streams,
+and is designed to be agnostic to the various different kinds of async IO primitives found
+within the Rust ecosystem.</p>
+<p>For example, see below for how it can be used with an arbitrary <code>Stream</code> of <code>Bytes</code></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>decode_stream&lt;S: Stream&lt;Item = Bytes&gt; + Unpin&gt;(
+    <span class="kw-2">mut </span>decoder: Decoder,
+    <span class="kw-2">mut </span>input: S,
+) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;RecordBatch, ArrowError&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>buffered = Bytes::new();
+    futures::stream::poll_fn(<span class="kw">move </span>|cx| {
+        <span class="kw">loop </span>{
+            <span class="kw">if </span>buffered.is_empty() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = <span class="macro">ready!</span>(input.poll_next_unpin(cx)) {
+                    buffered = b;
+                }
+                <span class="comment">// Note: don't break on `None` as the decoder needs
+                // to be called with an empty array to delimit the
+                // final record
+            </span>}
+            <span class="kw">let </span>decoded = <span class="kw">match </span>decoder.decode(buffered.as_ref()) {
+                <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="kw">break</span>,
+                <span class="prelude-val">Ok</span>(decoded) =&gt; decoded,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e))),
+            };
+            buffered.advance(decoded);
+        }
+
+        Poll::Ready(decoder.flush().transpose())
+    })
+}
+</code></pre></div>
+<p>In a similar vein, it can also be used with tokio-based IO primitives</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>decode_stream&lt;R: AsyncBufRead + Unpin&gt;(
+    <span class="kw-2">mut </span>decoder: Decoder,
+    <span class="kw-2">mut </span>reader: R,
+) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;RecordBatch, ArrowError&gt;&gt; {
+    futures::stream::poll_fn(<span class="kw">move </span>|cx| {
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>b = <span class="kw">match </span><span class="macro">ready!</span>(Pin::new(<span class="kw-2">&amp;mut </span>reader).poll_fill_buf(cx)) {
+                <span class="prelude-val">Ok</span>(b) =&gt; b,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into()))),
+            };
+            <span class="kw">let </span>decoded = <span class="kw">match </span>decoder.decode(b) {
+                <span class="comment">// Note: the decoder needs to be called with an empty
+                // array to delimit the final record
+                </span><span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="kw">break</span>,
+                <span class="prelude-val">Ok</span>(decoded) =&gt; decoded,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e))),
+            };
+            Pin::new(<span class="kw-2">&amp;mut </span>reader).consume(decoded);
+        }
+
+        Poll::Ready(decoder.flush().transpose())
+    })
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.BufReader.html" title="struct rerun::sdk::external::re_log_types::external::arrow::csv::reader::BufReader">BufReader</a></div><div class="desc docblock-short">CSV file reader</div></li><li><div class="item-name"><a class="struct" href="struct.Decoder.html" title="struct rerun::sdk::external::re_log_types::external::arrow::csv::reader::Decoder">Decoder</a></div><div class="desc docblock-short">A push-based interface for decoding CSV data from an arbitrary byte stream</div></li><li><div class="item-name"><a class="struct" href="struct.Format.html" title="struct rerun::sdk::external::re_log_types::external::arrow::csv::reader::Format">Format</a></div><div class="desc docblock-short">The format specification for the CSV file</div></li><li><div class="item-name"><a class="struct" href="struct.ReaderBuilder.html" title="struct rerun::sdk::external::re_log_types::external::arrow::csv::reader::ReaderBuilder">Reader<wbr>Builder</a></div><div class="desc docblock-short">CSV file reader builder</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.infer_schema_from_files.html" title="fn rerun::sdk::external::re_log_types::external::arrow::csv::reader::infer_schema_from_files">infer_<wbr>schema_<wbr>from_<wbr>files</a></div><div class="desc docblock-short">Infer schema from a list of CSV files by reading through first n records
+with <code>max_read_records</code> controlling the maximum number of records to read.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.Reader.html" title="type rerun::sdk::external::re_log_types::external::arrow::csv::reader::Reader">Reader</a></div><div class="desc docblock-short">CSV file reader using <a href="https://doc.rust-lang.org/1.85.0/std/io/buffered/bufreader/struct.BufReader.html" title="struct std::io::buffered::bufreader::BufReader"><code>std::io::BufReader</code></a></div></li></ul></section></div></main></body></html>

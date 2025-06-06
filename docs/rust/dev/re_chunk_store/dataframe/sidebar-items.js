@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SparseFillStrategy"],"struct":["QueryExpression","ViewContentsSelector"],"type":["Index","IndexRange","IndexValue"]};

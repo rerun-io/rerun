@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["redap_uri_button"]};

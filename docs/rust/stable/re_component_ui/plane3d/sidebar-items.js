@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AxisDirection"],"fn":["edit_or_view_plane3d","multiline_edit_or_view_plane3d"]};

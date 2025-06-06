@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["sorbet_batch_to_display_record_batch","table_ui"],"struct":["CollectionTableDelegate"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StartOfGopDetectionFailure"],"fn":["is_annexb_sample_start_of_gop","is_sample_start_of_gop"]};

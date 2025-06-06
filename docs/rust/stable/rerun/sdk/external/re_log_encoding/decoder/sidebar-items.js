@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DecodeError"],"fn":["decode_bytes","options_from_bytes","read_options","read_options_async"],"mod":["stream","streaming"],"struct":["Decoder"]};

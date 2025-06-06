@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ArchetypeFieldName","ArchetypeName","GenericIndicatorComponent","GenericIndicatorComponentArray","NamedIndicatorComponent"],"trait":["Archetype","ArchetypeReflectionMarker"]};

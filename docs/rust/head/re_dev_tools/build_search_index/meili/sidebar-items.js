@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Method","TaskStatus"],"fn":["connect"],"struct":["QueryResult","SearchClient","Task","TaskError"]};

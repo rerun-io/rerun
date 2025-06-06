@@ -1,0 +1,43 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Create an `Array` with one, two, three, four, five, or six dimensions."><title>array in rerun::external::ndarray::prelude - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>ndarray::<wbr>prelude</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../index.html">rerun</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">ndarray</a>::<wbr><a href="index.html">prelude</a></span><h1>Macro <span class="macro">array</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="https://docs.rs/ndarray/0.15/src/ndarray/free_functions.rs.html#62">Source</a> </span></div><pre class="rust item-decl"><code>macro_rules! array {
+    ($([$([$([$([$([$([$($x:expr),* $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*) =&gt; { ... };
+    ($([$([$([$([$([$($x:expr),* $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*) =&gt; { ... };
+    ($([$([$([$([$($x:expr),* $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*) =&gt; { ... };
+    ($([$([$([$($x:expr),* $(,)*]),+ $(,)*]),+ $(,)*]),+ $(,)*) =&gt; { ... };
+    ($([$([$($x:expr),* $(,)*]),+ $(,)*]),+ $(,)*) =&gt; { ... };
+    ($([$($x:expr),* $(,)*]),+ $(,)*) =&gt; { ... };
+    ($($x:expr),* $(,)*) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Create an <strong><a href="../type.Array.html" title="type rerun::external::ndarray::Array"><code>Array</code></a></strong> with one, two, three, four, five, or six dimensions.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ndarray::array;
+<span class="kw">let </span>a1 = <span class="macro">array!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>];
+
+<span class="kw">let </span>a2 = <span class="macro">array!</span>[[<span class="number">1</span>, <span class="number">2</span>],
+                [<span class="number">3</span>, <span class="number">4</span>]];
+
+<span class="kw">let </span>a3 = <span class="macro">array!</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]],
+                [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]]];
+
+<span class="kw">let </span>a4 = <span class="macro">array!</span>[[[[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]]]];
+
+<span class="kw">let </span>a5 = <span class="macro">array!</span>[[[[[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]]]]];
+
+<span class="kw">let </span>a6 = <span class="macro">array!</span>[[[[[[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]]]]]];
+
+<span class="macro">assert_eq!</span>(a1.shape(), <span class="kw-2">&amp;</span>[<span class="number">4</span>]);
+<span class="macro">assert_eq!</span>(a2.shape(), <span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">2</span>]);
+<span class="macro">assert_eq!</span>(a3.shape(), <span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">2</span>, <span class="number">2</span>]);
+<span class="macro">assert_eq!</span>(a4.shape(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">4</span>]);
+<span class="macro">assert_eq!</span>(a5.shape(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">5</span>]);
+<span class="macro">assert_eq!</span>(a6.shape(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">6</span>]);</code></pre></div>
+<p>This macro uses <code>vec![]</code>, and has the same ownership semantics;
+elements are moved into the resulting <code>Array</code>.</p>
+<p>Use <code>array![...].into_shared()</code> to create an <code>ArcArray</code>.</p>
+<p>Attempts to crate 7D+ arrays with this macro will lead to
+a compiler error, since the difference between a 7D array
+of i32 and a 6D array of <code>[i32; 3]</code> is ambiguous. Higher-dim
+arrays can be created with <a href="../type.ArrayD.html" title="type rerun::external::ndarray::ArrayD"><code>ArrayD</code></a>.</p>
+
+<div class="example-wrap compile_fail"><a href="#" class="tooltip" title="This example deliberately fails to compile">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ndarray::array;
+<span class="kw">let </span>a7 = <span class="macro">array!</span>[[[[[[[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]]]]]]];
+<span class="comment">// error: Arrays of 7 dimensions or more (or ndarrays of Rust arrays) cannot be constructed with the array! macro.</span></code></pre></div>
+</div></details></section></div></main></body></html>

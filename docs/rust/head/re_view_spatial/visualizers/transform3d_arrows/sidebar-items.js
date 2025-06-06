@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_axis_arrows"],"struct":["AxisLengthDetector","Transform3DArrowsVisualizer","Transform3DVisualizabilityFilter"]};

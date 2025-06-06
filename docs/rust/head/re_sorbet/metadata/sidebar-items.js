@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["MissingFieldMetadata","MissingMetadataKey"],"trait":["MetadataExt"],"type":["ArrowBatchMetadata","ArrowFieldMetadata"]};
