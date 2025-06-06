@@ -138,6 +138,7 @@ message DatasetDetails {
 
 message DatasetEntry {
   reserved 3;
+  reserved "blueprint_dataset";
 
   EntryDetails details = 1;
 
