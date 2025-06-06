@@ -262,6 +262,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
         // ids are only unique within a given dataset.
         // This is a hack be cause
+        // TODO(#7950)
         let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
 
         let blueprint_store_info = StoreInfo {
