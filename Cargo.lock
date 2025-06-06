@@ -7133,7 +7133,9 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "async-stream",
+ "re_arrow_util",
  "re_auth",
  "re_chunk",
  "re_error",

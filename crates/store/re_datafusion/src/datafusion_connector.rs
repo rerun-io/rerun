@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use datafusion::{catalog::TableProvider, error::DataFusionError};
 
-use re_grpc_client::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_types::{EntryId, external::re_tuid::Tuid};
 use re_protos::catalog::v1alpha1::{
     DatasetEntry, EntryFilter, ReadDatasetEntryRequest, ext::EntryDetails,
@@ -12,11 +12,12 @@ use crate::partition_table::PartitionTableProvider;
 use crate::table_entry_provider::TableEntryTableProvider;
 
 pub struct DataFusionConnector {
-    client: RedapClient,
+    //TODO(ab): this should hold on to a `ConnectionRegistryHandle` instead of a `ConnectionClient`
+    client: ConnectionClient,
 }
 
 impl DataFusionConnector {
-    pub async fn new(client: re_grpc_client::RedapClient) -> anyhow::Result<Self> {
+    pub async fn new(client: ConnectionClient) -> anyhow::Result<Self> {
         Ok(Self { client })
     }
 }
@@ -26,6 +27,7 @@ impl DataFusionConnector {
         // TODO(jleibs): Clean this up with better helpers
         let entry: EntryDetails = self
             .client
+            .inner()
             .find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
                 filter: Some(EntryFilter {
                     name: Some("__entries".to_owned()),
@@ -53,6 +55,7 @@ impl DataFusionConnector {
     ) -> Result<Option<DatasetEntry>, tonic::Status> {
         let entry = self
             .client
+            .inner()
             .read_dataset_entry(ReadDatasetEntryRequest {
                 id: Some(id.into()),
             })
