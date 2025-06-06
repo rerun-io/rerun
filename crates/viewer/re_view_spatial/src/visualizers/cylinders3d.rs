@@ -51,6 +51,8 @@ impl Cylinders3DVisualizer {
                 .zip(radii_iter)
                 .map(|(&Length(length), &Radius(radius))| {
                     let radius = clean_length(radius.0);
+                    // Cylinder radius is already half the diameter, so we can use it directly.
+                    // Length is the full length, so we divide by 2 to get the half size.
                     HalfSize3D::new(radius, radius, length.0 / 2.0)
                 })
                 .collect();
