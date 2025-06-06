@@ -115,6 +115,7 @@ impl PyCatalogClient {
         };
 
         let dataset = PyDataset {
+            dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
 
@@ -138,6 +139,7 @@ impl PyCatalogClient {
         };
 
         let dataset = PyDataset {
+            dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
 

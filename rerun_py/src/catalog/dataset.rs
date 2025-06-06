@@ -3,7 +3,9 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::{Py, PyAny, PyRef, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods};
+use pyo3::{
+    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods,
+};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -11,6 +13,7 @@ use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::get_chunks_response_to_chunk_and_partition_id;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
@@ -22,7 +25,8 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use crate::catalog::task::PyTasks;
 use crate::catalog::{
-    PyEntry, VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, to_py_err,
+    PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
+    dataframe_query::PyDataframeQueryView, to_py_err,
 };
 use crate::dataframe::{
     AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
@@ -32,6 +36,7 @@ use crate::utils::wait_for_future;
 /// A dataset entry in the catalog.
 #[pyclass(name = "Dataset", extends=PyEntry)]
 pub struct PyDataset {
+    pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
 }
 
@@ -52,9 +57,86 @@ impl PyDataset {
         Ok(arrow_schema.into())
     }
 
+    /// The ID of the associated blueprint dataset, if any.
+    fn blueprint_dataset_id(self_: PyRef<'_, Self>) -> Option<PyEntryId> {
+        self_.dataset_details.blueprint_dataset.map(Into::into)
+    }
+
+    /// The associated blueprint dataset, if any.
+    fn blueprint_dataset(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Option<Py<Self>>> {
+        let Some(blueprint_dataset_entry_id) = self_.dataset_details.blueprint_dataset else {
+            return Ok(None);
+        };
+
+        let super_ = self_.as_super();
+        let client = super_.client.clone_ref(py);
+        let connection = super_.client.borrow(py).connection().clone();
+
+        let dataset_entry = connection.read_dataset(py, blueprint_dataset_entry_id)?;
+
+        let entry = PyEntry {
+            client,
+            id: Py::new(
+                py,
+                PyEntryId {
+                    id: blueprint_dataset_entry_id,
+                },
+            )?,
+            details: dataset_entry.details,
+        };
+
+        let dataset = Self {
+            dataset_details: dataset_entry.dataset_details,
+            dataset_handle: dataset_entry.handle,
+        };
+
+        Some(Py::new(py, (dataset, entry))).transpose()
+    }
+
+    /// The default blueprint partition ID for this dataset, if any.
+    fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
+        self_
+            .dataset_details
+            .default_blueprint
+            .as_ref()
+            .map(ToString::to_string)
+    }
+
+    /// Set the default blueprint partition ID for this dataset.
+    ///
+    /// This fails if the change cannot be made to the remote server.
+    #[pyo3(signature = (partition_id))]
+    fn set_default_blueprint_partition_id(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        partition_id: Option<String>,
+    ) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(py).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let mut dataset_details = self_.dataset_details.clone();
+        dataset_details.default_blueprint = partition_id.map(Into::into);
+
+        let result = connection.update_dataset(py, dataset_id, dataset_details)?;
+
+        self_.dataset_details = result.dataset_details;
+
+        Ok(())
+    }
+
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_schema(&self_)
+    }
+
+    /// Returns a list of partitions IDs for the dataset.
+    fn partition_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        connection.get_partition_ids(self_.py(), dataset_id)
     }
 
     /// Return the partition table as a Datafusion table provider.
