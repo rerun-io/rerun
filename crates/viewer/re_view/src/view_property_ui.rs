@@ -26,7 +26,7 @@ fn view_property_ui_impl(
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
-    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
+    let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -36,29 +36,45 @@ fn view_property_ui_impl(
     };
 
     let query_ctx = property.query_context(ctx);
+    // If the property archetype only has a single component, don't show an additional hierarchy level!
+    if archetype.fields.len() == 1 {
+        let field = &archetype.fields[0];
 
-    let sub_prop_ui = |ui: &mut egui::Ui| {
-        for field in &reflection.fields {
-            view_property_component_ui(
-                &query_ctx,
+        let archetype_name = archetype.display_name;
+        let field_name = field.display_name;
+        let label = if archetype_name == field_name {
+            // Happens in some cases, like for the `NearClipPlane` archetype that
+            // only has one component; also called `NearClipPlane`.
+            archetype_name.to_string()
+        } else {
+            format!("{archetype_name} - {field_name}")
+        };
+
+        view_property_component_ui(&query_ctx, ui, property, &label, field, fallback_provider);
+    } else {
+        let sub_prop_ui = |ui: &mut egui::Ui| {
+            for field in &archetype.fields {
+                view_property_component_ui(
+                    &query_ctx,
+                    ui,
+                    property,
+                    field.display_name,
+                    field,
+                    fallback_provider,
+                );
+            }
+        };
+
+        ui.list_item()
+            .interactive(false)
+            .show_hierarchical_with_children(
                 ui,
-                property,
-                field.display_name,
-                field,
-                fallback_provider,
+                ui.make_persistent_id(property.archetype_name.full_name()),
+                true,
+                list_item::LabelContent::new(archetype.display_name),
+                sub_prop_ui,
             );
-        }
-    };
-
-    ui.list_item()
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id(property.archetype_name.full_name()),
-            true,
-            list_item::LabelContent::new(reflection.display_name),
-            sub_prop_ui,
-        );
+    }
 }
 
 /// Draw view property ui for a single component of a view property archetype.
