@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::IsTerminal as _;
 use std::sync::Weak;
-use std::sync::{Arc, atomic::AtomicI64};
+use std::sync::{atomic::AtomicI64, Arc};
 use std::time::Duration;
 
 use ahash::HashMap;
@@ -1461,6 +1461,7 @@ fn forwarding_thread(
             }
             Command::SwapSink(new_sink) => {
                 re_log::trace!("Swapping sink…");
+
                 let backlog = {
                     // Capture the backlog if it exists.
                     let backlog = sink.drain_backlog();

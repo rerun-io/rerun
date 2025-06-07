@@ -84,7 +84,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// sent over gRPC, written to file, etc.
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
-    pub use crate::log_sink::{BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage, MultiSink,
+    };
 
     pub use crate::log_sink::GrpcSink;
 

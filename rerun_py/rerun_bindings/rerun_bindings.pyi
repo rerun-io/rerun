@@ -733,6 +733,21 @@ def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
 def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
     """Create a new binary stream sink, and return the associated binary stream."""
 
+class PyGrpcSink:
+    def __new__(cls, url: str | None, flush_timeout_sec: float | None) -> PyGrpcSink:
+        pass
+
+class PyFileSink:
+    def __new__(cls, path: str) -> PyFileSink:
+        pass
+
+def tee(
+    sinks: list[Any],
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Stream data to multiple sinks."""
+
 def connect_grpc(
     url: Optional[str],
     flush_timeout_sec: Optional[float] = ...,
