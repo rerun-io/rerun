@@ -103,7 +103,10 @@ pub struct LineStrips2D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
@@ -545,7 +548,10 @@ impl LineStrips2D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

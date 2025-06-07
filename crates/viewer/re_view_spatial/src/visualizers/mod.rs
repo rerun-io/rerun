@@ -7,6 +7,7 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod capsules3d;
+mod cylinders3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_image;
@@ -86,6 +87,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -99,6 +101,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
     system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
+    system_registry.register_visualizer::<cylinders3d::Cylinders3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
@@ -112,6 +115,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -155,6 +159,10 @@ pub fn visualizers_processing_draw_order()
         (
             video::VideoFrameReferenceVisualizer::identifier(),
             archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
+        (
+            video::VideoStreamVisualizer::identifier(),
+            archetypes::VideoStream::descriptor_draw_order(),
         ),
     ]
     .into_iter()

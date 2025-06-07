@@ -190,3 +190,4 @@ pub const CONTROL: Icon = icon_from_path!("../data/icons/control.svg");
 pub const COMMAND: Icon = icon_from_path!("../data/icons/command.svg");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.svg");
 pub const COPY: Icon = icon_from_path!("../data/icons/copy.svg");
+pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");

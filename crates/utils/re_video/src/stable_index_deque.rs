@@ -171,19 +171,19 @@ impl<T> StableIndexDeque<T> {
         self.vec.truncate(new_len);
     }
 
-    /// Removes all elements with an index smaller than the given index.
+    /// Removes all elements with an index smaller or equal than the given index.
     ///
     /// ```
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..4).collect::<StableIndexDeque<i32>>();
-    /// v.remove_all_with_index_smaller(2);
+    /// v.remove_all_with_index_smaller_equal(1);
     /// assert_eq!(v.get(0), None);
     /// assert_eq!(v.get(1), None);
     /// assert_eq!(v.get(2), Some(&2));
     /// assert_eq!(v.get(3), Some(&3));
     /// ```
-    pub fn remove_all_with_index_smaller(&mut self, first_index_contained: usize) {
-        while !self.vec.is_empty() && first_index_contained > self.index_offset {
+    pub fn remove_all_with_index_smaller_equal(&mut self, first_index_contained: usize) {
+        while !self.vec.is_empty() && first_index_contained >= self.index_offset {
             self.pop_front();
         }
     }

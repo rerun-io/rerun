@@ -17,7 +17,6 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .geo_line_string_ext import GeoLineStringExt
@@ -52,7 +51,7 @@ class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin)
             metadata={},
         )
     )
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.GeoLineString")
+    _COMPONENT_NAME: str = "rerun.components.GeoLineString"
 
     @staticmethod
     def _native_to_pa_array(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:

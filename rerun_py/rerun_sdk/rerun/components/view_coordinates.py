@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .view_coordinates_ext import ViewCoordinatesExt
@@ -47,7 +46,7 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
 
 
 class ViewCoordinatesBatch(datatypes.ViewCoordinatesBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.ViewCoordinates")
+    _COMPONENT_NAME: str = "rerun.components.ViewCoordinates"
 
 
 # This is patched in late to avoid circular dependencies.

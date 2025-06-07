@@ -77,6 +77,7 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
@@ -101,6 +102,7 @@ from .archetypes import (
     TextLog as TextLog,
     Transform3D as Transform3D,
     VideoFrameReference as VideoFrameReference,
+    VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (

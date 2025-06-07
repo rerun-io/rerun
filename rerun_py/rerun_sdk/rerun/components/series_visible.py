@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class SeriesVisible(datatypes.Bool, ComponentMixin):
 
 
 class SeriesVisibleBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.SeriesVisible")
+    _COMPONENT_NAME: str = "rerun.components.SeriesVisible"
 
 
 # This is patched in late to avoid circular dependencies.

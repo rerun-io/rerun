@@ -15,6 +15,7 @@ service CatalogService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+  rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 }
@@ -58,6 +59,21 @@ message ReadDatasetEntryRequest {
 }
 
 message ReadDatasetEntryResponse {
+  DatasetEntry dataset = 1;
+}
+
+// UpdateDatasetEntry
+
+message UpdateDatasetEntryRequest {
+  // The dataset to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values.
+  DatasetDetails dataset_details = 2;
+}
+
+message UpdateDatasetEntryResponse {
+  // The updated dataset entry
   DatasetEntry dataset = 1;
 }
 
@@ -112,10 +128,22 @@ message EntryDetails {
   google.protobuf.Timestamp updated_at = 5;
 }
 
+message DatasetDetails {
+  // The blueprint dataset associated with this dataset (if any).
+  optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
+
+  // The partition of the blueprint dataset corresponding to the default blueprint (if any).
+  optional rerun.common.v1alpha1.PartitionId default_blueprint = 4;
+}
+
 message DatasetEntry {
+  reserved 3;
+  reserved "blueprint_dataset";
+
   EntryDetails details = 1;
 
-  optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
+  // Dataset-specific information, may be update with `UpdateDatasetEntry`
+  DatasetDetails dataset_details = 4;
 
   // Read-only
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;

@@ -179,10 +179,16 @@ impl VideoFrameReferenceVisualizer {
 
             Some((video, video_buffer)) => match video.as_ref() {
                 Ok(video) => {
+                    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                        ctx.viewer_ctx(),
+                        *video_timestamp,
+                        video.data_descr().timescale,
+                    );
+
                     match video.frame_at(
                         ctx.render_ctx(),
                         player_stream_id,
-                        video_timestamp.as_secs(),
+                        video_time,
                         &std::iter::once(video_buffer.as_ref()).collect(),
                     ) {
                         Ok(video_frame_reference) => {

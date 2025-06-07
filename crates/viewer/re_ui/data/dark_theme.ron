@@ -242,6 +242,9 @@
     "list_item_default_text": {
       "color": "{Gray.700}"
     },
+    "list_item_strong_text": {
+      "color": "{Gray.800}"
+    },
     "list_item_selected_icon": {
       "color": "{Blue.600}"
     },

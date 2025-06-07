@@ -1,6 +1,8 @@
 mod video_frame_reference;
+mod video_stream;
 
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
+pub use video_stream::VideoStreamVisualizer;
 
 use re_log_types::{EntityPath, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};

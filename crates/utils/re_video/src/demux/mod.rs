@@ -94,6 +94,12 @@ impl VideoCodec {
     }
 }
 
+/// Index used for referencing into [`VideoDataDescription::gops`].
+pub type GopIndex = usize;
+
+/// Index used for referencing into [`VideoDataDescription::samples`].
+pub type SampleIndex = usize;
+
 /// Description of video data.
 ///
 /// Store various metadata about a video.
@@ -107,7 +113,10 @@ pub struct VideoDataDescription {
     pub coded_dimensions: Option<[u16; 2]>,
 
     /// How many time units are there per second.
-    pub timescale: Timescale,
+    ///
+    /// `None` if the time units used don't have a defined relationship to seconds.
+    /// This happens for streams logged on a non-temporal timeline.
+    pub timescale: Option<Timescale>,
 
     /// Duration of the video, in time units if known.
     ///
@@ -132,7 +141,7 @@ pub struct VideoDataDescription {
     ///
     /// To facilitate streaming, samples may be removed from the beginning and added at the end,
     /// but individual samples are never supposed to change.
-    pub samples: StableIndexDeque<Sample>,
+    pub samples: StableIndexDeque<SampleMetadata>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
@@ -175,7 +184,7 @@ impl SamplesStatistics {
         has_sample_highest_pts_so_far: None,
     };
 
-    pub fn new(samples: &StableIndexDeque<Sample>) -> Self {
+    pub fn new(samples: &StableIndexDeque<SampleMetadata>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
@@ -233,7 +242,9 @@ impl VideoDataDescription {
     /// For video streams (as opposed to video files) this is generally unknown.
     #[inline]
     pub fn duration(&self) -> Option<std::time::Duration> {
-        self.duration.map(|d| d.duration(self.timescale))
+        let timescale = self.timescale?;
+        let duration = self.duration?;
+        Some(duration.duration(timescale))
     }
 
     /// The codec used to encode the video.
@@ -365,34 +376,37 @@ impl VideoDataDescription {
 
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
+    /// Returns None if the video has no timescale.
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    pub fn frame_timestamps_nanos(&self) -> impl Iterator<Item = i64> + '_ {
+    pub fn frame_timestamps_nanos(&self) -> Option<impl Iterator<Item = i64> + '_> {
+        let timescale = self.timescale?;
+
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        self.gops.iter().flat_map(|seg| {
+        Some(self.gops.iter().flat_map(move |seg| {
             self.samples
                 .iter_index_range_clamped(&seg.sample_range)
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
-                .map(|pts| pts.into_nanos(self.timescale))
-        })
+                .map(move |pts| pts.into_nanos(timescale))
+        }))
     }
 
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &StableIndexDeque<Sample>,
+        samples: &StableIndexDeque<SampleMetadata>,
         decode_time: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &StableIndexDeque<Sample>,
+        samples: &StableIndexDeque<SampleMetadata>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         // Because `decode <= presentation`, we never have to look further backwards in the
         // video than this.
@@ -414,7 +428,7 @@ impl VideoDataDescription {
         //
         // The tricky part is that we can't just take the first sample with a presentation timestamp that matches
         // since smaller presentation timestamps may still show up further back!
-        let mut best_index = usize::MAX;
+        let mut best_index = SampleIndex::MAX;
         let mut best_pts = Time::MIN;
         for sample_idx in (0..=decode_sample_idx).rev() {
             let sample = &samples[sample_idx];
@@ -449,7 +463,7 @@ impl VideoDataDescription {
     pub fn latest_sample_index_at_presentation_timestamp(
         &self,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         Self::latest_sample_index_at_presentation_timestamp_internal(
             &self.samples,
             &self.samples_statistics,
@@ -458,7 +472,7 @@ impl VideoDataDescription {
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
-    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
+    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
         self.gops
             .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
     }
@@ -467,7 +481,7 @@ impl VideoDataDescription {
     pub fn gop_index_containing_presentation_timestamp(
         &self,
         presentation_timestamp: Time,
-    ) -> Option<usize> {
+    ) -> Option<SampleIndex> {
         let requested_sample_index =
             self.latest_sample_index_at_presentation_timestamp(presentation_timestamp)?;
 
@@ -490,7 +504,7 @@ pub struct GroupOfPictures {
     pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
-    pub sample_range: Range<usize>,
+    pub sample_range: Range<SampleIndex>,
 }
 
 /// A single sample in a video.
@@ -509,7 +523,7 @@ pub struct GroupOfPictures {
 /// > A set of NAL units in a specified form is referred to as an access unit.
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
-pub struct Sample {
+pub struct SampleMetadata {
     /// Is this the start of a new (closed) [`GroupOfPictures`]?
     ///
     /// What this means in detail is dependent on the codec but they are generally
@@ -550,14 +564,14 @@ pub struct Sample {
     /// Index of the data buffer in which this sample is stored.
     pub buffer_index: usize,
 
-    /// Offset within the data buffer addressed by [`Sample::buffer_index`].
+    /// Offset within the data buffer addressed by [`SampleMetadata::buffer_index`].
     pub byte_offset: u32,
 
-    /// Length of sample starting at [`Sample::byte_offset`].
+    /// Length of sample starting at [`SampleMetadata::byte_offset`].
     pub byte_length: u32,
 }
 
-impl Sample {
+impl SampleMetadata {
     /// Read the sample from the video data.
     ///
     /// For video assets, `data` _must_ be a reference to the original asset
@@ -567,7 +581,7 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: usize) -> Option<Chunk> {
+    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
         let buffer = *buffers.get(self.buffer_index)?;
         let data = buffer
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
@@ -600,6 +614,11 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
+    #[error(
+        "Video file has no timescale, which is required to determine frame timestamps in time units"
+    )]
+    NoTimescale,
+
     #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
     MimeTypeIsNotAVideo {
         provided_or_detected_media_type: String,
@@ -628,10 +647,7 @@ impl std::fmt::Debug for VideoDataDescription {
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("gops", &self.gops)
-            .field(
-                "samples",
-                &self.samples.iter().enumerate().collect::<Vec<_>>(),
-            )
+            .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
             .finish()
     }
 }
@@ -664,7 +680,7 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .map(|(pts, dts)| Sample {
+            .map(|(pts, dts)| SampleMetadata {
                 is_sync: false,
                 frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
@@ -689,13 +705,13 @@ mod tests {
         };
 
         // Check that query for all exact positions works as expected using brute force search as the reference.
-        for (idx, sample) in samples.iter().enumerate() {
+        for (idx, sample) in samples.iter_indexed() {
             assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
         }
 
         // Check that for slightly offsetted positions the query is still correct.
         // This works because for this dataset we know the minimum presentation timesetampe distance is always 256.
-        for (idx, sample) in samples.iter().enumerate() {
+        for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
                 Some(idx),
                 query_pts(sample.presentation_timestamp + Time(1))
