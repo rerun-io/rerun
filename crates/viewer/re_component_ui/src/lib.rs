@@ -202,17 +202,3 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry
 }
-
-// fn edit_link_axis(
-//     _ctx: &re_viewer_context::ViewerContext<'_>,
-//     ui: &mut egui::Ui,
-//     value: &mut MaybeMutRef<'_, LinkAxis>,
-// ) -> egui::Response {
-//     match value {
-//         MaybeMutRef::Ref(link_to_global) => {
-//             if link_to_global {
-//             }
-//         }
-//         MaybeMutRef::MutRef(_) => todo!(),
-//     }
-// }
