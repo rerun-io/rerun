@@ -48,7 +48,7 @@ fn view_property_ui_impl(
             &query_ctx,
             ui,
             property,
-            &archetype_display_name,
+            archetype_display_name,
             &archetype.fields[0],
             fallback_provider,
         );
