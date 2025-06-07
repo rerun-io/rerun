@@ -21,7 +21,7 @@ namespace rerun::blueprint::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct TimeAxis {
-        /// If true, link the X/time axis to all other plots where this is enabled.
+        /// How should the horizontal/X/time axis be linked across multiple plots?
         std::optional<ComponentBatch> link;
 
       public:
@@ -54,7 +54,7 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `TimeAxis`.
         static TimeAxis clear_fields();
 
-        /// If true, link the X/time axis to all other plots where this is enabled.
+        /// How should the horizontal/X/time axis be linked across multiple plots?
         TimeAxis with_link(const rerun::blueprint::components::LinkAxis& _link) && {
             link = ComponentBatch::from_loggable(_link, Descriptor_link).value_or_throw();
             return std::move(*this);

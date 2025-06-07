@@ -12,6 +12,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(non_camel_case_types)]
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
@@ -19,12 +20,17 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: If true, link the X/time axis to all other plots where this is enabled.
-///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct LinkAxis(pub crate::datatypes::Bool);
+/// **Component**: How should the horizontal/X/time axis be linked across multiple plots
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[repr(u8)]
+pub enum LinkAxis {
+    /// The axis is independent from all other plots.
+    #[default]
+    Independent = 1,
+
+    /// Link to all other plots that also have this options set.
+    LinkToGlobal = 2,
+}
 
 impl ::re_types_core::Component for LinkAxis {
     #[inline]
@@ -38,7 +44,9 @@ impl ::re_types_core::Component for LinkAxis {
 impl ::re_types_core::Loggable for LinkAxis {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::Bool::arrow_datatype()
+        #![allow(clippy::wildcard_imports)]
+        use arrow::datatypes::*;
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -47,12 +55,33 @@ impl ::re_types_core::Loggable for LinkAxis {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::Bool::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
+        #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
+        Ok({
+            let (somes, data0): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let data0_validity: Option<arrow::buffer::NullBuffer> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            as_array_ref(PrimitiveArray::<UInt8Type>::new(
+                ScalarBuffer::from(
+                    data0
+                        .into_iter()
+                        .map(|v| v.unwrap_or_default())
+                        .collect::<Vec<_>>(),
+                ),
+                data0_validity,
+            ))
+        })
     }
 
     fn from_arrow_opt(
@@ -61,48 +90,66 @@ impl ::re_types_core::Loggable for LinkAxis {
     where
         Self: Sized,
     {
-        crate::datatypes::Bool::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+        #![allow(clippy::wildcard_imports)]
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.blueprint.components.LinkAxis#enum")?
+            .into_iter()
+            .map(|typ| match typ {
+                Some(1) => Ok(Some(Self::Independent)),
+                Some(2) => Ok(Some(Self::LinkToGlobal)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.blueprint.components.LinkAxis")?)
     }
 }
 
-impl<T: Into<crate::datatypes::Bool>> From<T> for LinkAxis {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl std::fmt::Display for LinkAxis {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Independent => write!(f, "Independent"),
+            Self::LinkToGlobal => write!(f, "LinkToGlobal"),
+        }
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Bool> for LinkAxis {
+impl ::re_types_core::reflection::Enum for LinkAxis {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
+    fn variants() -> &'static [Self] {
+        &[Self::Independent, Self::LinkToGlobal]
     }
-}
-
-impl std::ops::Deref for LinkAxis {
-    type Target = crate::datatypes::Bool;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for LinkAxis {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Independent => "The axis is independent from all other plots.",
+            Self::LinkToGlobal => "Link to all other plots that also have this options set.",
+        }
     }
 }
 
 impl ::re_byte_size::SizeBytes for LinkAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
+        true
     }
 }

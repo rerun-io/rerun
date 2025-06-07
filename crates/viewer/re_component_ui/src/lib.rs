@@ -96,7 +96,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // Bool components:
     registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
-    registry.add_singleline_edit_or_view::<LinkAxis>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
@@ -118,6 +117,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<LinkAxis>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
             MapProvider,
@@ -202,3 +202,17 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry
 }
+
+// fn edit_link_axis(
+//     _ctx: &re_viewer_context::ViewerContext<'_>,
+//     ui: &mut egui::Ui,
+//     value: &mut MaybeMutRef<'_, LinkAxis>,
+// ) -> egui::Response {
+//     match value {
+//         MaybeMutRef::Ref(link_to_global) => {
+//             if link_to_global {
+//             }
+//         }
+//         MaybeMutRef::MutRef(_) => todo!(),
+//     }
+// }

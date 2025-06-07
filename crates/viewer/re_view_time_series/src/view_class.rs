@@ -361,7 +361,6 @@ impl ViewClass for TimeSeriesView {
             self,
             &TimeAxis::descriptor_link(),
         )?;
-        let link_x_axis = link_x_axis.0.0;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
@@ -488,8 +487,11 @@ impl ViewClass for TimeSeriesView {
             plot = plot.reset();
         }
 
-        if link_x_axis {
-            plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+        match link_x_axis {
+            LinkAxis::Independent => {}
+            LinkAxis::LinkToGlobal => {
+                plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+            }
         }
 
         // Sharing the same cursor is always nice:
@@ -553,7 +555,8 @@ impl ViewClass for TimeSeriesView {
             } else {
                 plot_ui.set_auto_bounds([
                     // X bounds are handled by egui plot - either to auto or manually controlled.
-                    state.reset_bounds_next_frame || (plot_ui.auto_bounds().x && !link_x_axis),
+                    state.reset_bounds_next_frame
+                        || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
                     // Y bounds are always handled by the blueprint.
                     false,
                 ]);

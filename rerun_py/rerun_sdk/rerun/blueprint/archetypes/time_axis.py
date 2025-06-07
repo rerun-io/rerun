@@ -9,7 +9,6 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
@@ -27,14 +26,14 @@ class TimeAxis(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, *, link: datatypes.BoolLike | None = None) -> None:
+    def __init__(self: Any, *, link: blueprint_components.LinkAxisLike | None = None) -> None:
         """
         Create a new instance of the TimeAxis archetype.
 
         Parameters
         ----------
         link:
-            If true, link the X/time axis to all other plots where this is enabled.
+            How should the horizontal/X/time axis be linked across multiple plots?
 
         """
 
@@ -62,7 +61,7 @@ class TimeAxis(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        link: datatypes.BoolLike | None = None,
+        link: blueprint_components.LinkAxisLike | None = None,
     ) -> TimeAxis:
         """
         Update only some specific fields of a `TimeAxis`.
@@ -72,7 +71,7 @@ class TimeAxis(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         link:
-            If true, link the X/time axis to all other plots where this is enabled.
+            How should the horizontal/X/time axis be linked across multiple plots?
 
         """
 
@@ -101,7 +100,7 @@ class TimeAxis(Archetype):
         default=None,
         converter=blueprint_components.LinkAxisBatch._converter,  # type: ignore[misc]
     )
-    # If true, link the X/time axis to all other plots where this is enabled.
+    # How should the horizontal/X/time axis be linked across multiple plots?
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

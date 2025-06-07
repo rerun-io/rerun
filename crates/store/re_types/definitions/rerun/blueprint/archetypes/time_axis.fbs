@@ -10,6 +10,6 @@ table TimeAxis (
 ) {
     // --- Optional ---
 
-    /// If true, link the X/time axis to all other plots where this is enabled.
+    /// How should the horizontal/X/time axis be linked across multiple plots?
     link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2200);
 }

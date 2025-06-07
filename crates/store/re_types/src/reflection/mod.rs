@@ -219,7 +219,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LinkAxis as Component>::name(),
             ComponentReflection {
-                docstring_md: "If true, link the X/time axis to all other plots where this is enabled.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "How should the horizontal/X/time axis be linked across multiple plots",
                 deprecation_summary: None,
                 custom_placeholder: Some(LinkAxis::default().to_arrow()?),
                 datatype: LinkAxis::arrow_datatype(),
@@ -2797,7 +2797,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "link".into(), display_name :
                     "Link", component_name : "rerun.blueprint.components.LinkAxis"
                     .into(), docstring_md :
-                    "If true, link the X/time axis to all other plots where this is enabled.",
+                    "How should the horizontal/X/time axis be linked across multiple plots?",
                     is_required : false, },
                 ],
             },

@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct TimeAxis {
-    /// If true, link the X/time axis to all other plots where this is enabled.
+    /// How should the horizontal/X/time axis be linked across multiple plots?
     pub link: Option<SerializedComponentBatch>,
 }
 
@@ -170,7 +170,7 @@ impl TimeAxis {
         }
     }
 
-    /// If true, link the X/time axis to all other plots where this is enabled.
+    /// How should the horizontal/X/time axis be linked across multiple plots?
     #[inline]
     pub fn with_link(mut self, link: impl Into<crate::blueprint::components::LinkAxis>) -> Self {
         self.link = try_serialize_field(Self::descriptor_link(), [link]);
