@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
-
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
 from rerun.recording_stream import RecordingStream, get_application_id
@@ -23,6 +23,89 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     if recording is not None:
         return bindings.is_enabled(recording.inner)  # type: ignore[no-any-return]
     return bindings.is_enabled()  # type: ignore[no-any-return]
+
+
+@dataclass(frozen=True)
+class GrpcSink:
+    url: str | None = None
+    flush_timeout_sec: float | None = field(default=None, compare=False)
+
+    def _to_native(self) -> bindings.PyGrpcSink:
+        return bindings.PyGrpcSink(
+            url=self.url,
+            flush_timeout_sec=self.flush_timeout_sec,
+        )
+
+
+@dataclass(frozen=True)
+class FileSink:
+    path: str
+
+    def _to_native(self) -> bindings.PyFileSink:
+        return bindings.PyFileSink(path=self.path)
+
+
+LogSinkLike = Union[GrpcSink, FileSink]
+
+
+def _check_duplicate_sinks(*sinks: LogSinkLike) -> None:
+    seen = set()
+    duplicates = set()
+    for sink in sinks:
+        if sink in seen:
+            duplicates.add(sink)
+        else:
+            seen.add(sink)
+    if duplicates:
+        raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
+
+
+def tee(
+    *sinks: LogSinkLike,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Stream data to multiple different sinks.
+
+    Duplicate sinks are not allowed. For example, two [`GrpcSink`]s that
+    use the same `url`.
+    """
+
+    # Check for duplicates
+    seen = set()
+    duplicates = set()
+    for sink in sinks:
+        if sink in seen:
+            duplicates.add(sink)
+        else:
+            seen.add(sink)
+    if duplicates:
+        raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
+
+    if not is_recording_enabled(recording):
+        logging.warning("Rerun is disabled - tee() call ignored")
+        return
+
+    application_id = get_application_id(recording)  # NOLINT
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id,
+            blueprint=default_blueprint,
+        ).storage
+
+    bindings.tee(
+         [sink._to_native() for sink in sinks],
+         default_blueprint=blueprint_storage,
+         recording=recording.to_native() if recording is not None else None,
+    )
 
 
 def connect_grpc(
