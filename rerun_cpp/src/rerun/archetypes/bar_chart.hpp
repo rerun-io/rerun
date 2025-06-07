@@ -53,12 +53,11 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `values` field.
         static constexpr auto Descriptor_values = ComponentDescriptor(
-            ArchetypeName, "values",
-            Loggable<rerun::components::TensorData>::Descriptor.component_name
+            ArchetypeName, "values", Loggable<rerun::components::TensorData>::ComponentName
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
         );
 
       public: // START of extensions from bar_chart_ext.cpp:

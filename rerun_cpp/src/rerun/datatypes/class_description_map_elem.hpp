@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../component_descriptor.hpp"
 #include "../result.hpp"
 #include "class_description.hpp"
 #include "class_id.hpp"
@@ -50,7 +49,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::ClassDescriptionMapElem> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.ClassDescriptionMapElem";
+        static constexpr std::string_view ComponentName = "rerun.datatypes.ClassDescriptionMapElem";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

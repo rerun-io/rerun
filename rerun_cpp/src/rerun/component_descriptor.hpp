@@ -50,9 +50,11 @@ namespace rerun {
               archetype_field_name(archetype_field_name_),
               component_name(component_name_) {}
 
+        // TODO(#6889): This is only needed by indicators. Remove after removing them.
         constexpr ComponentDescriptor(std::string_view component_name_)
             : component_name(component_name_) {}
 
+        // TODO(#6889): This is only needed by indicators. Remove after removing them.
         constexpr ComponentDescriptor(const char* component_name_)
             : component_name(component_name_) {}
 

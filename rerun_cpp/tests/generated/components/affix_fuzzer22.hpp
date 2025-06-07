@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <rerun/component_descriptor.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
@@ -57,7 +56,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::AffixFuzzer22> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.testing.components.AffixFuzzer22";
+        static constexpr std::string_view ComponentName = "rerun.testing.components.AffixFuzzer22";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

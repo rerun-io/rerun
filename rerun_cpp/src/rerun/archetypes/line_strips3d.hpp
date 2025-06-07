@@ -138,30 +138,27 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `strips` field.
         static constexpr auto Descriptor_strips = ComponentDescriptor(
-            ArchetypeName, "strips",
-            Loggable<rerun::components::LineStrip3D>::Descriptor.component_name
+            ArchetypeName, "strips", Loggable<rerun::components::LineStrip3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
         );
 
       public:

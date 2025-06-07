@@ -79,30 +79,27 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `node_ids` field.
         static constexpr auto Descriptor_node_ids = ComponentDescriptor(
-            ArchetypeName, "node_ids",
-            Loggable<rerun::components::GraphNode>::Descriptor.component_name
+            ArchetypeName, "node_ids", Loggable<rerun::components::GraphNode>::ComponentName
         );
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions",
-            Loggable<rerun::components::Position2D>::Descriptor.component_name
+            ArchetypeName, "positions", Loggable<rerun::components::Position2D>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
 
       public:

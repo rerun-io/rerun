@@ -69,21 +69,19 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions",
-            Loggable<rerun::components::LatLon>::Descriptor.component_name
+            ArchetypeName, "positions", Loggable<rerun::components::LatLon>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
         );
 
       public: // START of extensions from geo_points_ext.cpp:
