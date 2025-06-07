@@ -567,7 +567,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 );
             });
 
-        ui.help_hover_button().on_hover_ui(|ui| {
+        ui.help_button(|ui| {
             view_class.help(ui.ctx().os()).ui(ui);
         });
     }

@@ -1068,12 +1068,14 @@ pub trait UiExt {
         }
     }
 
-    fn help_hover_button(&mut self) -> egui::Response {
-        self.ui_mut().add(
-            egui::Label::new("❓")
-                .sense(egui::Sense::click()) // sensing clicks also gives hover effect
-                .selectable(false),
-        )
+    fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        self.ui_mut()
+            .add(
+                egui::Label::new("❓")
+                    .sense(egui::Sense::click()) // sensing clicks also gives hover effect
+                    .selectable(false),
+            )
+            .on_hover_ui(help_ui)
     }
 
     /// Show some markdown

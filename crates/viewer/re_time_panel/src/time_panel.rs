@@ -1514,7 +1514,7 @@ fn help(os: egui::os::OperatingSystem) -> Help {
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    ui.help_hover_button().on_hover_ui(|ui| {
+    ui.help_button(|ui| {
         help(ui.ctx().os()).ui(ui);
     });
 }
