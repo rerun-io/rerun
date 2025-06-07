@@ -131,12 +131,11 @@ pub trait UiExt {
     }
 
     fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
-        // TODO(emilk): change color and size on hover
         egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(self.tokens().small_icon_size)
-                .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
+                .fit_to_exact_size(self.tokens().small_icon_size),
         )
+        .image_tint_follows_text_color(true)
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
