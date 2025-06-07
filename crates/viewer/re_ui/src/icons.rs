@@ -87,6 +87,8 @@ pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.png"); //
 
 pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.svg");
 
+pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
+
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");

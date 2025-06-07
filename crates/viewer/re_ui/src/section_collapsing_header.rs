@@ -89,7 +89,7 @@ impl<'a> SectionCollapsingHeader<'a> {
             content = content
                 .with_buttons(|ui| {
                     let button_response = button.map(|button| button.ui(ui));
-                    let help_response = help.map(|help| ui.help_hover_button().on_hover_ui(help));
+                    let help_response = help.map(|help| ui.help_button(help));
 
                     match (button_response, help_response) {
                         (Some(button_response), Some(help_response)) => {

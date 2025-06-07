@@ -16,7 +16,7 @@ fn test_help() {
                 ui.ctx().set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                ui.help_hover_button().on_hover_ui(|ui| {
+                ui.help_button(|ui| {
                     let mut help = Help::new("Help example")
                         .docs_link("https://rerun.io/docs/reference/types/views/map_view")
                         .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))

@@ -131,12 +131,11 @@ pub trait UiExt {
     }
 
     fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
-        // TODO(emilk): change color and size on hover
         egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(self.tokens().small_icon_size)
-                .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
+                .fit_to_exact_size(self.tokens().small_icon_size),
         )
+        .image_tint_follows_text_color(true)
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
@@ -1068,12 +1067,28 @@ pub trait UiExt {
         }
     }
 
-    fn help_hover_button(&mut self) -> egui::Response {
-        self.ui_mut().add(
-            egui::Label::new("❓")
-                .sense(egui::Sense::click()) // sensing clicks also gives hover effect
-                .selectable(false),
-        )
+    fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        // The help menu appears when clicked and/or hovered
+        let mut help_ui: Option<_> = Some(help_ui);
+
+        let icon = &icons::HELP;
+        let ui = self.ui_mut();
+
+        let menu_button =
+            egui::containers::menu::MenuButton::from_button(ui.small_icon_button_widget(icon));
+        let button_response = menu_button
+            .ui(ui, |ui| {
+                if let Some(help_ui) = help_ui.take() {
+                    help_ui(ui);
+                }
+            })
+            .0;
+
+        if let Some(help_ui) = help_ui.take() {
+            button_response.on_hover_ui(help_ui)
+        } else {
+            button_response
+        }
     }
 
     /// Show some markdown
