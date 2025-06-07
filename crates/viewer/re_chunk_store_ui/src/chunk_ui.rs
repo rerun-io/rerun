@@ -180,9 +180,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(tokens.table_line_height(), header_ui)
+                    .header(tokens.deprecated_table_line_height(), header_ui)
                     .body(|body| {
-                        body.rows(tokens.table_line_height(), row_ids.len(), row_ui);
+                        body.rows(tokens.deprecated_table_line_height(), row_ids.len(), row_ui);
                     });
             });
 

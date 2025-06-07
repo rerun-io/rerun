@@ -1,8 +1,6 @@
 use ahash::HashSet;
-use egui::{Context, Frame, Id, Margin, RichText, Stroke, Style};
+use egui::{Color32, Context, Frame, Id, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
-
-pub const CELL_MARGIN: Margin = Margin::symmetric(8, 6);
 
 /// This applies some fixes so that the column resize bar is correctly displayed.
 ///
@@ -21,14 +19,12 @@ pub fn apply_table_style_fixes(style: &mut Style) {
         Stroke::new(1.0, design_tokens.table_interaction_hovered_bg_stroke);
     style.visuals.widgets.active.bg_stroke =
         Stroke::new(1.0, design_tokens.table_interaction_active_bg_stroke);
-    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(
-        1.0,
-        design_tokens.table_interaction_noninteractive_bg_stroke,
-    );
+    // regular vertical lines are drawn in cell_ui to allow cells to be connected
+    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.0, Color32::TRANSPARENT);
 }
 
 pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Response {
-    header_ui(ui, |ui| {
+    header_ui(ui, false, |ui| {
         ui.monospace(title.into().strong());
     })
     .response
@@ -36,17 +32,24 @@ pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Resp
 
 pub fn header_ui<R>(
     ui: &mut egui::Ui,
+    connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new()
-        .inner_margin(CELL_MARGIN)
-        .fill(ui.tokens().table_header_bg_fill)
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            content(ui)
-        });
+    let rect = ui.max_rect();
+    ui.painter()
+        .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
-    let rect = response.response.rect;
+    let response = Frame::new()
+        .inner_margin(ui.tokens().table_cell_margin())
+        .show(ui, content);
+
+    if !connected_to_next_cell {
+        ui.painter().vline(
+            rect.max.x - 1.0,
+            rect.y_range(),
+            Stroke::new(1.0, ui.tokens().table_header_stroke_color),
+        );
+    }
 
     ui.painter().hline(
         rect.x_range(),
@@ -59,14 +62,22 @@ pub fn header_ui<R>(
 
 pub fn cell_ui<R>(
     ui: &mut egui::Ui,
+    connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        content(ui)
-    });
+    let response = Frame::new()
+        .inner_margin(ui.tokens().table_cell_margin())
+        .show(ui, content);
 
-    let rect = response.response.rect;
+    let rect = ui.max_rect();
+
+    if !connected_to_next_cell {
+        ui.painter().vline(
+            rect.max.x - 1.0,
+            rect.y_range(),
+            Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
+        );
+    }
 
     ui.painter().hline(
         rect.x_range(),

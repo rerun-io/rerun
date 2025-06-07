@@ -39,22 +39,24 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
-    let (left_clicked, right_clicked) = egui::Sides::new().height(tokens.table_line_height()).show(
-        ui,
-        |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    let (left_clicked, right_clicked) = egui::Sides::new()
+        .height(tokens.deprecated_table_line_height())
+        .show(
+            ui,
+            |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-            ui.button(egui::WidgetText::from(label).strong()).clicked()
-        },
-        |ui| {
-            ui.button(match (is_sorted, direction) {
-                (true, SortDirection::Ascending) => "↓",
-                (true, SortDirection::Descending) => "↑",
-                _ => "",
-            })
-            .clicked()
-        },
-    );
+                ui.button(egui::WidgetText::from(label).strong()).clicked()
+            },
+            |ui| {
+                ui.button(match (is_sorted, direction) {
+                    (true, SortDirection::Ascending) => "↓",
+                    (true, SortDirection::Descending) => "↑",
+                    _ => "",
+                })
+                .clicked()
+            },
+        );
 
     if left_clicked || right_clicked {
         if is_sorted {
