@@ -1069,13 +1069,23 @@ pub trait UiExt {
     }
 
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
-        self.ui_mut()
-            .add(
-                egui::Label::new("❓")
-                    .sense(egui::Sense::click()) // sensing clicks also gives hover effect
-                    .selectable(false),
-            )
-            .on_hover_ui(help_ui)
+        // The help menu appears when clicked and/or hvered
+        // TODO(gavrelina): create a help icon and use `small_icon_button` here
+        let mut help_ui: Option<_> = Some(help_ui);
+        let response = self
+            .ui_mut()
+            .menu_button("❓", |ui| {
+                if let Some(help_ui) = help_ui.take() {
+                    help_ui(ui);
+                }
+            })
+            .response;
+
+        if let Some(help_ui) = help_ui.take() {
+            response.on_hover_ui(help_ui)
+        } else {
+            response
+        }
     }
 
     /// Show some markdown
