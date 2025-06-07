@@ -47,7 +47,7 @@ fn view_property_ui_impl(
             // only has one component; also called `NearClipPlane`.
             archetype_name.to_string()
         } else {
-            format!("{archetype_name} - {field_name}")
+            format!("{archetype_name}: {field_name}")
         };
 
         view_property_component_ui(&query_ctx, ui, property, &label, field, fallback_provider);
