@@ -1,12 +1,27 @@
 from __future__ import annotations
 
+import gzip
 import http.server
 import socketserver
+from pathlib import Path
 from typing import Any
 
-from . import WIDGET_PATH
+from . import WASM_PATH, WIDGET_PATH
 
-resource_data: bytes | None = None
+
+class _Asset:
+    def __init__(self, path: str | Path, content_type: str, encode_gzip: bool = False) -> None:
+        self.data = Path(path).read_bytes()
+        self.headers = {
+            "Content-Type": content_type,
+        }
+
+        if encode_gzip:
+            self.data = gzip.compress(self.data)
+            self.headers["Content-Encoding"] = "gzip"
+
+
+assets: dict[str, _Asset] | None = None
 
 
 class AssetHandler(http.server.SimpleHTTPRequestHandler):
@@ -15,15 +30,25 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/widget.js":  # remap this path
-            self.send_response(200)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Content-type", "text/javascript")
-            self.end_headers()
-            if resource_data is not None:
-                self.wfile.write(resource_data)
+            self._serve_file("widget.js")
+        elif self.path == "/re_viewer_bg.wasm":
+            self._serve_file("re_viewer_bg.wasm")
         else:
             # Serve other requests normally
             self.send_error(404, "File Not Found")
+
+    def _serve_file(self, name: str) -> None:
+        if assets is None:
+            self.send_error(500, "Resources not loaded")
+            return
+
+        asset = assets[name]
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        for key, value in asset.headers.items():
+            self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(asset.data)
 
     def log_message(self, format: str, *args: Any) -> None:
         # Disable logging
@@ -33,13 +58,16 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
 def serve_assets(
     bind_address: str = "localhost", port: int = 0, background: bool = False
 ) -> socketserver._AfInetAddress:
-    global resource_data
-    if resource_data is None:
-        with open(WIDGET_PATH, "rb") as f:
-            resource_data = f.read()
+    print("Starting asset server due to RERUN_NOTEBOOK_ASSET=serve-local")
+    global assets
+    if assets is None:
+        print("Loading assets into memory...")
+        assets = {
+            "widget.js": _Asset(WIDGET_PATH, "text/javascript"),
+            "re_viewer_bg.wasm": _Asset(WASM_PATH, "application/wasm", encode_gzip=True),
+        }
 
     httpd = socketserver.TCPServer((bind_address, port), AssetHandler)
-
     bound_addr = httpd.server_address
     print(f"Serving rerun notebook assets at http://{str(bound_addr[0])}:{str(bound_addr[1])}")
 

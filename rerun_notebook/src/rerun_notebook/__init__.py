@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import http.client
 import importlib.metadata
 import logging
 import os
 import pathlib
 import time
+import urllib.parse
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Literal
 
 import anywidget
@@ -21,8 +24,10 @@ except importlib.metadata.PackageNotFoundError:
 Panel = Literal["top", "blueprint", "selection", "time"]
 PanelState = Literal["expanded", "collapsed", "hidden"]
 
-WIDGET_PATH = pathlib.Path(__file__).parent / "static" / "widget.js"
-CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
+STATIC_DIR = pathlib.Path(__file__).parent / "static"
+WIDGET_PATH = STATIC_DIR / "widget.js"
+WASM_PATH = STATIC_DIR / "re_viewer_bg.wasm"
+CSS_PATH = STATIC_DIR / "widget.css"
 
 # We need to bootstrap the value of ESM_MOD before the Viewer class is instantiated.
 # This is because AnyWidget will process the resource files during `__init_subclass__`
@@ -36,24 +41,123 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
+
+def _buffer_to_data_url(binary: bytes) -> str:
+    import base64
+    import gzip
+
+    gz = gzip.compress(binary)
+    b64 = base64.b64encode(gz).decode()
+
+    return f"data:application/octet-stream;gzip;base64,{b64}"
+
+
+def _inline_widget() -> str:
+    """
+    For `RERUN_NOTEBOOK_ASSET=inline`, we need a single file to pass to `anywidget`.
+
+    This function loads both the JS and Wasm files, then inlines the Wasm into the JS.
+
+    The Wasm is stored in the JS file as a (gzipped) base64 string, from which we can
+    create a fake Response for the JS to load as a Wasm module.
+    """
+    print("Loading inline widget due to RERUN_NOTEBOOK_ASSET=inline")
+
+    wasm = WASM_PATH.read_bytes()
+    data_url = _buffer_to_data_url(wasm)
+
+    js = WIDGET_PATH.read_text()
+    fetch_viewer_wasm = f"""
+    async function compressed_data_url_to_buffer(dataUrl) {{
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+
+        let ds = new DecompressionStream("gzip");
+        let decompressedStream = blob.stream().pipeThrough(ds);
+
+        return new Response(decompressedStream).arrayBuffer();
+    }}
+    const dataUrl = "{data_url}";
+    const buffer = await compressed_data_url_to_buffer(dataUrl);
+    return new Response(buffer, {{ "headers": {{ "Content-Type": "application/wasm" }} }});
+    """
+
+    inline_marker = "//!<INLINE-MARKER>"
+    inline_start = js.find(inline_marker) + len(inline_marker)
+    inline_end = js.find(inline_marker, inline_start)
+    js = js[:inline_start] + fetch_viewer_wasm + js[inline_end:]
+
+    return js
+
+
+def _is_url_accessible(url: urllib.parse.ParseResult) -> tuple[urllib.parse.ParseResult, bool]:
+    conn = http.client.HTTPSConnection(url.netloc) if url.scheme == "https" else http.client.HTTPConnection(url.netloc)
+    try:
+        conn.request("HEAD", url.path or "/")
+        res = conn.getresponse()
+        return url, res.status == 200
+    except Exception:
+        return url, False
+    finally:
+        conn.close()
+
+
+def _set_parsed_url_filename(url: urllib.parse.ParseResult, filename: str) -> urllib.parse.ParseResult:
+    path_parts = url.path.split("/")
+    path_parts[-1] = filename
+    new_path = "/".join(path_parts)
+    return url._replace(path=new_path)
+
+
+def _check_if_assets_accessible(widget_url: str) -> None:
+    parsed_url = urllib.parse.urlparse(widget_url)
+
+    assert parsed_url.path.endswith("widget.js")
+    urls_to_check = [
+        parsed_url,
+        _set_parsed_url_filename(parsed_url, "re_viewer_bg.wasm"),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as e:
+        results = list(e.map(_is_url_accessible, urls_to_check))
+
+    success = True
+    for url, exists in results:
+        if not exists:
+            success = False
+            print(f'"{url.geturl()}" is not accessible')
+    if not success:
+        raise ValueError(
+            f"One or more asset URLs are inaccessible. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
+        )
+
+
 ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
 if ASSET_ENV is None:
+    # if we're in the `rerun` repository, default to `serve-local`
+    # as we don't upload widgets for `+dev` versions anywhere
     if "RERUN_DEV_ENVIRONMENT" in os.environ:
         ASSET_ENV = "serve-local"
     else:
         ASSET_ENV = f"https://app.rerun.io/version/{__version__}/widget.js"
 
-if ASSET_ENV == ASSET_MAGIC_SERVE:
+if ASSET_ENV == ASSET_MAGIC_SERVE:  # localhost widget
     from .asset_server import serve_assets
 
     bound_addr = serve_assets(background=True)
     ESM_MOD: str | pathlib.Path = f"http://localhost:{bound_addr[1]}/widget.js"
-elif ASSET_ENV == ASSET_MAGIC_INLINE:
-    ESM_MOD = WIDGET_PATH
-else:
+elif ASSET_ENV == ASSET_MAGIC_INLINE:  # inline widget
+    # in this case, `ESM_MOD` is the contents of a file, not its path.
+    ESM_MOD = _inline_widget()
+else:  # remote widget
     ESM_MOD = ASSET_ENV
+    # note that the JS expects the Wasm binary to exist at the same path as itself
     if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
+    if not (ASSET_ENV.endswith("widget.js")):
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
+
+    _check_if_assets_accessible(ASSET_ENV)
 
 
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
@@ -104,10 +208,6 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._url = url
         self._data_queue = []
         self._table_queue = []
-
-        from ipywidgets import widgets
-
-        self._output = widgets.Output()
 
         if panel_states:
             self.update_panel_states(panel_states)
@@ -161,9 +261,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
             while self._ready is False:
                 if time.time() - start > timeout:
                     logging.warning(
-                        f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
-If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
-""",
+                        f"Timed out waiting for viewer to load. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
                     )
                     return
                 poll(1)

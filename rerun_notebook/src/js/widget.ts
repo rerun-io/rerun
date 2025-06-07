@@ -4,7 +4,7 @@ import {
   type PanelState,
   WebViewer,
   type WebViewerOptions,
-} from "@rerun-io/web-viewer/inlined.js";
+} from "@rerun-io/web-viewer";
 
 import type { AnyModel, Render } from "@anywidget/types";
 import "./widget.css";
