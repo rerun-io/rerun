@@ -21,6 +21,7 @@ scalar_axis.py linguist-generated=true
 tensor_scalar_mapping.py linguist-generated=true
 tensor_slice_selection.py linguist-generated=true
 tensor_view_fit.py linguist-generated=true
+time_axis.py linguist-generated=true
 view_blueprint.py linguist-generated=true
 view_contents.py linguist-generated=true
 viewport_blueprint.py linguist-generated=true

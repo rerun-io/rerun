@@ -19,6 +19,7 @@ include "./archetypes/scalar_axis.fbs";
 include "./archetypes/tensor_scalar_mapping.fbs";
 include "./archetypes/tensor_slice_selection.fbs";
 include "./archetypes/tensor_view_fit.fbs";
+include "./archetypes/time_axis.fbs";
 include "./archetypes/view_blueprint.fbs";
 include "./archetypes/view_contents.fbs";
 include "./archetypes/viewport_blueprint.fbs";

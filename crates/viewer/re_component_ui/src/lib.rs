@@ -33,18 +33,17 @@ use datatype_uis::{
     view_view_id,
 };
 
-use re_types::blueprint::components::{RootContainer, ViewMaximized};
-use re_types::components::{SeriesVisible, Timestamp, VideoCodec};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
-        GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane, ViewFit,
+        GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane, RootContainer,
+        ViewFit, ViewMaximized,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Position2D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-        TransformRelation, Translation3D, ValueRange, Visible,
+        Name, Opacity, Position2D, Range1D, Scale3D, SeriesVisible, ShowLabels, StrokeWidth, Text,
+        Timestamp, TransformRelation, Translation3D, ValueRange, VideoCodec, Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
@@ -118,6 +117,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<LinkAxis>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
             MapProvider,

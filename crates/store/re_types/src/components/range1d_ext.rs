@@ -1,5 +1,5 @@
 use crate::datatypes;
-use std::fmt::Display;
+use std::{fmt::Display, ops::RangeInclusive};
 
 use super::Range1D;
 
@@ -45,5 +45,12 @@ impl Default for Range1D {
     #[inline]
     fn default() -> Self {
         Self::new(0.0, 1.0)
+    }
+}
+
+impl From<Range1D> for RangeInclusive<f64> {
+    #[inline]
+    fn from(range: Range1D) -> Self {
+        range.start()..=range.end()
     }
 }

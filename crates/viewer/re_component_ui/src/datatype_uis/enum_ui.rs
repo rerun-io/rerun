@@ -35,7 +35,7 @@ impl<EnumT: re_types_core::reflection::Enum> VariantAvailableProvider<EnumT>
     }
 }
 
-/// Edit or view an enum value using a combobox. All variants are available.
+/// Edit or view an enum value. All variants are available.
 pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -48,7 +48,7 @@ pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Co
     )
 }
 
-/// Edit or view an enum value using a combobox. The availability of each variant is determined by
+/// Edit or view an enum value. The availability of each variant is determined by
 /// the provided `VariantAvailableProvider` type.
 pub fn edit_view_enum_with_variant_available<
     EnumT: re_types_core::reflection::Enum + re_types_core::Component,
@@ -74,40 +74,63 @@ fn edit_view_enum_impl<
     if let Some(current_value) = current_value.as_mut() {
         let prev_selected_value = *current_value;
 
-        let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(format!("{current_value}"))
-            .height(250.0)
-            .show_ui(ui, |ui| {
-                ui.set_min_width(60.0);
+        let variants = EnumT::variants();
 
-                let variants = EnumT::variants();
-                let mut iter = variants.iter().copied();
-                let Some(first) = iter.next() else {
-                    return ui.label("<no variants>");
-                };
+        if variants.is_empty() {
+            ui.label("<no variants>")
+        } else if variants.len() <= 3 {
+            // Short version
+            let mut response = ui
+                .selectable_toggle(|ui| {
+                    for variant in variants.iter().copied() {
+                        variant_ui(
+                            ui,
+                            current_value,
+                            variant,
+                            VariantAvailT::is_variant_enabled(ctx, variant),
+                        );
+                    }
+                })
+                .response;
+            if prev_selected_value != *current_value {
+                response.mark_changed();
+            }
+            response
+        } else {
+            let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
+                .selected_text(format!("{current_value}"))
+                .height(250.0)
+                .show_ui(ui, |ui| {
+                    ui.set_min_width(60.0);
 
-                let mut response = crate::datatype_uis::enum_combobox::variant_ui(
-                    ui,
-                    current_value,
-                    first,
-                    VariantAvailT::is_variant_enabled(ctx, first),
-                );
-                for variant in iter {
-                    response |= variant_ui(
+                    let mut iter = variants.iter().copied();
+                    let Some(first) = iter.next() else {
+                        return ui.label("<no variants>");
+                    };
+
+                    let mut response = crate::datatype_uis::enum_ui::variant_ui(
                         ui,
                         current_value,
-                        variant,
-                        VariantAvailT::is_variant_enabled(ctx, variant),
+                        first,
+                        VariantAvailT::is_variant_enabled(ctx, first),
                     );
-                }
-                response
+                    for variant in iter {
+                        response |= variant_ui(
+                            ui,
+                            current_value,
+                            variant,
+                            VariantAvailT::is_variant_enabled(ctx, variant),
+                        );
+                    }
+                    response
+                });
+
+            combobox_response.response = combobox_response.response.on_hover_ui(|ui| {
+                ui.markdown_ui(prev_selected_value.docstring_md());
             });
 
-        combobox_response.response = combobox_response.response.on_hover_ui(|ui| {
-            ui.markdown_ui(prev_selected_value.docstring_md());
-        });
-
-        response_with_changes_of_inner(combobox_response)
+            response_with_changes_of_inner(combobox_response)
+        }
     } else {
         ui.add(egui::Label::new(current_value.to_string()).truncate())
     }
