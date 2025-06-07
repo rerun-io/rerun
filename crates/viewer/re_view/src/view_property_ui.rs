@@ -45,7 +45,7 @@ fn view_property_ui_impl(
         let label = if archetype_name == field_name {
             // Happens in some cases, like for the `NearClipPlane` archetype that
             // only has one component; also called `NearClipPlane`.
-            archetype_name.to_string()
+            archetype_name.to_owned()
         } else {
             format!("{archetype_name}: {field_name}")
         };
