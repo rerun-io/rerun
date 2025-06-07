@@ -521,6 +521,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
         ColumnDescriptorRef::Component(desc) => {
             let re_sorbet::ComponentColumnDescriptor {
                 store_datatype,
+                arrow_metadata,
                 component_name,
                 entity_path,
                 archetype_name,
@@ -550,6 +551,8 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());
             header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+
+            //TODO: dump `arrow_metadata` here.
         }
     }
 }
