@@ -18,10 +18,7 @@ use re_types::{
 };
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, list_item};
 use re_view::{
-    controls::{
-        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-        ZOOM_SCROLL_MODIFIER,
-    },
+    controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
     view_property_ui,
 };
 use re_viewer_context::{
@@ -120,16 +117,39 @@ impl ViewClass for TimeSeriesView {
     }
 
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions {
+            zoom_modifier,
+            horizontal_scroll_modifier,
+            vertical_scroll_modifier,
+            ..
+        } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
+
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Zoom",
-                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                "Horizontal pan",
+                IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom only x-axis",
-                IconText::from_modifiers_and(os, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control(
+                "Zoom X-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | horizontal_scroll_modifier,
+                    icons::SCROLL,
+                ),
+            )
+            .control(
+                "Zoom Y-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | vertical_scroll_modifier,
+                    icons::SCROLL,
+                ),
             )
             .control(
                 "Zoom to selection",
@@ -427,8 +447,7 @@ impl ViewClass for TimeSeriesView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let lock_y_during_zoom =
-            y_zoom_lock || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let lock_y_during_zoom = y_zoom_lock;
 
         // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
         // then reset to the locked range.
