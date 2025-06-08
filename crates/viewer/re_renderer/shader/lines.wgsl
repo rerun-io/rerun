@@ -257,7 +257,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Boost radius only now that we subtracted/added the cap length.
     // This way we don't get a gap for the outline at the cap.
     if draw_data.radius_boost_in_ui_points > 0.0 {
-        let size_boost = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
+        let size_boost = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance).x; // TODO(#10169): support non-uniform axis scaling
         strip_radius += size_boost;
         triangle_cap_length += size_boost;
         // Push out positions as well along the quad dir.

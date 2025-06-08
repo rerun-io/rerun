@@ -2,9 +2,10 @@
 #import <camera.wgsl>
 
 
-fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> f32 {
+/// Compute size in world space from a size in UI points.
+fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> vec2f {
     let pixel_size = frame.pixels_from_point * size_in_points;
-    return approx_pixel_world_size_at(camera_distance).x * pixel_size; // TODO(#10169): support non-uniform axis scaling
+    return approx_pixel_world_size_at(camera_distance) * pixel_size;
 }
 
 // Resolves a size (see size.rs!) to a world scale size.
@@ -19,7 +20,7 @@ fn unresolved_size_to_world(unresolved_size: f32, camera_distance: f32, world_si
     }
 
     // Negative size indicates size in points.
-    return world_size_from_point_size(-unresolved_size, camera_distance);
+    return world_size_from_point_size(-unresolved_size, camera_distance).x; // TODO(#10169): support non-uniform axis scaling
 }
 
 // Determines the scale factor of a matrix
