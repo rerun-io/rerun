@@ -327,7 +327,7 @@ fn compute_coverage(in: VertexOut) -> f32 {
 
     if !has_any_flag(in.fragment_flags, FLAG_CAP_TRIANGLE) {
         let distance_to_skeleton = distance_to_line(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
-        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
+        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position)).x; // TODO(#10169): support non-uniform axis scaling
 
         // It's important that we do antialias both inwards and outwards of the exact border.
         // If we do only outwards, rectangle outlines won't line up nicely

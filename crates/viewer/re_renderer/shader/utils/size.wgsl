@@ -4,7 +4,7 @@
 
 fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> f32 {
     let pixel_size = frame.pixels_from_point * size_in_points;
-    return approx_pixel_world_size_at(camera_distance) * pixel_size;
+    return approx_pixel_world_size_at(camera_distance).x * pixel_size; // TODO(#10169): support non-uniform axis scaling
 }
 
 // Resolves a size (see size.rs!) to a world scale size.

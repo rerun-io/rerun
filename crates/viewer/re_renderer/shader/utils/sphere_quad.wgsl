@@ -53,7 +53,7 @@ fn circle_quad(point_pos: vec3f, point_radius: f32, top_bottom: f32, left_right:
     // TODO(andreas): Computing distance to camera here is a bit excessive, should get distance more easily - keep in mind this code runs for ortho & perspective.
     let radius = point_radius + 0.5 * approx_pixel_world_size_at(distance(point_pos, frame.camera_position));
 
-    return point_pos + pos_in_quad * radius;
+    return point_pos + pos_in_quad * radius.x; // TODO(#10169): support non-uniform axis scaling
 }
 
 /// Returns the index of the current quad.
@@ -98,7 +98,7 @@ fn sphere_quad_coverage(world_position: vec3f, radius: f32, sphere_center: vec3f
     let d = ray_sphere_distance(ray, sphere_center, radius);
     let distance_to_sphere_surface = d.x;
     let closest_ray_dist = d.y;
-    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
+    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist).x; // TODO(#10169): support non-uniform axis scaling
 
     let distance_to_surface_in_pixels = distance_to_sphere_surface / pixel_world_size;
 

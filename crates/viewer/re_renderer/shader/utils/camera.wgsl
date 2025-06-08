@@ -79,7 +79,6 @@ let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
 //
 // This is accurate for objects in the middle of the screen, (depending on the angle) less so at the corners
 // since an object parallel to the camera (like a conceptual pixel) has a bigger projected surface at higher angles.
-fn approx_pixel_world_size_at(camera_distance: f32) -> f32 {
-    // TODO(#10169): support non-uniform zooming in orthographic mode.
-    return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective()).x;
+fn approx_pixel_world_size_at(camera_distance: f32) -> vec2f {
+    return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
 }
