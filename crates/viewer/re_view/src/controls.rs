@@ -40,8 +40,8 @@ pub const SPEED_UP_3D_MODIFIER: Modifiers = Modifiers::SHIFT;
 pub const TRACKED_OBJECT_RESTORE_KEY: Key = Key::Escape;
 
 /// Toggle the currently selected view to be maximized or not.
-pub const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut =
-    KeyboardShortcut::new(Modifiers::COMMAND, Key::M);
+// NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
+pub const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
 pub struct RuntimeModifiers {}
 
