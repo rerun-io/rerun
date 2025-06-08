@@ -62,60 +62,10 @@ impl ViewportUi {
             }
         }
 
-        let maximize_animation_state = ui
+        let (animating_view_id, animated_rect) = ui
             .data(|data| data.get_temp::<MaximizeAnimationState>(egui::Id::NULL))
-            .unwrap_or_default();
-
-        let animation_time = ui.style().animation_time;
-
-        let mut animating_view_id = None;
-        let mut animated_rect = ui.max_rect();
-
-        match maximize_animation_state {
-            MaximizeAnimationState::Nothing => {}
-
-            MaximizeAnimationState::Maximizing {
-                view_id,
-                start_time,
-                normal_rect,
-            } => {
-                // Animate the maximization of the view:
-                let progress = remap_clamp(
-                    start_time.elapsed().as_secs_f32(),
-                    0.0..=animation_time,
-                    0.0..=1.0,
-                );
-                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
-
-                if progress < 1.0 {
-                    ui.ctx().request_repaint();
-                    animated_rect = normal_rect.lerp_towards(&ui.max_rect(), progress);
-                    animating_view_id = Some(view_id);
-                } else {
-                    // Keep the Maximizing state so we remember the pre-maximized rect
-                }
-            }
-
-            MaximizeAnimationState::Restoring {
-                view_id,
-                start_time,
-                normal_rect,
-            } => {
-                // Animate the restoring of the view:
-                let progress = remap_clamp(
-                    start_time.elapsed().as_secs_f32(),
-                    0.0..=animation_time,
-                    0.0..=1.0,
-                );
-                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
-                if progress < 1.0 {
-                    ui.ctx().request_repaint();
-                    animated_rect = ui.max_rect().lerp_towards(&normal_rect, progress);
-                    animating_view_id = Some(view_id);
-                }
-            }
-        };
-        let animated_rect = animated_rect.intersect(ui.max_rect()); // Prevent glitches when the viewport has changed size since the animation started.
+            .unwrap_or_default()
+            .animated_view_and_rect(ui.ctx(), ui.max_rect());
 
         let mut tree = if let Some(view_id) = blueprint.maximized.or(animating_view_id) {
             let mut tiles = egui_tiles::Tiles::default();
@@ -1008,4 +958,67 @@ enum MaximizeAnimationState {
         /// Where the view should end up.
         normal_rect: egui::Rect,
     },
+}
+
+impl MaximizeAnimationState {
+    fn animated_view_and_rect(
+        self,
+        egui_ctx: &egui::Context,
+        viewport_rect: egui::Rect,
+    ) -> (Option<ViewId>, egui::Rect) {
+        let animation_time = egui_ctx.style().animation_time;
+
+        let mut animating_view_id = None;
+        let mut animated_rect = viewport_rect;
+
+        match self {
+            Self::Nothing => {}
+
+            Self::Maximizing {
+                view_id,
+                start_time,
+                normal_rect,
+            } => {
+                // Animate the maximization of the view:
+                let progress = remap_clamp(
+                    start_time.elapsed().as_secs_f32(),
+                    0.0..=animation_time,
+                    0.0..=1.0,
+                );
+                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
+
+                if progress < 1.0 {
+                    egui_ctx.request_repaint();
+                    animated_rect = normal_rect.lerp_towards(&viewport_rect, progress);
+                    animating_view_id = Some(view_id);
+                } else {
+                    // Keep the Maximizing state so we remember the pre-maximized rect
+                }
+            }
+
+            Self::Restoring {
+                view_id,
+                start_time,
+                normal_rect,
+            } => {
+                // Animate the restoring of the view:
+                let progress = remap_clamp(
+                    start_time.elapsed().as_secs_f32(),
+                    0.0..=animation_time,
+                    0.0..=1.0,
+                );
+                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
+                if progress < 1.0 {
+                    egui_ctx.request_repaint();
+                    animated_rect = viewport_rect.lerp_towards(&normal_rect, progress);
+                    animating_view_id = Some(view_id);
+                }
+            }
+        };
+
+        // Prevent glitches when the viewport has changed size since the animation started.
+        let animated_rect = animated_rect.intersect(viewport_rect);
+
+        (animating_view_id, animated_rect)
+    }
 }
