@@ -117,6 +117,16 @@ def log_classification() -> None:
         )
 
 
+def log_animated_sine_wave() -> None:
+    for t in range(0, 1000, 2):
+        rr.set_time("frame_nr", sequence=t)
+
+        x = np.arange(1000)
+        y = 50.0 * np.sin(0.01 * x + t * 0.1)
+        sine_wave = np.vstack([x, y]).T
+        rr.log("animated_sine", rr.LineStrips2D(sine_wave))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK",
@@ -150,6 +160,11 @@ def main() -> None:
                             "classification/samples": rrb.VisualizerOverrides("SeriesPoints"),
                         },
                     ),
+                    rrb.Spatial2DView(
+                        name="Animated Sine Wave",
+                        origin="/animated_sine",
+                        # TODO: turn off fixex aspect ratio
+                    ),
                 ),
                 rrb.TimeSeriesView(
                     name="Spiral",
@@ -173,6 +188,7 @@ def main() -> None:
     log_trig()
     log_spiral()
     log_classification()
+    log_animated_sine_wave()
 
     rr.script_teardown(args)
 
