@@ -2,7 +2,7 @@ use re_types::{
     Archetype as _,
     blueprint::{
         archetypes::Background,
-        components::{BackgroundKind, VisualBounds2D},
+        components::{BackgroundKind, FixedAspectRatio, VisualBounds2D},
     },
     components::Color,
 };
@@ -66,4 +66,10 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialView2D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialView2D => [BackgroundKind, Color, VisualBounds2D]);
+impl TypedComponentFallbackProvider<FixedAspectRatio> for SpatialView2D {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> FixedAspectRatio {
+        FixedAspectRatio::from(true)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SpatialView2D => [BackgroundKind, Color, VisualBounds2D,FixedAspectRatio]);
