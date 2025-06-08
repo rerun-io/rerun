@@ -551,27 +551,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
             {
                 *self.maximized = None;
-
-                ui.data_mut(|data| {
-                    let animation_state = data.get_temp_mut_or_default(egui::Id::NULL);
-
-                    if let MaximizeAnimationState::Maximizing {
-                        view_id: animation_view_id,
-                        normal_rect,
-                        ..
-                    } = animation_state
-                    {
-                        if view_id == *animation_view_id {
-                            // We can do a restoration animation!
-                            *animation_state = MaximizeAnimationState::Restoring {
-                                view_id,
-                                start_time: web_time::Instant::now(),
-                                normal_rect: *normal_rect,
-                            };
-                        }
-                    }
-                });
-                ui.ctx().request_repaint();
+                MaximizeAnimationState::restore_view(ui.ctx(), view_id);
             }
         } else if num_views > 1 {
             // Show maximize-button:
@@ -599,22 +579,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 .clicked()
                 || toggle
             {
-                *self.maximized = Some(view_id);
                 // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
+                *self.maximized = Some(view_id);
 
                 if let Some(rect) = tiles.rect(tile_id) {
-                    // Animate the maximization of the view:
-                    ui.data_mut(|data| {
-                        data.insert_temp(
-                            egui::Id::NULL,
-                            MaximizeAnimationState::Maximizing {
-                                view_id,
-                                normal_rect: rect,
-                                start_time: web_time::Instant::now(),
-                            },
-                        );
-                    });
-                    ui.ctx().request_repaint();
+                    MaximizeAnimationState::start_maximizing(ui.ctx(), view_id, rect);
                 }
             }
         }
@@ -961,6 +930,44 @@ enum MaximizeAnimationState {
 }
 
 impl MaximizeAnimationState {
+    fn start_maximizing(egui_ctx: &egui::Context, view_id: ViewId, rect: egui::Rect) {
+        // Animate the maximization of the view:
+        egui_ctx.data_mut(|data| {
+            data.insert_temp(
+                egui::Id::NULL,
+                Self::Maximizing {
+                    view_id,
+                    normal_rect: rect,
+                    start_time: web_time::Instant::now(),
+                },
+            );
+        });
+        egui_ctx.request_repaint();
+    }
+
+    fn restore_view(egui_ctx: &egui::Context, view_id: ViewId) {
+        egui_ctx.data_mut(|data| {
+            let animation_state = data.get_temp_mut_or_default(egui::Id::NULL);
+
+            if let Self::Maximizing {
+                view_id: animation_view_id,
+                normal_rect,
+                ..
+            } = animation_state
+            {
+                if view_id == *animation_view_id {
+                    // We can do a restoration animation!
+                    *animation_state = Self::Restoring {
+                        view_id,
+                        start_time: web_time::Instant::now(),
+                        normal_rect: *normal_rect,
+                    };
+                }
+            }
+        });
+        egui_ctx.request_repaint();
+    }
+
     fn animated_view_and_rect(
         self,
         egui_ctx: &egui::Context,
