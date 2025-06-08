@@ -2680,7 +2680,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
                 # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                    param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
+                    field_name = batch.component_descriptor().archetype_field_name
+                    param = kwargs[field_name] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
                     elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -2688,6 +2689,11 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                         # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
                         # we have `num_rows` single element batches (each element is a fixed sized list).
                         # (This should have been already validated by conversion to the arrow_array)
+                        batch_length = 1
+                    elif field_name == "colors":
+                        # At this point, we could still have an Rgba32ArrayLike user input that has Nx3 or Nx4 shape,
+                        # which will get converted to an Nx1 ColorBatch.
+                        # Ignore the input's shape and explicitly set the final batch length to avoid wrong partitioning.
                         batch_length = 1
                     else:
                         batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
