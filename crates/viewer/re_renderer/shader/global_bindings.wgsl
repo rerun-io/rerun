@@ -6,9 +6,7 @@ struct FrameUniformBuffer {
     /// Camera position in world space.
     camera_position: vec3f,
 
-    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
-    /// For orthographic: This is the world size value, independent of distance.
-    pixel_world_size_from_camera_distance: f32,
+    _padding: f32,
 
     /// Camera direction in world space.
     /// Same as -vec3f(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
@@ -18,10 +16,14 @@ struct FrameUniformBuffer {
     /// I.e. the UI zoom factor.
     pixels_from_point: f32,
 
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For orthographic: This is the world size value, independent of distance.
+    /// For orthographics it is allowed to be on-uniform, for non-uniform zooming of the X/Y axes.
+    pixel_world_size_from_camera_distance: vec2f,
+
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
     tan_half_fov: vec2f,
-    _padding: vec2f,
 
     /// re_renderer defined device tier.
     device_tier: u32,

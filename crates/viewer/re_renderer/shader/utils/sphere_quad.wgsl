@@ -29,7 +29,7 @@ fn sphere_quad(
 
     // Add half a pixel of margin for the feathering we do for antialiasing the spheres.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    modified_radius += 0.5 * frame.pixel_world_size_from_camera_distance * camera_distance;
+    modified_radius += 0.5 * frame.pixel_world_size_from_camera_distance.x * camera_distance; // TODO(#10169): is this used in 2D views?
 
     return point_pos + pos_in_quad * modified_radius + camera_offset * quad_normal;
 

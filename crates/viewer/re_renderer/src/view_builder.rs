@@ -467,13 +467,6 @@ impl ViewBuilder {
         let pixel_world_size_from_camera_distance =
             pixel_world_size_from_camera_distance * config.viewport_transformation.scale();
 
-        // Unless the transformation intentionally stretches the image,
-        // our world size -> pixel size conversation factor should be roughly the same in both directions.
-        //
-        // As of writing, the shaders dealing with pixel size estimation, can't deal with non-uniform
-        // scaling in the viewport transformation.
-        let pixel_world_size_from_camera_distance = pixel_world_size_from_camera_distance.x;
-
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
         match config.projection_from_view {
@@ -496,9 +489,10 @@ impl ViewBuilder {
             projection_from_view: projection_from_view.into(),
             projection_from_world: projection_from_world.into(),
             camera_position,
+            _padding: 0.0,
             camera_forward,
-            tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
+            tan_half_fov,
             pixels_per_point: config.pixels_per_point,
 
             device_tier: (ctx.device_caps().tier as u32).into(),

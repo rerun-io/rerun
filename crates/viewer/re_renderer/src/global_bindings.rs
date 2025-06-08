@@ -23,9 +23,7 @@ pub struct FrameUniformBuffer {
     /// Camera position in world space.
     pub camera_position: glam::Vec3,
 
-    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
-    /// For orthographic: This is the world size value, independent of distance.
-    pub pixel_world_size_from_camera_distance: f32,
+    pub _padding: f32,
 
     /// Camera direction in world space.
     /// Same as `-view_from_world.row(2).truncate()`
@@ -35,9 +33,13 @@ pub struct FrameUniformBuffer {
     /// I.e. the UI zoom factor
     pub pixels_per_point: f32,
 
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For orthographic: This is the world size value, independent of distance.
+    pub pixel_world_size_from_camera_distance: glam::Vec2,
+
     /// `(tan(fov_y / 2) * aspect_ratio, tan(fov_y /2))`, i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
-    pub tan_half_fov: wgpu_buffer_types::Vec2RowPadded,
+    pub tan_half_fov: glam::Vec2,
 
     /// `re_renderer` defined device tier.
     pub device_tier: wgpu_buffer_types::U32RowPadded,
