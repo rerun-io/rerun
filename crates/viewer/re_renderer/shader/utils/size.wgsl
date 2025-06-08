@@ -13,14 +13,14 @@ fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> vec2
 // world_size_scale:
 //      Scale factor that is applied iff the size is a world size.
 //      This is usually part of your object->world transform.
-fn unresolved_size_to_world(unresolved_size: f32, camera_distance: f32, world_size_scale: f32) -> f32 {
+fn unresolved_size_to_world(unresolved_size: f32, camera_distance: f32, world_size_scale: f32) -> vec2f {
     // Is it a world size?
     if unresolved_size > 0.0 {
-        return unresolved_size * world_size_scale;
+        return vec2f(unresolved_size * world_size_scale);
     }
 
     // Negative size indicates size in points.
-    return world_size_from_point_size(-unresolved_size, camera_distance).x; // TODO(#10169): support non-uniform axis scaling
+    return world_size_from_point_size(-unresolved_size, camera_distance);
 }
 
 // Determines the scale factor of a matrix
