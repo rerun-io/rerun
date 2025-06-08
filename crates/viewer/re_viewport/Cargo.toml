@@ -40,3 +40,4 @@ egui_tiles.workspace = true
 egui.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
+web-time.workspace = true

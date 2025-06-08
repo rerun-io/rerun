@@ -3,6 +3,7 @@
 //! Contains all views.
 
 use ahash::HashMap;
+use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
@@ -85,6 +86,40 @@ impl ViewportUi {
             ui.spacing_mut().item_spacing.x = tokens.view_padding() as f32;
 
             re_tracing::profile_scope!("tree.ui");
+
+            let maximize_animation_state = ui
+                .data(|data| data.get_temp::<MaximizeAnimationState>(egui::Id::NULL))
+                .unwrap_or_default();
+
+            match maximize_animation_state {
+                MaximizeAnimationState::Nothing => {}
+
+                MaximizeAnimationState::Maximizing {
+                    view_id: _,
+                    start_time,
+                    normal_rect,
+                } => {
+                    // Animate the maximization of the view:
+                    let animation_time = ui.style().animation_time;
+                    let progress = remap_clamp(
+                        start_time.elapsed().as_secs_f32(),
+                        0.0..=animation_time,
+                        0.0..=1.0,
+                    );
+                    let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
+                    let animated_rect = normal_rect.lerp_towards(&ui.max_rect(), progress);
+
+                    *ui = ui.new_child(egui::UiBuilder::new().max_rect(animated_rect));
+
+                    if progress < 1.0 {
+                        ui.ctx().request_repaint();
+                    } else {
+                        ui.data_mut(|data| {
+                            data.remove_temp::<MaximizeAnimationState>(egui::Id::NULL);
+                        });
+                    }
+                }
+            }
 
             let mut egui_tiles_delegate = TilesDelegate {
                 view_states,
@@ -508,7 +543,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         &mut self,
         tiles: &egui_tiles::Tiles<ViewId>,
         ui: &mut egui::Ui,
-        _tile_id: egui_tiles::TileId,
+        tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
         _scroll_offset: &mut f32,
     ) {
@@ -572,6 +607,21 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             {
                 *self.maximized = Some(view_id);
                 // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
+
+                if let Some(rect) = tiles.rect(tile_id) {
+                    // Animate the maximization of the view:
+                    ui.data_mut(|data| {
+                        data.insert_temp(
+                            egui::Id::NULL,
+                            MaximizeAnimationState::Maximizing {
+                                view_id,
+                                normal_rect: rect,
+                                start_time: web_time::Instant::now(),
+                            },
+                        );
+                    });
+                    ui.ctx().request_repaint();
+                }
             }
         }
 
@@ -873,4 +923,23 @@ impl TabWidget {
             label_color,
         );
     }
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum MaximizeAnimationState {
+    #[default]
+    Nothing,
+
+    Maximizing {
+        /// What view is being maximized?
+        view_id: ViewId,
+
+        /// When maximization started.
+        start_time: web_time::Instant,
+
+        /// Where the view started.
+        normal_rect: egui::Rect,
+    },
 }

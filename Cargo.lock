@@ -8207,6 +8207,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "web-time",
 ]
 
 [[package]]
