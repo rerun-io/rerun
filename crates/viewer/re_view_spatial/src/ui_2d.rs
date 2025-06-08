@@ -6,7 +6,7 @@ use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
-    components as blueprint_components,
+    components::{self as blueprint_components},
 };
 use re_ui::{ContextExt as _, Help, MouseButtonText, icon_text, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
@@ -36,6 +36,17 @@ fn ui_from_scene(
         .component_or_fallback(ctx, view_class, &VisualBounds2D::descriptor_range())
         .ok_or_log_error()
         .unwrap_or_default();
+    let fixed_aspect_ratio = bounds_property
+        .component_or_fallback(
+            ctx,
+            view_class,
+            &VisualBounds2D::descriptor_fixed_aspect_ratio(),
+        )
+        .ok_or_log_error()
+        .unwrap_or(blueprint_components::FixedAspectRatio::from(true))
+        .0
+        .0;
+
     view_state.visual_bounds_2d = Some(bounds);
     let mut bounds_rect: egui::Rect = bounds.into();
 
@@ -44,20 +55,22 @@ fn ui_from_scene(
 
     let mut letterboxed_bounds = bounds_rect;
 
-    // Temporary before applying letterboxing:
-    let ui_from_scene = RectTransform::from_to(bounds_rect, response.rect);
+    if fixed_aspect_ratio {
+        // Temporary before applying letterboxing:
+        let ui_from_scene = RectTransform::from_to(bounds_rect, response.rect);
 
-    let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
-    if scale_aspect < 1.0 {
-        // Letterbox top/bottom:
-        let add = bounds_rect.height() * (1.0 / scale_aspect - 1.0);
-        letterboxed_bounds.min.y -= 0.5 * add;
-        letterboxed_bounds.max.y += 0.5 * add;
-    } else {
-        // Letterbox sides:
-        let add = bounds_rect.width() * (scale_aspect - 1.0);
-        letterboxed_bounds.min.x -= 0.5 * add;
-        letterboxed_bounds.max.x += 0.5 * add;
+        let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
+        if scale_aspect < 1.0 {
+            // Letterbox top/bottom:
+            let add = bounds_rect.height() * (1.0 / scale_aspect - 1.0);
+            letterboxed_bounds.min.y -= 0.5 * add;
+            letterboxed_bounds.max.y += 0.5 * add;
+        } else {
+            // Letterbox sides:
+            let add = bounds_rect.width() * (scale_aspect - 1.0);
+            letterboxed_bounds.min.x -= 0.5 * add;
+            letterboxed_bounds.max.x += 0.5 * add;
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -76,7 +89,13 @@ fn ui_from_scene(
     }
 
     if response.hovered() {
-        let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
+        let zoom_delta = response.ctx.input(|input| {
+            if fixed_aspect_ratio {
+                Vec2::splat(input.zoom_delta())
+            } else {
+                input.zoom_delta_2d()
+            }
+        });
 
         if zoom_delta != Vec2::splat(1.0) {
             let zoom_center_in_ui = response
