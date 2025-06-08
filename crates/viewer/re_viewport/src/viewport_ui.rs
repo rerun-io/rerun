@@ -115,6 +115,7 @@ impl ViewportUi {
                 }
             }
         };
+        let animated_rect = animated_rect.intersect(ui.max_rect()); // Prevent glitches when the viewport has changed size since the animation started.
 
         let mut tree = if let Some(view_id) = blueprint.maximized.or(animating_view_id) {
             let mut tiles = egui_tiles::Tiles::default();
