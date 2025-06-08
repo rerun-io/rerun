@@ -45,6 +45,9 @@ mod tests {
             .query_results
             .insert(view_id, Default::default());
 
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+
         let view_class_registry = create_view_class_registry().unwrap();
         for entry in view_class_registry.iter_registry() {
             let class = &entry.class;
