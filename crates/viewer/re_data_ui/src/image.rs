@@ -110,7 +110,7 @@ pub fn texture_preview_ui(
 
 /// Shows preview of an image.
 ///
-/// Displays the image at the desired size, without overshooting it, and preserving aspect ration.
+/// Displays the image at the desired size, without overshooting it, and preserving aspect ratio.
 ///
 /// Extremely small images will be stretched on their thin axis to make them visible.
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
