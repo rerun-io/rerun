@@ -49,47 +49,51 @@ mod tests {
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
         let view_class_registry = create_view_class_registry().unwrap();
-        for entry in view_class_registry.iter_registry() {
-            let class = &entry.class;
-            let mut state = class.new_state();
-            let space_origin = EntityPath::root();
+        for egui_theme in [egui::Theme::Light, egui::Theme::Dark] {
+            for entry in view_class_registry.iter_registry() {
+                let class = &entry.class;
+                let mut state = class.new_state();
+                let space_origin = EntityPath::root();
 
-            let mut did_run = false;
+                let mut did_run = false;
 
-            let mut harness = test_context
-                .setup_kittest_for_rendering()
-                .with_size([400.0, 640.0])
-                .build(|egui_ctx| {
-                    re_ui::apply_style_and_install_loaders(egui_ctx);
+                let mut harness = test_context
+                    .setup_kittest_for_rendering()
+                    .with_size([400.0, 640.0])
+                    .build(|egui_ctx| {
+                        re_ui::apply_style_and_install_loaders(egui_ctx);
+                        egui_ctx.set_theme(egui_theme);
 
-                    egui::CentralPanel::default().show(egui_ctx, |ui| {
-                        test_context.run(egui_ctx, |viewer_ctx| {
-                            ui.set_min_size(Vec2::new(400.0, 300.0));
-                            ui.list_item_scope(entry.identifier, |ui| {
-                                class
-                                    .selection_ui(
-                                        viewer_ctx,
-                                        ui,
-                                        state.as_mut(),
-                                        &space_origin,
-                                        view_id,
-                                    )
-                                    .expect("Failed to run selection_ui");
-                                did_run = true;
+                        egui::CentralPanel::default().show(egui_ctx, |ui| {
+                            test_context.run(egui_ctx, |viewer_ctx| {
+                                ui.set_min_size(Vec2::new(400.0, 300.0));
+                                ui.list_item_scope(entry.identifier, |ui| {
+                                    class
+                                        .selection_ui(
+                                            viewer_ctx,
+                                            ui,
+                                            state.as_mut(),
+                                            &space_origin,
+                                            view_id,
+                                        )
+                                        .expect("Failed to run selection_ui");
+                                    did_run = true;
+                                });
                             });
                         });
                     });
-                });
 
-            harness.run();
+                harness.run();
 
-            let snapshot_options =
-                SnapshotOptions::default().output_path("tests/snapshots/all_view_selecion_uis");
-            harness.snapshot_options(&entry.identifier, &snapshot_options);
+                let snapshot_options = SnapshotOptions::default().output_path(format!(
+                    "tests/snapshots/all_view_selecion_uis/{egui_theme:?}"
+                ));
+                harness.snapshot_options(&entry.identifier, &snapshot_options);
 
-            drop(harness);
+                drop(harness);
 
-            assert!(did_run);
+                assert!(did_run);
+            }
         }
     }
 }
