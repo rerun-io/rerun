@@ -14,6 +14,7 @@ from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .enabled import Enabled, EnabledBatch
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
+from .fixed_aspect_ratio import FixedAspectRatio, FixedAspectRatioBatch
 from .force_distance import ForceDistance, ForceDistanceBatch
 from .force_iterations import ForceIterations, ForceIterationsBatch
 from .force_strength import ForceStrength, ForceStrengthBatch
@@ -71,6 +72,8 @@ __all__ = [
     "FilterByRangeBatch",
     "FilterIsNotNull",
     "FilterIsNotNullBatch",
+    "FixedAspectRatio",
+    "FixedAspectRatioBatch",
     "ForceDistance",
     "ForceDistanceBatch",
     "ForceIterations",

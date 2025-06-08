@@ -11,14 +11,22 @@ namespace rerun::blueprint::archetypes {
         archetype.range =
             ComponentBatch::empty<rerun::blueprint::components::VisualBounds2D>(Descriptor_range)
                 .value_or_throw();
+        archetype.fixed_aspect_ratio =
+            ComponentBatch::empty<rerun::blueprint::components::FixedAspectRatio>(
+                Descriptor_fixed_aspect_ratio
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> VisualBounds2D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (range.has_value()) {
             columns.push_back(range.value().partitioned(lengths_).value_or_throw());
+        }
+        if (fixed_aspect_ratio.has_value()) {
+            columns.push_back(fixed_aspect_ratio.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<VisualBounds2D>(static_cast<uint32_t>(lengths_.size()))
@@ -30,6 +38,9 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> VisualBounds2D::columns() {
         if (range.has_value()) {
             return columns(std::vector<uint32_t>(range.value().length(), 1));
+        }
+        if (fixed_aspect_ratio.has_value()) {
+            return columns(std::vector<uint32_t>(fixed_aspect_ratio.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -43,10 +54,13 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.range.has_value()) {
             cells.push_back(archetype.range.value());
+        }
+        if (archetype.fixed_aspect_ratio.has_value()) {
+            cells.push_back(archetype.fixed_aspect_ratio.value());
         }
         {
             auto result = ComponentBatch::from_indicator<VisualBounds2D>();

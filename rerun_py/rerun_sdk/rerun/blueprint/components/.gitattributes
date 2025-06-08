@@ -14,6 +14,7 @@ corner2d.py linguist-generated=true
 enabled.py linguist-generated=true
 filter_by_range.py linguist-generated=true
 filter_is_not_null.py linguist-generated=true
+fixed_aspect_ratio.py linguist-generated=true
 force_distance.py linguist-generated=true
 force_iterations.py linguist-generated=true
 force_strength.py linguist-generated=true

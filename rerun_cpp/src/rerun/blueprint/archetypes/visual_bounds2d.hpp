@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/fixed_aspect_ratio.hpp"
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -32,6 +33,13 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         std::optional<ComponentBatch> range;
 
+        /// If true, the aspect ratio will be fixed to 1:1.
+        ///
+        /// If false, you can zoom the X and Y axes independently.
+        ///
+        /// Defaults to true.
+        std::optional<ComponentBatch> fixed_aspect_ratio;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.blueprint.components.VisualBounds2DIndicator";
@@ -46,6 +54,11 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "range",
             Loggable<rerun::blueprint::components::VisualBounds2D>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `fixed_aspect_ratio` field.
+        static constexpr auto Descriptor_fixed_aspect_ratio = ComponentDescriptor(
+            ArchetypeName, "fixed_aspect_ratio",
+            Loggable<rerun::blueprint::components::FixedAspectRatio>::Descriptor.component_name
+        );
 
       public:
         VisualBounds2D() = default;
@@ -54,9 +67,16 @@ namespace rerun::blueprint::archetypes {
         VisualBounds2D& operator=(const VisualBounds2D& other) = default;
         VisualBounds2D& operator=(VisualBounds2D&& other) = default;
 
-        explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
+        explicit VisualBounds2D(
+            rerun::blueprint::components::VisualBounds2D _range,
+            rerun::blueprint::components::FixedAspectRatio _fixed_aspect_ratio
+        )
             : range(ComponentBatch::from_loggable(std::move(_range), Descriptor_range)
-                        .value_or_throw()) {}
+                        .value_or_throw()),
+              fixed_aspect_ratio(ComponentBatch::from_loggable(
+                                     std::move(_fixed_aspect_ratio), Descriptor_fixed_aspect_ratio
+              )
+                                     .value_or_throw()) {}
 
         /// Update only some specific fields of a `VisualBounds2D`.
         static VisualBounds2D update_fields() {
@@ -71,6 +91,20 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         VisualBounds2D with_range(const rerun::blueprint::components::VisualBounds2D& _range) && {
             range = ComponentBatch::from_loggable(_range, Descriptor_range).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// If true, the aspect ratio will be fixed to 1:1.
+        ///
+        /// If false, you can zoom the X and Y axes independently.
+        ///
+        /// Defaults to true.
+        VisualBounds2D with_fixed_aspect_ratio(
+            const rerun::blueprint::components::FixedAspectRatio& _fixed_aspect_ratio
+        ) && {
+            fixed_aspect_ratio =
+                ComponentBatch::from_loggable(_fixed_aspect_ratio, Descriptor_fixed_aspect_ratio)
+                    .value_or_throw();
             return std::move(*this);
         }
 

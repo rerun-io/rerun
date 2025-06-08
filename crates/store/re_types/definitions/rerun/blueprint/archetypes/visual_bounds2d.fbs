@@ -14,4 +14,12 @@ table VisualBounds2D (
     ///
     /// Use this to control pan & zoom of the view.
     range: rerun.blueprint.components.VisualBounds2D ("attr.rerun.component_required", order: 1000);
+
+    /// If true, the aspect ratio will be fixed to 1:1.
+    ///
+    /// If false, you can zoom the X and Y axes independently.
+    ///
+    /// Defaults to true.
+    // TODO: graph view shows this, but does not support it
+    fixed_aspect_ratio: rerun.blueprint.components.FixedAspectRatio ("attr.rerun.component_optional", order: 2000);
 }
