@@ -57,6 +57,7 @@ impl ChunkSchema {
         row_id: RowIdColumnDescriptor,
         indices: Vec<IndexColumnDescriptor>,
         components: Vec<ComponentColumnDescriptor>,
+        timestamps: crate::timing_metadata::TimestampMetadata,
     ) -> Self {
         Self {
             sorbet: SorbetSchema {
@@ -72,6 +73,7 @@ impl ChunkSchema {
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,
+                timestamps,
             },
             chunk_columns: ChunkColumnDescriptors {
                 row_id,
