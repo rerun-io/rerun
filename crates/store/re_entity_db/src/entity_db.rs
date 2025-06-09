@@ -452,9 +452,14 @@ impl EntityDb {
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 self.last_modified_at = web_time::Instant::now();
 
-                let mut chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)?;
+                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
+                    .map_err(re_chunk::ChunkError::from)?;
+                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
                 chunk.sort_if_unsorted();
-                self.add_chunk(&Arc::new(chunk))?
+                self.add_chunk_with_timestamp_metadata(
+                    &Arc::new(chunk),
+                    &chunk_batch.sorbet_schema().timestamps,
+                )?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -467,6 +472,14 @@ impl EntityDb {
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
+    }
+
+    pub fn add_chunk_with_timestamp_metadata(
+        &mut self,
+        chunk: &Arc<Chunk>,
+        timestamps: &re_sorbet::timing_metadata::TimestampMetadata,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let mut engine = self.storage_engine.write();
         let store_events = engine.store().insert_chunk(chunk)?;
         engine.cache().on_events(&store_events);
@@ -502,7 +515,7 @@ impl EntityDb {
             }
 
             // We inform the stats last, since it measures e2e latency.
-            self.stats.on_events(&store_events);
+            self.stats.on_events(timestamps, &store_events);
         }
 
         Ok(store_events)

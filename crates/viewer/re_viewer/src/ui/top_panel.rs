@@ -466,7 +466,12 @@ fn latency_snapshot_ui(
     latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
     // Note: all times are in seconds.
-    let re_entity_db::LatencySnapshot { e2e, log2chunk } = latency;
+    let re_entity_db::LatencySnapshot {
+        e2e,
+        log2chunk,
+        chunk2encode,
+        transmission,
+    } = latency;
 
     if e2e > 60.0 {
         return None; // Probably an old recording and not live data.
@@ -493,6 +498,17 @@ fn latency_snapshot_ui(
                 ui.label("log() to chunk (batcher)");
                 ui.monospace(latency_text(log2chunk));
                 ui.end_row();
+
+                if let Some(chunk2encode) = chunk2encode {
+                    ui.label("chunk to encode");
+                    ui.monospace(latency_text(chunk2encode));
+                    ui.end_row();
+                }
+                if let Some(transmission) = transmission {
+                    ui.label("transmission (e.g. gRPC)");
+                    ui.monospace(latency_text(transmission));
+                    ui.end_row();
+                }
             });
     });
 

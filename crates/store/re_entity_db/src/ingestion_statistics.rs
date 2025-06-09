@@ -1,8 +1,9 @@
+use emath::History;
 use parking_lot::Mutex;
 
-use re_chunk::RowId;
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_types::StoreId;
+use re_sorbet::timing_metadata::TimestampMetadata;
 
 /// Statistics about the latency of incoming data to a store.
 pub struct IngestionStatistics {
@@ -10,31 +11,16 @@ pub struct IngestionStatistics {
     stats: Mutex<LatencyStats>,
 }
 
-impl ChunkStoreSubscriber for IngestionStatistics {
+impl IngestionStatistics {
     #[inline]
-    fn name(&self) -> String {
-        "rerun.testing.store_subscribers.IngestionStatistics".into()
-    }
-
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+    pub fn on_events(&self, timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {
         if let Some(nanos_since_epoch) = nanos_since_epoch() {
             let mut stats = self.stats.lock();
             for event in events {
                 if event.store_id == self.store_id
                     && event.diff.kind == ChunkStoreDiffKind::Addition
                 {
-                    stats.on_new_chunk(nanos_since_epoch, &event.diff.chunk);
+                    stats.on_new_chunk(nanos_since_epoch, timestamps, &event.diff.chunk);
                 }
             }
         }
@@ -63,11 +49,18 @@ pub struct LatencyStats {
     // All latencies measured in seconds.
     /// Full end-to-end latency, from the time the data was logged in the SDK,
     /// up until it was added to the store.
-    e2e: emath::History<f32>,
+    e2e: History<f32>,
 
     /// Delay between the time `RowId` was created and the `ChunkId` was created,
     /// i.e. the time it took to get the data from the `log` call to be batched by the batcher.
-    log2chunk: emath::History<f32>,
+    log2chunk: History<f32>,
+
+    /// Time between chunk creation and IPC encoding (start of gRPC transmission).
+    chunk2encode: History<f32>,
+
+    /// Time between encoding to IPC and decoding again,
+    /// e.g. the time it takes to send the data over the network.
+    transmission: History<f32>,
 }
 
 impl Default for LatencyStats {
@@ -76,36 +69,69 @@ impl Default for LatencyStats {
         let max_samples = 32 * 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
         Self {
-            e2e: emath::History::new(min_samples..max_samples, max_age),
-            log2chunk: emath::History::new(min_samples..max_samples, max_age),
+            e2e: History::new(min_samples..max_samples, max_age),
+            log2chunk: History::new(min_samples..max_samples, max_age),
+            chunk2encode: History::new(min_samples..max_samples, max_age),
+            transmission: History::new(min_samples..max_samples, max_age),
         }
     }
 }
 
 impl LatencyStats {
-    fn on_new_chunk(&mut self, nanos_since_epoch: u64, chunk: &re_chunk::Chunk) {
+    fn on_new_chunk(
+        &mut self,
+        nanos_since_epoch: u64,
+        timestamps: &TimestampMetadata,
+        chunk: &re_chunk::Chunk,
+    ) {
+        let Self {
+            e2e,
+            log2chunk,
+            chunk2encode,
+            transmission,
+        } = self;
+
+        let now = nanos_since_epoch as f64 / 1e9;
+
         for row_id in chunk.row_ids() {
-            self.on_new_row_id(nanos_since_epoch, row_id);
+            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
+            {
+                let now = nanos_since_epoch as f64 / 1e9;
+                let sec_since_log = nanos_since_log as f32 / 1e9;
+
+                e2e.add(now, sec_since_log);
+            }
 
             if let Some(log2chunk_nanos) = chunk
                 .id()
                 .nanos_since_epoch()
                 .checked_sub(row_id.nanos_since_epoch())
             {
-                let now = nanos_since_epoch as f64 / 1e9;
                 let log2chunk_sec = log2chunk_nanos as f32 / 1e9;
-                self.log2chunk.add(now, log2chunk_sec);
+                log2chunk.add(now, log2chunk_sec);
             }
-        }
-    }
 
-    fn on_new_row_id(&mut self, nanos_since_epoch: u64, row_id: RowId) {
-        // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
-        if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch()) {
-            let now = nanos_since_epoch as f64 / 1e9;
-            let sec_since_log = nanos_since_log as f32 / 1e9;
+            let TimestampMetadata {
+                last_encoded_at,
+                last_decoded_at,
+            } = timestamps;
 
-            self.e2e.add(now, sec_since_log);
+            let last_encoded_at_nanos = last_encoded_at.and_then(system_time_to_nanos);
+            let last_decoded_at_nanos = last_decoded_at.and_then(system_time_to_nanos);
+
+            if let Some(last_encoded_at_nanos) = last_encoded_at_nanos {
+                chunk2encode.add(
+                    now,
+                    (last_encoded_at_nanos as i64 - row_id.nanos_since_epoch() as i64) as f32 / 1e9,
+                );
+
+                if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
+                    transmission.add(
+                        now,
+                        (last_decoded_at_nanos as i64 - last_encoded_at_nanos as i64) as f32 / 1e9,
+                    );
+                }
+            }
         }
     }
 
@@ -116,18 +142,27 @@ impl LatencyStats {
     ///
     /// Returns `None` if we don't have enough data to compute a meaningful average.
     pub fn snapshot(&mut self) -> Option<LatencySnapshot> {
-        let Self { e2e, log2chunk } = self;
+        let Self {
+            e2e,
+            log2chunk,
+            chunk2encode,
+            transmission,
+        } = self;
 
         if let Some(nanos_since_epoch) = nanos_since_epoch() {
             let now = nanos_since_epoch as f64 / 1e9;
             // make sure the average is up-to-date.:
             e2e.flush(now);
             log2chunk.flush(now);
+            chunk2encode.flush(now);
+            transmission.flush(now);
         }
 
         Some(LatencySnapshot {
-            e2e: self.e2e.average()?,
-            log2chunk: self.log2chunk.average()?,
+            e2e: e2e.average()?,
+            log2chunk: log2chunk.average()?,
+            chunk2encode: chunk2encode.average(),
+            transmission: transmission.average(),
         })
     }
 }
@@ -138,6 +173,13 @@ fn nanos_since_epoch() -> Option<u64> {
     } else {
         None
     }
+}
+
+fn system_time_to_nanos(system_time: web_time::SystemTime) -> Option<u64> {
+    system_time
+        .duration_since(web_time::SystemTime::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_nanos() as u64)
 }
 
 /// The latest (smoothed) reading of the latency of the ingestion pipeline.
@@ -151,4 +193,11 @@ pub struct LatencySnapshot {
     /// Delay between the time `RowId` was created and the `ChunkId` was created,
     /// i.e. the time it took to get the data from the `log` call to be batched by the batcher.
     pub log2chunk: f32,
+
+    /// Time between chunk creation and IPC encoding (start of gRPC transmission).
+    pub chunk2encode: Option<f32>,
+
+    /// Time between encoding to IPC and decoding again,
+    /// e.g. the time it takes to send the data over the network.
+    pub transmission: Option<f32>,
 }
