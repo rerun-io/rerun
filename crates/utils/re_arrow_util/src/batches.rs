@@ -78,6 +78,21 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
     arrow::compute::concat_batches(&schema_merged, &batches_patched)
 }
 
+/// Add a new key/value pair to the metadata of a [`RecordBatch`],
+/// replacing any existing value for that key.
+// TODO(apache/arrow-rs#7628): this should be built into Arrow, but it isn't yet.
+#[must_use]
+pub fn insert_metadata(
+    record_batch: RecordBatch,
+    key: impl Into<String>,
+    value: impl Into<String>,
+) -> RecordBatch {
+    let mut new_schema = std::sync::Arc::unwrap_or_clone(record_batch.schema());
+    new_schema.metadata.insert(key.into(), value.into());
+    #[allow(clippy::unwrap_used)] // cannot fail
+    record_batch.with_schema(Arc::new(new_schema)).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     #![expect(clippy::disallowed_methods)]
