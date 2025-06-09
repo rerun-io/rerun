@@ -363,9 +363,10 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
 
-# Build an installable wheel.
-py-build-wheels = { cmd = "RERUN_ALLOW_MISSING_BIN=1 maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
-  "rerun-build-release",
+# Build an installable wheel. This needs `RERUN_ALLOW_MISSING_BIN=1` because the `rerun` binary is not part of the
+# python package, and maturin will otherwise fail to build the wheel.
+py-build-wheel = { cmd = "cp target/release/rerun rerun_py/rerun_sdk/rerun_cli/rerun && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+  "rerun-build-native-and-web-release",
 ] }
 
 # Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
