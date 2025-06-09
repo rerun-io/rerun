@@ -15,6 +15,7 @@ include "./components/draw_order.fbs";
 include "./components/entity_path.fbs";
 include "./components/fill_mode.fbs";
 include "./components/fill_ratio.fbs";
+include "./components/fixed_aspect_ratio.fbs";
 include "./components/gamma_correction.fbs";
 include "./components/geo_line_string.fbs";
 include "./components/graph_edge.fbs";

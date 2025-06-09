@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+
+/// If true, the aspect ratio will be fixed to 1:1.
+///
+/// If false, you can zoom the X and Y axes independently.
+struct FixedAspectRatio (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent"
+) {
+  fixed_aspect_ratio: rerun.datatypes.Bool (order: 100);
+}

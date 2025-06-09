@@ -12,6 +12,9 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
+
+* `range`: Controls the visible range of a 2D view.
+* `fixed_aspect_ratio`: If true, the aspect ratio will be fixed to 1:1.
 ### `force_link`
 Allows to control the interaction between two nodes connected by an edge.
 

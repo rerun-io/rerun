@@ -18,6 +18,9 @@ The visible parts of the scene, in the coordinate space of the scene.
 
 Everything within these bounds are guaranteed to be visible.
 Somethings outside of these bounds may also be visible due to letterboxing.
+
+* `range`: Controls the visible range of a 2D view.
+* `fixed_aspect_ratio`: If true, the aspect ratio will be fixed to 1:1.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

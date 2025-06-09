@@ -34,6 +34,13 @@ pub struct VisualBounds2D {
     ///
     /// Use this to control pan & zoom of the view.
     pub range: Option<SerializedComponentBatch>,
+
+    /// If true, the aspect ratio will be fixed to 1:1.
+    ///
+    /// If false, you can zoom the X and Y axes independently.
+    ///
+    /// Defaults to true.
+    pub fixed_aspect_ratio: Option<SerializedComponentBatch>,
 }
 
 impl VisualBounds2D {
@@ -46,6 +53,18 @@ impl VisualBounds2D {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component_name: "rerun.blueprint.components.VisualBounds2D".into(),
             archetype_field_name: Some("range".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fixed_aspect_ratio`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::FixedAspectRatio`].
+    #[inline]
+    pub fn descriptor_fixed_aspect_ratio() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+            component_name: "rerun.blueprint.components.FixedAspectRatio".into(),
+            archetype_field_name: Some("fixed_aspect_ratio".into()),
         }
     }
 
@@ -66,20 +85,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_fixed_aspect_ratio()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             VisualBounds2D::descriptor_range(),
             VisualBounds2D::descriptor_indicator(),
+            VisualBounds2D::descriptor_fixed_aspect_ratio(),
         ]
     });
 
 impl VisualBounds2D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`VisualBounds2D`] [`::re_types_core::Archetype`]
@@ -136,7 +156,15 @@ impl ::re_types_core::Archetype for VisualBounds2D {
         let range = arrays_by_descr
             .get(&Self::descriptor_range())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_range()));
-        Ok(Self { range })
+        let fixed_aspect_ratio = arrays_by_descr
+            .get(&Self::descriptor_fixed_aspect_ratio())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_fixed_aspect_ratio())
+            });
+        Ok(Self {
+            range,
+            fixed_aspect_ratio,
+        })
     }
 }
 
@@ -144,10 +172,14 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.range.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            Some(Self::indicator()),
+            self.range.clone(),
+            self.fixed_aspect_ratio.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -156,9 +188,16 @@ impl ::re_types_core::ArchetypeReflectionMarker for VisualBounds2D {}
 impl VisualBounds2D {
     /// Create a new `VisualBounds2D`.
     #[inline]
-    pub fn new(range: impl Into<crate::blueprint::components::VisualBounds2D>) -> Self {
+    pub fn new(
+        range: impl Into<crate::blueprint::components::VisualBounds2D>,
+        fixed_aspect_ratio: impl Into<crate::blueprint::components::FixedAspectRatio>,
+    ) -> Self {
         Self {
             range: try_serialize_field(Self::descriptor_range(), [range]),
+            fixed_aspect_ratio: try_serialize_field(
+                Self::descriptor_fixed_aspect_ratio(),
+                [fixed_aspect_ratio],
+            ),
         }
     }
 
@@ -177,6 +216,10 @@ impl VisualBounds2D {
                 crate::blueprint::components::VisualBounds2D::arrow_empty(),
                 Self::descriptor_range(),
             )),
+            fixed_aspect_ratio: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::FixedAspectRatio::arrow_empty(),
+                Self::descriptor_fixed_aspect_ratio(),
+            )),
         }
     }
 
@@ -191,11 +234,26 @@ impl VisualBounds2D {
         self.range = try_serialize_field(Self::descriptor_range(), [range]);
         self
     }
+
+    /// If true, the aspect ratio will be fixed to 1:1.
+    ///
+    /// If false, you can zoom the X and Y axes independently.
+    ///
+    /// Defaults to true.
+    #[inline]
+    pub fn with_fixed_aspect_ratio(
+        mut self,
+        fixed_aspect_ratio: impl Into<crate::blueprint::components::FixedAspectRatio>,
+    ) -> Self {
+        self.fixed_aspect_ratio =
+            try_serialize_field(Self::descriptor_fixed_aspect_ratio(), [fixed_aspect_ratio]);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for VisualBounds2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes()
+        self.range.heap_size_bytes() + self.fixed_aspect_ratio.heap_size_bytes()
     }
 }

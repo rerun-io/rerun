@@ -157,6 +157,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <FixedAspectRatio as Component>::name(),
+            ComponentReflection {
+                docstring_md: "If true, the aspect ratio will be fixed to 1:1.\n\nIf false, you can zoom the X and Y axes independently.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: FixedAspectRatio::arrow_datatype(),
+                verify_arrow_array: FixedAspectRatio::verify_arrow_array,
+            },
+        ),
+        (
             <ForceDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -2881,7 +2891,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Range", component_name : "rerun.blueprint.components.VisualBounds2D"
                     .into(), docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    is_required : true, },
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "fixed_aspect_ratio".into(), display_name : "Fixed aspect ratio",
+                    component_name : "rerun.blueprint.components.FixedAspectRatio"
+                    .into(), docstring_md :
+                    "If true, the aspect ratio will be fixed to 1:1.\n\nIf false, you can zoom the X and Y axes independently.\n\nDefaults to true.",
+                    is_required : false, },
                 ],
             },
         ),

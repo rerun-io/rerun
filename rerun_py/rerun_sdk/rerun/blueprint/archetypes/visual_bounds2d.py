@@ -38,6 +38,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             range=None,
+            fixed_aspect_ratio=None,
         )
 
     @classmethod
@@ -53,6 +54,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         *,
         clear_unset: bool = False,
         range: datatypes.Range2DLike | None = None,
+        fixed_aspect_ratio: datatypes.BoolLike | None = None,
     ) -> VisualBounds2D:
         """
         Update only some specific fields of a `VisualBounds2D`.
@@ -65,6 +67,12 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
             Controls the visible range of a 2D view.
 
             Use this to control pan & zoom of the view.
+        fixed_aspect_ratio:
+            If true, the aspect ratio will be fixed to 1:1.
+
+            If false, you can zoom the X and Y axes independently.
+
+            Defaults to true.
 
         """
 
@@ -72,6 +80,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "range": range,
+                "fixed_aspect_ratio": fixed_aspect_ratio,
             }
 
             if clear_unset:
@@ -96,6 +105,19 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
     # Controls the visible range of a 2D view.
     #
     # Use this to control pan & zoom of the view.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fixed_aspect_ratio: blueprint_components.FixedAspectRatioBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.FixedAspectRatioBatch._converter,  # type: ignore[misc]
+    )
+    # If true, the aspect ratio will be fixed to 1:1.
+    #
+    # If false, you can zoom the X and Y axes independently.
+    #
+    # Defaults to true.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

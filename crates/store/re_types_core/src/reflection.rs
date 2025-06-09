@@ -66,6 +66,7 @@ impl Reflection {
 /// For unsupported types this yields an empty array instead.
 ///
 /// See also [`ComponentReflection::custom_placeholder`].
+// TODO: move this to `re_arrow_util`
 pub fn generic_placeholder_for_datatype(
     datatype: &arrow::datatypes::DataType,
 ) -> arrow::array::ArrayRef {

@@ -14,6 +14,7 @@
 #include "blueprint/components/enabled.hpp"
 #include "blueprint/components/filter_by_range.hpp"
 #include "blueprint/components/filter_is_not_null.hpp"
+#include "blueprint/components/fixed_aspect_ratio.hpp"
 #include "blueprint/components/force_distance.hpp"
 #include "blueprint/components/force_iterations.hpp"
 #include "blueprint/components/force_strength.hpp"

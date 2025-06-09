@@ -33,7 +33,7 @@ use datatype_uis::{
     view_view_id,
 };
 
-use re_types::blueprint::components::{RootContainer, ViewMaximized};
+use re_types::blueprint::components::{FixedAspectRatio, RootContainer, ViewMaximized};
 use re_types::components::{SeriesVisible, Timestamp, VideoCodec};
 use re_types::{
     blueprint::components::{
@@ -97,10 +97,11 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // Bool components:
     registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
+    registry.add_singleline_edit_or_view::<FixedAspectRatio>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
+    registry.add_singleline_edit_or_view::<SeriesVisible>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
-    registry.add_singleline_edit_or_view::<SeriesVisible>(edit_bool);
 
     // Date components:
     registry.add_singleline_edit_or_view::<Timestamp>(view_timestamp);

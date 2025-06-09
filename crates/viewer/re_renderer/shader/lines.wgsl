@@ -222,7 +222,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
     let camera_distance = distance(camera_ray.origin, center_position);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
-    var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
+    var strip_radius_2d = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
+    var strip_radius = strip_radius_2d.x; // TODO(#10169): support non-uniform axis scaling
 
     // If the triangle cap is longer than the quad would be otherwise, we need to stunt it, otherwise we'd get artifacts.
     var triangle_cap_length = batch.triangle_cap_length_factor * strip_radius;
@@ -257,7 +258,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Boost radius only now that we subtracted/added the cap length.
     // This way we don't get a gap for the outline at the cap.
     if draw_data.radius_boost_in_ui_points > 0.0 {
-        let size_boost = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
+        let size_boost_2d = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
+        let size_boost = size_boost_2d.x; // TODO(#10169): support non-uniform axis scaling
+        strip_radius_2d += size_boost_2d;
         strip_radius += size_boost;
         triangle_cap_length += size_boost;
         // Push out positions as well along the quad dir.
@@ -284,7 +287,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         center_position += quad_dir * (triangle_cap_length * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
-        pos = center_position + (strip_radius * top_bottom * 0.99) * dir_up;
+        pos = center_position + (top_bottom * 0.99) * dir_up * dot(strip_radius_2d, abs(dir_up.xy));
     }
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
@@ -327,7 +330,7 @@ fn compute_coverage(in: VertexOut) -> f32 {
 
     if !has_any_flag(in.fragment_flags, FLAG_CAP_TRIANGLE) {
         let distance_to_skeleton = distance_to_line(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
-        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
+        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position)).x; // TODO(#10169): support non-uniform axis scaling
 
         // It's important that we do antialias both inwards and outwards of the exact border.
         // If we do only outwards, rectangle outlines won't line up nicely

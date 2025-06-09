@@ -106,8 +106,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Span quad
     let camera_distance = distance(frame.camera_position, point_data.pos);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
-    let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
+    let world_radius_2d = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                        world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
+    var world_radius = world_radius_2d.x; // TODO(#10169): support non-uniform axis scaling
     let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, world_radius,
                                              has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
 

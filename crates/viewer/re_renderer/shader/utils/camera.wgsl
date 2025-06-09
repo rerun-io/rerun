@@ -71,7 +71,7 @@ fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> ve
     let b = dot(sphere_to_origin, ray.direction);
     let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
     let h = b * b - c;
-    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
+let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
     return vec2f(d, -b - sqrt(max(h, 0.0)));
 }
 
@@ -79,6 +79,6 @@ fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> ve
 //
 // This is accurate for objects in the middle of the screen, (depending on the angle) less so at the corners
 // since an object parallel to the camera (like a conceptual pixel) has a bigger projected surface at higher angles.
-fn approx_pixel_world_size_at(camera_distance: f32) -> f32 {
+fn approx_pixel_world_size_at(camera_distance: f32) -> vec2f {
     return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
 }
