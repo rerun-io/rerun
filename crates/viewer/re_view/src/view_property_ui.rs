@@ -26,7 +26,7 @@ fn view_property_ui_impl(
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
-    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
+    let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -35,22 +35,26 @@ fn view_property_ui_impl(
         return;
     };
 
-    let query_ctx = property.query_context(ctx);
-    // If the property archetype only has a single component, don't show an additional hierarchy level!
-    if reflection.fields.len() == 1 {
-        let field = &reflection.fields[0];
+    let archetype_display_name = archetype.display_name;
 
+    let query_ctx = property.query_context(ctx);
+
+    // If the property archetype only has a single component,
+    // and it has the same name as the archetype, then combine them.
+    // Happens in some cases, like for the `NearClipPlane` archetype that
+    // only has one component which is also called `NearClipPlane`.
+    if archetype.fields.len() == 1 && archetype_display_name == archetype.fields[0].display_name {
         view_property_component_ui(
             &query_ctx,
             ui,
             property,
-            reflection.display_name,
-            field,
+            archetype_display_name,
+            &archetype.fields[0],
             fallback_provider,
         );
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
-            for field in &reflection.fields {
+            for field in &archetype.fields {
                 view_property_component_ui(
                     &query_ctx,
                     ui,
@@ -68,7 +72,7 @@ fn view_property_ui_impl(
                 ui,
                 ui.make_persistent_id(property.archetype_name.full_name()),
                 true,
-                list_item::LabelContent::new(reflection.display_name),
+                list_item::LabelContent::new(archetype_display_name),
                 sub_prop_ui,
             );
     }
