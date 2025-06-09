@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::IsTerminal as _;
 use std::sync::Weak;
-use std::sync::{atomic::AtomicI64, Arc};
+use std::sync::{Arc, atomic::AtomicI64};
 use std::time::Duration;
 
 use ahash::HashMap;

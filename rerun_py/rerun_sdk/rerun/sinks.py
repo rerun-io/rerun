@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
+
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
 from rerun.recording_stream import RecordingStream, get_application_id
@@ -102,9 +103,9 @@ def tee(
         ).storage
 
     bindings.tee(
-         [sink._to_native() for sink in sinks],
-         default_blueprint=blueprint_storage,
-         recording=recording.to_native() if recording is not None else None,
+        [sink._to_native() for sink in sinks],
+        default_blueprint=blueprint_storage,
+        recording=recording.to_native() if recording is not None else None,
     )
 
 

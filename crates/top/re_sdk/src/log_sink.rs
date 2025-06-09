@@ -74,9 +74,13 @@ pub trait LogSink: Send + Sync + 'static {
 
 // ----------------------------------------------------------------------------
 
+/// Stream to multiple sinks at the same time.
 pub struct MultiSink(parking_lot::Mutex<Vec<Box<dyn LogSink>>>);
 
 impl MultiSink {
+    /// Combine multiple sinks into one.
+    ///
+    /// Messages will be cloned to each sink.
     #[inline]
     pub fn new(sinks: Vec<Box<dyn LogSink>>) -> Self {
         Self(parking_lot::Mutex::new(sinks))
