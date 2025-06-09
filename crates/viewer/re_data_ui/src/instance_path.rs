@@ -145,10 +145,15 @@ impl DataUi for InstancePath {
         }
 
         if instance.is_all() {
-            for components in components_by_archetype.values() {
-                preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, components);
-                preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, components);
-            }
+            // There are some examples where we need to combine several archetypes for a single preview.
+            // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
+            let components = components_by_archetype
+                .values()
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
+            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &components);
+            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
         }
     }
 }
@@ -274,6 +279,8 @@ fn component_list_ui(
 }
 
 /// If this entity is an image, show it together with buttons to download and copy the image.
+///
+/// Expected to get a list of all components on the entity, not just the blob.
 fn preview_if_image_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -495,7 +502,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
         .response
 }
 
-/// If this entity has a blob, preview it and show a download button
+/// If this entity has a blob, preview it and show a download button.
 fn preview_if_blob_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
