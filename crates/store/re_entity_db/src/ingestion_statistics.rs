@@ -51,6 +51,7 @@ pub struct LatencyStats {
     /// up until it was added to the store.
     e2e: History<f32>,
 
+    // All the individual parts:
     /// Delay between the time `RowId` was created and the `ChunkId` was created,
     /// i.e. the time it took to get the data from the `log` call to be batched by the batcher.
     log2chunk: History<f32>,
@@ -61,6 +62,9 @@ pub struct LatencyStats {
     /// Time between encoding to IPC and decoding again,
     /// e.g. the time it takes to send the data over the network.
     transmission: History<f32>,
+
+    /// Time from the incoming IPC data being decoded to it being ingested into the store.
+    decode2ingest: History<f32>,
 }
 
 impl Default for LatencyStats {
@@ -73,6 +77,7 @@ impl Default for LatencyStats {
             log2chunk: History::new(min_samples..max_samples, max_age),
             chunk2encode: History::new(min_samples..max_samples, max_age),
             transmission: History::new(min_samples..max_samples, max_age),
+            decode2ingest: History::new(min_samples..max_samples, max_age),
         }
     }
 }
@@ -80,7 +85,7 @@ impl Default for LatencyStats {
 impl LatencyStats {
     fn on_new_chunk(
         &mut self,
-        nanos_since_epoch: u64,
+        now_nanos: i64,
         timestamps: &TimestampMetadata,
         chunk: &re_chunk::Chunk,
     ) {
@@ -89,49 +94,51 @@ impl LatencyStats {
             log2chunk,
             chunk2encode,
             transmission,
+            decode2ingest,
         } = self;
 
-        let now = nanos_since_epoch as f64 / 1e9;
+        let now = now_nanos as f64 / 1e9;
+
+        let chunk_creation_nanos = chunk.id().nanos_since_epoch() as i64;
+
+        let TimestampMetadata {
+            last_encoded_at,
+            last_decoded_at,
+        } = timestamps;
+
+        let last_encoded_at_nanos = last_encoded_at.and_then(system_time_to_nanos);
+        let last_decoded_at_nanos = last_decoded_at.and_then(system_time_to_nanos);
 
         for row_id in chunk.row_ids() {
-            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
-            {
-                let now = nanos_since_epoch as f64 / 1e9;
-                let sec_since_log = nanos_since_log as f32 / 1e9;
+            let row_creation_nanos = row_id.nanos_since_epoch() as i64;
 
-                e2e.add(now, sec_since_log);
+            // Total:
+            if let Some(e2e_nanos) = now_nanos.checked_sub(row_creation_nanos) {
+                e2e.add(now, e2e_nanos as f32 / 1e9);
             }
 
-            if let Some(log2chunk_nanos) = chunk
-                .id()
-                .nanos_since_epoch()
-                .checked_sub(row_id.nanos_since_epoch())
-            {
-                let log2chunk_sec = log2chunk_nanos as f32 / 1e9;
-                log2chunk.add(now, log2chunk_sec);
+            // First step: log() call to chunk creation (batcher latency):
+            if let Some(log2chunk_nanos) = chunk_creation_nanos.checked_sub(row_creation_nanos) {
+                log2chunk.add(now, log2chunk_nanos as f32 / 1e9);
             }
+        }
 
-            let TimestampMetadata {
-                last_encoded_at,
-                last_decoded_at,
-            } = timestamps;
+        if let Some(last_encoded_at_nanos) = last_encoded_at_nanos {
+            chunk2encode.add(
+                now,
+                (last_encoded_at_nanos - chunk_creation_nanos) as f32 / 1e9,
+            );
 
-            let last_encoded_at_nanos = last_encoded_at.and_then(system_time_to_nanos);
-            let last_decoded_at_nanos = last_decoded_at.and_then(system_time_to_nanos);
-
-            if let Some(last_encoded_at_nanos) = last_encoded_at_nanos {
-                chunk2encode.add(
+            if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
+                transmission.add(
                     now,
-                    (last_encoded_at_nanos as i64 - row_id.nanos_since_epoch() as i64) as f32 / 1e9,
+                    (last_decoded_at_nanos - last_encoded_at_nanos) as f32 / 1e9,
                 );
-
-                if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
-                    transmission.add(
-                        now,
-                        (last_decoded_at_nanos as i64 - last_encoded_at_nanos as i64) as f32 / 1e9,
-                    );
-                }
             }
+        }
+
+        if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
+            decode2ingest.add(now, (now_nanos - last_decoded_at_nanos) as f32 / 1e9);
         }
     }
 
@@ -147,6 +154,7 @@ impl LatencyStats {
             log2chunk,
             chunk2encode,
             transmission,
+            decode2ingest,
         } = self;
 
         if let Some(nanos_since_epoch) = nanos_since_epoch() {
@@ -156,6 +164,7 @@ impl LatencyStats {
             log2chunk.flush(now);
             chunk2encode.flush(now);
             transmission.flush(now);
+            decode2ingest.flush(now);
         }
 
         Some(LatencySnapshot {
@@ -163,23 +172,24 @@ impl LatencyStats {
             log2chunk: log2chunk.average()?,
             chunk2encode: chunk2encode.average(),
             transmission: transmission.average(),
+            decode2ingest: decode2ingest.average(),
         })
     }
 }
 
-fn nanos_since_epoch() -> Option<u64> {
+fn nanos_since_epoch() -> Option<i64> {
     if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-        Some(duration_since_epoch.as_nanos() as u64)
+        Some(duration_since_epoch.as_nanos() as i64)
     } else {
         None
     }
 }
 
-fn system_time_to_nanos(system_time: web_time::SystemTime) -> Option<u64> {
+fn system_time_to_nanos(system_time: web_time::SystemTime) -> Option<i64> {
     system_time
         .duration_since(web_time::SystemTime::UNIX_EPOCH)
         .ok()
-        .map(|d| d.as_nanos() as u64)
+        .map(|d| d.as_nanos() as i64)
 }
 
 /// The latest (smoothed) reading of the latency of the ingestion pipeline.
@@ -200,4 +210,7 @@ pub struct LatencySnapshot {
     /// Time between encoding to IPC and decoding again,
     /// e.g. the time it takes to send the data over the network.
     pub transmission: Option<f32>,
+
+    /// Time from the incoming IPC data being decoded to it being ingested into the store.
+    pub decode2ingest: Option<f32>,
 }

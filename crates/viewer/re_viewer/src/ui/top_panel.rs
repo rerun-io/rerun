@@ -471,6 +471,7 @@ fn latency_snapshot_ui(
         log2chunk,
         chunk2encode,
         transmission,
+        decode2ingest,
     } = latency;
 
     if e2e > 60.0 {
@@ -490,23 +491,30 @@ fn latency_snapshot_ui(
             .num_columns(2)
             .striped(false)
             .show(ui, |ui| {
-                ui.label("log() to ingest (end-to-end)")
+                ui.strong("log -> ingest (total end-to-end)")
                     .on_hover_text(e2e_hover_text);
                 ui.monospace(latency_text(e2e));
                 ui.end_row();
 
-                ui.label("log() to chunk (batcher)");
+                ui.end_row();
+
+                ui.label("log -> chunk");
                 ui.monospace(latency_text(log2chunk));
                 ui.end_row();
 
                 if let Some(chunk2encode) = chunk2encode {
-                    ui.label("chunk to encode");
+                    ui.label("chunk -> encode");
                     ui.monospace(latency_text(chunk2encode));
                     ui.end_row();
                 }
                 if let Some(transmission) = transmission {
-                    ui.label("transmission (e.g. gRPC)");
+                    ui.label("encode -> decode (transmission)");
                     ui.monospace(latency_text(transmission));
+                    ui.end_row();
+                }
+                if let Some(decode2ingest) = decode2ingest {
+                    ui.label("decode -> ingest");
+                    ui.monospace(latency_text(decode2ingest));
                     ui.end_row();
                 }
             });
