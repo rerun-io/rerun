@@ -28,6 +28,7 @@ mod selectors;
 mod sorbet_batch;
 mod sorbet_columns;
 mod sorbet_schema;
+pub mod timing_metadata;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},

@@ -8,7 +8,18 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
 ) -> Result<(), CodecError> {
-    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
+    re_tracing::profile_function!();
+
+    let mut schema = std::sync::Arc::unwrap_or_clone(batch.schema().clone());
+
+    // Remember when the encoding took place,
+    // for ~accurate latency measurement of e.g. gRPC calls.
+    schema.metadata.insert(
+        re_sorbet::timing_metadata::LAST_ENCODED_AT.to_owned(),
+        re_sorbet::timing_metadata::now_timestamp(),
+    );
+
+    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, &schema)
         .map_err(CodecError::ArrowSerialization)?;
     sw.write(batch).map_err(CodecError::ArrowSerialization)?;
     sw.finish().map_err(CodecError::ArrowSerialization)?;
