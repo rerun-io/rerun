@@ -6,6 +6,7 @@
 
 pub mod entity_db;
 pub mod entity_tree;
+mod ingestion_statistics;
 mod instance_path;
 mod store_bundle;
 mod time_histogram_per_timeline;
