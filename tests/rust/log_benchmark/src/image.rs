@@ -1,12 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
-// About 1gb of image data.
-const IMAGE_DIMENSION: u64 = 16_384;
+const IMAGE_DIMENSION: u64 = 1024;
 const IMAGE_CHANNELS: u64 = 4;
 
 // How many times we log the image.
 // Each time with a single pixel changed.
-const NUM_LOG_CALLS: usize = 4;
+const NUM_LOG_CALLS: usize = 2_000;
 
 fn prepare() -> Vec<u8> {
     re_tracing::profile_function!();
@@ -31,7 +30,7 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
         rerun::RecordingStreamBuilder::new("rerun_example_benchmark_").memory()?;
 
     for i in 0..NUM_LOG_CALLS {
-        raw_image_data[i] += 1;
+        raw_image_data[i] += 1; // Change a single pixel of the image data, just to make sure we transmit something different each time.
 
         rec.log(
             "test_image",
