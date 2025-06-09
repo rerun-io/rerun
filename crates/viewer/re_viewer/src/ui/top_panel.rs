@@ -427,7 +427,10 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
-    if let Some(response) = e2e_latency_ui(ui, store_context) {
+    if let Some(response) = store_context.and_then(|store_context| {
+        let latency = store_context.recording.ingestion_stats().latency_snapshot();
+        latency_snapshot_ui(ui, latency)
+    }) {
         // Show queue latency on hover, as that is part of this.
         // For instance, if the framerate is really bad we have less time to ingest incoming data,
         // leading to an ever-increasing input queue.
@@ -455,13 +458,12 @@ fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreCont
 }
 
 /// Shows the e2e latency.
-fn e2e_latency_ui(
+fn latency_snapshot_ui(
     ui: &mut egui::Ui,
-    store_context: Option<&StoreContext<'_>>,
+    latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
-    let store_context = store_context?;
-    let recording = store_context.recording;
-    let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
+    let re_entity_db::LatencySnapshot { e2e_latency_sec } = latency;
+    let e2e_latency_sec = e2e_latency_sec?;
 
     if e2e_latency_sec > 60.0 {
         return None; // Probably an old recording and not live data.
