@@ -10,8 +10,8 @@ use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
-        archetypes::{PlotLegend, ScalarAxis},
-        components::{Corner2D, LockRangeDuringZoom},
+        archetypes::{PlotLegend, ScalarAxis, TimeAxis},
+        components::{Corner2D, LinkAxis, LockRangeDuringZoom},
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
@@ -216,6 +216,7 @@ impl ViewClass for TimeSeriesView {
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
+            view_property_ui::<TimeAxis>(&ctx, ui, self);
             view_property_ui::<ScalarAxis>(&ctx, ui, self);
         });
 
@@ -373,6 +374,14 @@ impl ViewClass for TimeSeriesView {
             &PlotLegend::descriptor_corner(),
         )?;
 
+        let time_axis =
+            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let link_x_axis = time_axis.component_or_fallback::<LinkAxis>(
+            &view_ctx,
+            self,
+            &TimeAxis::descriptor_link(),
+        )?;
+
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
@@ -493,6 +502,20 @@ impl ViewClass for TimeSeriesView {
                 }
             });
 
+        if state.reset_bounds_next_frame {
+            plot = plot.reset();
+        }
+
+        match link_x_axis {
+            LinkAxis::Independent => {}
+            LinkAxis::LinkToGlobal => {
+                plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+            }
+        }
+
+        // Sharing the same cursor is always nice:
+        plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
+
         if *legend_visible.0 {
             plot = plot.legend(
                 Legend::default()
@@ -528,11 +551,8 @@ impl ViewClass for TimeSeriesView {
 
             plot_double_clicked = plot_ui.response().double_clicked();
 
-            let current_bounds = plot_ui.plot_bounds();
-            plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
-                [current_bounds.min()[0], y_range.start()],
-                [current_bounds.max()[0], y_range.end()],
-            ));
+            // Let the user pick y_range from the blueprint:
+            plot_ui.set_plot_bounds_y(y_range);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -554,7 +574,8 @@ impl ViewClass for TimeSeriesView {
             } else {
                 plot_ui.set_auto_bounds([
                     // X bounds are handled by egui plot - either to auto or manually controlled.
-                    plot_ui.auto_bounds()[0] || state.reset_bounds_next_frame,
+                    state.reset_bounds_next_frame
+                        || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
                     // Y bounds are always handled by the blueprint.
                     false,
                 ]);
