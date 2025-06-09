@@ -8,7 +8,7 @@ const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 #[serde(default)]
 pub struct AppOptions {
     /// Warn if the e2e latency exceeds this value.
-    pub warn_latency: f32,
+    pub warn_e2e_latency: f32,
 
     /// Show milliseconds, RAM usage, etc.
     pub show_metrics: bool,
@@ -67,7 +67,7 @@ pub struct AppOptions {
 impl Default for AppOptions {
     fn default() -> Self {
         Self {
-            warn_latency: 1.0,
+            warn_e2e_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
 

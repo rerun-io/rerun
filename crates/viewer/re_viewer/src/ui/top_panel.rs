@@ -103,7 +103,7 @@ fn top_bar_ui(
             // Should we show the e2e latency?
 
             // High enough to be consering; low enough to be believable (and almost realtime).
-            let is_latency_interesting = app.app_options().warn_latency < latency_snapshot.e2e
+            let is_latency_interesting = app.app_options().warn_e2e_latency < latency_snapshot.e2e
                 && latency_snapshot.e2e < 60.0;
 
             // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
