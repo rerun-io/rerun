@@ -1060,7 +1060,8 @@ fn write_avc_chunk_to_nalu_stream(
     write_bytes(
         nalu_stream,
         &[
-            UnitType::AccessUnitDelimiter.id(), // TODO: used to use idc of 3 here, should we keep it?
+            // TODO(andreas): We use to use an IDC ("priority") of 3 here. But it doesn't _seem_ to make much of a difference either way.
+            UnitType::AccessUnitDelimiter.id(),
             // Two arbitrary bytes? 0000 worked as well, but this is what
             // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
             0xFF,
