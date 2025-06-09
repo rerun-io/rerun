@@ -7182,6 +7182,7 @@ dependencies = [
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "similar-asserts",

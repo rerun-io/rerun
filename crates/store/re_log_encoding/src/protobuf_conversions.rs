@@ -51,12 +51,15 @@ pub fn log_msg_from_proto(
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
+            let sorbet_schema = re_sorbet::ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
-            Ok(re_log_types::LogMsg::ArrowMsg(
-                store_id,
-                chunk.to_arrow_msg()?,
-            ))
+            let arrow_msg = re_log_types::ArrowMsg {
+                chunk_id: sorbet_schema.chunk_id().as_tuid(),
+                batch,
+                on_release: None,
+            };
+
+            Ok(re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg))
         }
 
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
