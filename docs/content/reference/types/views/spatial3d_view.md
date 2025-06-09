@@ -53,6 +53,7 @@ snippet: views/spatial3d
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)

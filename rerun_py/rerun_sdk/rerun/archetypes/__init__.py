@@ -12,6 +12,7 @@ from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
 from .capsules3d import Capsules3D
 from .clear import Clear
+from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
@@ -51,6 +52,7 @@ __all__ = [
     "Boxes3D",
     "Capsules3D",
     "Clear",
+    "Cylinders3D",
     "DepthImage",
     "Ellipsoids3D",
     "EncodedImage",

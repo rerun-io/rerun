@@ -1,6 +1,7 @@
-use crate::v1alpha1::rerun_common_v1alpha1_ext::DatasetHandle;
-use crate::{TypeConversionError, missing_field};
 use re_log_types::EntryId;
+
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{DatasetHandle, PartitionId};
+use crate::{TypeConversionError, missing_field};
 
 // --- EntryDetails ---
 
@@ -69,12 +70,53 @@ impl From<EntryDetails> for crate::catalog::v1alpha1::EntryDetails {
     }
 }
 
+// --- DatasetDetails ---
+
+#[derive(Debug, Clone, Default)]
+pub struct DatasetDetails {
+    pub blueprint_dataset: Option<EntryId>,
+    pub default_blueprint: Option<PartitionId>,
+}
+
+impl DatasetDetails {
+    /// Returns the default blueprint for this dataset.
+    ///
+    /// Both `blueprint_dataset` and `default_blueprint` must be set.
+    pub fn default_bluprint(&self) -> Option<(EntryId, PartitionId)> {
+        self.blueprint_dataset.as_ref().and_then(|blueprint| {
+            self.default_blueprint
+                .as_ref()
+                .map(|default| (blueprint.clone(), default.clone()))
+        })
+    }
+}
+
+impl TryFrom<crate::catalog::v1alpha1::DatasetDetails> for DatasetDetails {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::DatasetDetails) -> Result<Self, Self::Error> {
+        Ok(Self {
+            blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
+            default_blueprint: value.default_blueprint.map(TryInto::try_into).transpose()?,
+        })
+    }
+}
+
+impl From<DatasetDetails> for crate::catalog::v1alpha1::DatasetDetails {
+    fn from(value: DatasetDetails) -> Self {
+        Self {
+            blueprint_dataset: value.blueprint_dataset.map(Into::into),
+            default_blueprint: value.default_blueprint.map(Into::into),
+        }
+    }
+}
+
 // --- DatasetEntry ---
 
 #[derive(Debug, Clone)]
 pub struct DatasetEntry {
     pub details: EntryDetails,
-    pub blueprint_dataset: Option<EntryId>,
+    pub dataset_details: DatasetDetails,
     pub handle: DatasetHandle,
 }
 
@@ -90,7 +132,13 @@ impl TryFrom<crate::catalog::v1alpha1::DatasetEntry> for DatasetEntry {
                     "details"
                 ))?
                 .try_into()?,
-            blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
+            dataset_details: value
+                .dataset_details
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::DatasetDetails,
+                    "dataset_details"
+                ))?
+                .try_into()?,
             handle: value
                 .dataset_handle
                 .ok_or(missing_field!(
@@ -106,7 +154,7 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
     fn from(value: DatasetEntry) -> Self {
         Self {
             details: Some(value.details.into()),
-            blueprint_dataset: value.blueprint_dataset.map(Into::into),
+            dataset_details: Some(value.dataset_details.into()),
             dataset_handle: Some(value.handle.into()),
         }
     }
@@ -204,6 +252,81 @@ impl TryFrom<crate::catalog::v1alpha1::ReadDatasetEntryResponse> for ReadDataset
                 .dataset
                 .ok_or(missing_field!(
                     crate::catalog::v1alpha1::ReadDatasetEntryResponse,
+                    "dataset"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+// --- UpdateDatasetEntryRequest ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateDatasetEntryRequest {
+    pub id: EntryId,
+    pub dataset_details: DatasetDetails,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::UpdateDatasetEntryRequest> for UpdateDatasetEntryRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::UpdateDatasetEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value
+                .id
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateDatasetEntryRequest,
+                    "id"
+                ))?
+                .try_into()?,
+            dataset_details: value
+                .dataset_details
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateDatasetEntryRequest,
+                    "dataset_details"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<UpdateDatasetEntryRequest> for crate::catalog::v1alpha1::UpdateDatasetEntryRequest {
+    fn from(value: UpdateDatasetEntryRequest) -> Self {
+        Self {
+            id: Some(value.id.into()),
+            dataset_details: Some(value.dataset_details.into()),
+        }
+    }
+}
+
+// --- UpdateDatasetEntryResponse ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateDatasetEntryResponse {
+    pub dataset_entry: DatasetEntry,
+}
+
+impl From<UpdateDatasetEntryResponse> for crate::catalog::v1alpha1::UpdateDatasetEntryResponse {
+    fn from(value: UpdateDatasetEntryResponse) -> Self {
+        Self {
+            dataset: Some(value.dataset_entry.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::catalog::v1alpha1::UpdateDatasetEntryResponse> for UpdateDatasetEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::UpdateDatasetEntryResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dataset_entry: value
+                .dataset
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateDatasetEntryResponse,
                     "dataset"
                 ))?
                 .try_into()?,

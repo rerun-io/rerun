@@ -12,6 +12,7 @@
 #include "archetypes/boxes3d.hpp"
 #include "archetypes/capsules3d.hpp"
 #include "archetypes/clear.hpp"
+#include "archetypes/cylinders3d.hpp"
 #include "archetypes/depth_image.hpp"
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_image.hpp"

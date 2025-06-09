@@ -6,7 +6,9 @@ use pyo3::{
     exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use re_protos::manifest_registry::v1alpha1::{
+    RegisterWithDatasetResponse, ScanPartitionTableResponse,
+};
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
@@ -19,6 +21,9 @@ use re_grpc_client::{
     ConnectionRegistryHandle, RedapClient, get_chunks_response_to_chunk_and_partition_id,
 };
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::catalog::v1alpha1::ext::{DatasetDetails, UpdateDatasetEntryRequest};
+use re_protos::common::v1alpha1::ext::{IfMissingBehavior, ScanParameters};
+use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
 use re_protos::{
     catalog::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
@@ -132,6 +137,88 @@ impl ConnectionHandle {
             .dataset
             .ok_or(PyRuntimeError::new_err("No dataset in response"))?
             .try_into()?)
+    }
+
+    pub fn update_dataset(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        dataset_details: DatasetDetails,
+    ) -> PyResult<DatasetEntry> {
+        let response = wait_for_future(py, async {
+            self.client()
+                .await?
+                .update_dataset_entry(tonic::Request::new(
+                    UpdateDatasetEntryRequest {
+                        id: entry_id,
+                        dataset_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        Ok(response
+            .into_inner()
+            .dataset
+            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
+            .try_into()?)
+    }
+
+    pub fn get_partition_ids(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<Vec<String>> {
+        wait_for_future(py, async { self.get_partition_ids_impl(entry_id).await })
+    }
+
+    // TODO(ab): This split right here shows the way forward. The `impl` method should be removed of
+    // anything py03, and moved to a newtype over `RedapClient` that is provided by the connection
+    // registry. The wrapper in the present file should only convert types to pyo3 and wrap with
+    // `wait_for_future`.
+    async fn get_partition_ids_impl(&self, entry_id: EntryId) -> PyResult<Vec<String>> {
+        let mut stream = self
+            .client()
+            .await?
+            .scan_partition_table(tonic::Request::new(
+                ScanPartitionTableRequest {
+                    dataset_id: entry_id,
+                    scan_parameters: Some(ScanParameters {
+                        columns: vec![ScanPartitionTableResponse::PARTITION_ID.to_owned()],
+                        on_missing_columns: IfMissingBehavior::Error,
+                        ..Default::default()
+                    }),
+                }
+                .into(),
+            ))
+            .await
+            .map_err(to_py_err)?
+            .into_inner();
+
+        let mut partition_ids = Vec::new();
+
+        while let Some(resp) = stream.next().await {
+            let record_batch = resp
+                .map_err(to_py_err)?
+                .data()
+                .map_err(to_py_err)?
+                .decode()
+                .map_err(to_py_err)?;
+
+            let partition_id_col = record_batch
+                .column_by_name(ScanPartitionTableResponse::PARTITION_ID)
+                .ok_or_else(|| PyValueError::new_err("Missing partition_id column in response"))?;
+
+            let partition_id_array = partition_id_col
+                .try_downcast_array_ref::<arrow::array::StringArray>()
+                .map_err(to_py_err)?;
+
+            partition_ids.extend(
+                partition_id_array
+                    .iter()
+                    .filter_map(|opt| opt.map(|s| s.to_owned())),
+            );
+        }
+
+        Ok(partition_ids)
     }
 
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {

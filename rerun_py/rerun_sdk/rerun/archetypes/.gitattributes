@@ -12,6 +12,7 @@ boxes2d.py linguist-generated=true
 boxes3d.py linguist-generated=true
 capsules3d.py linguist-generated=true
 clear.py linguist-generated=true
+cylinders3d.py linguist-generated=true
 depth_image.py linguist-generated=true
 ellipsoids3d.py linguist-generated=true
 encoded_image.py linguist-generated=true

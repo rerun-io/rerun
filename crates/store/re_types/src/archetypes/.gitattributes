@@ -10,6 +10,7 @@ bar_chart.rs linguist-generated=true
 boxes2d.rs linguist-generated=true
 boxes3d.rs linguist-generated=true
 capsules3d.rs linguist-generated=true
+cylinders3d.rs linguist-generated=true
 depth_image.rs linguist-generated=true
 ellipsoids3d.rs linguist-generated=true
 encoded_image.rs linguist-generated=true
