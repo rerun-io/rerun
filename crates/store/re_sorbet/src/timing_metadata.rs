@@ -2,6 +2,8 @@
 //!
 //! This is used for latency measurements.
 
+use crate::ArrowBatchMetadata;
+
 /// When was this batch last encoded into IPC bytes?
 /// Usually this is when the batch was last sent over gRPC.
 pub const LAST_ENCODED_AT: &str = "sorbet.encoded_at";
@@ -46,4 +48,55 @@ fn test_timestamp_encoding() {
     assert_eq!(encoded.len(), 20); // e.g. "1700000000.012345678"
     let parsed = parse_timestamp(&encoded).unwrap();
     assert_eq!(parsed, now);
+}
+
+/// Timestamps about this batch; used for latency measurements.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TimestampMetadata {
+    /// When was this batch last encoded into IPC bytes?
+    pub last_encoded_at: Option<web_time::SystemTime>,
+
+    /// When was this batch last decoded from IPC bytes?
+    pub last_decoded_at: Option<web_time::SystemTime>,
+}
+
+impl TimestampMetadata {
+    pub fn parse_record_batch_metadata(metadata: &ArrowBatchMetadata) -> Self {
+        let last_encoded_at = metadata
+            .get(LAST_ENCODED_AT)
+            .and_then(|s| parse_timestamp(s.as_str()));
+        let last_decoded_at = metadata
+            .get(LAST_DECODED_AT)
+            .and_then(|s| parse_timestamp(s.as_str()));
+
+        Self {
+            last_encoded_at,
+            last_decoded_at,
+        }
+    }
+
+    pub fn to_metadata(&self) -> impl Iterator<Item = (String, String)> {
+        let Self {
+            last_encoded_at,
+            last_decoded_at,
+        } = self;
+
+        let mut metadata = Vec::new();
+
+        if let Some(last_encoded_at) = last_encoded_at {
+            metadata.push((
+                LAST_ENCODED_AT.to_owned(),
+                encode_timestamp(*last_encoded_at),
+            ));
+        }
+
+        if let Some(last_decoded_at) = last_decoded_at {
+            metadata.push((
+                LAST_DECODED_AT.to_owned(),
+                encode_timestamp(*last_decoded_at),
+            ));
+        }
+
+        metadata.into_iter()
+    }
 }
