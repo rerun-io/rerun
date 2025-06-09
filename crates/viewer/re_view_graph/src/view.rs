@@ -10,10 +10,7 @@ use re_types::{
     },
 };
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
-use re_view::{
-    controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
-    view_property_ui,
-};
+use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
     ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
@@ -48,6 +45,8 @@ impl ViewClass for GraphView {
     }
 
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
+
         Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
             .control(
@@ -56,7 +55,7 @@ impl ViewClass for GraphView {
             )
             .control(
                 "Zoom",
-                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
             .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
     }
