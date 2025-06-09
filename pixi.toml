@@ -363,10 +363,13 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
 
-# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
-# TODO(ab): add a command that produce a complete wheel, including the viewer.
-py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
+# Build an installable wheel.
+py-build-wheels = { cmd = "RERUN_ALLOW_MISSING_BIN=1 maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+  "rerun-build-release",
+] }
 
+# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
+py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
 [feature.python-tasks.tasks]
 
