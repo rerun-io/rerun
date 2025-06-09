@@ -37,10 +37,18 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
         .map_err(CodecError::ArrowDeserialization)?;
 
-    stream
+    let record_batch = stream
         .next()
         .ok_or(CodecError::MissingRecordBatch)?
-        .map_err(CodecError::ArrowDeserialization)
+        .map_err(CodecError::ArrowDeserialization)?;
+
+    let record_batch = re_arrow_util::insert_metadata(
+        record_batch,
+        re_sorbet::timing_metadata::LAST_DECODED_AT.to_owned(),
+        re_sorbet::timing_metadata::now_timestamp(),
+    );
+
+    Ok(record_batch)
 }
 
 #[cfg(feature = "encoder")]

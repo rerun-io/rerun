@@ -7176,6 +7176,7 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_chunk",
  "re_log",
@@ -7549,6 +7550,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
+ "web-time",
 ]
 
 [[package]]

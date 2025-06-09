@@ -2,9 +2,13 @@
 //!
 //! This is used for latency measurements.
 
-/// When was this batch last encoded into bytes?
+/// When was this batch last encoded into IPC bytes?
 /// Usually this is when the batch was last sent over gRPC.
 pub const LAST_ENCODED_AT: &str = "sorbet.encoded_at";
+
+/// When was this batch last decoded from IPC bytes?
+/// Usually this is when the batch was last received over gRPC.
+pub const LAST_DECODED_AT: &str = "sorbet.decoded_at";
 
 /// We encode time as seconds since the Unix epoch,
 /// with nanosecond precision, e.g. `1700000000.012345678`.

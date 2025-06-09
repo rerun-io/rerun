@@ -48,6 +48,7 @@ stream_from_http = [
 [dependencies]
 
 # Rerun:
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_types.workspace = true
