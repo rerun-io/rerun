@@ -1,13 +1,6 @@
+//! For zooming and panning we use the modifiers in the default [`egui::InputOptions`].
+
 use egui::{Key, KeyboardShortcut, Modifiers, PointerButton, os::OperatingSystem};
-
-/// Modifier to press for scroll to zoom.
-pub const ZOOM_SCROLL_MODIFIER: Modifiers = Modifiers::COMMAND;
-
-/// Modifier to press for scroll to change aspect ratio.
-pub const ASPECT_SCROLL_MODIFIER: Modifiers = Modifiers::ALT.plus(Modifiers::COMMAND);
-
-/// Modifier to press for scroll to pan horizontally.
-pub const HORIZONTAL_SCROLL_MODIFIER: Modifiers = Modifiers::SHIFT;
 
 /// Which mouse button to drag for panning a 2D view.
 pub const DRAG_PAN2D_BUTTON: PointerButton = PointerButton::Primary;
