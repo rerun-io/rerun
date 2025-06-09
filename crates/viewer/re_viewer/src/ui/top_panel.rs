@@ -428,7 +428,10 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 
 fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
     if let Some(response) = store_context.and_then(|store_context| {
-        let latency = store_context.recording.ingestion_stats().latency_snapshot();
+        let latency = store_context
+            .recording
+            .ingestion_stats()
+            .latency_snapshot()?;
         latency_snapshot_ui(ui, latency)
     }) {
         // Show queue latency on hover, as that is part of this.
@@ -462,22 +465,38 @@ fn latency_snapshot_ui(
     ui: &mut egui::Ui,
     latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
-    let re_entity_db::LatencySnapshot { e2e_latency_sec } = latency;
-    let e2e_latency_sec = e2e_latency_sec?;
+    // Note: all times are in seconds.
+    let re_entity_db::LatencySnapshot { e2e, log2chunk } = latency;
 
-    if e2e_latency_sec > 60.0 {
+    if e2e > 60.0 {
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("latency: {}", latency_text(e2e_latency_sec));
+    let text = format!("latency: {}", latency_text(e2e));
     let response = ui.weak(text);
 
-    let hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
-                      This includes time for encoding, network latency, and decoding.\n\
-                      It is also affected by the framerate of the viewer.\n\
-                      This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
+    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
+    This includes time for encoding, network latency, and decoding.\n\
+    It is also affected by the framerate of the viewer.\n\
+    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
-    Some(response.on_hover_text(hover_text))
+    let response = response.on_hover_ui(|ui| {
+        egui::Grid::new("latency_snapshot")
+            .num_columns(2)
+            .striped(false)
+            .show(ui, |ui| {
+                ui.label("log() to ingest (end-to-end)")
+                    .on_hover_text(e2e_hover_text);
+                ui.monospace(latency_text(e2e));
+                ui.end_row();
+
+                ui.label("log() to chunk (batcher)");
+                ui.monospace(latency_text(log2chunk));
+                ui.end_row();
+            });
+    });
+
+    Some(response)
 }
 
 /// Shows the latency in the input queue.
@@ -524,7 +543,9 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn latency_text(latency_sec: f32) -> String {
-    if latency_sec < 1.0 {
+    if latency_sec < 0.001 {
+        format!("{:.1} µs", 1e6 * latency_sec)
+    } else if latency_sec < 1.0 {
         format!("{:.0} ms", 1e3 * latency_sec)
     } else {
         format!("{latency_sec:.1} s")
