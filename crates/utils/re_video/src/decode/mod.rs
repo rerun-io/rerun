@@ -94,7 +94,6 @@ pub use ffmpeg_h264::{
 mod webcodecs;
 
 mod gop_detection;
-mod nalu;
 
 pub use gop_detection::{StartOfGopDetectionFailure, is_sample_start_of_gop};
 

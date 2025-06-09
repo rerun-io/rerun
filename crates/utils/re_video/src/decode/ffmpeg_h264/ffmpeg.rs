@@ -25,7 +25,6 @@ use crate::{
         ffmpeg_h264::{
             FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
         },
-        nalu::NAL_START_CODE,
     },
 };
 
@@ -95,6 +94,14 @@ impl From<Error> for crate::decode::Error {
         Self::Ffmpeg(std::sync::Arc::new(err))
     }
 }
+
+/// In Annex-B before every NAL unit is a NAL start code.
+///
+/// Can also be 3 bytes of 0x00.
+///
+/// This is used in Annex-B byte stream formats such as h264 files.
+/// Packet transform systems (RTP) may omit these.
+const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
@@ -454,9 +461,9 @@ fn write_ffmpeg_input(
                 // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
                 // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
                 let end_nals: Vec<u8> = [
-                    NAL_START_CODE,
+                    ANNEXB_NAL_START_CODE,
                     &[UnitType::EndOfSeq.id()],
-                    NAL_START_CODE,
+                    ANNEXB_NAL_START_CODE,
                     &[UnitType::EndOfStream.id()],
                 ]
                 .concat();
@@ -940,11 +947,11 @@ fn write_avc_chunk_to_nalu_stream(
     // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
     if chunk.is_sync && !state.previous_frame_was_idr {
         for sps in &avcc.sequence_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &sps.bytes)?;
         }
         for pps in &avcc.picture_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &pps.bytes)?;
         }
         state.previous_frame_was_idr = true;
@@ -1010,7 +1017,7 @@ fn write_avc_chunk_to_nalu_stream(
 
         let data = &chunk.data[data_start..data_end];
 
-        write_bytes(nalu_stream, NAL_START_CODE)?;
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
 
         // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
         // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
@@ -1023,7 +1030,7 @@ fn write_avc_chunk_to_nalu_stream(
 
     // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
     // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    write_bytes(nalu_stream, NAL_START_CODE)?;
+    write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
     write_bytes(
         nalu_stream,
         &[
