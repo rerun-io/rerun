@@ -5,7 +5,7 @@ const IMAGE_CHANNELS: u64 = 4;
 
 // How many times we log the image.
 // Each time with a single pixel changed.
-const NUM_LOG_CALLS: usize = 2_000;
+const NUM_LOG_CALLS: usize = 20_000;
 
 fn prepare() -> Vec<u8> {
     re_tracing::profile_function!();
