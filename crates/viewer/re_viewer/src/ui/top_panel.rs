@@ -89,12 +89,34 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
-    if app.app_options().show_metrics && !app.is_screenshotting() {
-        ui.separator();
-        frame_time_label_ui(ui, app);
-        memory_use_label_ui(ui, gpu_resource_stats);
+    if !app.is_screenshotting() {
+        if app.app_options().show_metrics {
+            ui.separator();
+            frame_time_label_ui(ui, app);
+            memory_use_label_ui(ui, gpu_resource_stats);
+        }
 
-        latency_ui(ui, app, store_context);
+        let latency_snapshot = store_context
+            .and_then(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
+
+        if let Some(latency_snapshot) = latency_snapshot {
+            // Should we show the e2e latency?
+
+            // High enough to be consering; low enough to be believable (and almost realtime).
+            let is_latency_interesting = app.app_options().warn_latency < latency_snapshot.e2e
+                && latency_snapshot.e2e < 60.0;
+
+            // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
+
+            if is_latency_interesting {
+                app.latest_latency_interest = web_time::Instant::now();
+            }
+
+            if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                ui.separator();
+                latency_snapshot_ui(ui, latency_snapshot);
+            }
+        }
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -426,40 +448,6 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
     }
 }
 
-fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
-    if let Some(response) = store_context.and_then(|store_context| {
-        let latency = store_context
-            .recording
-            .ingestion_stats()
-            .latency_snapshot()?;
-        latency_snapshot_ui(ui, latency)
-    }) {
-        // Show queue latency on hover, as that is part of this.
-        // For instance, if the framerate is really bad we have less time to ingest incoming data,
-        // leading to an ever-increasing input queue.
-        let rx = app.msg_receive_set();
-        let queue_len = rx.queue_len();
-        let latency_sec = rx.latency_nanos() as f32 / 1e9;
-        // empty queue == unreliable latency
-        if 0 < queue_len {
-            response.on_hover_ui(|ui| {
-                ui.label(format!(
-                    "Queue latency: {}, length: {}",
-                    latency_text(latency_sec),
-                    format_uint(queue_len),
-                ));
-
-                ui.label(
-                    "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
-                         We call this the queue latency.");
-            });
-        }
-    } else {
-        // If we don't know the e2e latency we can still show the queue latency.
-        input_queue_latency_ui(ui, app);
-    }
-}
-
 /// Shows the e2e latency.
 fn latency_snapshot_ui(
     ui: &mut egui::Ui,
@@ -478,7 +466,7 @@ fn latency_snapshot_ui(
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("latency: {}", latency_text(e2e));
+    let text = format!("Latency: {}", latency_text(e2e));
     let response = ui.weak(text);
 
     let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
@@ -487,6 +475,8 @@ fn latency_snapshot_ui(
     This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
     let response = response.on_hover_ui(|ui| {
+        ui.ctx().request_repaint(); // The user is interested in the latency, so keep it updated.
+
         egui::Grid::new("latency_snapshot")
             .num_columns(2)
             .striped(false)
@@ -523,52 +513,9 @@ fn latency_snapshot_ui(
     Some(response)
 }
 
-/// Shows the latency in the input queue.
-fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
-    let rx = app.msg_receive_set();
-
-    if rx.is_empty() {
-        return;
-    }
-
-    let is_latency_interesting = rx.sources().iter().any(|s| s.is_network());
-
-    let queue_len = rx.queue_len();
-
-    // empty queue == unreliable latency
-    let latency_sec = rx.latency_nanos() as f32 / 1e9;
-    if queue_len > 0 && (!is_latency_interesting || app.app_options().warn_latency < latency_sec) {
-        // we use this to avoid flicker
-        app.latest_queue_interest = web_time::Instant::now();
-    }
-
-    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-        ui.separator();
-        if is_latency_interesting {
-            let text = format!(
-                "Queue latency: {}, length: {}",
-                latency_text(latency_sec),
-                format_uint(queue_len),
-            );
-            let hover_text = "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
-                    This latency does NOT include network latency.";
-
-            if latency_sec < app.app_options().warn_latency {
-                ui.weak(text).on_hover_text(hover_text);
-            } else {
-                ui.label(ui.ctx().warning_text(text))
-                    .on_hover_text(hover_text);
-            }
-        } else {
-            ui.weak(format!("Queue: {}", format_uint(queue_len)))
-                .on_hover_text("Number of messages in the inbound queue");
-        }
-    }
-}
-
 fn latency_text(latency_sec: f32) -> String {
     if latency_sec < 0.001 {
-        format!("{:.1} µs", 1e6 * latency_sec)
+        format!("{:.0} µs", 1e6 * latency_sec)
     } else if latency_sec < 1.0 {
         format!("{:.0} ms", 1e3 * latency_sec)
     } else {

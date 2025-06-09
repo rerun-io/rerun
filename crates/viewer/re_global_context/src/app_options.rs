@@ -67,7 +67,7 @@ pub struct AppOptions {
 impl Default for AppOptions {
     fn default() -> Self {
         Self {
-            warn_latency: 0.200,
+            warn_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
 
