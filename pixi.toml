@@ -38,6 +38,20 @@ libc = "2.28"
 
 
 ################################################################################
+# GLOBAL ACTIVATION
+################################################################################
+
+[activation]
+
+[target.unix.activation.env]
+# The executable extension for binaries on the current platform.
+EXECUTABLE_EXTENSION = ""
+
+[target.win-64.activation.env]
+# The executable extension for binaries on the current platform.
+EXECUTABLE_EXTENSION = ".exe"
+
+################################################################################
 # ENVIRONMENTS
 ################################################################################
 
@@ -363,9 +377,9 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
 
-# Build an installable wheel. This needs `RERUN_ALLOW_MISSING_BIN=1` because the `rerun` binary is not part of the
-# python package, and maturin will otherwise fail to build the wheel.
-py-build-wheel = { cmd = "cp target/release/rerun rerun_py/rerun_sdk/rerun_cli/rerun && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+# Build an installable wheel.
+# The wheel will contain the rerun executable including the web viewer.
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/rerun$EXECUTABLE_EXTENSION && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
