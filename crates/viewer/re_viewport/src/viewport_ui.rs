@@ -7,7 +7,8 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, Icon, UiExt as _, design_tokens_of_visuals};
+use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
+use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -530,17 +531,44 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // Show minimize-button:
             if ui
                 .small_icon_button(&re_ui::icons::MINIMIZE)
-                .on_hover_text("Restore - show all spaces")
+                .on_hover_ui(|ui| {
+                    Help::new_without_title()
+                        .control(
+                            "Restore - show all spaces",
+                            IconText::from_keyboard_shortcut(ui.ctx().os(), TOGGLE_MAXIMIZE_VIEW),
+                        )
+                        .ui(ui);
+                })
                 .clicked()
+                || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
             {
                 *self.maximized = None;
             }
         } else if num_views > 1 {
             // Show maximize-button:
+            let is_view_the_only_selected =
+                self.ctx.selection().is_view_the_only_selected(&view_id);
+            let toggle = is_view_the_only_selected
+                && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
             if ui
                 .small_icon_button(&re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize view")
+                .on_hover_ui(|ui| {
+                    if is_view_the_only_selected {
+                        Help::new_without_title()
+                            .control(
+                                "Maximize view",
+                                IconText::from_keyboard_shortcut(
+                                    ui.ctx().os(),
+                                    TOGGLE_MAXIMIZE_VIEW,
+                                ),
+                            )
+                            .ui(ui);
+                    } else {
+                        ui.label("Maximize view");
+                    }
+                })
                 .clicked()
+                || toggle
             {
                 *self.maximized = Some(view_id);
                 // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
