@@ -15,16 +15,14 @@ use ffmpeg_sidecar::{
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
-use h264_reader::nal::UnitType;
+use h264_reader::nal::{UnitType, sps};
 use parking_lot::Mutex;
 
 use crate::{
     PixelFormat, Time,
     decode::{
-        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
-        ffmpeg_h264::{
-            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
-        },
+        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback, YuvPixelLayout,
+        ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
 };
 
@@ -193,6 +191,37 @@ struct FFmpegProcessAndListener {
     on_output: Arc<Mutex<Option<Arc<OutputCallback>>>>,
 }
 
+fn try_get_sps_from_avcc(avcc: &re_mp4::Avc1Box, debug_name: &str) -> Option<sps::SeqParameterSet> {
+    match h264_reader::avcc::AvcDecoderConfigurationRecord::try_from(avcc.avcc.raw.as_slice())
+        .and_then(|avcc_record| avcc_record.create_context())
+    {
+        Ok(avcc) => {
+            re_log::trace!(
+                "Successfully parsed Avc decoder configuration record for {debug_name}."
+            );
+            if let Some(sps) = avcc.sps().next() {
+                re_log::trace!(
+                    "Successfully parsed Avc decoder configuration record for {debug_name}."
+                );
+
+                if avcc.sps().next().is_some() {
+                    re_log::warn_once!("More than one SPS found in AVCC box for {debug_name}.");
+                }
+                Some(sps.clone())
+            } else {
+                re_log::warn_once!("No SPS found in AVCC box for {debug_name}.");
+                None
+            }
+        }
+        Err(avcc_parse_err) => {
+            re_log::warn_once!(
+                "Failed to parse Avc decoder configuration record for {debug_name}: {avcc_parse_err:?}"
+            );
+            None
+        }
+    }
+}
+
 impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
@@ -202,46 +231,43 @@ impl FFmpegProcessAndListener {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        let (pixel_format, ffmpeg_pix_fmt) = if let Some(avcc) = avcc.as_ref() {
-            let sps_result = H264Sps::parse_from_avcc(avcc);
-            if let Ok(sps) = &sps_result {
-                re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
+        // TODO(andreas): should get SPS also without AVCC from ongoing stream.
+        let sps = avcc
+            .as_ref()
+            .and_then(|avcc| try_get_sps_from_avcc(avcc, debug_name));
+        let yuv_layout = sps.and_then(|sps| match sps.chroma_info.chroma_format {
+            sps::ChromaFormat::Monochrome => Some(YuvPixelLayout::Y400),
+            sps::ChromaFormat::YUV420 => Some(YuvPixelLayout::Y_U_V420),
+            sps::ChromaFormat::YUV422 => Some(YuvPixelLayout::Y_U_V422),
+            sps::ChromaFormat::YUV444 => Some(YuvPixelLayout::Y_U_V444),
+            sps::ChromaFormat::Invalid(v) => {
+                re_log::warn_once!("Invalid chroma format in SPS for {debug_name}, value: {v}");
+                None
             }
+        });
 
-            match sps_result.and_then(|sps| sps.pixel_layout()) {
-                Ok(layout) => {
-                    let pixel_format = PixelFormat::Yuv {
-                        layout,
-                        // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
-                        //
-                        // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
-                        // Note that yuvj4xy family of formats fulfill the same function. They according to this post
-                        // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
-                        // they are still not quite passed through everywhere. So we'll just use both.
-                        range: crate::decode::YuvRange::Full,
-                        // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
-                        coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
-                    };
-                    let ffmpeg_pix_fmt = match layout {
-                        crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
-                        crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
-                        crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
-                        crate::decode::YuvPixelLayout::Y400 => "gray",
-                    };
+        let (pixel_format, ffmpeg_pix_fmt) = if let Some(layout) = yuv_layout {
+            let pixel_format = PixelFormat::Yuv {
+                layout,
+                // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                //
+                // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                // Note that yuvj4xy family of formats fulfill the same function. They according to this post
+                // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                // they are still not quite passed through everywhere. So we'll just use both.
+                range: crate::decode::YuvRange::Full,
+                // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+            };
+            let ffmpeg_pix_fmt = match layout {
+                crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
+                crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
+                crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
+                crate::decode::YuvPixelLayout::Y400 => "gray",
+            };
 
-                    (pixel_format, ffmpeg_pix_fmt)
-                }
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
-                    );
-
-                    // By default play it safe: let ffmpeg convert to rgba.
-                    (PixelFormat::Rgba8Unorm, "rgba")
-                }
-            }
+            (pixel_format, ffmpeg_pix_fmt)
         } else {
-            // TODO(andreas): If we previously encountered an SPS as part of the stream, we should use it here.
             (PixelFormat::Rgba8Unorm, "rgba")
         };
 
