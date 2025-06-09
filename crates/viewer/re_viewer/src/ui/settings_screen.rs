@@ -190,7 +190,7 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     // This affects only the web target, so we don't need to show it on native.
     #[cfg(target_arch = "wasm32")]
     {
-        use re_video::decode::DecodeHardwareAcceleration;
+        use re_video::DecodeHardwareAcceleration;
 
         let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
         ui.horizontal(|ui| {
@@ -222,7 +222,7 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
-    use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
+    use re_video::{FFmpegVersion, FFmpegVersionParseError};
     use std::task::Poll;
 
     let path = app_options

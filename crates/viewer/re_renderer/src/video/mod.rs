@@ -10,7 +10,7 @@ use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{StableIndexDeque, VideoDataDescription, decode::DecodeSettings};
+use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -31,7 +31,7 @@ pub enum VideoPlayerError {
 
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
-    Decoding(#[from] re_video::decode::Error),
+    Decoding(#[from] re_video::DecodeError),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
@@ -63,7 +63,7 @@ pub struct VideoFrameTexture {
     pub source_pixel_format: SourceImageDataFormat,
 
     /// Meta information about the decoded frame.
-    pub frame_info: Option<re_video::decode::FrameInfo>,
+    pub frame_info: Option<re_video::FrameInfo>,
 }
 
 /// Identifier for an independent video decoding stream.
@@ -130,7 +130,10 @@ impl Video {
     /// Natural dimensions of the video if known.
     #[inline]
     pub fn dimensions(&self) -> Option<[u16; 2]> {
-        self.video_description.coded_dimensions
+        self.video_description
+            .encoding_details
+            .as_ref()
+            .map(|details| details.coded_dimensions)
     }
 
     /// Returns a texture with the latest frame at the given time since video start.

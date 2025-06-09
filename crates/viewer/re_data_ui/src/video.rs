@@ -9,7 +9,7 @@ use re_ui::{
     UiExt as _,
     list_item::{self, PropertyContent},
 };
-use re_video::{VideoDataDescription, decode::FrameInfo};
+use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::UiLayout;
 
 pub fn video_result_ui(
@@ -52,38 +52,39 @@ pub fn video_result_ui(
 fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoDataDescription) {
     re_tracing::profile_function!();
 
-    if let Some([w, h]) = &video_descr.coded_dimensions {
+    if let Some(encoding_details) = &video_descr.encoding_details {
+        let [w, h] = &encoding_details.coded_dimensions;
         ui.list_item_flat_noninteractive(
             PropertyContent::new("Dimensions").value_text(format!("{w}x{h}")),
         );
-    }
-    if let Some(bit_depth) = video_descr
-        .stsd
-        .as_ref()
-        .and_then(|c| c.contents.bit_depth())
-    {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {
-            ui.label(bit_depth.to_string());
-            if 8 < bit_depth {
-                // TODO(#7594): HDR videos
-                ui.warning_label("HDR").on_hover_ui(|ui| {
-                    ui.label("High-dynamic-range videos not yet supported by Rerun");
-                    ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
-                });
+
+        if let Some(bit_depth) = encoding_details.bit_depth {
+            ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(
+                |ui, _| {
+                    ui.label(bit_depth.to_string());
+                    if 8 < bit_depth {
+                        // TODO(#7594): HDR videos
+                        ui.warning_label("HDR").on_hover_ui(|ui| {
+                            ui.label("High-dynamic-range videos not yet supported by Rerun");
+                            ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
+                        });
+                    }
+                    if encoding_details.is_monochrome == Some(true) {
+                        ui.label("(monochrome)");
+                    }
+                },
+            ));
+        }
+        if let Some(subsampling_mode) = encoding_details.chroma_subsampling {
+            // Don't show subsampling mode for monochrome, doesn't make sense usually.
+            if encoding_details.is_monochrome != Some(true) {
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
+                );
             }
-            if video_descr.is_monochrome() == Some(true) {
-                ui.label("(monochrome)");
-            }
-        }));
-    }
-    if let Some(subsampling_mode) = video_descr.subsampling_mode() {
-        // Don't show subsampling mode for monochrome, doesn't make sense usually.
-        if video_descr.is_monochrome() != Some(true) {
-            ui.list_item_flat_noninteractive(
-                PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
-            );
         }
     }
+
     if let Some(duration) = video_descr.duration() {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("Duration")
@@ -364,15 +365,15 @@ pub fn show_decoded_frame_info(
             ui.error_label(err.to_string());
 
             #[cfg(not(target_arch = "wasm32"))]
-            if let re_renderer::video::VideoPlayerError::Decoding(
-                re_video::decode::Error::Ffmpeg(err),
-            ) = &err
+            if let re_renderer::video::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
+                err,
+            )) = &err
             {
                 match err.as_ref() {
-                    re_video::decode::FFmpegError::UnsupportedFFmpegVersion { .. }
-                    | re_video::decode::FFmpegError::FailedToDetermineFFmpegVersion(_)
-                    | re_video::decode::FFmpegError::FFmpegNotInstalled => {
-                        if let Some(download_url) = re_video::decode::ffmpeg_download_url() {
+                    re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
+                    | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
+                    | re_video::FFmpegError::FFmpegNotInstalled => {
+                        if let Some(download_url) = re_video::ffmpeg_download_url() {
                             ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
                         }
                     }

@@ -4,7 +4,10 @@ use itertools::Itertools as _;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
-use crate::{StableIndexDeque, Time, Timescale, demux::SamplesStatistics};
+use crate::{
+    StableIndexDeque, Time, Timescale,
+    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
+};
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
@@ -139,8 +142,7 @@ impl VideoDataDescription {
 
         Ok(Self {
             codec,
-            stsd: Some(stsd),
-            coded_dimensions: Some([track.width, track.height]),
+            encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
             duration: Some(duration),
             samples_statistics,
@@ -156,5 +158,101 @@ fn unknown_codec_fourcc(mp4: &re_mp4::Mp4, track: &re_mp4::Track) -> re_mp4::Fou
     match &stsd.contents {
         re_mp4::StsdBoxContent::Unknown(four_cc) => *four_cc,
         _ => Default::default(),
+    }
+}
+
+fn codec_details_from_stds(
+    track: &re_mp4::Track,
+    stsd: re_mp4::StsdBox,
+) -> Result<VideoEncodingDetails, VideoLoadError> {
+    Ok(VideoEncodingDetails {
+        codec_string: stsd
+            .contents
+            .codec_string()
+            .ok_or(VideoLoadError::UnableToDetermineCodecString)?,
+        coded_dimensions: [track.width, track.height],
+        bit_depth: stsd.contents.bit_depth(),
+        is_monochrome: is_monochrome(&stsd),
+        chroma_subsampling: subsampling_mode(&stsd),
+        stsd: Some(stsd),
+    })
+}
+
+fn subsampling_mode(stsd: &re_mp4::StsdBox) -> Option<ChromaSubsamplingModes> {
+    match &stsd.contents {
+        re_mp4::StsdBoxContent::Av01(av01_box) => {
+            // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
+            match (
+                av01_box.av1c.chroma_subsampling_x != 0,
+                av01_box.av1c.chroma_subsampling_y != 0,
+            ) {
+                (true, true) => Some(ChromaSubsamplingModes::Yuv420), // May also be monochrome.
+                (true, false) => Some(ChromaSubsamplingModes::Yuv422),
+                (false, true) => None, // Downsampling in Y but not in X is unheard of!
+                // Either that or monochrome.
+                // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
+                (false, false) => Some(ChromaSubsamplingModes::Yuv444),
+            }
+        }
+
+        re_mp4::StsdBoxContent::Avc1(_) => {
+            // TODO move SPS parsing from ffmpeg to here.
+            None
+        }
+
+        re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+            // TODO(andreas): Parse HVC1/HEV1 SPS
+            None
+        }
+
+        re_mp4::StsdBoxContent::Vp08(vp08_box) => {
+            // Via https://www.ffmpeg.org/doxygen/4.3/vpcc_8c_source.html#l00116
+            // enum VPX_CHROMA_SUBSAMPLING
+            // {
+            //     VPX_SUBSAMPLING_420_VERTICAL = 0,
+            //     VPX_SUBSAMPLING_420_COLLOCATED_WITH_LUMA = 1,
+            //     VPX_SUBSAMPLING_422 = 2,
+            //     VPX_SUBSAMPLING_444 = 3,
+            // };
+            match vp08_box.vpcc.chroma_subsampling {
+                0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
+                2 => Some(ChromaSubsamplingModes::Yuv422),
+                3 => Some(ChromaSubsamplingModes::Yuv444),
+                _ => None, // Unknown mode.
+            }
+        }
+        re_mp4::StsdBoxContent::Vp09(vp09_box) => {
+            // As above!
+            match vp09_box.vpcc.chroma_subsampling {
+                0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
+                2 => Some(ChromaSubsamplingModes::Yuv422),
+                3 => Some(ChromaSubsamplingModes::Yuv444),
+                _ => None, // Unknown mode.
+            }
+        }
+
+        re_mp4::StsdBoxContent::Mp4a(_)
+        | re_mp4::StsdBoxContent::Tx3g(_)
+        | re_mp4::StsdBoxContent::Unknown(_) => None,
+    }
+}
+
+fn is_monochrome(stsd: &re_mp4::StsdBox) -> Option<bool> {
+    match &stsd.contents {
+        re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
+        re_mp4::StsdBoxContent::Avc1(_)
+        | re_mp4::StsdBoxContent::Hvc1(_)
+        | re_mp4::StsdBoxContent::Hev1(_) => {
+            // It should be possible to extract this from the picture parameter set.
+            None
+        }
+        re_mp4::StsdBoxContent::Vp08(_) | re_mp4::StsdBoxContent::Vp09(_) => {
+            // Similar to AVC/HEVC, this information is likely accessible through SPS.
+            None
+        }
+
+        re_mp4::StsdBoxContent::Mp4a(_)
+        | re_mp4::StsdBoxContent::Tx3g(_)
+        | re_mp4::StsdBoxContent::Unknown(_) => None,
     }
 }

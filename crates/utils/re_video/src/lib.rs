@@ -1,20 +1,25 @@
 //! Video decoding library.
 
+mod decode;
+mod demux;
+mod stable_index_deque;
 mod time;
 
-pub mod decode;
-pub mod demux;
-pub mod stable_index_deque;
-
-pub use self::stable_index_deque::StableIndexDeque;
-pub use self::{
-    decode::{Chunk, Frame, PixelFormat, is_sample_start_of_gop},
-    demux::{
-        GopIndex, SampleIndex, SampleMetadata, SamplesStatistics, VideoCodec, VideoDataDescription,
-        VideoLoadError,
-    },
-    time::{Time, Timescale},
+pub use decode::{
+    AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
+    FrameContent, FrameInfo, PixelFormat, Result as DecodeResult, YuvMatrixCoefficients,
+    YuvPixelLayout, YuvRange, is_sample_start_of_gop, new_decoder,
 };
+
+#[cfg(with_ffmpeg)]
+pub use decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
+
+pub use demux::{
+    GopIndex, GroupOfPictures, SampleIndex, SampleMetadata, SamplesStatistics, VideoCodec,
+    VideoDataDescription, VideoEncodingDetails, VideoLoadError,
+};
+pub use stable_index_deque::StableIndexDeque;
+pub use time::{Time, Timescale};
 
 pub use re_mp4::{TrackId, TrackKind};
 

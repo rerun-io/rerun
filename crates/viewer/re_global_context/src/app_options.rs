@@ -1,5 +1,5 @@
 use re_log_types::TimestampFormat;
-use re_video::decode::{DecodeHardwareAcceleration, DecodeSettings};
+use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 

@@ -6,7 +6,7 @@ use crate::Time;
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    Chunk, Error, Frame, FrameContent, FrameInfo, OutputCallback, PixelFormat, Result,
+    Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback, PixelFormat, Result,
     YuvMatrixCoefficients, YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
 };
 
@@ -53,7 +53,7 @@ impl SyncDav1dDecoder {
                 );
             } else {
                 // Better to return an error than to be perceived as being slow
-                return Err(Error::Dav1dWithoutNasm);
+                return Err(DecodeError::Dav1dWithoutNasm);
             }
         }
 
@@ -94,7 +94,7 @@ impl SyncDav1dDecoder {
                     err != dav1d::Error::Again,
                     "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
                 );
-                on_output(Err(Error::Dav1d(err)));
+                on_output(Err(DecodeError::Dav1d(err)));
             }
         };
     }
@@ -119,7 +119,7 @@ impl SyncDav1dDecoder {
                     break;
                 }
                 Err(err) => {
-                    on_output(Err(Error::Dav1d(err)));
+                    on_output(Err(DecodeError::Dav1d(err)));
                 }
             }
         }
@@ -146,7 +146,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
         // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
         2
     } else {
-        return Err(Error::BadBitsPerComponent(bits_per_component));
+        return Err(DecodeError::BadBitsPerComponent(bits_per_component));
     };
 
     let mut data = match picture.pixel_layout() {

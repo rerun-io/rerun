@@ -95,12 +95,12 @@ mod webcodecs;
 
 mod gop_detection;
 
-pub use gop_detection::{StartOfGopDetectionFailure, is_sample_start_of_gop};
+pub use gop_detection::is_sample_start_of_gop;
 
 use crate::Time;
 
 #[derive(thiserror::Error, Debug, Clone)]
-pub enum Error {
+pub enum DecodeError {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
@@ -124,7 +124,7 @@ pub enum Error {
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
-    WebDecoder(#[from] webcodecs::Error),
+    WebDecoder(#[from] webcodecs::WebError),
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
@@ -134,7 +134,7 @@ pub enum Error {
     BadBitsPerComponent(usize),
 }
 
-pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
 pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
@@ -201,13 +201,13 @@ pub fn new_decoder(
         crate::VideoCodec::AV1 => {
             #[cfg(linux_arm64)]
             {
-                return Err(Error::NoDav1dOnLinuxArm64);
+                return Err(DecodeError::NoDav1dOnLinuxArm64);
             }
 
             #[cfg(with_dav1d)]
             {
                 if cfg!(debug_assertions) {
-                    return Err(Error::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
+                    return Err(DecodeError::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
                 }
 
                 re_log::trace!("Decoding AV1…");
@@ -224,16 +224,22 @@ pub fn new_decoder(
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                video.stsd.clone().and_then(|c| match c.contents {
-                    re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
-                    _ => None,
-                }),
+                video
+                    .encoding_details
+                    .as_ref()
+                    .and_then(|details| details.stsd.as_ref())
+                    .and_then(|stsd| match &stsd.contents {
+                        re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1.clone()),
+                        _ => None,
+                    }),
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
             )?))
         }
 
-        _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
+        _ => Err(DecodeError::UnsupportedCodec(
+            video.human_readable_codec_string(),
+        )),
     }
 }
 

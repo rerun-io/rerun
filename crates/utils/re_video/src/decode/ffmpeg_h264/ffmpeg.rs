@@ -21,7 +21,8 @@ use parking_lot::Mutex;
 use crate::{
     PixelFormat, Time,
     decode::{
-        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback, YuvPixelLayout,
+        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
+        YuvPixelLayout,
         ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
 };
@@ -87,7 +88,7 @@ pub enum Error {
     SpsParsing,
 }
 
-impl From<Error> for crate::decode::Error {
+impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
     }
@@ -908,7 +909,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         re_tracing::profile_function!();
 
         if let Err(err) = self.ffmpeg.submit_chunk(chunk) {
-            let err = crate::decode::Error::from(err);
+            let err = DecodeError::from(err);
 
             // Report the error on the decoding stream aswell.
             (self.on_output)(Err(err.clone()));

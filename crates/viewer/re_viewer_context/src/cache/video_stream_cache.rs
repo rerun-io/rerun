@@ -13,7 +13,7 @@ use re_chunk::{ChunkId, EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
-use re_video::{StableIndexDeque, decode::DecodeSettings};
+use re_video::{DecodeSettings, StableIndexDeque};
 
 use crate::Cache;
 
@@ -215,8 +215,7 @@ fn load_video_data_from_chunks(
     Ok((
         re_video::VideoDataDescription {
             codec,
-            stsd: None,             // Only mp4s have this.
-            coded_dimensions: None, // Unknown so far.
+            encoding_details: None, // Unknown so far, we'll find out later.
             timescale: timescale_for_timeline(store, timeline),
             duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
             gops,
@@ -250,7 +249,7 @@ fn read_samples_from_chunk(
     codec: re_video::VideoCodec,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
     samples: &mut StableIndexDeque<re_video::SampleMetadata>,
-    gops: &mut StableIndexDeque<re_video::demux::GroupOfPictures>,
+    gops: &mut StableIndexDeque<re_video::GroupOfPictures>,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
@@ -360,7 +359,7 @@ fn read_samples_from_chunk(
                     }
 
                     // New gop starts at this frame.
-                    gops.push_back(re_video::demux::GroupOfPictures {
+                    gops.push_back(re_video::GroupOfPictures {
                         decode_start_time: decode_timestamp,
                         sample_range: sample_idx..(sample_idx + 1),
                     });

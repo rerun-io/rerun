@@ -2,10 +2,7 @@ use std::time::Duration;
 
 use web_time::Instant;
 
-use re_video::{
-    GopIndex, SampleIndex, StableIndexDeque, Time,
-    decode::{DecodeSettings, FrameInfo},
-};
+use re_video::{DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time};
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
@@ -79,8 +76,8 @@ impl VideoPlayer {
             description.human_readable_codec_string()
         );
 
-        if let Some(stsd) = description.stsd.as_ref() {
-            if let Some(bit_depth) = stsd.contents.bit_depth() {
+        if let Some(details) = description.encoding_details.as_ref() {
+            if let Some(bit_depth) = details.bit_depth {
                 #[allow(clippy::comparison_chain)]
                 if bit_depth < 8 {
                     re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
@@ -93,7 +90,7 @@ impl VideoPlayer {
         }
 
         let chunk_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
+            re_video::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
         Ok(Self {
