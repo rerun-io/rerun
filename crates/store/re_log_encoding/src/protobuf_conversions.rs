@@ -77,6 +77,8 @@ pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
     compression: crate::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::LogMsg, crate::encoder::EncodeError> {
+    re_tracing::profile_function!();
+
     use crate::codec::arrow::encode_arrow;
     use re_protos::log_msg::v1alpha1::{
         ArrowMsg, BlueprintActivationCommand, LogMsg as ProtoLogMsg, SetStoreInfo,

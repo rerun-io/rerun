@@ -62,13 +62,18 @@ pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
 ) -> Result<Payload, crate::encoder::EncodeError> {
+    re_tracing::profile_function!();
+
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
     let data = match compression {
         crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+        crate::Compression::LZ4 => {
+            re_tracing::profile_scope!("lz4::compress");
+            lz4_flex::block::compress(&uncompressed)
+        }
     };
 
     Ok(Payload {
