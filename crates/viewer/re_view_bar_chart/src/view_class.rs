@@ -117,7 +117,7 @@ impl ViewClass for BarChartView {
         _space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
-        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+        list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
         });
