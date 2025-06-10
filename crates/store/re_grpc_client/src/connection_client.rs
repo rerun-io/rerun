@@ -25,8 +25,8 @@ use crate::StreamError;
 /// Implementation note: this type is generic so that it can be used with several client types. This
 /// is useful for e.g. the redap cli, which has a different instrumented type. For the viewer,
 /// use [`crate::ConnectionClient`].
-// TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for
-// too long. However we have a bunch of places that needs to be fixed before we can do that.
+//TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
+//long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Debug, Clone)]
 pub struct GenericConnectionClient<T>(FrontendServiceClient<T>);
 
@@ -39,6 +39,8 @@ impl<T> GenericConnectionClient<T> {
     }
 
     /// Get a mutable reference to the underlying `RedapClient`.
+    //TODO(ab): ideally, this should become private once all user code is migrated to using this
+    //abstraction.
     pub fn inner(&mut self) -> &mut FrontendServiceClient<T> {
         &mut self.0
     }
@@ -58,7 +60,7 @@ where
         filter: EntryFilter,
     ) -> Result<Vec<EntryDetails>, StreamError> {
         let result = self
-            .0
+            .inner()
             .find_entries(FindEntriesRequest {
                 filter: Some(filter),
             })
