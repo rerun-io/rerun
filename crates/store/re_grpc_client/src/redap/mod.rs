@@ -146,9 +146,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
@@ -173,6 +172,7 @@ pub(crate) async fn client(
     Ok(FrontendServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub type RedapClientInner =
     tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>;
 
@@ -185,7 +185,6 @@ pub type RedapClientInner =
 //     tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
 // >;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
 #[cfg(not(target_arch = "wasm32"))]
