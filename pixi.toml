@@ -38,6 +38,20 @@ libc = "2.28"
 
 
 ################################################################################
+# GLOBAL ACTIVATION
+################################################################################
+
+[activation]
+
+[target.unix.activation.env]
+# The executable extension for binaries on the current platform.
+EXECUTABLE_EXTENSION = ""
+
+[target.win-64.activation.env]
+# The executable extension for binaries on the current platform.
+EXECUTABLE_EXTENSION = ".exe"
+
+################################################################################
 # ENVIRONMENTS
 ################################################################################
 
@@ -363,10 +377,14 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
 
-# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
-# TODO(ab): add a command that produce a complete wheel, including the viewer.
-py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
+# Build an installable wheel.
+# The wheel will contain the rerun executable including the web viewer.
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+  "rerun-build-native-and-web-release",
+] }
 
+# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
+py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
 [feature.python-tasks.tasks]
 
