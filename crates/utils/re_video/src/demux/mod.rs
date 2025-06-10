@@ -313,8 +313,7 @@ impl VideoDataDescription {
     pub fn human_readable_codec_string(&self) -> String {
         let base_codec_string = match &self.codec {
             VideoCodec::AV1 => "AV1",
-            // TODO(andreas): if we found an SPS in the stream, we could show more information.
-            VideoCodec::H264 => "H.265 HVC1",
+            VideoCodec::H264 => "H.264 AVC1",
             VideoCodec::H265 => "H.265 HEV1",
             VideoCodec::VP8 => "VP8",
             VideoCodec::VP9 => "VP9",
