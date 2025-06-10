@@ -379,7 +379,7 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/rerun$EXECUTABLE_EXTENSION && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
