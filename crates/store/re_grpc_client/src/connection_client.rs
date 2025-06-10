@@ -145,6 +145,7 @@ where
     }
 
     /// Get a list of partition IDs for the given dataset entry ID.
+    //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
     pub async fn get_dataset_partition_ids(
         &mut self,
         entry_id: EntryId,
