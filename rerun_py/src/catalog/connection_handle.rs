@@ -19,11 +19,10 @@ use re_grpc_client::{
     ConnectionClient, ConnectionRegistryHandle, get_chunks_response_to_chunk_and_partition_id,
 };
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::{DatasetDetails, UpdateDatasetEntryRequest};
+use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::{
     catalog::v1alpha1::{
-        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
-        ReadTableEntryRequest,
+        EntryFilter, ReadTableEntryRequest,
         ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
@@ -64,75 +63,45 @@ impl ConnectionHandle {
     }
 }
 
-// TODO(ab): migrate all of this to some `RedapClient` wrapper to be provided by `ConnectionRegistry`
 impl ConnectionHandle {
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
-        let response = wait_for_future(py, async {
-            (self.client().await?)
-                .inner()
-                .find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
-                    filter: Some(filter),
-                })
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .find_entries(filter)
                 .await
                 .map_err(to_py_err)
-        })?;
-
-        let entries: Result<Vec<_>, _> = response
-            .into_inner()
-            .entries
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect();
-
-        Ok(entries?)
+        })
     }
 
     pub fn delete_entry(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
-        let _response = wait_for_future(py, async {
-            (self.client().await?)
-                .inner()
-                .delete_entry(DeleteEntryRequest {
-                    id: Some(entry_id.into()),
-                })
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .delete_entry(entry_id)
                 .await
                 .map_err(to_py_err)
-        })?;
-
-        Ok(())
+        })
     }
 
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
-        let response = wait_for_future(py, async {
-            (self.client().await?)
-                .inner()
-                .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .create_dataset_entry(name)
                 .await
                 .map_err(to_py_err)
-        })?;
-
-        Ok(response
-            .into_inner()
-            .dataset
-            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
-            .try_into()?)
+        })
     }
 
     pub fn read_dataset(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
-        let response = wait_for_future(py, async {
-            (self.client().await?)
-                .inner()
-                .read_dataset_entry(ReadDatasetEntryRequest {
-                    id: Some(entry_id.into()),
-                })
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .read_dataset_entry(entry_id)
                 .await
                 .map_err(to_py_err)
-        })?;
-
-        Ok(response
-            .into_inner()
-            .dataset
-            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
-            .try_into()?)
+        })
     }
 
     pub fn update_dataset(
@@ -141,25 +110,13 @@ impl ConnectionHandle {
         entry_id: EntryId,
         dataset_details: DatasetDetails,
     ) -> PyResult<DatasetEntry> {
-        let response = wait_for_future(py, async {
-            (self.client().await?)
-                .inner()
-                .update_dataset_entry(tonic::Request::new(
-                    UpdateDatasetEntryRequest {
-                        id: entry_id,
-                        dataset_details,
-                    }
-                    .into(),
-                ))
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .update_dataset_entry(entry_id, dataset_details)
                 .await
                 .map_err(to_py_err)
-        })?;
-
-        Ok(response
-            .into_inner()
-            .dataset
-            .ok_or(PyRuntimeError::new_err("No dataset in response"))?
-            .try_into()?)
+        })
     }
 
     pub fn get_dataset_partition_ids(
@@ -180,6 +137,7 @@ impl ConnectionHandle {
         })
     }
 
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(py, async {
             (self.client().await?)
@@ -198,6 +156,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
             (self.client().await?)
@@ -218,6 +177,7 @@ impl ConnectionHandle {
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
@@ -277,6 +237,7 @@ impl ConnectionHandle {
         })
     }
 
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn query_tasks(&self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
         wait_for_future(py, async {
             let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
@@ -301,6 +262,7 @@ impl ConnectionHandle {
     }
 
     /// Wait for the provided tasks to finish.
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn wait_for_tasks(
         &self,
         py: Python<'_>,
@@ -396,6 +358,7 @@ impl ConnectionHandle {
         })
     }
 
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[allow(clippy::too_many_arguments)]
     pub fn get_chunks_for_dataframe_query(
         &self,

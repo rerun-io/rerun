@@ -3,6 +3,14 @@ use tokio_stream::StreamExt as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::catalog::v1alpha1::ext::{
+    CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
+    ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+};
+use re_protos::catalog::v1alpha1::{
+    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
+    ReadDatasetEntryRequest,
+};
 use re_protos::common::v1alpha1::ext::{IfMissingBehavior, PartitionId, ScanParameters};
 use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
 use re_protos::manifest_registry::v1alpha1::ScanPartitionTableResponse;
@@ -31,6 +39,86 @@ impl ConnectionClient {
 
 // helpers
 impl ConnectionClient {
+    pub async fn find_entries(
+        &mut self,
+        filter: EntryFilter,
+    ) -> Result<Vec<EntryDetails>, StreamError> {
+        let result = self
+            .inner()
+            .find_entries(FindEntriesRequest {
+                filter: Some(filter),
+            })
+            .await?
+            .into_inner()
+            .entries;
+
+        Ok(result
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<EntryDetails>, _>>()?)
+    }
+
+    pub async fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), StreamError> {
+        self.inner()
+            .delete_entry(DeleteEntryRequest {
+                id: Some(entry_id.into()),
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn create_dataset_entry(
+        &mut self,
+        name: String,
+    ) -> Result<DatasetEntry, StreamError> {
+        let response: CreateDatasetEntryResponse = self
+            .inner()
+            .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.dataset)
+    }
+
+    pub async fn read_dataset_entry(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<DatasetEntry, StreamError> {
+        let response: ReadDatasetEntryResponse = self
+            .inner()
+            .read_dataset_entry(ReadDatasetEntryRequest {
+                id: Some(entry_id.into()),
+            })
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.dataset_entry)
+    }
+
+    pub async fn update_dataset_entry(
+        &mut self,
+        entry_id: EntryId,
+        dataset_details: DatasetDetails,
+    ) -> Result<DatasetEntry, StreamError> {
+        let response: UpdateDatasetEntryResponse = self
+            .inner()
+            .update_dataset_entry(tonic::Request::new(
+                UpdateDatasetEntryRequest {
+                    id: entry_id,
+                    dataset_details,
+                }
+                .into(),
+            ))
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.dataset_entry)
+    }
+
     /// Get a list of partition IDs for the given dataset entry ID.
     pub async fn get_dataset_partition_ids(
         &mut self,
