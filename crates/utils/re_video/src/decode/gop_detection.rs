@@ -187,13 +187,15 @@ fn detect_h264_annexb_gop(
                 Ok(GopStartDetection::StartOfGop(decoding_details))
             } else {
                 // In theory it could happen that we got an SPS but no IDR frame.
-                // Arguably we should preserve the information from the the SPS, but practically it's not useful:
+                // Arguably we should preserve the information from the SPS, but practically it's not useful:
                 // If we never hit an IDR frame, then we can't play the video and every IDR frame is supposed to have
                 // the *same* SPS.
                 Ok(GopStartDetection::NotStartOfGop)
             }
         }
-        Some(Err(error)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(error)),
+        Some(Err(error_str)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
+            error_str,
+        )),
         None => Ok(GopStartDetection::NotStartOfGop),
     }
 }

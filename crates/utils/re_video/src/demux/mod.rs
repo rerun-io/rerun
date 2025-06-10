@@ -203,7 +203,7 @@ pub struct VideoEncodingDetails {
     /// For H264 & H265, its presence implies that the bitstream is in the AVCC format rather than Annex B.
     // TODO(andreas): Really we're after the optional AVCC box here, right? Right now we occasionally also extract other things.
     // But limiting this to an optional AVCC would make more sense as a codec information piece.
-    pub stsd: Option<re_mp4::StsdBox>,
+    pub stsd: Option<re_mp4::StsdBox>, // TODO: only avcc
 }
 
 impl VideoEncodingDetails {

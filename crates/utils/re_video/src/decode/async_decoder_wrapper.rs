@@ -49,7 +49,7 @@ pub trait SyncDecoder {
     );
 
     /// Clear and reset everything
-    fn reset(&mut self, video_descr: &VideoDataDescription);
+    fn reset(&mut self, video_data_description: &crate::VideoDataDescription);
 }
 
 /// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
@@ -109,7 +109,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()> {
+    fn reset(&mut self, video_data_description: &VideoDataDescription) -> Result<()> {
         re_tracing::profile_function!();
 
         // Increment resets first…
@@ -119,7 +119,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
 
         // …so it is visible on the decoder thread when it gets the `Reset` command.
         self.command_tx
-            .send(Command::Reset(video_descr.clone()))
+            .send(Command::Reset(video_data_description.clone()))
             .ok();
 
         Ok(())
@@ -163,8 +163,8 @@ fn decoder_thread(
                     decoder.submit_chunk(&comms.should_stop, chunk, on_output);
                 }
             }
-            Command::Reset(video_descr) => {
-                decoder.reset(&video_descr);
+            Command::Reset(video_data_description) => {
+                decoder.reset(&video_data_description);
                 comms.num_outstanding_resets.fetch_sub(1, Ordering::Release);
             }
             Command::Stop => {

@@ -5,13 +5,14 @@ use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
-use re_log::ResultExt;
+
+use re_log::ResultExt as _;
+use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
 
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
