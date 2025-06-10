@@ -40,8 +40,8 @@ impl<T> GenericConnectionClient<T> {
     }
 
     /// Get a mutable reference to the underlying `RedapClient`.
-    //TODO(ab): ideally, this should become private once all user code is migrated to using this
-    //abstraction.
+    //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
+    //is using them.
     pub fn inner(&mut self) -> &mut FrontendServiceClient<T> {
         &mut self.0
     }
