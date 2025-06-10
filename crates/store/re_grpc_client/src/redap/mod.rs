@@ -173,20 +173,20 @@ pub(crate) async fn client(
     Ok(FrontendServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>;
+
 // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClient = FrontendServiceClient<
-//     tower_http::trace::Trace<
-//         tonic::service::interceptor::InterceptedService<
-//             tonic::transport::Channel,
-//             redap_telemetry::TracingInjectorInterceptor,
-//         >,
-//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+// pub type RedapClientInner = tower_http::trace::Trace<
+//     tonic::service::interceptor::InterceptedService<
+//         tonic::transport::Channel,
+//         redap_telemetry::TracingInjectorInterceptor,
 //     >,
+//     tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
 // >;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(

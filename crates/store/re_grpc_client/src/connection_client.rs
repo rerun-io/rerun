@@ -1,4 +1,5 @@
 use tokio_stream::StreamExt as _;
+use tonic::codegen::{Body, StdError};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -12,39 +13,52 @@ use re_protos::catalog::v1alpha1::{
     ReadDatasetEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfMissingBehavior, PartitionId, ScanParameters};
+use re_protos::external::prost::bytes::Bytes;
 use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
+use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::manifest_registry::v1alpha1::ScanPartitionTableResponse;
 
-use crate::{RedapClient, StreamError};
+use crate::StreamError;
 
 /// Expose an ergonomic API over the gRPC redap client.
+///
+/// Implementation note: this type is generic so that it can be used with several client types. This
+/// is useful for e.g. the redap cli, which has a different instrumented type. For the viewer,
+/// use [`crate::ConnectionClient`].
 // TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for
 // too long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Debug, Clone)]
-pub struct ConnectionClient(RedapClient);
+pub struct GenericConnectionClient<T>(FrontendServiceClient<T>);
 
-impl ConnectionClient {
-    /// Create a new `ConnectionClient` from a `RedapClient`.
-    pub(crate) fn new(client: RedapClient) -> Self {
+impl<T> GenericConnectionClient<T> {
+    /// Create a new [`Self`].
+    ///
+    /// This should not be used in the viewer, use [`crate::ConnectionRegistry::client`] instead.
+    pub fn new(client: FrontendServiceClient<T>) -> Self {
         Self(client)
     }
 
     /// Get a mutable reference to the underlying `RedapClient`.
-    pub fn inner(&mut self) -> &mut RedapClient {
+    pub fn inner(&mut self) -> &mut FrontendServiceClient<T> {
         &mut self.0
     }
 }
 
 // ---
 
-// helpers
-impl ConnectionClient {
+impl<T> GenericConnectionClient<T>
+where
+    T: tonic::client::GrpcService<tonic::body::BoxBody>,
+    T::Error: Into<StdError>,
+    T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
+    <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
+{
     pub async fn find_entries(
         &mut self,
         filter: EntryFilter,
     ) -> Result<Vec<EntryDetails>, StreamError> {
         let result = self
-            .inner()
+            .0
             .find_entries(FindEntriesRequest {
                 filter: Some(filter),
             })

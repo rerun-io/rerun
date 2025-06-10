@@ -6,8 +6,7 @@ pub mod message_proxy;
 mod redap;
 
 pub use self::{
-    connection_client::ConnectionClient,
-    connection_registry::{ConnectionRegistry, ConnectionRegistryHandle},
+    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
     redap::{
         Command, ConnectionError, RedapClient, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,

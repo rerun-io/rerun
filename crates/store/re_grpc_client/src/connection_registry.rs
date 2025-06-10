@@ -4,9 +4,13 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use crate::ConnectionClient;
-use crate::redap::{ConnectionError, RedapClient};
+use crate::connection_client::GenericConnectionClient;
+use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
 use re_auth::Jwt;
+
+/// This is the type of `ConnectionClient` used throughout the viewer, where the
+/// `ConnectionRegistry` is used.
+pub type ConnectionClient = GenericConnectionClient<RedapClientInner>;
 
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
