@@ -69,17 +69,19 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
                             ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
                         });
                     }
-                    if encoding_details.is_monochrome == Some(true) {
+                    if encoding_details.chroma_subsampling
+                        == Some(re_video::ChromaSubsamplingModes::Monochrome)
+                    {
                         ui.label("(monochrome)");
                     }
                 },
             ));
         }
-        if let Some(subsampling_mode) = encoding_details.chroma_subsampling {
-            // Don't show subsampling mode for monochrome, doesn't make sense usually.
-            if encoding_details.is_monochrome != Some(true) {
+        if let Some(chroma_subsampling) = encoding_details.chroma_subsampling {
+            // Don't show subsampling mode for monochrome. Usually we know the bit depth and already shown it there.
+            if chroma_subsampling != re_video::ChromaSubsamplingModes::Monochrome {
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
+                    PropertyContent::new("Subsampling").value_text(chroma_subsampling.to_string()),
                 );
             }
         }

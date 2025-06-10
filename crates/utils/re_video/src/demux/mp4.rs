@@ -172,13 +172,16 @@ fn codec_details_from_stds(
             .ok_or(VideoLoadError::UnableToDetermineCodecString)?,
         coded_dimensions: [track.width, track.height],
         bit_depth: stsd.contents.bit_depth(),
-        is_monochrome: is_monochrome(&stsd),
         chroma_subsampling: subsampling_mode(&stsd),
         stsd: Some(stsd),
     })
 }
 
 fn subsampling_mode(stsd: &re_mp4::StsdBox) -> Option<ChromaSubsamplingModes> {
+    if is_monochrome(stsd).unwrap_or(false) {
+        return Some(ChromaSubsamplingModes::Monochrome);
+    }
+
     match &stsd.contents {
         re_mp4::StsdBoxContent::Av01(av01_box) => {
             // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics

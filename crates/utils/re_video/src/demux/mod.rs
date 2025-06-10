@@ -18,13 +18,15 @@ use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 
 /// Chroma subsampling mode.
 ///
-/// Should ignore this for monochrome formats, as depending on the codec,
-/// this may be regarded as any of these.
+/// Unlike [`crate::YuvPixelLayout`] this does not specify a certain planarity/layout of
+/// the chroma components.
+/// Instead, this is just a description whether any subsampling occurs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChromaSubsamplingModes {
     /// No subsampling.
     ///
-    /// Note that this also often applies to RGB formats, not just YUV.
+    /// Note that this also applies to RGB formats, not just YUV.
+    /// (but for video data YUV is much more common regardless)
     Yuv444,
 
     /// Subsampling in X only.
@@ -32,6 +34,9 @@ pub enum ChromaSubsamplingModes {
 
     /// Subsampling in both X and Y.
     Yuv420,
+
+    /// No subsampling at all, since the format is monochrome.
+    Monochrome,
 }
 
 impl std::fmt::Display for ChromaSubsamplingModes {
@@ -40,6 +45,7 @@ impl std::fmt::Display for ChromaSubsamplingModes {
             Self::Yuv444 => write!(f, "4:4:4"),
             Self::Yuv422 => write!(f, "4:2:2"),
             Self::Yuv420 => write!(f, "4:2:0"),
+            Self::Monochrome => write!(f, "monochrome"),
         }
     }
 }
@@ -117,7 +123,7 @@ pub struct VideoDataDescription {
 
     /// Various information about how the video was encoded.
     ///
-    /// Decoder may require this to be present before starting to decode.
+    /// Should any of this change during the lifetime of a decoder, it has to be reset.
     ///
     /// For video streams this is derived on the fly, therefore it may arrive only with the first key frame.
     /// For mp4 this is read from the AVCC box.
@@ -185,16 +191,7 @@ pub struct VideoEncodingDetails {
     /// or missing information at this point.
     pub bit_depth: Option<u8>,
 
-    /// Whether the video is monochrome.
-    ///
-    /// `None` if this couldn't be determined, either because of lack of implementation
-    /// or missing information at this point.
-    pub is_monochrome: Option<bool>,
-
     /// Chroma subsampling mode.
-    ///
-    /// RGB data without any chroma subsamling specifies [`YuvPixelLayout::Y_U_V444`] despite
-    /// not using a YUV format.
     ///
     /// `None` if this couldn't be determined, either because of lack of implementation
     /// or missing information at this point.
@@ -207,6 +204,16 @@ pub struct VideoEncodingDetails {
     // TODO(andreas): Really we're after the optional AVCC box here, right? Right now we occasionally also extract other things.
     // But limiting this to an optional AVCC would make more sense as a codec information piece.
     pub stsd: Option<re_mp4::StsdBox>,
+}
+
+impl VideoEncodingDetails {
+    /// Get the AVCC box from the stsd box if any.
+    pub fn avcc(&self) -> Option<&re_mp4::Avc1Box> {
+        self.stsd.as_ref().and_then(|stsd| match &stsd.contents {
+            re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
+            _ => None,
+        })
+    }
 }
 
 /// Meta informationa about the video samples.

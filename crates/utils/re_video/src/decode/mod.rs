@@ -224,14 +224,7 @@ pub fn new_decoder(
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                video
-                    .encoding_details
-                    .as_ref()
-                    .and_then(|details| details.stsd.as_ref())
-                    .and_then(|stsd| match &stsd.contents {
-                        re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1.clone()),
-                        _ => None,
-                    }),
+                video.encoding_details.clone(),
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
             )?))

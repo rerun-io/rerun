@@ -15,8 +15,8 @@ pub use decode::{
 pub use decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
 
 pub use demux::{
-    GopIndex, GroupOfPictures, SampleIndex, SampleMetadata, SamplesStatistics, VideoCodec,
-    VideoDataDescription, VideoEncodingDetails, VideoLoadError,
+    ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
+    SamplesStatistics, VideoCodec, VideoDataDescription, VideoEncodingDetails, VideoLoadError,
 };
 pub use stable_index_deque::StableIndexDeque;
 pub use time::{Time, Timescale};
