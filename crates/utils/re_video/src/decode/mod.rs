@@ -95,7 +95,7 @@ mod webcodecs;
 
 mod gop_detection;
 
-pub use gop_detection::is_sample_start_of_gop;
+pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
 use crate::Time;
 
