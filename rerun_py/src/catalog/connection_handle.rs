@@ -140,7 +140,8 @@ impl ConnectionHandle {
     // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(py, async {
-            (self.client().await?)
+            self.client()
+                .await?
                 .inner()
                 .read_table_entry(ReadTableEntryRequest {
                     id: Some(entry_id.into()),
@@ -159,7 +160,8 @@ impl ConnectionHandle {
     // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            (self.client().await?)
+            self.client()
+                .await?
                 .inner()
                 .get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: Some(entry_id.into()),

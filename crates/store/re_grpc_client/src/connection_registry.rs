@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use re_auth::Jwt;
+
 use crate::connection_client::GenericConnectionClient;
 use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
-use re_auth::Jwt;
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
