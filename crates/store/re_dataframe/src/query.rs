@@ -1,8 +1,8 @@
 use std::{
     collections::BTreeSet,
     sync::{
-        OnceLock,
         atomic::{AtomicU64, Ordering},
+        OnceLock,
     },
 };
 
@@ -20,10 +20,10 @@ use arrow::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
+use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_chunk::{
-    Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt, TimelineName, UnitChunkShared,
-    external::arrow::array::ArrayRef,
+    external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
+    TimelineName, UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
@@ -35,7 +35,7 @@ use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
     TimeColumnSelector,
 };
-use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
+use re_types_core::{archetypes, arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
 
 // ---
 
@@ -1361,11 +1361,12 @@ mod tests {
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
-        EntityPath, Timeline, build_frame_nr, build_log_time,
+        build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+        EntityPath, Timeline,
     };
     use re_query::StorageEngine;
-    use re_types_core::{Component as _, components};
+    use re_types_core::{components, Component as _};
 
     use crate::{QueryCache, QueryEngine};
 

@@ -9,8 +9,8 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
+use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
@@ -18,9 +18,9 @@ use crate::table_blueprint::{
     ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
 use crate::table_utils::{
-    CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
+    apply_table_style_fixes, cell_ui, header_ui, ColumnConfig, TableConfig, CELL_MARGIN,
 };
-use crate::{DisplayRecordBatch, default_display_name_for_column};
+use crate::{default_display_name_for_column, DisplayRecordBatch};
 
 struct Column<'a> {
     /// The ID of the column (based on it's corresponding [`re_sorbet::ColumnDescriptor`]).
@@ -555,7 +555,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
 }
 
 fn sorted_text(sorted: bool) -> &'static str {
-    if sorted { "true" } else { "unknown" }
+    if sorted {
+        "true"
+    } else {
+        "unknown"
+    }
 }
 
 fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
