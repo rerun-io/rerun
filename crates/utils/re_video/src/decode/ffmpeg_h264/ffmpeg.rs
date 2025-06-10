@@ -19,7 +19,7 @@ use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
 use crate::{
-    PixelFormat, Time, VideoEncodingDetails,
+    PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
         AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
         ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
@@ -810,7 +810,6 @@ pub struct FFmpegCliH264Decoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    encoding_details: Option<VideoEncodingDetails>,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
 }
@@ -818,7 +817,7 @@ pub struct FFmpegCliH264Decoder {
 impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
-        encoding_details: Option<VideoEncodingDetails>,
+        encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
@@ -858,14 +857,13 @@ impl FFmpegCliH264Decoder {
         let ffmpeg = FFmpegProcessAndListener::new(
             &debug_name,
             on_output.clone(),
-            &encoding_details,
+            encoding_details,
             ffmpeg_path.as_deref(),
         )?;
 
         Ok(Self {
             debug_name,
             ffmpeg,
-            encoding_details,
             on_output,
             ffmpeg_path,
         })
@@ -894,13 +892,13 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         Ok(())
     }
 
-    fn reset(&mut self) -> crate::decode::Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),
-            &self.encoding_details,
+            &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
         )?;
         Ok(())

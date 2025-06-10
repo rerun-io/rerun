@@ -5,11 +5,14 @@ use std::sync::{
 
 use crossbeam::channel::{Receiver, Sender, unbounded};
 
+#[cfg(with_dav1d)]
+use crate::VideoDataDescription;
+
 use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result};
 
 enum Command {
     Chunk(Chunk),
-    Reset,
+    Reset(VideoDataDescription),
     Stop,
 }
 
@@ -46,7 +49,7 @@ pub trait SyncDecoder {
     );
 
     /// Clear and reset everything
-    fn reset(&mut self) {}
+    fn reset(&mut self, video_descr: &VideoDataDescription);
 }
 
 /// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
@@ -106,7 +109,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()> {
         re_tracing::profile_function!();
 
         // Increment resets first…
@@ -115,7 +118,9 @@ impl AsyncDecoder for AsyncDecoderWrapper {
             .fetch_add(1, Ordering::Release);
 
         // …so it is visible on the decoder thread when it gets the `Reset` command.
-        self.command_tx.send(Command::Reset).ok();
+        self.command_tx
+            .send(Command::Reset(video_descr.clone()))
+            .ok();
 
         Ok(())
     }
@@ -158,8 +163,8 @@ fn decoder_thread(
                     decoder.submit_chunk(&comms.should_stop, chunk, on_output);
                 }
             }
-            Command::Reset => {
-                decoder.reset();
+            Command::Reset(video_descr) => {
+                decoder.reset(&video_descr);
                 comms.num_outstanding_resets.fetch_sub(1, Ordering::Release);
             }
             Command::Stop => {

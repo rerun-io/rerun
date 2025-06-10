@@ -533,6 +533,8 @@ impl Cache for VideoStreamCache {
                             &event.chunk
                         };
 
+                        let encoding_details_before = video_data.encoding_details.clone();
+
                         if let Err(err) = read_samples_from_chunk(
                             *timeline,
                             chunk,
@@ -542,6 +544,10 @@ impl Cache for VideoStreamCache {
                             re_log::error_once!(
                                 "Failed to read process additional incoming video samples: {err}"
                             );
+                        }
+
+                        if encoding_details_before != video_data.encoding_details {
+                            video_renderer.reset_all_decoders();
                         }
                     }
                     re_chunk_store::ChunkStoreDiffKind::Deletion => {

@@ -97,7 +97,7 @@ mod gop_detection;
 
 pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
-use crate::Time;
+use crate::{Time, VideoDataDescription};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
@@ -136,6 +136,7 @@ pub enum DecodeError {
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
+#[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
 pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
 /// Interface for an asynchronous video decoder.
@@ -157,7 +158,8 @@ pub trait AsyncDecoder: Send + Sync {
     /// Resets the decoder.
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
-    fn reset(&mut self) -> Result<()>;
+    /// Previously missing [`VideoDataDescription::encoding_details`] may be present now.
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()>;
 
     /// Minimum number of samples the decoder requests to stay head of the currently requested sample.
     ///
@@ -224,7 +226,7 @@ pub fn new_decoder(
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                video.encoding_details.clone(),
+                &video.encoding_details,
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
             )?))

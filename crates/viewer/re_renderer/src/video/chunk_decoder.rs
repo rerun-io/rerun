@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_video::{Chunk, Frame, FrameContent, Time};
+use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
 use parking_lot::Mutex;
 
@@ -172,8 +172,8 @@ impl VideoSampleDecoder {
     }
 
     /// Reset the video decoder and discard all frames.
-    pub fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.decoder.reset()?;
+    pub fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<(), VideoPlayerError> {
+        self.decoder.reset(video_descr)?;
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;

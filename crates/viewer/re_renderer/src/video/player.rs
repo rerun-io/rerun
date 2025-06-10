@@ -250,7 +250,7 @@ impl VideoPlayer {
             // because decoding all the samples between the previous sample and the requested
             // one would mean decoding and immediately discarding more frames than we need.
             if self.last_requested_gop_idx.saturating_add(1) != requested_gop_idx {
-                self.reset()?;
+                self.reset(video_description)?;
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
             let requested_sample = video_description
@@ -282,7 +282,7 @@ impl VideoPlayer {
                 // seeking backwards!
                 // Therefore, it's important to compare presentation timestamps instead of sample indices.
                 // (comparing decode timestamps should be equivalent to comparing sample indices)
-                self.reset()?;
+                self.reset(video_description)?;
             }
         }
 
@@ -370,8 +370,11 @@ impl VideoPlayer {
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.chunk_decoder.reset()?;
+    pub fn reset(
+        &mut self,
+        video_descr: &re_video::VideoDataDescription,
+    ) -> Result<(), VideoPlayerError> {
+        self.chunk_decoder.reset(video_descr)?;
         self.last_requested_gop_idx = GopIndex::MAX;
         self.last_requested_sample_idx = SampleIndex::MAX;
         self.last_enqueued_gop_idx = None;

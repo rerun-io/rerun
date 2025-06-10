@@ -5,6 +5,7 @@ use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
+use re_log::ResultExt;
 
 use crate::{
     RenderContext,
@@ -125,6 +126,19 @@ impl Video {
     #[inline]
     pub fn data_descr_mut(&mut self) -> &mut re_video::VideoDataDescription {
         &mut self.video_description
+    }
+
+    /// Resets all decoders and purges any cached frames.
+    ///
+    /// This is useful when the video description has changed since the decoders were created.
+    pub fn reset_all_decoders(&self) {
+        let mut players = self.players.lock();
+        for player in players.values_mut() {
+            player
+                .player
+                .reset(&self.video_description)
+                .ok_or_log_error_once();
+        }
     }
 
     /// Natural dimensions of the video if known.

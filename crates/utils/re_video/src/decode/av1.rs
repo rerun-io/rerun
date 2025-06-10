@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::Time;
+use crate::{Time, VideoDataDescription};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
@@ -23,10 +23,12 @@ impl SyncDecoder for SyncDav1dDecoder {
     }
 
     /// Clear and reset everything
-    fn reset(&mut self) {
+    fn reset(&mut self, _video_data_description: &VideoDataDescription) {
         re_tracing::profile_function!();
 
         self.decoder.flush();
+
+        // TODO(#10184): Should take into account changed video
 
         debug_assert!(
             matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),

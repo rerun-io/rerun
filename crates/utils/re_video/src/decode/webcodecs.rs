@@ -35,7 +35,6 @@ impl std::ops::Deref for WebVideoFrame {
 
 pub struct WebVideoDecoder {
     codec: VideoCodec,
-    encoding_details: Option<VideoEncodingDetails>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -125,7 +124,6 @@ impl WebVideoDecoder {
 
         Ok(Self {
             codec: video_descr.codec,
-            encoding_details: video_descr.encoding_details.clone(),
             timescale,
             decoder,
             hw_acceleration,
@@ -166,7 +164,7 @@ impl AsyncDecoder for WebVideoDecoder {
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()> {
         re_log::trace!("Resetting video decoder.");
 
         if let Err(_err) = self.decoder.reset() {
@@ -176,7 +174,7 @@ impl AsyncDecoder for WebVideoDecoder {
             self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
         };
 
-        let encoding_details = self
+        let encoding_details = video_descr
             .encoding_details
             .as_ref()
             .ok_or(WebError::NotEnoughCodecInformation)?;
