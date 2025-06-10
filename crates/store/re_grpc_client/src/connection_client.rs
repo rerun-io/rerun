@@ -4,27 +4,30 @@ use tonic::codegen::{Body, StdError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::catalog::v1alpha1::ext::{
-    CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
-    ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-};
-use re_protos::catalog::v1alpha1::{
-    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
-    ReadDatasetEntryRequest,
-};
-use re_protos::common::v1alpha1::ext::{IfMissingBehavior, PartitionId, ScanParameters};
 use re_protos::external::prost::bytes::Bytes;
-use re_protos::frontend::v1alpha1::ext::ScanPartitionTableRequest;
-use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::manifest_registry::v1alpha1::ScanPartitionTableResponse;
+use re_protos::{
+    catalog::v1alpha1::{
+        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
+        ReadDatasetEntryRequest,
+        ext::{
+            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
+            ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+        },
+    },
+    common::v1alpha1::ext::{IfMissingBehavior, PartitionId, ScanParameters},
+    frontend::v1alpha1::{
+        ext::ScanPartitionTableRequest, frontend_service_client::FrontendServiceClient,
+    },
+    manifest_registry::v1alpha1::ScanPartitionTableResponse,
+};
 
 use crate::StreamError;
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
 /// Implementation note: this type is generic so that it can be used with several client types. This
-/// is useful for e.g. the redap cli, which has a different instrumented type. For the viewer,
-/// use [`crate::ConnectionClient`].
+/// is useful for other projects which might have different type (e.g. due to instrumentation).
+/// For the viewer, use [`crate::ConnectionClient`].
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Debug, Clone)]
@@ -56,6 +59,7 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
+    /// Find all entries maching the given filter.
     pub async fn find_entries(
         &mut self,
         filter: EntryFilter,
@@ -75,6 +79,7 @@ where
             .collect::<Result<Vec<EntryDetails>, _>>()?)
     }
 
+    /// Delete the provided entry.
     pub async fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), StreamError> {
         self.inner()
             .delete_entry(DeleteEntryRequest {
@@ -85,6 +90,7 @@ where
         Ok(())
     }
 
+    /// Create a new dataset entry.
     pub async fn create_dataset_entry(
         &mut self,
         name: String,
@@ -99,6 +105,7 @@ where
         Ok(response.dataset)
     }
 
+    /// Get information on a dataset entry.
     pub async fn read_dataset_entry(
         &mut self,
         entry_id: EntryId,
@@ -115,6 +122,7 @@ where
         Ok(response.dataset_entry)
     }
 
+    /// Update the details of a dataset entry.
     pub async fn update_dataset_entry(
         &mut self,
         entry_id: EntryId,
