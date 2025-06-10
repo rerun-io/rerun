@@ -59,7 +59,7 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
-    /// Find all entries maching the given filter.
+    /// Find all entries matching the given filter.
     pub async fn find_entries(
         &mut self,
         filter: EntryFilter,
