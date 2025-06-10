@@ -14,6 +14,7 @@ use re_types::{
     AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
     datatypes::Vec3D,
+    external::glam,
 };
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -549,21 +550,5 @@ fn log_geometry(
 }
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
-    // TODO(emilk): we should use glam for this, but we need to update glam first
-    let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
-    let (sr, cr) = (hr.sin(), hr.cos());
-    let (sp, cp) = (hp.sin(), hp.cos());
-    let (sy, cy) = (hy.sin(), hy.cos());
-
-    let x = sr * cp * cy + cr * sp * sy;
-    let y = cr * sp * cy - sr * cp * sy;
-    let z = cr * cp * sy + sr * sp * cy;
-    let w = cr * cp * cy - sr * sp * sy;
-
-    let norm = (x * x + y * y + z * z + w * w).sqrt();
-    if norm > 0.0 {
-        [x / norm, y / norm, z / norm, w / norm]
-    } else {
-        [0.0, 0.0, 0.0, 1.0]
-    }
+    glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
 }
