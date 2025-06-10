@@ -12,7 +12,7 @@ use crate::partition_table::PartitionTableProvider;
 use crate::table_entry_provider::TableEntryTableProvider;
 
 pub struct DataFusionConnector {
-    //TODO(ab): this should hold on to a `ConnectionRegistryHandle` instead of a `ConnectionClient`
+    //TODO(#10191): this should hold on to a `ConnectionRegistryHandle` instead of a `ConnectionClient`
     client: ConnectionClient,
 }
 

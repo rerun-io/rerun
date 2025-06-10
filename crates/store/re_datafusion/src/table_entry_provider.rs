@@ -20,7 +20,7 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct TableEntryTableProvider {
-    //TODO(ab): this should use a `ConnectionRegistryHandle` instead
+    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     table: EntryIdOrName,
 
