@@ -1,6 +1,6 @@
-use std::{future::Future, sync::OnceLock};
 use pyo3::{Python, prelude::*};
 use std::ffi::CString;
+use std::{future::Future, sync::OnceLock};
 use tokio::runtime::Runtime;
 
 /// Utility to get the Tokio Runtime from Python
@@ -34,7 +34,7 @@ pub fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
     })
 }
 
-pub fn py_log_warn(msg: &str) -> PyResult<()>{
+pub fn py_log_warn(msg: &str) -> PyResult<()> {
     re_log::warn!(msg);
     let csmsg;
     let cmsg = match CString::new(msg) {
