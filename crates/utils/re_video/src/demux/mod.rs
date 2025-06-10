@@ -200,10 +200,12 @@ pub struct VideoEncodingDetails {
     /// Optional mp4 stsd box from which this data was derived.
     ///
     /// Used by some decoders directly for configuration.
-    /// For H264 & H265, its presence implies that the bitstream is in the AVCC format rather than Annex B.
-    // TODO(andreas): Really we're after the optional AVCC box here, right? Right now we occasionally also extract other things.
-    // But limiting this to an optional AVCC would make more sense as a codec information piece.
-    pub stsd: Option<re_mp4::StsdBox>, // TODO: only avcc
+    /// For H.264 & H.265, its presence implies that the bitstream is in the AVCC format rather than Annex B.
+    // TODO(andreas):
+    // It would be nice to instead have an enum of all the actually needed descriptors.
+    // We know for sure that H.264 & H.265 need an AVCC/HVCC box for data from mp4, since the stream
+    // is otherwise not readable. But what about the other codecs? On Web we *do* pass additional information right now.
+    pub stsd: Option<re_mp4::StsdBox>,
 }
 
 impl VideoEncodingDetails {
