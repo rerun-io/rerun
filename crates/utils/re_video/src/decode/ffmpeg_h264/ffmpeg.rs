@@ -95,10 +95,10 @@ impl From<Error> for crate::decode::Error {
 
 /// In Annex-B before every NAL unit is a NAL start code.
 ///
-/// Can also be 3 bytes of 0x00.
-///
 /// This is used in Annex-B byte stream formats such as h264 files.
 /// Packet transform systems (RTP) may omit these.
+///
+/// Note that there's also a less commonly used short version with only 2 zeros: `0x00, 0x00, 0x01`.
 const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
