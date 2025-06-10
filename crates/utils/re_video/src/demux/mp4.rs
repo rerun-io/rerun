@@ -1,5 +1,4 @@
-#![allow(clippy::map_err_ignore)]
-
+use h264_reader::nal::{self, Nal};
 use itertools::Itertools as _;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
@@ -7,6 +6,7 @@ use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadErro
 use crate::{
     StableIndexDeque, Time, Timescale,
     demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
+    h264::encoding_details_from_h264_sps,
 };
 
 impl VideoDataDescription {
@@ -165,6 +165,24 @@ fn codec_details_from_stds(
     track: &re_mp4::Track,
     stsd: re_mp4::StsdBox,
 ) -> Result<VideoEncodingDetails, VideoLoadError> {
+    // For AVC we don't have to rely on the stsd box, since we can parse the SPS directly.
+    // re_mp4 doesn't have a full SPS parser, so almost certainly we're getting more information out this way,
+    // also this means that we have less divergence with the video streaming case.
+    if let re_mp4::StsdBoxContent::Avc1(avcc_box) = &stsd.contents {
+        for sps_nal in &avcc_box.avcc.sequence_parameter_sets {
+            let complete = true;
+            let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
+
+            return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
+                .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                .map_err(VideoLoadError::SpsParsingError)
+                .map(|details| VideoEncodingDetails {
+                    stsd: Some(stsd),
+                    ..details
+                });
+        }
+    }
+
     Ok(VideoEncodingDetails {
         codec_string: stsd
             .contents
@@ -178,28 +196,29 @@ fn codec_details_from_stds(
 }
 
 fn subsampling_mode(stsd: &re_mp4::StsdBox) -> Option<ChromaSubsamplingModes> {
-    if is_monochrome(stsd).unwrap_or(false) {
-        return Some(ChromaSubsamplingModes::Monochrome);
-    }
-
     match &stsd.contents {
         re_mp4::StsdBoxContent::Av01(av01_box) => {
-            // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
-            match (
-                av01_box.av1c.chroma_subsampling_x != 0,
-                av01_box.av1c.chroma_subsampling_y != 0,
-            ) {
-                (true, true) => Some(ChromaSubsamplingModes::Yuv420), // May also be monochrome.
-                (true, false) => Some(ChromaSubsamplingModes::Yuv422),
-                (false, true) => None, // Downsampling in Y but not in X is unheard of!
-                // Either that or monochrome.
-                // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
-                (false, false) => Some(ChromaSubsamplingModes::Yuv444),
+            if av01_box.av1c.monochrome {
+                Some(ChromaSubsamplingModes::Monochrome)
+            } else {
+                // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
+                match (
+                    av01_box.av1c.chroma_subsampling_x != 0,
+                    av01_box.av1c.chroma_subsampling_y != 0,
+                ) {
+                    (true, true) => Some(ChromaSubsamplingModes::Yuv420), // May also be monochrome.
+                    (true, false) => Some(ChromaSubsamplingModes::Yuv422),
+                    (false, true) => None, // Downsampling in Y but not in X is unheard of!
+                    // Either that or monochrome.
+                    // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
+                    (false, false) => Some(ChromaSubsamplingModes::Yuv444),
+                }
             }
         }
 
         re_mp4::StsdBoxContent::Avc1(_) => {
-            // TODO move SPS parsing from ffmpeg to here.
+            // We can only reach this point if there was no SPS.
+            // In this case, this is an unplayable MP4 file anyways!
             None
         }
 
@@ -232,26 +251,6 @@ fn subsampling_mode(stsd: &re_mp4::StsdBox) -> Option<ChromaSubsamplingModes> {
                 3 => Some(ChromaSubsamplingModes::Yuv444),
                 _ => None, // Unknown mode.
             }
-        }
-
-        re_mp4::StsdBoxContent::Mp4a(_)
-        | re_mp4::StsdBoxContent::Tx3g(_)
-        | re_mp4::StsdBoxContent::Unknown(_) => None,
-    }
-}
-
-fn is_monochrome(stsd: &re_mp4::StsdBox) -> Option<bool> {
-    match &stsd.contents {
-        re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
-        re_mp4::StsdBoxContent::Avc1(_)
-        | re_mp4::StsdBoxContent::Hvc1(_)
-        | re_mp4::StsdBoxContent::Hev1(_) => {
-            // It should be possible to extract this from the picture parameter set.
-            None
-        }
-        re_mp4::StsdBoxContent::Vp08(_) | re_mp4::StsdBoxContent::Vp09(_) => {
-            // Similar to AVC/HEVC, this information is likely accessible through SPS.
-            None
         }
 
         re_mp4::StsdBoxContent::Mp4a(_)

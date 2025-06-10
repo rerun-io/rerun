@@ -599,6 +599,9 @@ pub enum VideoLoadError {
 
     #[error("Unable to determine codec string from the video contents")]
     UnableToDetermineCodecString,
+
+    #[error("Failed to parse H.264 SPS from mp4: {0:?}")]
+    SpsParsingError(h264_reader::nal::sps::SpsError),
 }
 
 impl std::fmt::Debug for VideoDataDescription {
