@@ -33,7 +33,8 @@ pub struct GenericConnectionClient<T>(FrontendServiceClient<T>);
 impl<T> GenericConnectionClient<T> {
     /// Create a new [`Self`].
     ///
-    /// This should not be used in the viewer, use [`crate::ConnectionRegistry::client`] instead.
+    /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
+    /// instead.
     pub fn new(client: FrontendServiceClient<T>) -> Self {
         Self(client)
     }
