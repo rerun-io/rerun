@@ -50,3 +50,14 @@ def test_expected_warnings() -> None:
         lambda: rr.log("world/image", rr.Pinhole(focal_length=3)),
         "Must provide one of principal_point, resolution, or width/height)",
     )
+    expect_warning(
+        _duplicated_recording,
+        "already exists, will ignore creation and return existing recording.",
+    )
+
+
+def _duplicated_recording() -> None:
+    """A special case of creating duplicated streams and logging information, it causes a hang, this test is for this case."""
+    application_id = "test_app_id"
+    rr.init(application_id)
+    rr.init(application_id)
