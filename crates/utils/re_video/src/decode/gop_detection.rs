@@ -6,7 +6,7 @@ use h264_reader::{
 
 use crate::{VideoCodec, VideoEncodingDetails, h264::encoding_details_from_h264_sps};
 
-/// Failure reason for [`is_sample_start_of_gop`].
+/// Failure reason for [`detect_gop_start`].
 #[derive(thiserror::Error, Debug)]
 pub enum DetectGopStartError {
     #[error("Detection not supported for codec: {0:?}")]

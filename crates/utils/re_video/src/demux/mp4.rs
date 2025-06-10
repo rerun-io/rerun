@@ -1,4 +1,4 @@
-use h264_reader::nal::{self, Nal};
+use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
@@ -169,7 +169,8 @@ fn codec_details_from_stds(
     // re_mp4 doesn't have a full SPS parser, so almost certainly we're getting more information out this way,
     // also this means that we have less divergence with the video streaming case.
     if let re_mp4::StsdBoxContent::Avc1(avcc_box) = &stsd.contents {
-        for sps_nal in &avcc_box.avcc.sequence_parameter_sets {
+        // TODO(andreas): How to handle multiple SPS?
+        if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
             let complete = true;
             let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
 

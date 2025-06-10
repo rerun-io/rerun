@@ -28,8 +28,6 @@ impl SyncDecoder for SyncDav1dDecoder {
 
         self.decoder.flush();
 
-        // TODO(#10184): Should take into account changed video
-
         debug_assert!(
             matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
             "There should be no pending pictures, since we output them directly after submitting a chunk."
