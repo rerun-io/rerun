@@ -35,9 +35,9 @@ use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
+use super::utils::py_rerun_warn;
 use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
-
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySchema>()?;
@@ -55,16 +55,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
 
     Ok(())
-}
-
-fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
-    Python::with_gil(|py| {
-        let warning_type = PyModule::import(py, "rerun")?
-            .getattr("error_utils")?
-            .getattr("RerunWarning")?;
-        PyErr::warn(py, &warning_type, msg, 0)?;
-        Ok(())
-    })
 }
 
 /// The descriptor of an index column.

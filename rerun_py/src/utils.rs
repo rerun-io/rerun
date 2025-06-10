@@ -1,6 +1,6 @@
 use std::{future::Future, sync::OnceLock};
-
-use pyo3::Python;
+use pyo3::{Python, prelude::*};
+use std::ffi::CString;
 use tokio::runtime::Runtime;
 
 /// Utility to get the Tokio Runtime from Python
@@ -22,4 +22,27 @@ where
 {
     let runtime: &Runtime = get_tokio_runtime();
     py.allow_threads(|| runtime.block_on(f))
+}
+
+pub fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
+pub fn py_log_warn(msg: &str) -> PyResult<()>{
+    re_log::warn!(msg);
+    let csmsg;
+    let cmsg = match CString::new(msg) {
+        Ok(csm_temp) => {
+            csmsg = csm_temp;
+            csmsg.as_c_str()
+        }
+        _ => c"Warning: :Failed to get warning message.",
+    };
+    py_rerun_warn(cmsg)
 }
