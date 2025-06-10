@@ -304,17 +304,13 @@ impl VideoPlayer {
         video_description: &re_video::VideoDataDescription,
         requested: SampleAndGopIndex,
     ) -> Result<(), VideoPlayerError> {
+        // If we haven't decoded anything at all yet, reset the decoder.
         let Some(last_requested) = self.last_requested else {
-            // Haven't requested anything yet, so nothing to reset here!
-            return Ok(());
+            return self.reset(video_description);
         };
 
         // Decoding errors
         if let Some(error) = self.sample_decoder.take_error() {
-            // For each new (!) error after entering the error state, we reset the decoder.
-            // This way, it might later recover from the error as we progress in the video.
-            self.reset(video_description)?;
-
             // If we already have an error set on this player, preserve its wallclock time.
             // Otherwise, set the error using the time at which it was registered.
             if let Some(last_error) = &mut self.last_error {
@@ -322,6 +318,10 @@ impl VideoPlayer {
             } else {
                 self.last_error = Some(error);
             }
+
+            // For each new (!) error after entering the error state, we reset the decoder.
+            // This way, it might later recover from the error as we progress in the video.
+            self.reset(video_description)?;
         }
         // Seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
