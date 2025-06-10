@@ -198,33 +198,22 @@ fn load_video_data_from_chunks(
 
     // Extract all video samples.
     let mut video_sample_buffers = StableIndexDeque::new();
-    let mut samples = StableIndexDeque::with_capacity(sample_chunks.len()); // Number of video chunks is minimum number of samples.
-    let mut gops = StableIndexDeque::new();
+    let mut video_descr = re_video::VideoDataDescription {
+        codec,
+        encoding_details: None, // Unknown so far, we'll find out later.
+        timescale: timescale_for_timeline(store, timeline),
+        duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
+        gops: StableIndexDeque::new(),
+        samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
+        samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
+        mp4_tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
+    };
 
     for chunk in sample_chunks {
-        read_samples_from_chunk(
-            timeline,
-            chunk,
-            codec,
-            &mut video_sample_buffers,
-            &mut samples,
-            &mut gops,
-        )?;
+        read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)?;
     }
 
-    Ok((
-        re_video::VideoDataDescription {
-            codec,
-            encoding_details: None, // Unknown so far, we'll find out later.
-            timescale: timescale_for_timeline(store, timeline),
-            duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
-            gops,
-            samples,
-            samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
-            mp4_tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
-        },
-        video_sample_buffers,
-    ))
+    Ok((video_descr, video_sample_buffers))
 }
 
 fn timescale_for_timeline(
@@ -243,15 +232,24 @@ fn timescale_for_timeline(
 /// Rejects out of order samples - new samples must have a higher timestamp than the previous ones.
 /// Since samples within a chunk are guaranteed to be ordered, this can only happen if a new chunk
 /// is inserted that has is timestamped to be older than the data in the last added chunk.
+///
+/// Encoding details are automatically updated whenever detected.
+/// Changes of encoding details over time will trigger a warning.
 fn read_samples_from_chunk(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
-    codec: re_video::VideoCodec,
+    video_descr: &mut re_video::VideoDataDescription,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
-    samples: &mut StableIndexDeque<re_video::SampleMetadata>,
-    gops: &mut StableIndexDeque<re_video::GroupOfPictures>,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
+
+    let re_video::VideoDataDescription {
+        codec,
+        samples,
+        gops,
+        encoding_details,
+        ..
+    } = video_descr;
 
     let sample_descr = VideoStream::descriptor_sample();
     let Some(raw_array) = chunk.raw_component_array(&sample_descr) else {
@@ -335,6 +333,7 @@ fn read_samples_from_chunk(
                 let sample_idx = sample_base_idx + idx;
                 let byte_offset = offsets[idx] as usize;
                 let byte_length = lengths[idx];
+                let sample_bytes = &values[byte_offset..(byte_offset + byte_length)];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
                 // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
@@ -344,13 +343,32 @@ fn read_samples_from_chunk(
                 debug_assert!(decode_timestamp > previous_max_presentation_timestamp);
                 previous_max_presentation_timestamp = decode_timestamp;
 
-                let is_sync_result = re_video::is_sample_start_of_gop(
-                    &values[byte_offset..(byte_offset + byte_length)],
-                    codec,
-                );
-                // TODO(andreas): Do something with the error?
-                // Detecting too few GOPs is better than too many since it merely means that the decoder has more work to do to get to a given frame.
-                let is_sync = is_sync_result.unwrap_or(false);
+                let is_sync = match re_video::detect_gop_start(sample_bytes, *codec) {
+                    Ok(re_video::GopStartDetection::StartOfGop(new_encoding_details)) => {
+                        if encoding_details.as_ref() != Some(&new_encoding_details) {
+                            if let Some(old_encoding_details) = encoding_details.as_ref() {
+                                re_log::warn_once!(
+                                    "Detected change of video encoding properties (like size, bit depth, compression etc.) over time. \
+                                    This is not supported and may cause playback issues."
+                                );
+                                re_log::trace!(
+                                    "Previous encoding details: {:?}\n\nNew encoding details: {:?}",
+                                    old_encoding_details,
+                                    new_encoding_details
+                                );
+                            }
+                            *encoding_details = Some(new_encoding_details);
+                        }
+
+                        true
+                    }
+                    Ok(re_video::GopStartDetection::NotStartOfGop) => { false },
+
+                    Err(err) => {
+                        re_log::error_once!("Failed to detect GOP for video sample: {err}");
+                        false
+                    }
+                };
 
                 if is_sync {
                     // Last GOP extends until here now
@@ -518,10 +536,8 @@ impl Cache for VideoStreamCache {
                         if let Err(err) = read_samples_from_chunk(
                             *timeline,
                             chunk,
-                            video_data.codec,
+                            video_data,
                             video_sample_buffers,
-                            &mut video_data.samples,
-                            &mut video_data.gops,
                         ) {
                             re_log::error_once!(
                                 "Failed to read process additional incoming video samples: {err}"

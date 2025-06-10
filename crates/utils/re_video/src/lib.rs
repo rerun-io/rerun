@@ -6,9 +6,10 @@ mod stable_index_deque;
 mod time;
 
 pub use decode::{
-    AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
-    FrameContent, FrameInfo, PixelFormat, Result as DecodeResult, YuvMatrixCoefficients,
-    YuvPixelLayout, YuvRange, is_sample_start_of_gop, new_decoder,
+    AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings,
+    DetectGopStartError, Frame, FrameContent, FrameInfo, GopStartDetection, PixelFormat,
+    Result as DecodeResult, YuvMatrixCoefficients, YuvPixelLayout, YuvRange, detect_gop_start,
+    new_decoder,
 };
 
 #[cfg(with_ffmpeg)]

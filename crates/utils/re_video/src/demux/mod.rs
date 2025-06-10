@@ -173,7 +173,7 @@ pub struct VideoDataDescription {
 ///
 /// For video streams this is derived on the fly.
 /// For mp4 this is read from the AVCC box.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VideoEncodingDetails {
     /// Detailed codec string as specified by the `WebCodecs` codec registry.
     ///
