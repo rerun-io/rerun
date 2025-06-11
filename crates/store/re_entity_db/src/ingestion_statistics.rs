@@ -13,12 +13,11 @@ pub struct IngestionStatistics {
 impl IngestionStatistics {
     #[inline]
     pub fn on_events(&self, timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {
-        if let Some(nanos_since_epoch) = nanos_since_epoch() {
-            let mut stats = self.stats.lock();
-            for event in events {
-                if event.diff.kind == ChunkStoreDiffKind::Addition {
-                    stats.on_new_chunk(nanos_since_epoch, timestamps, &event.diff.chunk);
-                }
+        let now_nanos = nanos_since_epoch();
+        let mut stats = self.stats.lock();
+        for event in events {
+            if event.diff.kind == ChunkStoreDiffKind::Addition {
+                stats.on_new_chunk(now_nanos, timestamps, &event.diff.chunk);
             }
         }
     }
@@ -147,9 +146,10 @@ impl LatencyStats {
             decode2ingest,
         } = self;
 
-        if let Some(nanos_since_epoch) = nanos_since_epoch() {
-            let now = nanos_since_epoch as f64 / 1e9;
-            // make sure the average is up-to-date.:
+        {
+            // make sure the averages is up-to-date:
+            let now_nanos = nanos_since_epoch();
+            let now = now_nanos as f64 / 1e9;
             e2e.flush(now);
             log2chunk.flush(now);
             chunk2encode.flush(now);
@@ -167,11 +167,12 @@ impl LatencyStats {
     }
 }
 
-fn nanos_since_epoch() -> Option<i64> {
+fn nanos_since_epoch() -> i64 {
     if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-        Some(duration_since_epoch.as_nanos() as i64)
+        duration_since_epoch.as_nanos() as i64
     } else {
-        None
+        re_log::warn_once!("Broken system clock: unable to get current time since epoch.");
+        0
     }
 }
 
