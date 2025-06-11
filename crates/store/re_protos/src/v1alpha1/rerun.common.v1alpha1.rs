@@ -285,8 +285,8 @@ pub struct ScanParameters {
     /// ```text
     /// scanner.order_by(…)
     /// ```
-    #[prost(message, optional, tag = "6")]
-    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    #[prost(message, repeated, tag = "6")]
+    pub order_by: ::prost::alloc::vec::Vec<ScanParametersOrderClause>,
     /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
     #[prost(bool, tag = "7")]
     pub explain_plan: bool,

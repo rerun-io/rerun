@@ -68,6 +68,7 @@ pub(crate) struct Payload {
 }
 
 #[cfg(feature = "encoder")]
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
@@ -93,6 +94,7 @@ pub(crate) fn encode_arrow(
 }
 
 #[cfg(feature = "decoder")]
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,

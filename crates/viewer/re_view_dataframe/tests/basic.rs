@@ -34,7 +34,7 @@ pub fn test_null_timeline() {
         &mut test_context,
         view_id,
         "null_timeline",
-        egui::vec2(300.0, 150.0),
+        egui::vec2(400.0, 200.0),
     );
 }
 

@@ -65,6 +65,7 @@ skip = [
   { name = "pulldown-cmark" },     # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "redox_syscall" },      # Plenty of versions in the wild
   { name = "rustc-hash" },         # numpy with compatible pyo3 requires different version than wgpu
+  { name = "twox-hash" },          # https://github.com/PSeitz/lz4_flex/pull/175 and then update needed to arrow-ipc
 ]
 skip-tree = [
   { name = "quick-xml" }, # Old version via rfd

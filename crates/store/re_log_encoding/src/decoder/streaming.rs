@@ -110,6 +110,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     type Item = Result<StreamingLogMsg, DecodeError>;
 
+    #[tracing::instrument(name = "streaming_decoder", level = "trace", skip_all)]
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,

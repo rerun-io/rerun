@@ -1,12 +1,16 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
 use re_auth::Jwt;
 
-use crate::redap::{ConnectionError, RedapClient};
+use crate::connection_client::GenericConnectionClient;
+use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
+
+/// This is the type of `ConnectionClient` used throughout the viewer, where the
+/// `ConnectionRegistry` is used.
+pub type ConnectionClient = GenericConnectionClient<RedapClientInner>;
 
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
@@ -54,14 +58,18 @@ pub struct ConnectionRegistryHandle {
 
 impl ConnectionRegistryHandle {
     pub fn set_token(&self, origin: &re_uri::Origin, token: Jwt) {
-        let mut inner = self.inner.blocking_write();
-        inner.saved_tokens.insert(origin.clone(), token);
-        inner.clients.remove(origin);
+        wrap_blocking_lock(|| {
+            let mut inner = self.inner.blocking_write();
+            inner.saved_tokens.insert(origin.clone(), token);
+            inner.clients.remove(origin);
+        });
     }
 
     pub fn set_fallback_token(&self, token: Jwt) {
-        let mut inner = self.inner.blocking_write();
-        inner.fallback_token = Some(token);
+        wrap_blocking_lock(|| {
+            let mut inner = self.inner.blocking_write();
+            inner.fallback_token = Some(token);
+        });
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
@@ -80,12 +88,15 @@ impl ConnectionRegistryHandle {
     /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
     /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
     /// sensitive information.
-    pub async fn client(&self, origin: re_uri::Origin) -> Result<RedapClient, ConnectionError> {
+    pub async fn client(
+        &self,
+        origin: re_uri::Origin,
+    ) -> Result<ConnectionClient, ConnectionError> {
         // happy path
         {
             let inner = self.inner.read().await;
             if let Some(client) = inner.clients.get(&origin) {
-                return Ok(client.clone());
+                return Ok(ConnectionClient::new(client.clone()));
             }
         }
 
@@ -106,7 +117,7 @@ impl ConnectionRegistryHandle {
             Ok(client) => {
                 let mut inner = self.inner.write().await;
                 inner.clients.insert(origin, client.clone());
-                Ok(client)
+                Ok(ConnectionClient::new(client))
             }
             Err(err) => Err(err),
         }
@@ -114,14 +125,16 @@ impl ConnectionRegistryHandle {
 
     /// Dump all tokens for persistence purposes.
     pub fn dump_tokens(&self) -> SerializedTokens {
-        SerializedTokens(
-            self.inner
-                .blocking_read()
-                .saved_tokens
-                .iter()
-                .map(|(origin, token)| (origin.clone(), token.to_string()))
-                .collect(),
-        )
+        wrap_blocking_lock(|| {
+            SerializedTokens(
+                self.inner
+                    .blocking_read()
+                    .saved_tokens
+                    .iter()
+                    .map(|(origin, token)| (origin.clone(), token.to_string()))
+                    .collect(),
+            )
+        })
     }
 
     /// Load tokens from persistence.
@@ -129,19 +142,39 @@ impl ConnectionRegistryHandle {
     /// IMPORTANT: This will NOT overwrite any existing tokens, since it is assumed that existing
     /// tokens were explicitly set by the user (e.g. with `--token`).
     pub fn load_tokens(&self, tokens: SerializedTokens) {
-        let mut inner = self.inner.blocking_write();
-        for (origin, token) in tokens.0 {
-            if let Entry::Vacant(e) = inner.saved_tokens.entry(origin.clone()) {
-                if let Ok(jwt) = Jwt::try_from(token) {
-                    e.insert(jwt);
+        wrap_blocking_lock(|| {
+            let mut inner = self.inner.blocking_write();
+            for (origin, token) in tokens.0 {
+                if let Entry::Vacant(e) = inner.saved_tokens.entry(origin.clone()) {
+                    if let Ok(jwt) = Jwt::try_from(token) {
+                        e.insert(jwt);
+                    } else {
+                        re_log::debug!("Failed to parse token for origin {origin}");
+                    }
                 } else {
-                    re_log::debug!("Failed to parse token for origin {origin}");
+                    re_log::trace!("Ignoring token for origin {origin} as it is already set");
                 }
-            } else {
-                re_log::trace!("Ignoring token for origin {origin} as it is already set");
             }
-        }
+        });
     }
+}
+
+/// Wraps code using blocking tokio locks.
+///
+/// This is required if the calling code is running on an async executor thread, see e.g.
+/// [`tokio::sync::RwLock::blocking_write`].
+#[inline]
+fn wrap_blocking_lock<F, R>(inner: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    #[cfg(not(target_arch = "wasm32"))]
+    let res = tokio::task::block_in_place(inner);
+
+    #[cfg(target_arch = "wasm32")]
+    let res = inner();
+
+    res
 }
 
 // ---
