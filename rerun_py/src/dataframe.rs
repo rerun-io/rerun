@@ -35,7 +35,7 @@ use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
-use super::utils::py_rerun_warn;
+use super::utils::py_rerun_warn_cstr;
 use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 /// Register the `rerun.dataframe` module.
@@ -777,7 +777,7 @@ impl PyRecordingView {
                     && all_contents_are_static
                     && any_selected_data_is_static
                 {
-                    py_rerun_warn(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                    py_rerun_warn_cstr(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
                 let schema = query_handle.schema().clone();
