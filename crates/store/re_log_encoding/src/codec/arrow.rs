@@ -10,7 +10,7 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 ) -> Result<(), CodecError> {
     re_tracing::profile_function!();
 
-    let mut schema = std::sync::Arc::unwrap_or_clone(batch.schema().clone());
+    let mut schema = (*batch.schema()).clone();
 
     // Remember when the encoding took place,
     // for ~accurate latency measurement of e.g. gRPC calls.
