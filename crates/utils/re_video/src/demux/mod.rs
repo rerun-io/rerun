@@ -170,6 +170,135 @@ pub struct VideoDataDescription {
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
+impl VideoDataDescription {
+    /// Checks various invariants that the video description should always uphold.
+    ///
+    /// Violation of any of these variants is **not** a user(-data) error, but instead an
+    /// implementation bug of any code manipulating the video description.
+    /// Vice versa, all code using `VideoDataDescription` can assume that these invariants hold.
+    ///
+    /// It's recommended to run these sanity check only in debug builds as they may be expensive for
+    /// large videos.
+    ///
+    /// Check implementation for details.
+    pub fn sanity_check(&self) -> Result<(), String> {
+        self.sanity_check_gops()?;
+        self.sanity_check_samples()?;
+
+        // If an STSD box is present, then its content type must match with the internal codec.
+        if let Some(stsd) = self.encoding_details.as_ref().and_then(|e| e.stsd.as_ref()) {
+            let stsd_codec = match &stsd.contents {
+                re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
+                re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+                re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                    crate::VideoCodec::H265
+                }
+                re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+                re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
+                _ => {
+                    return Err(format!(
+                        "STSD box content type {:?} doesn't have a supported codec.",
+                        stsd.contents
+                    ));
+                }
+            };
+            if stsd_codec != self.codec {
+                return Err(format!(
+                    "STSD box content type {:?} does not match with the internal codec {:?}.",
+                    stsd.contents, self.codec
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn sanity_check_gops(&self) -> Result<(), String> {
+        for gop in self.gops.iter() {
+            // All GOP sample ranges are non-empty.
+            if gop.sample_range.is_empty() {
+                return Err("GOP sample range is empty".to_owned());
+            }
+
+            // GOP sample ranges only refer to samples within the sample description.
+            if gop.sample_range.start < self.samples.min_index() {
+                return Err(format!(
+                    "First index of GOP sample range start {:?} refers to sample outside of the list of samples.",
+                    gop.sample_range
+                ));
+            }
+            if gop.sample_range.end > self.samples.next_index() {
+                return Err(format!(
+                    "Last index of GOP sample range {:?} refers to sample outside of the list of samples.",
+                    gop.sample_range
+                ));
+            }
+
+            // All samples at the beginning of a GOP are marked with `is_sync==true`
+            if !self.samples[gop.sample_range.start].is_sync {
+                return Err(format!(
+                    "First sample of GOP sample range {:?} is not marked with `is_sync`.",
+                    gop.sample_range
+                ));
+            }
+        }
+
+        // GOP sample ranges are sorted and are contiguous (have no gaps).
+        for (a, b) in self.gops.iter().tuple_windows() {
+            if a.sample_range.end != b.sample_range.start {
+                return Err(format!(
+                    "GOPs sample ranges are not contiguous: {:?} {:?}",
+                    a.sample_range, b.sample_range
+                ));
+            }
+            if a.sample_range.start >= b.sample_range.start {
+                return Err(format!(
+                    "GOPs sample ranges are not contiguous or sorted: {:?} {:?}",
+                    a.sample_range, b.sample_range
+                ));
+            }
+        }
+
+        // The last GOP includes the last sample.
+        if let Some(front_gop) = self.gops.back() {
+            if front_gop.sample_range.end != self.samples.next_index() {
+                return Err(format!(
+                    "Last GOP sample range {:?} does not include the last sample {}.",
+                    front_gop.sample_range,
+                    self.samples.next_index() - 1
+                ));
+            }
+        }
+        // Note that this isn't true vice versa!
+        // The first GOP may not include the first few samples.
+
+        Ok(())
+    }
+
+    fn sanity_check_samples(&self) -> Result<(), String> {
+        // Decode timestamps are strictly monotonically increasing.
+        for (a, b) in self.samples.iter().tuple_windows() {
+            if a.decode_timestamp > b.decode_timestamp {
+                return Err(format!(
+                    "Decode timestamps are not strictly monotonically increasing: {:?} {:?}",
+                    a.decode_timestamp, b.decode_timestamp
+                ));
+            }
+        }
+
+        // Sample statistics are consistent with the samples.
+        let expected_statistics = SamplesStatistics::new(&self.samples);
+        if expected_statistics != self.samples_statistics {
+            return Err(format!(
+                "Sample statistics are not consistent with the samples.\nExpected: {:?}\nActual: {:?}",
+                expected_statistics, self.samples_statistics
+            ));
+        }
+
+        Ok(())
+    }
+}
+
 /// Various information about how the video was encoded.
 ///
 /// For video streams this is derived on the fly.
@@ -220,7 +349,7 @@ impl VideoEncodingDetails {
 }
 
 /// Meta informationa about the video samples.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {
     /// Whether all decode timestamps are equal to presentation timestamps.
     ///
@@ -460,7 +589,7 @@ impl VideoDataDescription {
 /// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
 /// We generally refer to "closed GOPs" only, such that they are re-entrant for decoders
 /// (as opposed to "open GOPs" which may refer to frames from other GOPs).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupOfPictures {
     /// Range of samples contained in this GOP.
     // TODO(andreas): sample ranges between GOPs are guaranteed to be contiguous.
