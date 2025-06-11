@@ -111,13 +111,19 @@ impl WebVideoDecoder {
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         let on_output = Arc::new(on_output);
-        let decoder = init_video_decoder(on_output.clone(), video_descr.timescale)?;
+
+        // Web APIs insist on microsecond timestamps throughout.
+        // If we don't have a timescale, assume a 30fps video where time units are frames.
+        // Higher fps should be still just fine, the web just needs _something_.
+        let timescale = video_descr.timescale.unwrap_or(Timescale::new(30));
+
+        let decoder = init_video_decoder(on_output.clone(), timescale)?;
 
         Ok(Self {
             codec: video_descr.codec,
             stsd: video_descr.stsd.clone(),
             coded_dimensions: video_descr.coded_dimensions,
-            timescale: video_descr.timescale,
+            timescale,
             decoder,
             hw_acceleration,
             on_output,

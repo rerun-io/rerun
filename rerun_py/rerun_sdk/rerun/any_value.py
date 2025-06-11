@@ -183,7 +183,7 @@ class AnyBatchValue(ComponentBatchLike):
 
         """
         inst = cls(descriptor, value, drop_untyped_nones)
-        return ComponentColumn(inst)
+        return ComponentColumn(descriptor, inst)
 
 
 class AnyValues(AsComponents):
@@ -316,4 +316,6 @@ class AnyValues(AsComponents):
 
         """
         inst = cls(drop_untyped_nones, **kwargs)
-        return ComponentColumnList([ComponentColumn(batch) for batch in inst.component_batches])
+        return ComponentColumnList([
+            ComponentColumn(batch.component_descriptor(), batch) for batch in inst.component_batches
+        ])

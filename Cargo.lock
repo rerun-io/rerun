@@ -1128,6 +1128,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitstream-io"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6099cdc01846bc367c4e7dd630dc5966dccf36b652fae7a74e17b640411a91b2"
+
+[[package]]
 name = "blake2"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2732,7 +2738,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.5",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -2768,7 +2774,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2785,7 +2791,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2825,7 +2831,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2844,7 +2850,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2863,7 +2869,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2927,7 +2933,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "ahash",
  "egui",
@@ -2944,7 +2950,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2961,7 +2967,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "dify",
  "eframe",
@@ -2976,8 +2982,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.32.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14ae092b46ea532f6c69d3e71036fb3b688fd00fd09c2a1e43d17051a8ae43e6"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#9cf91b3bb6f307d8cd3a5b41abad25c9e2f6f15e"
 dependencies = [
  "ahash",
  "egui",
@@ -3033,7 +3038,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3150,7 +3155,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3169,7 +3174,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#2cf6a3a9a688c1a976fb1da41f9b926411a53b46"
+source = "git+https://github.com/emilk/egui.git?branch=main#b8dfb138b692a3aa0371578eb368edaffae15618"
 
 [[package]]
 name = "equivalent"
@@ -3380,6 +3385,12 @@ checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
 ]
+
+[[package]]
+name = "four-cc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "795cbfc56d419a7ce47ccbb7504dd9a5b7c484c083c356e797de08bd988d9629"
 
 [[package]]
 name = "fsevent-sys"
@@ -3808,6 +3819,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "h264-reader"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "036a78b2620d92f0ec57690bc792b3bb87348632ee5225302ba2e66a48021c6c"
+dependencies = [
+ "bitstream-io",
+ "hex-slice",
+ "log",
+ "memchr",
+ "rfc6381-codec",
+]
+
+[[package]]
 name = "half"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3881,6 +3905,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hex-slice"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5491a308e0214554f07a81d8944abe45f552871c12e3c3c6e7e5d354039a6c4c"
 
 [[package]]
 name = "hexasphere"
@@ -4721,7 +4751,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -5065,6 +5095,21 @@ dependencies = [
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "mp4ra-rust"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdbc3d3867085d66ac6270482e66f3dd2c5a18451a3dc9ad7269e94844a536b7"
+dependencies = [
+ "four-cc",
+]
+
+[[package]]
+name = "mpeg4-audio-const"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96a1fe2275b68991faded2c80aa4a33dba398b77d276038b8f50701a22e55918"
 
 [[package]]
 name = "multimap"
@@ -7088,7 +7133,9 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "async-stream",
+ "re_arrow_util",
  "re_auth",
  "re_chunk",
  "re_error",
@@ -7188,6 +7235,7 @@ dependencies = [
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
+ "tracing",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -7776,6 +7824,7 @@ dependencies = [
  "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
+ "h264-reader",
  "indicatif",
  "itertools 0.14.0",
  "js-sys",
@@ -8056,6 +8105,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui-wgpu",
+ "egui_kittest",
  "egui_plot",
  "ehttp",
  "glam",
@@ -8157,6 +8207,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pollster 0.4.0",
+ "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
  "re_entity_db",
@@ -8205,6 +8256,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "web-time",
 ]
 
 [[package]]
@@ -8572,6 +8624,16 @@ name = "rexif"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be932047c168919c8d5af065b16fa7d4bd24835ffa256bf0cf1ff463f91c15df"
+
+[[package]]
+name = "rfc6381-codec"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed54c20f5c3ec82eab6d998b313dc75ec5d5650d4f57675e61d72489040297fd"
+dependencies = [
+ "mp4ra-rust",
+ "mpeg4-audio-const",
+]
 
 [[package]]
 name = "rfd"

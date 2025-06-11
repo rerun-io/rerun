@@ -112,7 +112,14 @@ class TimeColumn(TimeColumnLike):
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
             if isinstance(timestamp, np.ndarray):
-                self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+                if np.issubdtype(timestamp.dtype, np.datetime64):
+                    # Already a datetime array, just ensure it's in nanoseconds
+                    self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+                elif np.issubdtype(timestamp.dtype, np.number):
+                    # Numeric array that needs conversion to nanoseconds
+                    self.times = pa.array((timestamp * 1e9).astype("datetime64[ns]"), pa.timestamp("ns"))
+                else:
+                    raise TypeError(f"Unsupported numpy array dtype: {timestamp.dtype}")
             else:
                 self.times = pa.array(
                     [np.int64(to_nanos_since_epoch(timestamp)).astype("datetime64[ns]") for timestamp in timestamp],

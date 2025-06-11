@@ -1034,6 +1034,25 @@ class Dataset(Entry):
     def arrow_schema(self) -> pa.Schema:
         """Return the Arrow schema of the data contained in the dataset."""
 
+    def blueprint_dataset_id(self) -> EntryId | None:
+        """The ID of the associated blueprint dataset, if any."""
+
+    def blueprint_dataset(self) -> Dataset | None:
+        """The associated blueprint dataset, if any."""
+
+    def default_blueprint_partition_id(self) -> str | None:
+        """The default blueprint partition ID for this dataset, if any."""
+
+    def set_default_blueprint_partition_id(self, partition_id: str) -> None:
+        """
+        Set the default blueprint partition ID for this dataset.
+
+        This fails if the change cannot be made to the remote server.
+        """
+
+    def partition_ids(self) -> list[str]:
+        """Returns a list of partitions IDs for the dataset."""
+
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
 

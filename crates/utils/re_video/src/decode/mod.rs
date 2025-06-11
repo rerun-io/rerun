@@ -93,6 +93,10 @@ pub use ffmpeg_h264::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
+mod gop_detection;
+
+pub use gop_detection::{StartOfGopDetectionFailure, is_sample_start_of_gop};
+
 use crate::Time;
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -233,9 +237,9 @@ pub fn new_decoder(
     }
 }
 
-/// One chunk of encoded video data, representing a single [`crate::Sample`].
+/// One chunk of encoded video data, representing a single [`crate::SampleMetadata`].
 ///
-/// For details on how to interpret the data, see [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::SampleMetadata`].
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {

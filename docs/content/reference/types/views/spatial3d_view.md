@@ -53,6 +53,7 @@ snippet: views/spatial3d
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
@@ -71,4 +72,5 @@ snippet: views/spatial3d
 * [`Points2D`](../archetypes/points2d.md) (if logged under a projection)
 * [`SegmentationImage`](../archetypes/segmentation_image.md) (if logged under a projection)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md) (if logged under a projection)
+* [`VideoStream`](../archetypes/video_stream.md) (if logged under a projection)
 

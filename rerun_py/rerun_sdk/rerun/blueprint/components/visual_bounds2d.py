@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .visual_bounds2d_ext import VisualBounds2DExt
@@ -30,7 +29,7 @@ class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D, ComponentMixin):
 
 
 class VisualBounds2DBatch(datatypes.Range2DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.VisualBounds2D")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.VisualBounds2D"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use parking_lot::Mutex;
 
 use re_entity_db::EntityPath;
-use re_global_context::resolve_mono_instance_path_item;
+use re_global_context::{ViewId, resolve_mono_instance_path_item};
 use re_log_types::StoreKind;
 
 use crate::ViewerContext;
@@ -122,6 +122,24 @@ impl ItemCollection {
         items: impl IntoIterator<Item = (Item, Option<ItemContext>)>,
     ) -> Self {
         Self(items.into_iter().collect())
+    }
+
+    /// Is this view the selected one (and no other)?
+    pub fn is_view_the_only_selected(&self, needle: &ViewId) -> bool {
+        let mut is_selected = false;
+        for item in self.iter_items() {
+            let item_is_view = match item {
+                Item::View(id) | Item::DataResult(id, _) => id == needle,
+                _ => false,
+            };
+
+            if item_is_view {
+                is_selected = true;
+            } else {
+                return false; // More than one view selected
+            }
+        }
+        is_selected
     }
 }
 

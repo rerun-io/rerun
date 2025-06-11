@@ -13,7 +13,6 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["AggregationPolicy", "AggregationPolicyArrayLike", "AggregationPolicyBatch", "AggregationPolicyLike"]
@@ -97,7 +96,7 @@ AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPo
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.AggregationPolicy")
+    _COMPONENT_NAME: str = "rerun.components.AggregationPolicy"
 
     @staticmethod
     def _native_to_pa_array(data: AggregationPolicyArrayLike, data_type: pa.DataType) -> pa.Array:

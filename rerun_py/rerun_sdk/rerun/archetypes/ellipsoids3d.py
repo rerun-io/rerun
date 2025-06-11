@@ -139,7 +139,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         labels:
             Optional text labels for the ellipsoids.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -226,7 +229,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         labels:
             Optional text labels for the ellipsoids.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -380,7 +386,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

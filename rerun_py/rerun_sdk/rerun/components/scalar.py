@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class Scalar(datatypes.Float64, ComponentMixin):
 
 
 class ScalarBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Scalar")
+    _COMPONENT_NAME: str = "rerun.components.Scalar"
 
 
 # This is patched in late to avoid circular dependencies.

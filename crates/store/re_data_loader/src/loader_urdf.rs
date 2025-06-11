@@ -14,6 +14,7 @@ use re_types::{
     AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
     datatypes::Vec3D,
+    external::glam,
 };
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -514,15 +515,12 @@ fn log_geometry(
         }
         Geometry::Cylinder { radius, length } => {
             // URDF and Rerun both use Z as the main axis
-            re_log::warn_once!(
-                "Representing URDF cylinder as a capsule instead, because Rerun does not yet support cylinders: https://github.com/rerun-io/rerun/issues/1361"
-            ); // TODO(#1361): support cylinders
             send_archetype(
                 tx,
                 store_id,
                 entity_path,
-                &re_types::archetypes::Capsules3D::from_lengths_and_radii(
-                    [*length as f32 - *radius as f32], // Very approximately the correct volume
+                &re_types::archetypes::Cylinders3D::from_lengths_and_radii(
+                    [*length as f32],
                     [*radius as f32],
                 ),
             )?;
@@ -552,21 +550,5 @@ fn log_geometry(
 }
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
-    // TODO(emilk): we should use glam for this, but we need to update glam first
-    let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
-    let (sr, cr) = (hr.sin(), hr.cos());
-    let (sp, cp) = (hp.sin(), hp.cos());
-    let (sy, cy) = (hy.sin(), hy.cos());
-
-    let x = sr * cp * cy + cr * sp * sy;
-    let y = cr * sp * cy - sr * cp * sy;
-    let z = cr * cp * sy + sr * sp * cy;
-    let w = cr * cp * cy - sr * sp * sy;
-
-    let norm = (x * x + y * y + z * z + w * w).sqrt();
-    if norm > 0.0 {
-        [x / norm, y / norm, z / norm, w / norm]
-    } else {
-        [0.0, 0.0, 0.0, 1.0]
-    }
+    glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
 }

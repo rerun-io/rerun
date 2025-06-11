@@ -13,7 +13,6 @@ import pyarrow as pa
 from ..._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
 )
 
 __all__ = ["ContainerKind", "ContainerKindArrayLike", "ContainerKindBatch", "ContainerKindLike"]
@@ -66,7 +65,7 @@ ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ContainerKind")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ContainerKind"
 
     @staticmethod
     def _native_to_pa_array(data: ContainerKindArrayLike, data_type: pa.DataType) -> pa.Array:

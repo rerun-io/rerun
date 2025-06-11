@@ -911,7 +911,7 @@ fn query_and_resolve_tree_transform_at_entity(
 /// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
 // TODO(andreas, jleibs): Model this out as a generic extension mechanism.
 fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
--> [(ArchetypeName, ComponentDescriptor); 3] {
+-> [(ArchetypeName, ComponentDescriptor); 4] {
     [
         (
             archetypes::Boxes3D::name(),
@@ -924,6 +924,10 @@ fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
         (
             archetypes::Capsules3D::name(),
             archetypes::Capsules3D::descriptor_translations(),
+        ),
+        (
+            archetypes::Cylinders3D::name(),
+            archetypes::Cylinders3D::descriptor_centers(),
         ),
     ]
 }

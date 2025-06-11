@@ -219,14 +219,7 @@ pub fn blob_preview_and_save_ui(
             if let Ok(video) = video_result.as_ref() {
                 ui.separator();
 
-                show_decoded_frame_info(
-                    ctx.render_ctx(),
-                    ui,
-                    ui_layout,
-                    video,
-                    video_timestamp,
-                    blob,
-                );
+                show_decoded_frame_info(ctx, ui, ui_layout, video, video_timestamp, blob);
             }
         }
     }

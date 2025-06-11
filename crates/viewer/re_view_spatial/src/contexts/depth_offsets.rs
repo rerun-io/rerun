@@ -37,6 +37,7 @@ impl ViewContextSystem for EntityDepthOffsets {
                 archetypes::Points2D::descriptor_indicator(),
                 archetypes::SegmentationImage::descriptor_indicator(),
                 archetypes::VideoFrameReference::descriptor_indicator(),
+                archetypes::VideoStream::descriptor_indicator(),
             ]
             .into_iter()
             .collect(),

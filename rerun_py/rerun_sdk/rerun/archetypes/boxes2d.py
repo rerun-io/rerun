@@ -104,7 +104,10 @@ class Boxes2D(Boxes2DExt, Archetype):
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -181,7 +184,10 @@ class Boxes2D(Boxes2DExt, Archetype):
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -304,7 +310,10 @@ class Boxes2D(Boxes2DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

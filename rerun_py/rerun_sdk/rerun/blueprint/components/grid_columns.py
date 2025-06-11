@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +28,7 @@ class GridColumns(datatypes.UInt32, ComponentMixin):
 
 
 class GridColumnsBatch(datatypes.UInt32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.GridColumns")
+    _COMPONENT_NAME: str = "rerun.blueprint.components.GridColumns"
 
 
 # This is patched in late to avoid circular dependencies.
