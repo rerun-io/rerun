@@ -81,8 +81,7 @@ async fn serve_impl(
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
     let tcp_listener = TcpListener::bind(addr).await?;
-    let incoming =
-        TcpIncoming::from_listener(tcp_listener, true, None).map_err(|err| anyhow::anyhow!(err))?;
+    let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
 
     let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
         format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
