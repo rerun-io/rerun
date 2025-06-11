@@ -42,7 +42,7 @@ pub fn visualizer_ui(
         &all_visualizers,
     );
 
-    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add new visualizer…", |ui| {
         menu_add_new_visualizer(
             ctx,
             ui,
@@ -91,7 +91,7 @@ pub fn visualizer_ui_impl(
     let override_path = data_result.override_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE);
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
             let archetype = VisualizerOverrides::new(
                 active_visualizers
@@ -412,18 +412,22 @@ fn visualizer_components(
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
-                .menu_button(&re_ui::icons::MORE, |ui: &mut egui::Ui| {
-                    menu_more(
-                        ctx,
-                        ui,
-                        component_descr.clone(),
-                        override_path,
-                        &raw_override.clone().map(|(_, raw_override)| raw_override),
-                        raw_default.clone().map(|(_, raw_override)| raw_override),
-                        raw_fallback.clone(),
-                        raw_current_value.clone(),
-                    );
-                }),
+                .menu_button(
+                    &re_ui::icons::MORE,
+                    "More options",
+                    |ui: &mut egui::Ui| {
+                        menu_more(
+                            ctx,
+                            ui,
+                            component_descr.clone(),
+                            override_path,
+                            &raw_override.clone().map(|(_, raw_override)| raw_override),
+                            raw_default.clone().map(|(_, raw_override)| raw_override),
+                            raw_fallback.clone(),
+                            raw_current_value.clone(),
+                        );
+                    },
+                ),
                 add_children,
             )
             .item_response
@@ -463,7 +467,7 @@ fn editable_blueprint_component_list_item(
                     allow_multiline,
                 );
             })
-            .action_button(&re_ui::icons::CLOSE, || {
+            .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                 query_ctx
                     .viewer_ctx()
                     .clear_blueprint_component(blueprint_path, component_descr.clone());

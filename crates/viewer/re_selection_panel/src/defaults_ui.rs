@@ -60,19 +60,20 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button = re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
-        add_button_is_open = true;
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        add_popup_ui(
-            ctx,
-            ui,
-            &view.defaults_path,
-            query,
-            components_to_show_in_add_menu.unwrap_or_default(),
-            &visualizers,
-        );
-    })
-    .hover_text("Add more component defaults");
+    let mut add_button =
+        re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add overrides…", |ui| {
+            add_button_is_open = true;
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            add_popup_ui(
+                ctx,
+                ui,
+                &view.defaults_path,
+                query,
+                components_to_show_in_add_menu.unwrap_or_default(),
+                &visualizers,
+            );
+        })
+        .hover_text("Add more component defaults");
 
     if let Some(reason) = reason_we_cannot_add_more {
         add_button = add_button.enabled(false).disabled_hover_text(reason);
@@ -153,7 +154,7 @@ fn active_default_ui(
                     },
                 )
                 .min_desired_width(150.0)
-                .action_button(&re_ui::icons::CLOSE, || {
+                .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                     ctx.clear_blueprint_component(
                         view.defaults_path.clone(),
                         component_descr.clone(),

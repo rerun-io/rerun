@@ -290,7 +290,10 @@ impl ModalWrapper {
                     .max_rect(ui.max_rect())
                     .layout(egui::Layout::right_to_left(egui::Align::Center)),
             );
-            if ui.small_icon_button(&crate::icons::CLOSE).clicked() {
+            if ui
+                .small_icon_button(&crate::icons::CLOSE, "Close")
+                .clicked()
+            {
                 ui.close();
             }
         });

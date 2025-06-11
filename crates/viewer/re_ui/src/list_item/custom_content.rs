@@ -77,39 +77,51 @@ impl<'a> CustomContent<'a> {
 
     /// Helper to add an [`super::ItemActionButton`] to the right of the item.
     ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.action_button_with_enabled(icon, true, on_click)
+        self.action_button_with_enabled(icon, alt_text, true, on_click)
     }
 
     /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button_with_enabled(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.button(super::ItemActionButton::new(icon, on_click).enabled(enabled))
+        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn menu_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, add_contents))
+        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
     }
 }
 

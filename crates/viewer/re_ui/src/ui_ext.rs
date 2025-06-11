@@ -125,15 +125,24 @@ pub trait UiExt {
         )
     }
 
-    fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
-        let widget = self.small_icon_button_widget(icon);
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button(&mut self, icon: &Icon, alt_text: impl Into<String>) -> egui::Response {
+        let widget = self.small_icon_button_widget(icon, alt_text);
         self.ui_mut().add(widget)
     }
 
-    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button_widget<'a>(
+        &self,
+        icon: &'a Icon,
+        alt_text: impl Into<String>,
+    ) -> egui::Button<'a> {
         egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(self.tokens().small_icon_size),
+                .fit_to_exact_size(self.tokens().small_icon_size)
+                .alt_text(alt_text),
         )
         .image_tint_follows_text_color(true)
     }
@@ -277,9 +286,9 @@ pub trait UiExt {
 
     fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {
         let mut response = if *visible && self.ui().is_enabled() {
-            self.small_icon_button(&icons::VISIBLE)
+            self.small_icon_button(&icons::VISIBLE, "Make invisible")
         } else {
-            self.small_icon_button(&icons::INVISIBLE)
+            self.small_icon_button(&icons::INVISIBLE, "Make visible")
         };
         if response.clicked() {
             response.mark_changed();
@@ -1071,11 +1080,11 @@ pub trait UiExt {
         // The help menu appears when clicked and/or hovered
         let mut help_ui: Option<_> = Some(help_ui);
 
-        let icon = &icons::HELP;
         let ui = self.ui_mut();
 
-        let menu_button =
-            egui::containers::menu::MenuButton::from_button(ui.small_icon_button_widget(icon));
+        let menu_button = egui::containers::menu::MenuButton::from_button(
+            ui.small_icon_button_widget(&icons::HELP, "Help"),
+        );
         let button_response = menu_button
             .ui(ui, |ui| {
                 if let Some(help_ui) = help_ui.take() {

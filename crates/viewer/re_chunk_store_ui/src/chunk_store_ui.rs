@@ -181,7 +181,10 @@ impl DatastoreUi {
             ui.label("component:");
             ui.text_edit_singleline(&mut self.component_filter);
 
-            if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
+            if ui
+                .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                .clicked()
+            {
                 self.entity_path_filter = String::new();
                 self.component_filter = String::new();
             }

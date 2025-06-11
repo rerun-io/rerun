@@ -228,7 +228,10 @@ impl<'a> DataFusionTableWidget<'a> {
                 ui.horizontal(|ui| {
                     ui.error_label(error);
 
-                    if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
+                    if ui
+                        .small_icon_button(&re_ui::icons::RESET, "Refresh")
+                        .clicked()
+                    {
                         // This will trigger a fresh query on the next frame.
                         Self::clear_state(ui.ctx(), &session_ctx, table_ref);
                     }
@@ -420,7 +423,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         },
                         |ui| {
                             egui::containers::menu::MenuButton::from_button(
-                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                                ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
                             .ui(ui, |ui| {
                                 for sort_direction in SortDirection::iter() {

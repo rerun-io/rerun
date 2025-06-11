@@ -429,9 +429,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
                 .button(
-                    list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
-                        self.view_entity_modal.open(*view_id);
-                    })
+                    list_item::ItemActionButton::new(
+                        &re_ui::icons::EDIT,
+                        "Add new entity…",
+                        || {
+                            self.view_entity_modal.open(*view_id);
+                        },
+                    )
                     .hover_text("Modify the entity query using the editor"),
                 )
                 .help_markdown(markdown)
@@ -697,7 +701,7 @@ fn container_children(
 
     ui.section_collapsing_header("Contents")
         .button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
+            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
                 show_add_view_or_container_modal(*container_id);
             })
             .hover_text("Add a new view or container to this container"),
@@ -979,7 +983,7 @@ fn show_list_item_for_container_child(
                     .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this view")
                             .on_hover_text("Remove this view");
 
                         if response.clicked() {
@@ -1005,7 +1009,7 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this container")
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {

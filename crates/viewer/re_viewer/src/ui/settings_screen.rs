@@ -49,7 +49,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             egui::Vec2::X * ui.available_width(),
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
-                if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
+                if ui
+                    .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                    .clicked()
+                {
                     *keep_open = false;
                 }
             },

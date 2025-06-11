@@ -246,9 +246,13 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
-                    ui.weak("empty");
-                }))
+                .button(list_item::ItemMenuButton::new(
+                    &re_ui::icons::ADD,
+                    "Add",
+                    |ui| {
+                        ui.weak("empty");
+                    },
+                ))
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });

@@ -261,7 +261,7 @@ pub fn dataset_and_its_recordings_ui(
         dataset_list_item_content = dataset_list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
                 .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
             if resp.clicked() {
                 kind.close(ctx, &entity_dbs);

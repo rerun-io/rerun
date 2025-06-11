@@ -54,7 +54,7 @@ fn test_help() {
                 });
             });
 
-        harness.get_by_label("❓").hover();
+        harness.get_by_label_contains("Help").hover();
 
         harness.try_run_realtime().ok();
 
