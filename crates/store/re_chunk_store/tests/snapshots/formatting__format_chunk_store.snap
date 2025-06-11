@@ -20,7 +20,7 @@ ChunkStore {
         │ * version: 1                                                                                                                                                      │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
         │ ┌─────────────────────────────────────────────┬──────────────────────┬───────────────────────────────┬────────────────────────────┬─────────────────────────────┐ │
-        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                   ┆ example.MyPoints.colors     │ │
+        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                   ┆ example.MyPoints:colors     │ │
         │ │ ---                                         ┆ ---                  ┆ ---                           ┆ ---                        ┆ ---                         │ │
         │ │ type: FixedSizeBinary[16]                   ┆ type: i64            ┆ type: Timestamp(ns)           ┆ type: List[u64]            ┆ type: List[u32]             │ │
         │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ archetype_field: my_index  ┆ archetype: example.MyPoints │ │

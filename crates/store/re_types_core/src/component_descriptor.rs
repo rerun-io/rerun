@@ -54,7 +54,7 @@ impl nohash_hasher::IsEnabled for ComponentDescriptor {}
 
 impl std::fmt::Display for ComponentDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.column_name())
+        f.write_str(&self.display_name())
     }
 }
 
@@ -84,16 +84,6 @@ impl ComponentDescriptor {
     /// Short and usually unique, used in UI.
     pub fn display_name(&self) -> String {
         self.sanity_check();
-        self.archetype_field_name.to_string()
-    }
-
-    /// Used for column names etc.
-    ///
-    /// `Archetype.field_name` if set, otherwise the component name.
-    #[inline]
-    pub fn column_name(&self) -> String {
-        self.sanity_check();
-
         let Self {
             archetype_name,
             archetype_field_name,
@@ -101,7 +91,7 @@ impl ComponentDescriptor {
         } = self;
 
         if let Some(archetype_name) = &archetype_name {
-            format!("{}.{archetype_field_name}", archetype_name.short_name())
+            format!("{}:{archetype_field_name}", archetype_name.short_name())
         } else {
             archetype_field_name.to_string()
         }
@@ -122,31 +112,16 @@ impl ComponentDescriptor {
             .map(|name| name.to_owned())
     }
 
-    /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
+    /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:positions#rerun.components.Position3D`.
+    ///
+    /// The result explicitly contains the [`ComponentName`], so in most cases [`ComponentDescriptor::display_name`] should be used instead.
     #[inline]
     pub fn full_name(&self) -> String {
-        let Self {
-            archetype_name,
-            archetype_field_name,
-            component_name,
-        } = self;
-
-        let (archetype_name, component_name) = (
-            archetype_name.map(|s| s.as_str()),
-            component_name.map(|s| s.as_str()),
-        );
-
-        match (archetype_name, component_name, archetype_field_name) {
-            (None, None, archetype_field_name) => archetype_field_name.to_string(),
-            (Some(archetype_name), None, archetype_field_name) => {
-                format!("{archetype_name}:{archetype_field_name}")
+        match self.component_name {
+            Some(component_name) => {
+                format!("{}#{component_name}", self.display_name())
             }
-            (None, Some(component_name), archetype_field_name) => {
-                format!("{component_name}#{archetype_field_name}")
-            }
-            (Some(archetype_name), Some(component_name), archetype_field_name) => {
-                format!("{archetype_name}:{component_name}#{archetype_field_name}")
-            }
+            None => self.display_name(),
         }
     }
 }

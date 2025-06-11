@@ -277,7 +277,7 @@ impl ComponentColumnDescriptor {
         match batch_type {
             BatchType::Chunk => {
                 // All columns are of the same entity
-                self.component_descriptor().column_name()
+                self.component_descriptor().display_name()
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
