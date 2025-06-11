@@ -21,8 +21,8 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 
     if INSERT_TIMING_METADATA {
         schema.metadata.insert(
-            re_sorbet::timing_metadata::KEY_TIMESTAMP_IPC_ENCODED.to_owned(),
-            re_sorbet::timing_metadata::now_timestamp(),
+            re_sorbet::timestamp_metadata::KEY_TIMESTAMP_IPC_ENCODED.to_owned(),
+            re_sorbet::timestamp_metadata::now_timestamp(),
         );
     }
 
@@ -52,8 +52,8 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     if INSERT_TIMING_METADATA {
         record_batch = re_arrow_util::insert_metadata(
             record_batch,
-            re_sorbet::timing_metadata::KEY_TIMESTAMP_IPC_DECODED.to_owned(),
-            re_sorbet::timing_metadata::now_timestamp(),
+            re_sorbet::timestamp_metadata::KEY_TIMESTAMP_IPC_DECODED.to_owned(),
+            re_sorbet::timestamp_metadata::now_timestamp(),
         );
     }
 

@@ -2,7 +2,7 @@ use emath::History;
 use parking_lot::Mutex;
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
-use re_sorbet::timing_metadata::TimestampMetadata;
+use re_sorbet::TimestampMetadata;
 
 /// Statistics about the latency of incoming data to a store.
 #[derive(Default)]

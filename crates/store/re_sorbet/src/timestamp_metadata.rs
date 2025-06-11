@@ -1,4 +1,4 @@
-//! Tools for adding timing metadata to a Record Batch.
+//! Tools for adding timpestamp metadata to a Record Batch.
 //!
 //! This is used for latency measurements.
 

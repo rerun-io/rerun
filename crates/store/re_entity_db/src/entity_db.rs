@@ -478,7 +478,7 @@ impl EntityDb {
     pub fn add_chunk_with_timestamp_metadata(
         &mut self,
         chunk: &Arc<Chunk>,
-        timestamps: &re_sorbet::timing_metadata::TimestampMetadata,
+        timestamps: &re_sorbet::TimestampMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let mut engine = self.storage_engine.write();
         let store_events = engine.store().insert_chunk(chunk)?;

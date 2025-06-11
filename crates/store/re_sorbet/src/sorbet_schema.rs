@@ -3,9 +3,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{
-    ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, timing_metadata::TimestampMetadata,
-};
+use crate::{ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata};
 
 // ----------------------------------------------------------------------------
 

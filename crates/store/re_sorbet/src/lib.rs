@@ -28,7 +28,7 @@ mod selectors;
 mod sorbet_batch;
 mod sorbet_columns;
 mod sorbet_schema;
-pub mod timing_metadata;
+pub mod timestamp_metadata;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
@@ -52,6 +52,7 @@ pub use self::{
     sorbet_batch::SorbetBatch,
     sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors},
     sorbet_schema::SorbetSchema,
+    timestamp_metadata::TimestampMetadata,
 };
 
 /// The type of [`SorbetBatch`].
