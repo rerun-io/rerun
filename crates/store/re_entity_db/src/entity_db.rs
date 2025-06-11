@@ -106,7 +106,7 @@ impl EntityDb {
     }
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
-        let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
+        let store = ChunkStoreHandle::new(ChunkStore::new(store_id, store_config));
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
         // Safety: these handles are never going to be leaked outside of the `EntityDb`.
@@ -123,7 +123,7 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
-            stats: IngestionStatistics::new(store_id),
+            stats: IngestionStatistics::default(),
         }
     }
 

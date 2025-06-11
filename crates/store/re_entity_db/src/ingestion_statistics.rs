@@ -2,12 +2,11 @@ use emath::History;
 use parking_lot::Mutex;
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
-use re_log_types::StoreId;
 use re_sorbet::timing_metadata::TimestampMetadata;
 
 /// Statistics about the latency of incoming data to a store.
+#[derive(Default)]
 pub struct IngestionStatistics {
-    store_id: StoreId,
     stats: Mutex<LatencyStats>,
 }
 
@@ -17,9 +16,7 @@ impl IngestionStatistics {
         if let Some(nanos_since_epoch) = nanos_since_epoch() {
             let mut stats = self.stats.lock();
             for event in events {
-                if event.store_id == self.store_id
-                    && event.diff.kind == ChunkStoreDiffKind::Addition
-                {
+                if event.diff.kind == ChunkStoreDiffKind::Addition {
                     stats.on_new_chunk(nanos_since_epoch, timestamps, &event.diff.chunk);
                 }
             }
@@ -28,13 +25,6 @@ impl IngestionStatistics {
 }
 
 impl IngestionStatistics {
-    pub fn new(store_id: StoreId) -> Self {
-        Self {
-            store_id,
-            stats: Default::default(),
-        }
-    }
-
     /// The latest (smoothed) reading of the latency of the ingestion pipeline.
     ///
     /// Returns `None` if we don't have enough data to compute a meaningful average.
