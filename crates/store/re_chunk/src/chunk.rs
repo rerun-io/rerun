@@ -1210,14 +1210,6 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn component_names(&self) -> impl Iterator<Item = ComponentName> + '_ {
-        self.components
-            .keys()
-            .filter_map(|desc| desc.component_name)
-            .unique()
-    }
-
-    #[inline]
     pub fn component_descriptors(&self) -> impl Iterator<Item = ComponentDescriptor> + '_ {
         self.components.keys().cloned()
     }

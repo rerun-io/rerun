@@ -44,10 +44,15 @@ impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizab
         // But today, this notion messes with a lot of things:
         // * it means everything can be visualized in a 3D view!
         // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
-        event.diff.chunk.component_names().any(|component_name| {
-            self.visualizability_trigger_components
-                .contains(&component_name)
-        })
+        event
+            .diff
+            .chunk
+            .component_descriptors()
+            .filter_map(|c| c.component_name)
+            .any(|component_name| {
+                self.visualizability_trigger_components
+                    .contains(&component_name)
+            })
     }
 }
 

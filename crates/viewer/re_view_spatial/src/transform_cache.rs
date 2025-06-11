@@ -784,7 +784,11 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
             // But that's fairly rare, so a few false positive entries here are fine.
             let mut aspects = TransformAspect::empty();
-            for component_name in event.chunk.component_names() {
+            for component_name in event
+                .chunk
+                .component_descriptors()
+                .filter_map(|c| c.component_name)
+            {
                 if self.transform_components.contains(&component_name) {
                     aspects |= TransformAspect::Tree;
                 }
