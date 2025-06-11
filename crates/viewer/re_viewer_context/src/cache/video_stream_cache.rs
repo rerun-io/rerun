@@ -606,10 +606,14 @@ fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDesc
 fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
     let start_sample_index = video_data.samples.min_index();
     while let Some(gop) = video_data.gops.front_mut() {
-        if gop.sample_range.end < start_sample_index {
+        if gop.sample_range.end <= start_sample_index {
             video_data.gops.pop_front();
         } else {
-            gop.sample_range.start = start_sample_index;
+            // Do *NOT* forshorten the GOP. The start sample has to be always a keyframe (is_sync==true) sample.
+            // So instead, we may have to remove this GOP entirely if it straddles removed samples.
+            if gop.sample_range.start < start_sample_index {
+                video_data.gops.pop_front();
+            }
             break;
         }
     }
