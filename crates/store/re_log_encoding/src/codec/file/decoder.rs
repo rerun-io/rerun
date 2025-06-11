@@ -21,6 +21,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
 /// Decode a message of kind `message_kind` from `buf`.
 ///
 /// `Ok(None)` returned from this function marks the end of the file stream.
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogMsg>, DecodeError> {
     use re_protos::external::prost::Message as _;
     use re_protos::log_msg::v1alpha1::{
