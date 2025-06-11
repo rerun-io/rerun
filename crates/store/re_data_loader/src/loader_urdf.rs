@@ -135,7 +135,9 @@ impl UrdfTree {
         Self::new(robot, urdf_dir)
     }
 
-    fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    /// The `ursd_dir` is the directory containing the `.urdf` file,
+    /// which can later be used to resolve relative paths to mesh files.
+    pub fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
             links,
@@ -207,6 +209,10 @@ impl UrdfTree {
             children,
             materials,
         })
+    }
+
+    pub fn joints(&self) -> impl Iterator<Item = &Joint> {
+        self.joints.iter()
     }
 
     pub fn get_joint_by_name(&self, joint_name: &str) -> Option<&Joint> {
