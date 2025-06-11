@@ -373,7 +373,6 @@ fn read_samples_from_chunk(
                 if is_sync {
                     // New gop starts at this frame.
                     gops.push_back(re_video::GroupOfPictures {
-                        decode_start_time: decode_timestamp,
                         sample_range: sample_idx..(sample_idx + 1),
                     });
                 } else {

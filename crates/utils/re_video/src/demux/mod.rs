@@ -433,8 +433,10 @@ impl VideoDataDescription {
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
-        self.gops
-            .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
+        self.gops.latest_at_idx(
+            |gop| self.samples[gop.sample_range.start].decode_timestamp,
+            &decode_time,
+        )
     }
 
     /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -460,10 +462,9 @@ impl VideoDataDescription {
 /// (as opposed to "open GOPs" which may refer to frames from other GOPs).
 #[derive(Debug, Clone)]
 pub struct GroupOfPictures {
-    /// Decode timestamp of the first sample in this GOP, in time units.
-    pub decode_start_time: Time,
-
     /// Range of samples contained in this GOP.
+    // TODO(andreas): sample ranges between GOPs are guaranteed to be contiguous.
+    // So we could actually just read the second part of the range by looking at the next gop.
     pub sample_range: Range<SampleIndex>,
 }
 

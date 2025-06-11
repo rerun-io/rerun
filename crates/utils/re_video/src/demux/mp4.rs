@@ -38,12 +38,8 @@ impl VideoDataDescription {
 
             for sample in &track.samples {
                 if sample.is_sync && !samples.is_empty() {
-                    let start = samples[gop_sample_start_index].decode_timestamp;
                     let sample_range = gop_sample_start_index..samples.next_index();
-                    gops.push_back(GroupOfPictures {
-                        decode_start_time: start,
-                        sample_range,
-                    });
+                    gops.push_back(GroupOfPictures { sample_range });
                     gop_sample_start_index = samples.next_index();
                 }
 
@@ -90,12 +86,8 @@ impl VideoDataDescription {
 
         // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
-            let start = samples[gop_sample_start_index].decode_timestamp;
             let sample_range = gop_sample_start_index..samples.next_index();
-            gops.push_back(GroupOfPictures {
-                decode_start_time: start,
-                sample_range,
-            });
+            gops.push_back(GroupOfPictures { sample_range });
         }
 
         {
