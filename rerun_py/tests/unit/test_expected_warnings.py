@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 import rerun as rr
 from rerun.error_utils import RerunWarning
+from uuid import uuid4
 
 rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context
@@ -50,14 +51,15 @@ def test_expected_warnings() -> None:
         lambda: rr.log("world/image", rr.Pinhole(focal_length=3)),
         "Must provide one of principal_point, resolution, or width/height)",
     )
-    expect_warning(
-        _duplicated_recording,
-        "already exists, will ignore creation and return existing recording.",
-    )
 
 
-def _duplicated_recording() -> None:
-    """A special case of creating duplicated streams and logging information, it causes a hang, this test is for this case."""
-    application_id = "test_app_id"
-    rr.init(application_id)
-    rr.init(application_id)
+def test_init_twice() -> None:
+    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)"""
+    with pytest.warns(RerunWarning) as warnings:
+        application_id = "test_app_id"
+        recording_id = uuid4()
+        warning_msg = f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording."
+        rr.init(application_id=application_id, recording_id=recording_id)
+        rr.init(application_id=application_id, recording_id=recording_id)
+        assert len(warnings) == 1
+        assert warning_msg in str(warnings[0])
