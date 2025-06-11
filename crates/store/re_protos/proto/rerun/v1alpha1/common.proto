@@ -146,7 +146,7 @@ message ScanParameters {
   // ```text
   // scanner.order_by(…)
   // ```
-  ScanParametersOrderClause order_by = 6;
+  repeated ScanParametersOrderClause order_by = 6;
 
   // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
   bool explain_plan = 7;

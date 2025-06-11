@@ -635,7 +635,7 @@ impl Chunk {
 
 // ---
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 

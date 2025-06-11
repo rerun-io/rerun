@@ -1,12 +1,16 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
 use re_auth::Jwt;
 
-use crate::redap::{ConnectionError, RedapClient};
+use crate::connection_client::GenericConnectionClient;
+use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
+
+/// This is the type of `ConnectionClient` used throughout the viewer, where the
+/// `ConnectionRegistry` is used.
+pub type ConnectionClient = GenericConnectionClient<RedapClientInner>;
 
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
@@ -84,12 +88,15 @@ impl ConnectionRegistryHandle {
     /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
     /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
     /// sensitive information.
-    pub async fn client(&self, origin: re_uri::Origin) -> Result<RedapClient, ConnectionError> {
+    pub async fn client(
+        &self,
+        origin: re_uri::Origin,
+    ) -> Result<ConnectionClient, ConnectionError> {
         // happy path
         {
             let inner = self.inner.read().await;
             if let Some(client) = inner.clients.get(&origin) {
-                return Ok(client.clone());
+                return Ok(ConnectionClient::new(client.clone()));
             }
         }
 
@@ -110,7 +117,7 @@ impl ConnectionRegistryHandle {
             Ok(client) => {
                 let mut inner = self.inner.write().await;
                 inner.clients.insert(origin, client.clone());
-                Ok(client)
+                Ok(ConnectionClient::new(client))
             }
             Err(err) => Err(err),
         }

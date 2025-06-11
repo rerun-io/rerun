@@ -287,7 +287,6 @@ pub struct QueryRange {
 impl CreatePartitionManifestsResponse {
     pub const FIELD_ID: &str = "id";
     pub const FIELD_UPDATED_AT: &str = "updated_at";
-    pub const FIELD_URL: &str = "url";
     pub const FIELD_ERROR: &str = "error";
 
     /// The Arrow schema of the dataframe in [`Self::data`].
@@ -299,7 +298,6 @@ impl CreatePartitionManifestsResponse {
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
-            Field::new(Self::FIELD_URL, DataType::Utf8, true),
             Field::new(Self::FIELD_ERROR, DataType::Utf8, true),
         ])
     }
@@ -308,7 +306,6 @@ impl CreatePartitionManifestsResponse {
     pub fn create_dataframe(
         partition_ids: Vec<String>,
         updated_ats: Vec<Option<jiff::Timestamp>>,
-        partition_manifest_urls: Vec<Option<String>>,
         errors: Vec<Option<String>>,
     ) -> arrow::error::Result<RecordBatch> {
         let updated_ats = updated_ats
@@ -320,7 +317,6 @@ impl CreatePartitionManifestsResponse {
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
             Arc::new(TimestampNanosecondArray::from(updated_ats)),
-            Arc::new(StringArray::from(partition_manifest_urls)),
             Arc::new(StringArray::from(errors)),
         ];
 
