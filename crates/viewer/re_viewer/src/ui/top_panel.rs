@@ -115,7 +115,7 @@ fn top_bar_ui(
 
             if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
                 ui.separator();
-                latency_snapshot_ui(ui, latency_snapshot);
+                latency_snapshot_button_ui(ui, latency_snapshot);
             }
         }
     }
@@ -450,10 +450,38 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 /// Shows the e2e latency.
-fn latency_snapshot_ui(
+fn latency_snapshot_button_ui(
     ui: &mut egui::Ui,
     latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
+    let Some(e2e) = latency.e2e else {
+        return None; // No e2e latency, nothing to show as a summary
+    };
+
+    // Unit: seconds
+    if 60.0 < e2e {
+        return None; // Probably an old recording and not live data.
+    }
+
+    let text = format!("Latency: {}", latency_text(e2e));
+    let response = ui.weak(text);
+
+    let response = response.on_hover_ui(|ui| {
+        latency_details_ui(ui, latency);
+    });
+
+    Some(response)
+}
+
+fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot) {
+    // The user is interested in the latency, so keep it updated.
+    ui.ctx().request_repaint();
+
+    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
+    This includes time for encoding, network latency, and decoding.\n\
+    It is also affected by the framerate of the viewer.\n\
+    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
+
     // Note: all times are in seconds.
     let re_entity_db::LatencySnapshot {
         e2e,
@@ -463,63 +491,41 @@ fn latency_snapshot_ui(
         decode2ingest,
     } = latency;
 
-    let Some(e2e) = e2e else {
-        return None; // No e2e latency, nothing to show as a summary
-    };
+    egui::Grid::new("latency_snapshot")
+        .num_columns(2)
+        .striped(false)
+        .show(ui, |ui| {
+            if let Some(e2e) = e2e {
+                ui.strong("log -> ingest (total end-to-end)")
+                    .on_hover_text(e2e_hover_text);
+                ui.monospace(latency_text(e2e));
+                ui.end_row();
 
-    if e2e > 60.0 {
-        return None; // Probably an old recording and not live data.
-    }
+                ui.end_row(); // Intentional extra blank line
+            }
 
-    let text = format!("Latency: {}", latency_text(e2e));
-    let response = ui.weak(text);
+            if let Some(log2chunk) = log2chunk {
+                ui.label("log -> chunk");
+                ui.monospace(latency_text(log2chunk));
+                ui.end_row();
+            }
 
-    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
-    This includes time for encoding, network latency, and decoding.\n\
-    It is also affected by the framerate of the viewer.\n\
-    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
-
-    let response = response.on_hover_ui(|ui| {
-        ui.ctx().request_repaint(); // The user is interested in the latency, so keep it updated.
-
-        egui::Grid::new("latency_snapshot")
-            .num_columns(2)
-            .striped(false)
-            .show(ui, |ui| {
-                {
-                    ui.strong("log -> ingest (total end-to-end)")
-                        .on_hover_text(e2e_hover_text);
-                    ui.monospace(latency_text(e2e));
-                    ui.end_row();
-
-                    ui.end_row(); // Intentional extra blank line
-                }
-
-                if let Some(log2chunk) = log2chunk {
-                    ui.label("log -> chunk");
-                    ui.monospace(latency_text(log2chunk));
-                    ui.end_row();
-                }
-
-                if let Some(chunk2encode) = chunk2encode {
-                    ui.label("chunk -> encode");
-                    ui.monospace(latency_text(chunk2encode));
-                    ui.end_row();
-                }
-                if let Some(transmission) = transmission {
-                    ui.label("encode -> decode (transmission)");
-                    ui.monospace(latency_text(transmission));
-                    ui.end_row();
-                }
-                if let Some(decode2ingest) = decode2ingest {
-                    ui.label("decode -> ingest");
-                    ui.monospace(latency_text(decode2ingest));
-                    ui.end_row();
-                }
-            });
-    });
-
-    Some(response)
+            if let Some(chunk2encode) = chunk2encode {
+                ui.label("chunk -> encode");
+                ui.monospace(latency_text(chunk2encode));
+                ui.end_row();
+            }
+            if let Some(transmission) = transmission {
+                ui.label("encode -> decode (transmission)");
+                ui.monospace(latency_text(transmission));
+                ui.end_row();
+            }
+            if let Some(decode2ingest) = decode2ingest {
+                ui.label("decode -> ingest");
+                ui.monospace(latency_text(decode2ingest));
+                ui.end_row();
+            }
+        });
 }
 
 fn latency_text(latency_sec: f32) -> String {
