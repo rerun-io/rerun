@@ -25,9 +25,7 @@ impl IngestionStatistics {
 
 impl IngestionStatistics {
     /// The latest (smoothed) reading of the latency of the ingestion pipeline.
-    ///
-    /// Returns `None` if we don't have enough data to compute a meaningful average.
-    pub fn latency_snapshot(&self) -> Option<LatencySnapshot> {
+    pub fn latency_snapshot(&self) -> LatencySnapshot {
         self.stats.lock().snapshot()
     }
 }
@@ -135,9 +133,7 @@ impl LatencyStats {
     ///
     /// This is based on the clocks of the viewer and the SDK being in sync,
     /// so if the recording was done on another machine, this is likely very inaccurate.
-    ///
-    /// Returns `None` if we don't have enough data to compute a meaningful average.
-    pub fn snapshot(&mut self) -> Option<LatencySnapshot> {
+    pub fn snapshot(&mut self) -> LatencySnapshot {
         let Self {
             e2e,
             log2chunk,
@@ -157,13 +153,13 @@ impl LatencyStats {
             decode2ingest.flush(now);
         }
 
-        Some(LatencySnapshot {
-            e2e: e2e.average()?,
-            log2chunk: log2chunk.average()?,
+        LatencySnapshot {
+            e2e: e2e.average(),
+            log2chunk: log2chunk.average(),
             chunk2encode: chunk2encode.average(),
             transmission: transmission.average(),
             decode2ingest: decode2ingest.average(),
-        })
+        }
     }
 }
 
@@ -186,14 +182,16 @@ fn system_time_to_nanos(system_time: web_time::SystemTime) -> Option<i64> {
 /// The latest (smoothed) reading of the latency of the ingestion pipeline.
 ///
 /// All measurements are in seconds, and are only valid if the clocks of the viewer and the SDK are in sync.
+///
+/// They are `None` if unknown.
 #[derive(Clone, Copy, Debug)]
 pub struct LatencySnapshot {
     /// From the data is logged in the SDK, up until it was added to the store.
-    pub e2e: f32,
+    pub e2e: Option<f32>,
 
     /// Delay between the time `RowId` was created and the `ChunkId` was created,
     /// i.e. the time it took to get the data from the `log` call to be batched by the batcher.
-    pub log2chunk: f32,
+    pub log2chunk: Option<f32>,
 
     /// Time between chunk creation and IPC encoding (start of gRPC transmission).
     pub chunk2encode: Option<f32>,

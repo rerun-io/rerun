@@ -97,14 +97,15 @@ fn top_bar_ui(
         }
 
         let latency_snapshot = store_context
-            .and_then(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
+            .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 
         if let Some(latency_snapshot) = latency_snapshot {
             // Should we show the e2e latency?
 
             // High enough to be consering; low enough to be believable (and almost realtime).
-            let is_latency_interesting = app.app_options().warn_e2e_latency < latency_snapshot.e2e
-                && latency_snapshot.e2e < 60.0;
+            let is_latency_interesting = latency_snapshot
+                .e2e
+                .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
             // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
 
@@ -462,6 +463,10 @@ fn latency_snapshot_ui(
         decode2ingest,
     } = latency;
 
+    let Some(e2e) = e2e else {
+        return None; // No e2e latency, nothing to show as a summary
+    };
+
     if e2e > 60.0 {
         return None; // Probably an old recording and not live data.
     }
@@ -481,16 +486,20 @@ fn latency_snapshot_ui(
             .num_columns(2)
             .striped(false)
             .show(ui, |ui| {
-                ui.strong("log -> ingest (total end-to-end)")
-                    .on_hover_text(e2e_hover_text);
-                ui.monospace(latency_text(e2e));
-                ui.end_row();
+                {
+                    ui.strong("log -> ingest (total end-to-end)")
+                        .on_hover_text(e2e_hover_text);
+                    ui.monospace(latency_text(e2e));
+                    ui.end_row();
 
-                ui.end_row();
+                    ui.end_row(); // Intentional extra blank line
+                }
 
-                ui.label("log -> chunk");
-                ui.monospace(latency_text(log2chunk));
-                ui.end_row();
+                if let Some(log2chunk) = log2chunk {
+                    ui.label("log -> chunk");
+                    ui.monospace(latency_text(log2chunk));
+                    ui.end_row();
+                }
 
                 if let Some(chunk2encode) = chunk2encode {
                     ui.label("chunk -> encode");
