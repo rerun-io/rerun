@@ -38,7 +38,10 @@ re_uri.workspace = true
 anyhow.workspace = true
 crossbeam.workspace = true
 parking_lot.workspace = true
-tonic = { workspace = true, default-features = false, features = ["transport", "router"] }
+tonic = { workspace = true, default-features = false, features = [
+    "transport",
+    "router"
+] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
 
