@@ -107,7 +107,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ## Terminology: view vs. selection vs. filtering vs. sampling
 ///
 /// * The view contents specify which subset of the database (i.e., which columns) the query runs on,
-///   expressed as a set of [`EntityPath`]s and their associated [`re_types::core::ArchetypeFieldName`]s (and optional [`re_types_core::ArchetypeName`]s).
+///   expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ArchetypeFieldName`]s (and optional [`re_types_core::ArchetypeName`]s).
 ///
 /// * The filters filter out _rows_ of data from the view contents.
 ///   A filter cannot possibly introduce new rows, it can only remove existing ones from the view contents.

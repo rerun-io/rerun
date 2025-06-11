@@ -208,7 +208,7 @@ impl Query {
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Column").value_text(
+                    list_item::PropertyContent::new("Component").value_text(
                         filter
                             .as_ref()
                             .map(|f| f.qualified_archetype_field_name())
