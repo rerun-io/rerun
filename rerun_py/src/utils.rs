@@ -34,7 +34,7 @@ pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
     })
 }
 
-pub fn py_log_warn(msg: &str) -> PyResult<()> {
+pub fn py_rerun_warn(msg: &str) -> PyResult<()> {
     re_log::warn!(msg);
     let cmsg = CString::new(msg)?;
     py_rerun_warn_cstr(&cmsg)
