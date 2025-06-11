@@ -435,6 +435,12 @@ fn read_samples_from_chunk(
         sample_index_range: sample_base_idx..samples.next_index(),
     });
 
+    if cfg!(debug_assertions) {
+        video_descr
+            .sanity_check()
+            .expect("VideoDataDescription sanity check failed");
+    }
+
     Ok(())
 }
 
@@ -577,6 +583,12 @@ impl Cache for VideoStreamCache {
                                     .map(|b| b.buffer.len())
                                     .sum::<usize>()
                             );
+
+                            if cfg!(debug_assertions) {
+                                video_data
+                                    .sanity_check()
+                                    .expect("VideoDataDescription sanity check failed");
+                            }
                         }
                     }
                 }

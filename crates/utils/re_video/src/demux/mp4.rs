@@ -132,7 +132,7 @@ impl VideoDataDescription {
             }
         };
 
-        Ok(Self {
+        let video_data_description = Self {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
@@ -141,7 +141,15 @@ impl VideoDataDescription {
             gops,
             samples,
             mp4_tracks,
-        })
+        };
+
+        if cfg!(debug_assertions) {
+            video_data_description
+                .sanity_check()
+                .expect("VideoDataDescription sanity check failed");
+        }
+
+        Ok(video_data_description)
     }
 }
 
