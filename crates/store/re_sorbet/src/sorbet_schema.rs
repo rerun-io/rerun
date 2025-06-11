@@ -30,7 +30,7 @@ pub struct SorbetSchema {
     /// The heap size of this batch in bytes, if known.
     pub heap_size_bytes: Option<u64>,
 
-    /// Statistics
+    /// Timing statistics.
     pub timestamps: TimestampMetadata,
 }
 
