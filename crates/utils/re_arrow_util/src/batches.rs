@@ -89,7 +89,9 @@ pub fn insert_metadata(
 ) -> RecordBatch {
     let mut new_schema = std::sync::Arc::unwrap_or_clone(record_batch.schema());
     new_schema.metadata.insert(key.into(), value.into());
-    #[allow(clippy::unwrap_used)] // cannot fail because the new schema is always a superset of the old
+
+    // cannot fail because the new schema is always a superset of the old
+    #[allow(clippy::unwrap_used)]
     record_batch.with_schema(Arc::new(new_schema)).unwrap()
 }
 
