@@ -35,7 +35,7 @@ fn multiline_view_line_strip_3d(
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
-        .header(tokens.table_header_height(), |mut header| {
+        .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.label("x");
@@ -49,7 +49,7 @@ fn multiline_view_line_strip_3d(
         })
         .body(|mut body| {
             tokens.setup_table_body(&mut body);
-            let row_height = tokens.table_line_height();
+            let row_height = tokens.deprecated_table_line_height();
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {
@@ -99,7 +99,7 @@ fn multiline_view_line_strip_2d(
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
-        .header(tokens.table_header_height(), |mut header| {
+        .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.label("x");
@@ -110,7 +110,7 @@ fn multiline_view_line_strip_2d(
         })
         .body(|mut body| {
             tokens.setup_table_body(&mut body);
-            let row_height = tokens.table_line_height();
+            let row_height = tokens.deprecated_table_line_height();
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {
