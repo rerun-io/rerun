@@ -218,8 +218,6 @@ def _log_components(
     instanced: dict[ComponentDescriptor, pa.Array] = {}
 
     descriptors = [comp.component_descriptor() for comp in components]
-    print(descriptors[0])
-    print(descriptors[1])
     arrow_arrays = [comp.as_arrow_array() for comp in components]
 
     if isinstance(entity_path, list):

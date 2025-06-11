@@ -95,7 +95,7 @@ class ComponentDescriptor:
         return archetype_field_name
 
     def with_overrides(self, *, archetype_name: str | None, component_name: str | None) -> ComponentDescriptor:
-        """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
+        """Unconditionally sets `archetype_name` & `component_name` to the given ones (if specified)."""
         archetype_field_name = self.archetype_field_name
         archetype_name = archetype_name if archetype_name is not None else self.archetype_name
         component_name = component_name if component_name is not None else self.component_name
@@ -106,7 +106,7 @@ class ComponentDescriptor:
         )
 
     def or_with_overrides(self, *, archetype_name: str | None, component_name: str | None) -> ComponentDescriptor:
-        """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
+        """Sets `archetype_name` & `component_name` to the given one iff it's not already set."""
         archetype_field_name = self.archetype_field_name
         archetype_name = self.archetype_name if self.archetype_name is not None else archetype_name
         component_name = self.component_name if self.component_name is not None else component_name

@@ -1,4 +1,3 @@
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
