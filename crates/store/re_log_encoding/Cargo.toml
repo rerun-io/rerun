@@ -21,6 +21,7 @@ all-features = true
 
 [features]
 default = []
+testing = []
 
 ## Enable loading data from an .rrd file.
 decoder = [

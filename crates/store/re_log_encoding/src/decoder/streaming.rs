@@ -250,6 +250,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     }
 }
 
+#[cfg(feature = "testing")]
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
     use re_build_info::CrateVersion;

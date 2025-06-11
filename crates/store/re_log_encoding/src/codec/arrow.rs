@@ -7,7 +7,8 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 // It is slightly wasteful to add it to each chunk, even in an .rrd file,
 // but the benefit is that we'll always have them, whether we're streaming
 // data through gRPC, piping with stdout/stdin, or writing to a file that a viewer is simultaneously reading.
-const INSERT_TIMING_METADATA: bool = true;
+// However, it messes up our roundtrip unit-tests, so we disable it then.
+const INSERT_TIMING_METADATA: bool = !cfg!(feature = "testing");
 
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
