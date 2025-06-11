@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
-use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
+use datafusion::sql::TableReference;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
