@@ -60,6 +60,7 @@ re_tracing.workspace = true
 arrow = { workspace = true, features = ["ipc"] }
 parking_lot.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
 
 # Optional external dependencies:
 bytes = { workspace = true, optional = true }

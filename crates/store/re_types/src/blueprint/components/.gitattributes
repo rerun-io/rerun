@@ -19,6 +19,7 @@ force_strength.rs linguist-generated=true
 grid_columns.rs linguist-generated=true
 grid_spacing.rs linguist-generated=true
 included_content.rs linguist-generated=true
+link_axis.rs linguist-generated=true
 lock_range_during_zoom.rs linguist-generated=true
 map_provider.rs linguist-generated=true
 mod.rs linguist-generated=true

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
-use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
+use datafusion::sql::TableReference;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
@@ -17,9 +17,7 @@ use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
     ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
-use crate::table_utils::{
-    CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
-};
+use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
@@ -328,7 +326,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
-                tokens.table_header_height() + CELL_MARGIN.sum().y,
+                tokens.table_header_height(),
             )])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -401,7 +399,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
             });
 
-            header_ui(ui, |ui| {
+            header_ui(ui, true, |ui| {
                 egui::Sides::new()
                     .show(
                         ui,
@@ -456,7 +454,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        cell_ui(ui, |ui| {
+        cell_ui(ui, false, |ui| {
             // find record batch
             let mut row_index = cell.row_nr as usize;
 
@@ -494,7 +492,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height() + CELL_MARGIN.sum().y
+        self.ctx.tokens().table_line_height()
     }
 }
 

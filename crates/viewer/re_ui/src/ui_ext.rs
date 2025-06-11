@@ -1184,7 +1184,10 @@ pub trait UiExt {
     /// });
     /// # });
     /// ```
-    fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    fn selectable_toggle<R>(
+        &mut self,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
         let tokens = ui.tokens();
@@ -1215,7 +1218,6 @@ pub trait UiExt {
 
             ui.horizontal(content).inner
         })
-        .inner
     }
 
     /// Set [`egui::Style::wrap_mode`] to [`egui::TextWrapMode::Truncate`], unless this is a sizing
