@@ -1,11 +1,13 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
+mod connection_client;
 mod connection_registry;
 pub mod message_proxy;
 mod redap;
 
 pub use self::{
-    connection_registry::{ConnectionRegistry, ConnectionRegistryHandle},
+    connection_client::GenericConnectionClient,
+    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
     redap::{
         Command, ConnectionError, RedapClient, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
@@ -82,6 +84,12 @@ pub enum StreamError {
 
     #[error("Chunk data missing in response")]
     MissingChunkData,
+
+    #[error("Column '{0}' is missing from the dataframe")]
+    MissingDataframeColumn(String),
+
+    #[error("arrow error: {0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
 }
 
 impl From<tonic::Status> for StreamError {

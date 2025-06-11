@@ -136,7 +136,7 @@ impl PyDataset {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.get_partition_ids(self_.py(), dataset_id)
+        connection.get_dataset_partition_ids(self_.py(), dataset_id)
     }
 
     /// Return the partition table as a Datafusion table provider.
@@ -236,6 +236,7 @@ impl PyDataset {
             let catalog_chunk_stream = connection
                 .client()
                 .await?
+                .inner()
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: vec![partition_id.clone().into()],
@@ -359,6 +360,7 @@ impl PyDataset {
             connection
                 .client()
                 .await?
+                .inner()
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -420,6 +422,7 @@ impl PyDataset {
             connection
                 .client()
                 .await?
+                .inner()
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
