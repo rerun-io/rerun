@@ -463,7 +463,7 @@ fn latency_snapshot_button_ui(
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("Latency: {}", latency_text(e2e));
+    let text = format!("Latency: {}", latency_text(ui.visuals(), e2e).text());
     let response = ui.weak(text);
 
     let response = response.on_hover_ui(|ui| {
@@ -491,49 +491,92 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
         decode2ingest,
     } = latency;
 
-    egui::Grid::new("latency_snapshot")
-        .num_columns(2)
-        .striped(false)
-        .show(ui, |ui| {
-            if let Some(e2e) = e2e {
-                ui.strong("log -> ingest (total end-to-end)")
-                    .on_hover_text(e2e_hover_text);
-                ui.monospace(latency_text(e2e));
-                ui.end_row();
+    if let (Some(log2chunk), Some(chunk2encode), Some(transmission), Some(decode2ingest)) =
+        (log2chunk, chunk2encode, transmission, decode2ingest)
+    {
+        // We have a full picture - use a nice vertical layout:
 
-                ui.end_row(); // Intentional extra blank line
+        if let Some(e2e) = e2e {
+            ui.horizontal(|ui| {
+                ui.label("end-to-end:").on_hover_text(e2e_hover_text);
+                latency_label(ui, e2e);
+            });
+            ui.separator();
+        }
+
+        ui.vertical_centered(|ui| {
+            fn small_and_weak(text: &str) -> egui::RichText {
+                egui::RichText::new(text).small().weak()
             }
 
-            if let Some(log2chunk) = log2chunk {
-                ui.label("log -> chunk");
-                ui.monospace(latency_text(log2chunk));
-                ui.end_row();
-            }
-
-            if let Some(chunk2encode) = chunk2encode {
-                ui.label("chunk -> encode");
-                ui.monospace(latency_text(chunk2encode));
-                ui.end_row();
-            }
-            if let Some(transmission) = transmission {
-                ui.label("encode -> decode (transmission)");
-                ui.monospace(latency_text(transmission));
-                ui.end_row();
-            }
-            if let Some(decode2ingest) = decode2ingest {
-                ui.label("decode -> ingest");
-                ui.monospace(latency_text(decode2ingest));
-                ui.end_row();
-            }
+            ui.spacing_mut().item_spacing.y = 0.0;
+            ui.label("log call");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, log2chunk);
+            ui.label(small_and_weak("↓"));
+            ui.label("batch creation");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, chunk2encode);
+            ui.label(small_and_weak("↓"));
+            ui.label("encode and transmit");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, transmission);
+            ui.label(small_and_weak("↓"));
+            ui.label("receive and decode");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, decode2ingest);
+            ui.label(small_and_weak("↓"));
+            ui.label("ingest into viewer");
         });
+    } else {
+        // We have a partial picture - show only what we got:
+        egui::Grid::new("latency_snapshot")
+            .num_columns(2)
+            .striped(false)
+            .show(ui, |ui| {
+                if let Some(e2e) = e2e {
+                    ui.strong("log -> ingest (total end-to-end)")
+                        .on_hover_text(e2e_hover_text);
+                    latency_label(ui, e2e);
+                    ui.end_row();
+
+                    ui.end_row(); // Intentional extra blank line
+                }
+
+                if let Some(log2chunk) = log2chunk {
+                    ui.label("log -> chunk");
+                    latency_label(ui, log2chunk);
+                    ui.end_row();
+                }
+                if let Some(chunk2encode) = chunk2encode {
+                    ui.label("chunk -> encode");
+                    latency_label(ui, chunk2encode);
+                    ui.end_row();
+                }
+                if let Some(transmission) = transmission {
+                    ui.label("encode -> decode (transmission)");
+                    latency_label(ui, transmission);
+                    ui.end_row();
+                }
+                if let Some(decode2ingest) = decode2ingest {
+                    ui.label("decode -> ingest");
+                    latency_label(ui, decode2ingest);
+                    ui.end_row();
+                }
+            });
+    }
 }
 
-fn latency_text(latency_sec: f32) -> String {
+fn latency_label(ui: &mut egui::Ui, latency_sec: f32) -> egui::Response {
+    ui.label(latency_text(ui.visuals(), latency_sec))
+}
+
+fn latency_text(visuals: &egui::Visuals, latency_sec: f32) -> egui::RichText {
     if latency_sec < 0.001 {
-        format!("{:.0} µs", 1e6 * latency_sec)
+        egui::RichText::new(format!("{:.0} µs", 1e6 * latency_sec))
     } else if latency_sec < 1.0 {
-        format!("{:.0} ms", 1e3 * latency_sec)
+        egui::RichText::new(format!("{:.0} ms", 1e3 * latency_sec))
     } else {
-        format!("{latency_sec:.1} s")
+        egui::RichText::new(format!("{latency_sec:.1} s")).color(visuals.warn_fg_color)
     }
 }
