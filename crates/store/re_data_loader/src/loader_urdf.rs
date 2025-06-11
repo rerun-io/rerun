@@ -253,7 +253,7 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    send_transform(tx, store_id, joint_path.clone(), origin)?;
+        send_transform(tx, store_id, joint_path.clone(), origin)?;
 
     log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
     log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
@@ -284,7 +284,9 @@ fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
-    Transform3D::from_translation(translation).with_quaternion(quaternion)
+    Transform3D::update_fields()
+        .with_translation(translation)
+        .with_quaternion(quaternion)
 }
 
 fn send_transform(
