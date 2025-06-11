@@ -240,13 +240,12 @@ fn new_recording(
 
     // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
     // Check if recording already exists first.
-    // Put it in this scop to drop the mutex as early as possible as all_recordings function returns a mutex guard, and will be called again at the end of this function.
+    // NOTE: This is scoped in order to release the Mutex locked by `all_recordings` as soon as possible
     if let Some(existing_recording) = all_recordings().get(&recording_id) {
-        let _=utils::py_log_warn(
+        utils::py_log_warn(
             format!("Recording with id: {} already exists, will ignore creation and return existing recording.",
             &recording_id).as_str()
-        );
-        // py_rerun_warn(c"Recording Stream already exists, will ignore creation and return existing recording.");
+        )?;
         return Ok(PyRecordingStream(existing_recording.clone()));
     }
 
