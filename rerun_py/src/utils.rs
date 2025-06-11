@@ -24,6 +24,7 @@ where
     py.allow_threads(|| runtime.block_on(f))
 }
 
+/// Issues a warning to python runtime
 pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
     Python::with_gil(|py| {
         let warning_type = PyModule::import(py, "rerun")?
@@ -34,6 +35,7 @@ pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
     })
 }
 
+/// Logs a warning using rerun logging system and issues the warning to python runtime.
 pub fn py_rerun_warn(msg: &str) -> PyResult<()> {
     re_log::warn!(msg);
     let cmsg = CString::new(msg)?;
