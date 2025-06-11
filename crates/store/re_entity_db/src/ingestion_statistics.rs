@@ -57,7 +57,7 @@ pub struct LatencyStats {
 impl Default for LatencyStats {
     fn default() -> Self {
         let min_samples = 0; // 0: we stop displaying e2e latency if input stops
-        let max_samples = 32 * 1024; // don't waste too much memory on this - we just need enough to get a good average
+        let max_samples = 8 * 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
         Self {
             e2e: History::new(min_samples..max_samples, max_age),
