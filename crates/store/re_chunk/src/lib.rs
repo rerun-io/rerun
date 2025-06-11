@@ -10,7 +10,6 @@ mod helpers;
 mod iter;
 mod latest_at;
 mod merge;
-mod migration;
 mod range;
 mod shuffle;
 mod slice;

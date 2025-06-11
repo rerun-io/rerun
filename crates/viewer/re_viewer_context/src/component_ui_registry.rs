@@ -600,14 +600,7 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let Some(component_name) = component_descr.component_name else {
-                re_log::warn_once!(
-                    "Cannot show fallback edit ui for descriptors without component name: {component_descr}"
-                );
-                return;
-            };
-
-            let fallback = fallback_provider.fallback_for(ctx, component_name);
+            let fallback = fallback_provider.fallback_for(ctx, component_descr);
             run_with(fallback.as_ref());
         }
     }

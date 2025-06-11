@@ -737,8 +737,6 @@ impl PyRecordingView {
                 let mut query_expression = self.query_expression.clone();
                 query_expression.selection = None;
 
-                // let query_handle = engine.schema_for_query(&query_expression);
-
                 PySchema {
                     schema: engine.schema_for_query(&query_expression).into(),
                 }

@@ -1,6 +1,6 @@
-use arrow::array::ArrayRef;
+use arrow::array::{ArrayRef, NullArray};
 
-use re_types::ComponentName;
+use re_types::{ComponentDescriptor, ComponentName};
 
 use crate::QueryContext;
 
@@ -55,7 +55,18 @@ pub trait ComponentFallbackProvider {
 
     /// Provides a fallback value for a given component, first trying the provider and
     /// then falling back to the placeholder value registered in the viewer context.
-    fn fallback_for(&self, ctx: &QueryContext<'_>, component_name: ComponentName) -> ArrayRef {
+    fn fallback_for(
+        &self,
+        ctx: &QueryContext<'_>,
+        component_descr: &ComponentDescriptor,
+    ) -> ArrayRef {
+        let Some(component_name) = component_descr.component_name else {
+            re_log::warn!(
+                "Requested fallback for component descr {component_descr} without component name"
+            );
+            return std::sync::Arc::new(NullArray::new(0));
+        };
+
         match self.try_provide_fallback(ctx, component_name) {
             ComponentFallbackProviderResult::Value(value) => {
                 return value;

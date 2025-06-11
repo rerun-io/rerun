@@ -12,6 +12,7 @@ use re_sorbet::ChunkColumnDescriptors;
 use re_types::Archetype as _;
 
 #[test]
+/// Tests whether the store has the expected schema after populating it with a chunk.
 fn schema() -> anyhow::Result<()> {
     re_log::setup_logging();
 
@@ -62,6 +63,7 @@ fn schema() -> anyhow::Result<()> {
 }
 
 #[test]
+/// Tests whether the `schema_for_query` for a given query has the expected contents.
 fn schema_for_query() -> anyhow::Result<()> {
     re_log::setup_logging();
 

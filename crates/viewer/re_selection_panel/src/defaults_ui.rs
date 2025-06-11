@@ -357,16 +357,9 @@ fn add_new_default(
         return;
     };
 
-    let Some(component_name) = component_descr.component_name else {
-        re_log::warn_once!(
-            "trying to create a default for component descriptor without component name: {component_descr}"
-        );
-        return;
-    };
-
     let initial_data = visualizer
         .fallback_provider()
-        .fallback_for(query_context, component_name);
+        .fallback_for(query_context, &component_descr);
 
     match Chunk::builder(defaults_path.clone())
         .with_row(
