@@ -1,4 +1,4 @@
-(async function() {
+(async function () {
   function template(urls) {
     return [
       `<div style="border:1px solid red;padding: 0 0.5em">`,
