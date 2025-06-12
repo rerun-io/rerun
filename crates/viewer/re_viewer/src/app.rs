@@ -105,7 +105,7 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_queue_interest: web_time::Instant,
+    pub(crate) latest_latency_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -318,7 +318,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_queue_interest: long_time_ago,
+            latest_latency_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 

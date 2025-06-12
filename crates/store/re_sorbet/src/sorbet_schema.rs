@@ -3,7 +3,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError};
+use crate::{ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata};
 
 // ----------------------------------------------------------------------------
 
@@ -27,6 +27,9 @@ pub struct SorbetSchema {
 
     /// The heap size of this batch in bytes, if known.
     pub heap_size_bytes: Option<u64>,
+
+    /// Timing statistics.
+    pub timestamps: TimestampMetadata,
 }
 
 /// ## Metadata keys for the record batch metadata
@@ -67,6 +70,7 @@ impl SorbetSchema {
             entity_path,
             heap_size_bytes,
             partition_id,
+            timestamps,
         } = self;
 
         [
@@ -86,6 +90,7 @@ impl SorbetSchema {
         ]
         .into_iter()
         .flatten()
+        .chain(timestamps.to_metadata())
         .collect()
     }
 }
@@ -159,6 +164,7 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
             entity_path,
             partition_id,
             heap_size_bytes,
+            timestamps: TimestampMetadata::parse_record_batch_metadata(metadata),
         })
     }
 }
