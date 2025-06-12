@@ -436,9 +436,9 @@ fn read_samples_from_chunk(
     });
 
     if cfg!(debug_assertions) {
-        if let Err(e) = video_descr.sanity_check() {
+        if let Err(err) = video_descr.sanity_check() {
             panic!(
-                "VideoDataDescription sanity check failed for video stream at {:?}: {e}",
+                "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
                 chunk.entity_path()
             );
         }
@@ -588,9 +588,9 @@ impl Cache for VideoStreamCache {
                             );
 
                             if cfg!(debug_assertions) {
-                                if let Err(e) = video_data.sanity_check() {
+                                if let Err(err) = video_data.sanity_check() {
                                     panic!(
-                                        "VideoDataDescription sanity check stream at {:?} failed: {e}",
+                                        "VideoDataDescription sanity check stream at {:?} failed: {err}",
                                         event.chunk.entity_path()
                                     );
                                 }

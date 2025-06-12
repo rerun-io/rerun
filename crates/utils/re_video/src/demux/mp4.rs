@@ -144,8 +144,8 @@ impl VideoDataDescription {
         };
 
         if cfg!(debug_assertions) {
-            if let Err(e) = video_data_description.sanity_check() {
-                panic!("VideoDataDescription sanity check for {debug_name} failed: {e}");
+            if let Err(err) = video_data_description.sanity_check() {
+                panic!("VideoDataDescription sanity check for {debug_name} failed: {err}");
             }
         }
 
