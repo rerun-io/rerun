@@ -227,7 +227,9 @@ jobs:
 
       - name: "Build rerun_notebook"
         # only build the notebook if we are building for pypi and running linux-x64
-        if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
+        # TODO:
+        # if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
+        if: ${{ inputs.PLATFORM == 'linux-x64' }}
         run: |
           rm -rf dist
           pixi run js-build-base
