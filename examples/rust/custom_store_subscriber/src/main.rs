@@ -13,7 +13,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use rerun::{
-    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,
+    ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId,
     external::{
         anyhow, re_build_info, re_chunk_store, re_log,
         re_log_types::{ResolvedTimeRange, TimelineName},
@@ -84,7 +84,7 @@ impl ChunkStoreSubscriber for Orchestrator {
 /// For every [`ChunkStoreEvent`], it displays the state of the secondary index to the terminal.
 #[derive(Default, Debug, PartialEq, Eq)]
 struct ComponentsPerRecording {
-    counters: BTreeMap<StoreId, BTreeMap<ComponentName, u64>>,
+    counters: BTreeMap<StoreId, BTreeMap<ComponentDescriptor, u64>>,
 }
 
 impl ChunkStoreSubscriber for ComponentsPerRecording {
@@ -104,21 +104,21 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
         for event in events {
             // update counters
             let per_component = self.counters.entry(event.store_id.clone()).or_default();
-            for component_name in event.chunk.component_names() {
-                let count = per_component.entry(component_name).or_default();
+            for component_descr in event.chunk.component_descriptors() {
+                let count = per_component.entry(component_descr.clone()).or_default();
 
                 // if first occurrence, speak!
                 if event.delta() > 0 && *count == 0 {
                     println!(
                         "New component introduced in recording {}: {}!",
-                        event.store_id, component_name,
+                        event.store_id, component_descr,
                     );
                 }
                 // if last occurrence, speak!
                 else if event.delta() < 0 && *count <= event.delta().unsigned_abs() {
                     println!(
                         "Component retired from recording {}: {}!",
-                        event.store_id, component_name,
+                        event.store_id, component_descr,
                     );
                 }
 

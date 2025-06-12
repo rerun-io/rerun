@@ -28,8 +28,8 @@ struct DefaultOverrideEntry {
 impl DefaultOverrideEntry {
     fn descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
-            component_name: self.component_name,
-            archetype_field_name: Some(self.archetype_field_name),
+            component_name: Some(self.component_name),
+            archetype_field_name: self.archetype_field_name,
             archetype_name: Some(archetype_name),
         }
     }
@@ -143,15 +143,11 @@ fn active_default_ui(
                 );
             };
 
-            ui.list_item_flat_noninteractive(
+            let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(
-                    if let Some(archetype_field_name) = component_descr.archetype_field_name {
-                        archetype_field_name.syntax_highlighted(ui.style())
-                    } else {
-                        component_descr
-                            .component_name
-                            .syntax_highlighted(ui.style())
-                    },
+                    component_descr
+                        .archetype_field_name
+                        .syntax_highlighted(ui.style()),
                 )
                 .min_desired_width(150.0)
                 .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
@@ -161,14 +157,17 @@ fn active_default_ui(
                     );
                 })
                 .value_fn(|ui, _| value_fn(ui)),
-            )
-            .on_hover_ui(|ui| {
-                component_descr.component_name.data_ui_recording(
-                    ctx.viewer_ctx,
-                    ui,
-                    re_viewer_context::UiLayout::Tooltip,
-                );
-            });
+            );
+
+            if let Some(component_name) = component_descr.component_name {
+                response.on_hover_ui(|ui| {
+                    component_name.data_ui_recording(
+                        ctx.viewer_ctx,
+                        ui,
+                        re_viewer_context::UiLayout::Tooltip,
+                    );
+                });
+            }
         }
     });
 }
@@ -186,16 +185,16 @@ fn visualized_components_by_archetype(
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in visualizers.iter_with_identifiers() {
         for descr in vis.visualizer_query_info().queried.iter() {
-            let (Some(archetype_name), Some(archetype_field_name)) =
-                (descr.archetype_name, descr.archetype_field_name)
+            let (Some(archetype_name), Some(component_name)) =
+                (descr.archetype_name, descr.component_name)
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
-                if !descr.component_name.is_indicator_component() {
+                if !descr.is_indicator_component() {
                     re_log::warn_once!(
                         "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
                         id,
-                        descr.component_name
+                        descr
                     );
                 }
                 continue;
@@ -205,8 +204,8 @@ fn visualized_components_by_archetype(
                 .entry(archetype_name)
                 .or_default()
                 .push(DefaultOverrideEntry {
-                    component_name: descr.component_name,
-                    archetype_field_name,
+                    component_name,
+                    archetype_field_name: descr.archetype_field_name,
                     visualizer_identifier: id,
                 });
         }
@@ -358,9 +357,10 @@ fn add_new_default(
         re_log::warn!("Could not find visualizer for: {}", visualizer);
         return;
     };
+
     let initial_data = visualizer
         .fallback_provider()
-        .fallback_for(query_context, component_descr.component_name);
+        .fallback_for(query_context, &component_descr);
 
     match Chunk::builder(defaults_path.clone())
         .with_row(

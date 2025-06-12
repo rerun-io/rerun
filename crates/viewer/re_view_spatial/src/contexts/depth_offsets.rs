@@ -143,7 +143,7 @@ fn determine_default_draworder(
 
     let draw_order_array = visualizer
         .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor.component_name);
+        .fallback_for(ctx, draw_order_descriptor);
     let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
         .ok()
         .unwrap_or_default();

@@ -6,7 +6,7 @@ use std::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
-use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
@@ -272,7 +272,60 @@ impl ChunkStore {
         }
     }
 
+    /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ArchetypeName`]
+    /// (which can be optional) and [`ArchetypeFieldName`].
+    pub fn entity_component_descriptor(
+        &self,
+        entity_path: &EntityPath,
+        archetype_name: Option<ArchetypeName>,
+        archetype_field_name: ArchetypeFieldName,
+    ) -> Option<ComponentDescriptor> {
+        let matches = |descr: &&ComponentDescriptor| {
+            descr.archetype_field_name == archetype_field_name
+                && descr.archetype_name == archetype_name
+        };
+
+        let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
+        let static_components_descr =
+            static_chunks
+                .iter()
+                .flat_map(|static_chunks_per_component| {
+                    static_chunks_per_component.keys().filter(matches)
+                });
+
+        let temporal_chunks = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path);
+        let temporal_components_descr =
+            temporal_chunks
+                .iter()
+                .flat_map(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.iter().flat_map(
+                        |(_, temporal_chunk_ids_per_component)| {
+                            temporal_chunk_ids_per_component.keys().filter(matches)
+                        },
+                    )
+                });
+
+        let mut iter = static_components_descr.chain(temporal_components_descr);
+        let result = iter.next();
+
+        if cfg!(debug_assertions) {
+            for other in iter {
+                if result != Some(other) {
+                    re_log::error!("column is not unique: expected {result:?} found {other:?}");
+                }
+            }
+        }
+
+        result.cloned()
+    }
+
     /// Lists all [`ComponentDescriptor`]s at a given [`EntityPath`] that use a certain [`ComponentName`].
+    ///
+    /// The [`ComponentName`] does not unique identify a component, which is why this method returns a set
+    /// of component descriptors. If you want to retrieve a specific component it's better to use
+    /// [`ChunkStore::entity_component_descriptor`].
     pub fn entity_component_descriptors_with_name(
         &self,
         entity_path: &EntityPath,
@@ -285,7 +338,7 @@ impl ChunkStore {
                 .flat_map(|static_chunks_per_component| {
                     static_chunks_per_component
                         .keys()
-                        .filter(|descr| descr.component_name == component_name)
+                        .filter(|descr| descr.component_name == Some(component_name))
                 });
 
         let temporal_chunks = self
@@ -299,7 +352,7 @@ impl ChunkStore {
                         |(_, temporal_chunk_ids_per_component)| {
                             temporal_chunk_ids_per_component
                                 .keys()
-                                .filter(|descr| descr.component_name == component_name)
+                                .filter(|descr| descr.component_name == Some(component_name))
                         },
                     )
                 });

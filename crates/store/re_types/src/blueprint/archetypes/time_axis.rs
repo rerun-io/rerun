@@ -36,8 +36,8 @@ impl TimeAxis {
     pub fn descriptor_link() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component_name: "rerun.blueprint.components.LinkAxis".into(),
-            archetype_field_name: Some("link".into()),
+            component_name: Some("rerun.blueprint.components.LinkAxis".into()),
+            archetype_field_name: "link".into(),
         }
     }
 
@@ -46,8 +46,8 @@ impl TimeAxis {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.TimeAxisIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.TimeAxisIndicator".into(),
         }
     }
 }

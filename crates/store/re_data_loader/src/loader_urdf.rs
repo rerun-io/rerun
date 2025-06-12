@@ -320,7 +320,7 @@ fn log_debug_format(
             RowId::new(),
             TimePoint::default(),
             vec![SerializedComponentBatch {
-                descriptor: ComponentDescriptor::new(name),
+                descriptor: ComponentDescriptor::partial(name),
                 array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
             }],
         ),
@@ -402,8 +402,8 @@ fn log_link(
                     (
                         ComponentDescriptor {
                             archetype_name: None,
-                            archetype_field_name: None,
-                            component_name: re_types::components::Visible::name(),
+                            archetype_field_name: "visible".into(),
+                            component_name: Some(re_types::components::Visible::name()),
                         },
                         &re_types::components::Visible::from(false),
                     ),

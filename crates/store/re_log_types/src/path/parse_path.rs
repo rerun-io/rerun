@@ -42,8 +42,8 @@ pub enum PathParseError {
     #[error("Found trailing hash (#)")]
     TrailingHash,
 
-    #[error("Component descriptor doesn't have a component name: {0:?}")]
-    ComponentDescriptorMissesComponentName(String),
+    #[error("Component descriptor doesn't have an archetype field name: {0:?}")]
+    ComponentDescriptorMissesArchetypeFieldName(String),
 
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
@@ -115,42 +115,38 @@ impl std::str::FromStr for DataPath {
                 None
             };
 
-            let archetype_field_name_delimiter = &component_descriptor_tokens
+            let component_name_delimiter = &component_descriptor_tokens
                 .iter()
                 .position(|&token| token == "#");
-            let archetype_field_name =
-                if let Some(archetype_field_name_delimiter) = archetype_field_name_delimiter {
-                    if let Some(archetype_field_name) =
-                        component_descriptor_tokens.get(archetype_field_name_delimiter + 1)
-                    {
-                        Some(archetype_field_name.to_owned())
-                    } else {
-                        return Err(PathParseError::TrailingHash);
-                    }
+            let component_name = if let Some(component_name_delimiter) = component_name_delimiter {
+                if let Some(component_name) =
+                    component_descriptor_tokens.get(component_name_delimiter + 1)
+                {
+                    Some(component_name.to_owned())
                 } else {
-                    None
-                };
+                    return Err(PathParseError::TrailingHash);
+                }
+            } else {
+                None
+            };
 
-            let component_name_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
-            let component_name_tokens_end =
-                archetype_field_name_delimiter.unwrap_or(component_descriptor_tokens.len());
-            if component_name_tokens_start == component_name_tokens_end {
-                return Err(PathParseError::ComponentDescriptorMissesComponentName(
+            let archetype_field_name_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
+            let archetype_field_name_tokens_end =
+                component_name_delimiter.unwrap_or(component_descriptor_tokens.len());
+            if archetype_field_name_tokens_start == archetype_field_name_tokens_end {
+                return Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
                     join(component_descriptor_tokens),
                 ));
             }
 
-            let mut component_name = join(
+            let archetype_field_name = join(
                 &component_descriptor_tokens
-                    [component_name_tokens_start..component_name_tokens_end],
+                    [archetype_field_name_tokens_start..archetype_field_name_tokens_end],
             );
-            if !component_name.contains('.') {
-                component_name = format!("rerun.components.{component_name}");
-            }
             component_descriptor = Some(ComponentDescriptor {
-                component_name: ComponentName::from(component_name),
+                archetype_field_name: ArchetypeFieldName::from(archetype_field_name),
                 archetype_name: archetype_name.map(ArchetypeName::from),
-                archetype_field_name: archetype_field_name.map(ArchetypeFieldName::from),
+                component_name: component_name.map(ComponentName::from),
             });
 
             tokens.truncate(first_colon);
@@ -457,58 +453,51 @@ mod tests {
     #[test]
     fn test_parse_component_path() {
         assert_eq!(
-            ComponentPath::from_str("world/points:rerun.components.Color"),
+            ComponentPath::from_str("world/points:colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+                component_descriptor: ComponentDescriptor::partial("colors"),
             })
         );
         assert_eq!(
-            ComponentPath::from_str("world/points:Color"),
+            ComponentPath::from_str("world/points:colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+                component_descriptor: ComponentDescriptor::partial("colors"),
             })
         );
         assert_eq!(
-            ComponentPath::from_str("world/points:my.custom.color"),
+            ComponentPath::from_str("world/points:My.Custom.Archetype:colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color"),
-            })
-        );
-        assert_eq!(
-            ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color"),
-            Ok(ComponentPath {
-                entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("colors")
                     .with_archetype_name("My.Custom.Archetype".into()),
             })
         );
         assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:my.custom.color"),
+            ComponentPath::from_str("world/points:Points3D:colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("colors")
                     .with_archetype_name("rerun.archetypes.Points3D".into()),
             })
         );
         assert_eq!(
-            ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color#colors"),
+            ComponentPath::from_str("world/points:My.Custom.Archetype:colors#colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("colors")
                     .with_archetype_name("My.Custom.Archetype".into())
-                    .with_archetype_field_name("colors".into()),
+                    .with_component_name("colors".into()),
             })
         );
         assert_eq!(
-            ComponentPath::from_str("world/points:Points3D:my.custom.color#colors"),
+            ComponentPath::from_str("world/points:Points3D:colors#my.custom.colors"),
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
-                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                component_descriptor: ComponentDescriptor::partial("colors")
                     .with_archetype_name("rerun.archetypes.Points3D".into())
-                    .with_archetype_field_name("colors".into()),
+                    .with_component_name("my.custom.colors".into()),
             })
         );
 
@@ -534,7 +523,7 @@ mod tests {
         );
         assert_eq!(
             ComponentPath::from_str("world/points:Points3D:#colors"),
-            Err(PathParseError::ComponentDescriptorMissesComponentName(
+            Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
                 "Points3D:#colors".to_owned()
             ))
         );
@@ -543,30 +532,30 @@ mod tests {
     #[test]
     fn test_parse_data_path() {
         assert_eq!(
-            DataPath::from_str("world/points[#42]:rerun.components.Color"),
+            DataPath::from_str("world/points[#42]:colors"),
             Ok(DataPath {
                 entity_path: EntityPath::from("world/points"),
                 instance: Some(Instance(42)),
-                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+                component_descriptor: Some(ComponentDescriptor::partial("colors")),
             })
         );
         assert_eq!(
-            DataPath::from_str("world/points:rerun.components.Color"),
+            DataPath::from_str("world/points:colors"),
             Ok(DataPath {
                 entity_path: EntityPath::from("world/points"),
                 instance: None,
-                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+                component_descriptor: Some(ComponentDescriptor::partial("colors")),
             })
         );
         assert_eq!(
-            DataPath::from_str("world/points:Points3D:my.custom.color#colors"),
+            DataPath::from_str("world/points:Points3D:colors#my.custom.color"),
             Ok(DataPath {
                 entity_path: EntityPath::from("world/points"),
                 instance: None,
                 component_descriptor: Some(
-                    ComponentDescriptor::new("my.custom.color")
+                    ComponentDescriptor::partial("colors")
                         .with_archetype_name("rerun.archetypes.Points3D".into())
-                        .with_archetype_field_name("colors".into())
+                        .with_component_name("my.custom.color".into())
                 ),
             })
         );

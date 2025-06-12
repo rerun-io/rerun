@@ -12,7 +12,7 @@ use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types_core::ComponentName;
+use re_types::ComponentDescriptor;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
@@ -28,7 +28,7 @@ pub(crate) enum HideColumnAction {
 
     Component {
         entity_path: EntityPath,
-        component_name: ComponentName,
+        descr: ComponentDescriptor,
     },
 }
 
@@ -312,15 +312,21 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                 ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
                     entity_path: desc.entity_path.clone(),
-                    component_name: desc.component_name,
+                    descr: desc.component_descriptor(),
                 }),
             };
 
             header_ui(ui, connected_to_next_cell, |ui| {
                 let header_content = |ui: &mut egui::Ui| {
-                    let text = egui::RichText::new(column.display_name())
-                        .strong()
-                        .monospace();
+                    let text = egui::RichText::new(
+                        if let ColumnDescriptor::Component(component) = column {
+                            component.archetype_field_name.to_string()
+                        } else {
+                            column.display_name()
+                        },
+                    )
+                    .strong()
+                    .monospace();
                     let archetype = column.archetype_name().map_or("", |a| a.short_name());
 
                     let is_selected = match column {

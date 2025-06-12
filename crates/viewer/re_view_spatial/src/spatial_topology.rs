@@ -155,7 +155,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
                 .or_default()
                 .on_store_diff(
                     event.diff.chunk.entity_path(),
-                    event.diff.chunk.component_names(),
+                    event.diff.chunk.component_descriptors(),
                 );
         }
     }
@@ -262,14 +262,14 @@ impl SpatialTopology {
     fn on_store_diff(
         &mut self,
         entity_path: &EntityPath,
-        added_components: impl Iterator<Item = re_types::ComponentName>,
+        added_components: impl Iterator<Item = re_types::ComponentDescriptor>,
     ) {
         re_tracing::profile_function!();
 
         let mut new_subspace_connections = SubSpaceConnectionFlags::empty();
         let mut new_heuristic_hints = HeuristicHints::empty();
 
-        for added_component in added_components {
+        for added_component in added_components.filter_map(|descr| descr.component_name) {
             if added_component == PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
@@ -419,7 +419,7 @@ impl SpatialTopology {
 mod tests {
     use re_log_types::EntityPath;
     use re_types::{
-        Component as _, ComponentName,
+        Component as _, ComponentDescriptor,
         components::{PinholeProjection, ViewCoordinates},
     };
 
@@ -468,7 +468,11 @@ mod tests {
             (PinholeProjection::name(), SubSpaceConnectionFlags::Pinhole),
             // Add future ways of splitting here (in the past `DisconnectedSpace` was used here).
         ] {
-            add_diff(&mut topo, "", &[name]);
+            add_diff(
+                &mut topo,
+                "",
+                &[ComponentDescriptor::partial("whatever").with_component_name(name)],
+            );
             let subspace = topo.subspace_for_entity(&"robo".into());
             assert_eq!(subspace.connection_to_parent, flags);
             assert!(subspace.child_spaces.is_empty());
@@ -487,7 +491,8 @@ mod tests {
         add_diff(
             &mut topo,
             "robo/eyes/left/cam",
-            &[PinholeProjection::name()],
+            &[ComponentDescriptor::partial("whatever")
+                .with_component_name(PinholeProjection::name())],
         );
         add_diff(&mut topo, "robo/eyes/right/cam/annotation", &[]);
         add_diff(&mut topo, "robo/eyes/right/cam", &[]);
@@ -526,7 +531,8 @@ mod tests {
         add_diff(
             &mut topo,
             "robo/eyes/right/cam",
-            &[PinholeProjection::name()],
+            &[ComponentDescriptor::partial("whatever")
+                .with_component_name(PinholeProjection::name())],
         );
         {
             check_paths_in_space(&topo, &["robo", "robo/arm"], "/");
@@ -569,7 +575,12 @@ mod tests {
         }
 
         // Add view coordinates to robo.
-        add_diff(&mut topo, "robo", &[ViewCoordinates::name()]);
+        add_diff(
+            &mut topo,
+            "robo",
+            &[ComponentDescriptor::partial("whatever")
+                .with_component_name(ViewCoordinates::name())],
+        );
         {
             let root = topo.subspace_for_entity(&EntityPath::root());
 
@@ -590,11 +601,31 @@ mod tests {
 
             // Two nested cameras. Try both orderings
             if nested_first {
-                add_diff(&mut topo, "cam0/cam1", &[PinholeProjection::name()]);
-                add_diff(&mut topo, "cam0", &[PinholeProjection::name()]);
+                add_diff(
+                    &mut topo,
+                    "cam0/cam1",
+                    &[ComponentDescriptor::partial("whatever1")
+                        .with_component_name(PinholeProjection::name())],
+                );
+                add_diff(
+                    &mut topo,
+                    "cam0",
+                    &[ComponentDescriptor::partial("whatever2")
+                        .with_component_name(PinholeProjection::name())],
+                );
             } else {
-                add_diff(&mut topo, "cam0", &[PinholeProjection::name()]);
-                add_diff(&mut topo, "cam0/cam1", &[PinholeProjection::name()]);
+                add_diff(
+                    &mut topo,
+                    "cam0",
+                    &[ComponentDescriptor::partial("whatever3")
+                        .with_component_name(PinholeProjection::name())],
+                );
+                add_diff(
+                    &mut topo,
+                    "cam0/cam1",
+                    &[ComponentDescriptor::partial("whatever4")
+                        .with_component_name(PinholeProjection::name())],
+                );
             }
 
             check_paths_in_space(&topo, &["cam0"], "cam0");
@@ -613,8 +644,8 @@ mod tests {
         }
     }
 
-    fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {
-        topo.on_store_diff(&path.into(), components.iter().copied());
+    fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentDescriptor]) {
+        topo.on_store_diff(&path.into(), components.iter().cloned());
     }
 
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {

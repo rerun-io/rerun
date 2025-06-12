@@ -40,7 +40,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
 ) -> ArchetypeComponentMap {
     let mut map = iter
         .into_iter()
-        .filter(|d| !d.component_name.is_indicator_component())
+        .filter(|d| !d.is_indicator_component())
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
             acc.entry(descriptor.archetype_name)
                 .or_default()
@@ -58,7 +58,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
                 reflection
                     .fields
                     .iter()
-                    .position(|field| Some(field.name) == c.archetype_field_name)
+                    .position(|field| field.name == c.archetype_field_name)
                     .unwrap_or(usize::MAX)
             });
         } else {

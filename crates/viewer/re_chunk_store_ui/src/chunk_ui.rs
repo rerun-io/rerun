@@ -103,7 +103,7 @@ impl ChunkUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     let response = ui
-                        .button(component_desc.component_name.short_name())
+                        .button(component_desc.archetype_field_name.as_str())
                         .on_hover_ui(|ui| {
                             ui.label(format!("{datatype}\n\nClick header to copy"));
                         });
