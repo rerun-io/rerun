@@ -275,7 +275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
-name = "animate_urdf"
+name = "animated_urdf"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",

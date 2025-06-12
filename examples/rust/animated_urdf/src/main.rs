@@ -2,7 +2,7 @@
 //!
 //! Usage:
 //! ```
-//! cargo run -p animate_urdf
+//! cargo run -p animated_urdf
 //! ```
 
 #[derive(Debug, clap::Parser)]
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    let urdf_path = "examples/rust/animate_urdf/data/so100.urdf";
+    let urdf_path = "examples/rust/animated_urdf/data/so100.urdf";
 
     // Log the URDF file one, as a static resource:
     rec.log_file_from_path(urdf_path, None, true)?;

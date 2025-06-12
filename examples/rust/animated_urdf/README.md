@@ -15,5 +15,5 @@ channel = "main"
 An example of how to load and animate a URDF given some changing joint angles.
 
 ```bash
-cargo run -p animate_urdf
+cargo run -p animated_urdf
 ```
