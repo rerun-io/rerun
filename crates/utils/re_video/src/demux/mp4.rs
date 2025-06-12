@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl VideoDataDescription {
-    pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
+    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
@@ -144,9 +144,9 @@ impl VideoDataDescription {
         };
 
         if cfg!(debug_assertions) {
-            video_data_description
-                .sanity_check()
-                .expect("VideoDataDescription sanity check failed");
+            if let Err(e) = video_data_description.sanity_check() {
+                panic!("VideoDataDescription sanity check for {debug_name} failed: {e}");
+            }
         }
 
         Ok(video_data_description)

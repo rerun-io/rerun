@@ -407,12 +407,15 @@ impl SamplesStatistics {
 impl VideoDataDescription {
     /// Loads a video from the given data.
     ///
-    /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
-    /// at the very least the should be a way to extract only metadata.
-    pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+    /// Does not copy any sample data, but instead stores offsets into the buffer.
+    pub fn load_from_bytes(
+        data: &[u8],
+        media_type: &str,
+        debug_name: &str,
+    ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         match media_type {
-            "video/mp4" => Self::load_mp4(data),
+            "video/mp4" => Self::load_mp4(data, debug_name),
 
             media_type => {
                 if media_type.starts_with("video/") {
