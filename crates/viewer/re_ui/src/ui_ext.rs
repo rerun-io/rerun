@@ -125,18 +125,26 @@ pub trait UiExt {
         )
     }
 
-    fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
-        let widget = self.small_icon_button_widget(icon);
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button(&mut self, icon: &Icon, alt_text: impl Into<String>) -> egui::Response {
+        let widget = self.small_icon_button_widget(icon, alt_text);
         self.ui_mut().add(widget)
     }
 
-    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
-        // TODO(emilk): change color and size on hover
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button_widget<'a>(
+        &self,
+        icon: &'a Icon,
+        alt_text: impl Into<String>,
+    ) -> egui::Button<'a> {
         egui::Button::image(
             icon.as_image()
                 .fit_to_exact_size(self.tokens().small_icon_size)
-                .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
+                .alt_text(alt_text),
         )
+        .image_tint_follows_text_color(true)
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
@@ -278,9 +286,9 @@ pub trait UiExt {
 
     fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {
         let mut response = if *visible && self.ui().is_enabled() {
-            self.small_icon_button(&icons::VISIBLE)
+            self.small_icon_button(&icons::VISIBLE, "Make invisible")
         } else {
-            self.small_icon_button(&icons::INVISIBLE)
+            self.small_icon_button(&icons::INVISIBLE, "Make visible")
         };
         if response.clicked() {
             response.mark_changed();
@@ -1068,12 +1076,28 @@ pub trait UiExt {
         }
     }
 
-    fn help_hover_button(&mut self) -> egui::Response {
-        self.ui_mut().add(
-            egui::Label::new("❓")
-                .sense(egui::Sense::click()) // sensing clicks also gives hover effect
-                .selectable(false),
-        )
+    fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        // The help menu appears when clicked and/or hovered
+        let mut help_ui: Option<_> = Some(help_ui);
+
+        let ui = self.ui_mut();
+
+        let menu_button = egui::containers::menu::MenuButton::from_button(
+            ui.small_icon_button_widget(&icons::HELP, "Help"),
+        );
+        let button_response = menu_button
+            .ui(ui, |ui| {
+                if let Some(help_ui) = help_ui.take() {
+                    help_ui(ui);
+                }
+            })
+            .0;
+
+        if let Some(help_ui) = help_ui.take() {
+            button_response.on_hover_ui(help_ui)
+        } else {
+            button_response
+        }
     }
 
     /// Show some markdown
@@ -1169,7 +1193,10 @@ pub trait UiExt {
     /// });
     /// # });
     /// ```
-    fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    fn selectable_toggle<R>(
+        &mut self,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
         let tokens = ui.tokens();
@@ -1200,7 +1227,6 @@ pub trait UiExt {
 
             ui.horizontal(content).inner
         })
-        .inner
     }
 
     /// Set [`egui::Style::wrap_mode`] to [`egui::TextWrapMode::Truncate`], unless this is a sizing

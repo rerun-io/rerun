@@ -10,7 +10,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{ComponentDescriptor, components::MediaType};
-use re_video::decode::DecodeSettings;
+use re_video::DecodeSettings;
 
 use crate::{Cache, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
 

@@ -42,7 +42,7 @@ pub fn visualizer_ui(
         &all_visualizers,
     );
 
-    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add new visualizer…", |ui| {
         menu_add_new_visualizer(
             ctx,
             ui,
@@ -91,7 +91,7 @@ pub fn visualizer_ui_impl(
     let override_path = data_result.override_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE);
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
             let archetype = VisualizerOverrides::new(
                 active_visualizers
@@ -199,7 +199,7 @@ fn visualizer_components(
     .values()
     .flatten()
     {
-        if component_descr.component_name.is_indicator_component() {
+        if component_descr.is_indicator_component() {
             continue;
         }
 
@@ -216,9 +216,10 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(component_descr);
         let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
+        // If we don't have a component name, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_descr.component_name);
+            .fallback_for(&query_ctx, component_descr);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
@@ -395,7 +396,8 @@ fn visualizer_components(
         };
 
         let default_open = false;
-        ui.list_item()
+        let response = ui
+            .list_item()
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
@@ -404,37 +406,36 @@ fn visualizer_components(
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
                     // since usually archetypes match 1:1 with visualizers.
-                    component_descr
-                        .archetype_field_name
-                        .map_or(component_descr.component_name.as_str(), |field| {
-                            field.as_str()
-                        }),
+                    component_descr.archetype_field_name.as_str(),
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
-                .menu_button(&re_ui::icons::MORE, |ui: &mut egui::Ui| {
-                    menu_more(
-                        ctx,
-                        ui,
-                        component_descr.clone(),
-                        override_path,
-                        &raw_override.clone().map(|(_, raw_override)| raw_override),
-                        raw_default.clone().map(|(_, raw_override)| raw_override),
-                        raw_fallback.clone(),
-                        raw_current_value.clone(),
-                    );
-                }),
+                .menu_button(
+                    &re_ui::icons::MORE,
+                    "More options",
+                    |ui: &mut egui::Ui| {
+                        menu_more(
+                            ctx,
+                            ui,
+                            component_descr.clone(),
+                            override_path,
+                            &raw_override.clone().map(|(_, raw_override)| raw_override),
+                            raw_default.clone().map(|(_, raw_override)| raw_override),
+                            raw_fallback.clone(),
+                            raw_current_value.clone(),
+                        );
+                    },
+                ),
                 add_children,
             )
-            .item_response
-            .on_hover_ui(|ui| {
+            .item_response;
+
+        if let Some(component_name) = component_descr.component_name {
+            response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
-                component_descr.component_name.data_ui_recording(
-                    ctx.viewer_ctx,
-                    ui,
-                    UiLayout::Tooltip,
-                );
+                component_name.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
+        }
     }
 }
 
@@ -463,7 +464,7 @@ fn editable_blueprint_component_list_item(
                     allow_multiline,
                 );
             })
-            .action_button(&re_ui::icons::CLOSE, || {
+            .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                 query_ctx
                     .viewer_ctx()
                     .clear_blueprint_component(blueprint_path, component_descr.clone());

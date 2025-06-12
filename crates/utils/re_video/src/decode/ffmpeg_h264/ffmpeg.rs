@@ -15,17 +15,16 @@ use ffmpeg_sidecar::{
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
+use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
 use crate::{
-    PixelFormat, Time,
+    PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
-        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
-        ffmpeg_h264::{
-            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
-        },
-        nalu::{NAL_START_CODE, NalHeader, NalUnitType},
+        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
+        ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
+    demux::ChromaSubsamplingModes,
 };
 
 use super::version::FFmpegVersionParseError;
@@ -89,11 +88,19 @@ pub enum Error {
     SpsParsing,
 }
 
-impl From<Error> for crate::decode::Error {
+impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
     }
 }
+
+/// In Annex-B before every NAL unit is a NAL start code.
+///
+/// This is used in Annex-B byte stream formats such as h264 files.
+/// Packet transform systems (RTP) may omit these.
+///
+/// Note that there's also a less commonly used short version with only 2 zeros: `0x00, 0x00, 0x01`.
+const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
@@ -189,51 +196,45 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
-        avcc: Option<re_mp4::Avc1Box>,
+        encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        let (pixel_format, ffmpeg_pix_fmt) = if let Some(avcc) = avcc.as_ref() {
-            let sps_result = H264Sps::parse_from_avcc(avcc);
-            if let Ok(sps) = &sps_result {
-                re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
-            }
+        // TODO(andreas): should get SPS also without AVCC from ongoing stream.
 
-            match sps_result.and_then(|sps| sps.pixel_layout()) {
-                Ok(layout) => {
-                    let pixel_format = PixelFormat::Yuv {
-                        layout,
-                        // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
-                        //
-                        // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
-                        // Note that yuvj4xy family of formats fulfill the same function. They according to this post
-                        // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
-                        // they are still not quite passed through everywhere. So we'll just use both.
-                        range: crate::decode::YuvRange::Full,
-                        // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
-                        coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
-                    };
-                    let ffmpeg_pix_fmt = match layout {
-                        crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
-                        crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
-                        crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
-                        crate::decode::YuvPixelLayout::Y400 => "gray",
-                    };
-
-                    (pixel_format, ffmpeg_pix_fmt)
+        let (pixel_format, ffmpeg_pix_fmt) = if let Some(chroma_subsampling) =
+            encoding_details.as_ref().and_then(|e| e.chroma_subsampling)
+        {
+            // We always get planar layouts back from ffmpeg.
+            let (layout, ffmpeg_pix_fmt) = match chroma_subsampling {
+                ChromaSubsamplingModes::Yuv444 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V444, "yuvj444p")
                 }
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
-                    );
-
-                    // By default play it safe: let ffmpeg convert to rgba.
-                    (PixelFormat::Rgba8Unorm, "rgba")
+                ChromaSubsamplingModes::Yuv422 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V422, "yuvj422p")
                 }
-            }
+                ChromaSubsamplingModes::Yuv420 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V420, "yuvj420p")
+                }
+                ChromaSubsamplingModes::Monochrome => (crate::decode::YuvPixelLayout::Y400, "gray"),
+            };
+
+            let pixel_format = PixelFormat::Yuv {
+                layout,
+                // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                //
+                // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                // Note that yuvj4xy family of formats fulfill the same function. They according to this post
+                // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                // they are still not quite passed through everywhere. So we'll just use both.
+                range: crate::decode::YuvRange::Full,
+                // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+            };
+
+            (pixel_format, ffmpeg_pix_fmt)
         } else {
-            // TODO(andreas): If we previously encountered an SPS as part of the stream, we should use it here.
             (PixelFormat::Rgba8Unorm, "rgba")
         };
 
@@ -309,6 +310,8 @@ impl FFmpegProcessAndListener {
                 }
             })
             .expect("Failed to spawn ffmpeg listener thread");
+
+        let avcc = encoding_details.as_ref().and_then(|e| e.avcc()).cloned();
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
@@ -453,10 +456,10 @@ fn write_ffmpeg_input(
                 // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
                 // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
                 let end_nals: Vec<u8> = [
-                    NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndSequence, 0).0],
-                    NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndStream, 0).0],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfSeq.id()],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfStream.id()],
                 ]
                 .concat();
                 write_bytes(ffmpeg_stdin, &end_nals).ok();
@@ -807,7 +810,6 @@ pub struct FFmpegCliH264Decoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    avcc: Option<re_mp4::Avc1Box>,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
 }
@@ -815,7 +817,7 @@ pub struct FFmpegCliH264Decoder {
 impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
-        avcc: Option<re_mp4::Avc1Box>,
+        encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
@@ -855,14 +857,13 @@ impl FFmpegCliH264Decoder {
         let ffmpeg = FFmpegProcessAndListener::new(
             &debug_name,
             on_output.clone(),
-            avcc.clone(),
+            encoding_details,
             ffmpeg_path.as_deref(),
         )?;
 
         Ok(Self {
             debug_name,
             ffmpeg,
-            avcc,
             on_output,
             ffmpeg_path,
         })
@@ -874,7 +875,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         re_tracing::profile_function!();
 
         if let Err(err) = self.ffmpeg.submit_chunk(chunk) {
-            let err = crate::decode::Error::from(err);
+            let err = DecodeError::from(err);
 
             // Report the error on the decoding stream aswell.
             (self.on_output)(Err(err.clone()));
@@ -891,13 +892,13 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         Ok(())
     }
 
-    fn reset(&mut self) -> crate::decode::Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),
-            self.avcc.clone(),
+            &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
         )?;
         Ok(())
@@ -939,11 +940,11 @@ fn write_avc_chunk_to_nalu_stream(
     // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
     if chunk.is_sync && !state.previous_frame_was_idr {
         for sps in &avcc.sequence_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &sps.bytes)?;
         }
         for pps in &avcc.picture_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &pps.bytes)?;
         }
         state.previous_frame_was_idr = true;
@@ -1009,7 +1010,7 @@ fn write_avc_chunk_to_nalu_stream(
 
         let data = &chunk.data[data_start..data_end];
 
-        write_bytes(nalu_stream, NAL_START_CODE)?;
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
 
         // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
         // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
@@ -1022,11 +1023,12 @@ fn write_avc_chunk_to_nalu_stream(
 
     // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
     // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    write_bytes(nalu_stream, NAL_START_CODE)?;
+    write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
     write_bytes(
         nalu_stream,
         &[
-            NalHeader::new(NalUnitType::AccessUnitDelimiter, 3).0,
+            // TODO(andreas): We use to use an IDC ("priority") of 3 here. But it doesn't _seem_ to make much of a difference either way.
+            UnitType::AccessUnitDelimiter.id(),
             // Two arbitrary bytes? 0000 worked as well, but this is what
             // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
             0xFF,

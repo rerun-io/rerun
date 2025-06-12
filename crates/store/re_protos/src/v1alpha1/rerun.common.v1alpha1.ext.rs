@@ -90,7 +90,9 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -722,7 +724,7 @@ pub struct ScanParameters {
     pub filter: Option<String>,
     pub limit_offset: Option<i64>,
     pub limit_len: Option<i64>,
-    pub order_by: Option<ScanParametersOrderClause>,
+    pub order_by: Vec<ScanParametersOrderClause>,
     pub explain_plan: bool,
     pub explain_filter: bool,
 }
@@ -731,11 +733,6 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ScanParameters) -> Result<Self, Self::Error> {
-        let order_by = if let Some(order_by) = value.order_by {
-            Some(order_by.try_into()?)
-        } else {
-            None
-        };
         Ok(Self {
             columns: value.columns,
             on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::try_from(
@@ -745,7 +742,11 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
             filter: value.filter,
             limit_offset: value.limit_offset,
             limit_len: value.limit_len,
-            order_by,
+            order_by: value
+                .order_by
+                .into_iter()
+                .map(|ob| ob.try_into())
+                .collect::<Result<Vec<_>, _>>()?,
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         })
@@ -762,7 +763,7 @@ impl From<ScanParameters> for crate::common::v1alpha1::ScanParameters {
             filter: value.filter,
             limit_offset: value.limit_offset,
             limit_len: value.limit_len,
-            order_by: value.order_by.map(Into::into),
+            order_by: value.order_by.into_iter().map(|ob| ob.into()).collect(),
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         }
@@ -876,8 +877,8 @@ impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor 
     fn from(value: ComponentDescriptor) -> Self {
         Self {
             archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-            component_name: Some(value.component_name.full_name().to_owned()),
+            archetype_field_name: Some(value.archetype_field_name.to_string()),
+            component_name: value.component_name.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -886,17 +887,23 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
-        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+        let crate::common::v1alpha1::ComponentDescriptor {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = value;
+
+        let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
-            "component_name"
+            "archetype_field_name"
         ))?);
 
-        if let Some(archetype_name) = value.archetype_name {
+        if let Some(archetype_name) = archetype_name {
             descriptor = descriptor.with_archetype_name(archetype_name.into());
         }
 
-        if let Some(archetype_field_name) = value.archetype_field_name {
-            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        if let Some(component_name) = component_name {
+            descriptor = descriptor.with_component_name(component_name.into());
         }
 
         Ok(descriptor)

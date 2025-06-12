@@ -9,8 +9,7 @@ use re_types::{
 };
 use re_ui::{Help, IconText, MouseButtonText, icon_text, icons, list_item};
 use re_view::{
-    controls::{self, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
-    suggest_view_for_each_entity, view_property_ui,
+    controls::SELECTION_RECT_ZOOM_BUTTON, suggest_view_for_each_entity, view_property_ui,
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -45,16 +44,39 @@ impl ViewClass for BarChartView {
     }
 
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions {
+            zoom_modifier,
+            horizontal_scroll_modifier,
+            vertical_scroll_modifier,
+            ..
+        } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
+
         Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
             .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Zoom",
-                IconText::from_modifiers_and(os, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                "Horizontal pan",
+                IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom only x-axis",
-                IconText::from_modifiers_and(os, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control(
+                "Zoom X-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | horizontal_scroll_modifier,
+                    icons::SCROLL,
+                ),
+            )
+            .control(
+                "Zoom Y-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | vertical_scroll_modifier,
+                    icons::SCROLL,
+                ),
             )
             .control(
                 "Zoom to selection",
@@ -117,7 +139,7 @@ impl ViewClass for BarChartView {
         _space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
-        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+        list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             view_property_ui::<PlotLegend>(&ctx, ui, self);
         });
@@ -146,8 +168,6 @@ impl ViewClass for BarChartView {
             .get::<BarChartVisualizerSystem>()?
             .charts;
 
-        let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
-
         let ctx = self.view_context(ctx, view_id, state);
         let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
             blueprint_db,
@@ -160,9 +180,7 @@ impl ViewClass for BarChartView {
             plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_corner())?;
 
         ui.scope(|ui| {
-            let mut plot = Plot::new("bar_chart_plot")
-                .clamp_grid(true)
-                .allow_zoom([true, zoom_both_axis]);
+            let mut plot = Plot::new("bar_chart_plot").clamp_grid(true);
 
             if *legend_visible.0 {
                 plot = plot.legend(

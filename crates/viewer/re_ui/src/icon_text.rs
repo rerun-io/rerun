@@ -72,7 +72,7 @@ impl IconText {
             logical_key,
         } = shortcut;
 
-        let key_text = if is_mac(os) {
+        let key_text = if os.is_mac() {
             logical_key.symbol_or_name()
         } else {
             logical_key.name()
@@ -89,7 +89,7 @@ impl IconText {
             icon_text!(icon.into())
         } else {
             // macOS uses compact symbols for shortcuts without a `+`:
-            if is_mac(os) {
+            if os.is_mac() {
                 icon_text!(Self::from_modifiers(os, modifiers), icon.into())
             } else {
                 icon_text!(Self::from_modifiers(os, modifiers), "+", icon.into())
@@ -100,7 +100,7 @@ impl IconText {
     /// Helper to add [`egui::Modifiers`] as text with icons.
     /// Will automatically show Cmd/Ctrl based on the OS.
     pub fn from_modifiers(os: OperatingSystem, modifiers: Modifiers) -> Self {
-        let is_mac = is_mac(os);
+        let is_mac = os.is_mac();
 
         let names = if is_mac {
             ModifierNames::SYMBOLS
@@ -163,13 +163,6 @@ macro_rules! icon_text {
         $(icon_text.add($item);)*
         icon_text
     }};
-}
-
-fn is_mac(os: OperatingSystem) -> bool {
-    matches!(
-        os,
-        egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
-    )
 }
 
 /// Helper to show mouse buttons as text/icons.

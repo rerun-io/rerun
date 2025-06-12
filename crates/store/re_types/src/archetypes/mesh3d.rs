@@ -154,8 +154,8 @@ impl Mesh3D {
     pub fn descriptor_vertex_positions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.Position3D".into(),
-            archetype_field_name: Some("vertex_positions".into()),
+            component_name: Some("rerun.components.Position3D".into()),
+            archetype_field_name: "vertex_positions".into(),
         }
     }
 
@@ -166,8 +166,8 @@ impl Mesh3D {
     pub fn descriptor_triangle_indices() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.TriangleIndices".into(),
-            archetype_field_name: Some("triangle_indices".into()),
+            component_name: Some("rerun.components.TriangleIndices".into()),
+            archetype_field_name: "triangle_indices".into(),
         }
     }
 
@@ -178,8 +178,8 @@ impl Mesh3D {
     pub fn descriptor_vertex_normals() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.Vector3D".into(),
-            archetype_field_name: Some("vertex_normals".into()),
+            component_name: Some("rerun.components.Vector3D".into()),
+            archetype_field_name: "vertex_normals".into(),
         }
     }
 
@@ -190,8 +190,8 @@ impl Mesh3D {
     pub fn descriptor_vertex_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("vertex_colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "vertex_colors".into(),
         }
     }
 
@@ -202,8 +202,8 @@ impl Mesh3D {
     pub fn descriptor_vertex_texcoords() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.Texcoord2D".into(),
-            archetype_field_name: Some("vertex_texcoords".into()),
+            component_name: Some("rerun.components.Texcoord2D".into()),
+            archetype_field_name: "vertex_texcoords".into(),
         }
     }
 
@@ -214,8 +214,8 @@ impl Mesh3D {
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.AlbedoFactor".into(),
-            archetype_field_name: Some("albedo_factor".into()),
+            component_name: Some("rerun.components.AlbedoFactor".into()),
+            archetype_field_name: "albedo_factor".into(),
         }
     }
 
@@ -226,8 +226,8 @@ impl Mesh3D {
     pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.ImageBuffer".into(),
-            archetype_field_name: Some("albedo_texture_buffer".into()),
+            component_name: Some("rerun.components.ImageBuffer".into()),
+            archetype_field_name: "albedo_texture_buffer".into(),
         }
     }
 
@@ -238,8 +238,8 @@ impl Mesh3D {
     pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.ImageFormat".into(),
-            archetype_field_name: Some("albedo_texture_format".into()),
+            component_name: Some("rerun.components.ImageFormat".into()),
+            archetype_field_name: "albedo_texture_format".into(),
         }
     }
 
@@ -250,8 +250,8 @@ impl Mesh3D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -260,8 +260,8 @@ impl Mesh3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Mesh3DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Mesh3DIndicator".into(),
         }
     }
 }

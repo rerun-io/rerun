@@ -298,11 +298,8 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                    if !component.is_indicator_component() {
-                        re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                    }
-                    arrow::datatypes::DataType::Null
-                })
+                         re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                                    arrow::datatypes::DataType::Null})
         };
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?

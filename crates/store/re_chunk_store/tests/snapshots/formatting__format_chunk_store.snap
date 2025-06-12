@@ -20,12 +20,12 @@ ChunkStore {
         │ * version: 1                                                                                                                                                      │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
         │ ┌─────────────────────────────────────────────┬──────────────────────┬───────────────────────────────┬────────────────────────────┬─────────────────────────────┐ │
-        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ example.MyIndex            ┆ example.MyPoints.colors     │ │
+        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                   ┆ example.MyPoints:colors     │ │
         │ │ ---                                         ┆ ---                  ┆ ---                           ┆ ---                        ┆ ---                         │ │
         │ │ type: FixedSizeBinary[16]                   ┆ type: i64            ┆ type: Timestamp(ns)           ┆ type: List[u64]            ┆ type: List[u32]             │ │
-        │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ component: example.MyIndex ┆ archetype: example.MyPoints │ │
-        │ │ {"namespace":"row"}                         ┆ is_sorted: true      ┆ is_sorted: true               ┆ kind: data                 ┆ archetype_field: colors     │ │
-        │ │ ARROW:extension:name: TUID                  ┆ kind: index          ┆ kind: index                   ┆                            ┆ component: example.MyColor  │ │
+        │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ archetype_field: my_index  ┆ archetype: example.MyPoints │ │
+        │ │ {"namespace":"row"}                         ┆ is_sorted: true      ┆ is_sorted: true               ┆ component: example.MyIndex ┆ archetype_field: colors     │ │
+        │ │ ARROW:extension:name: TUID                  ┆ kind: index          ┆ kind: index                   ┆ kind: data                 ┆ component: example.MyColor  │ │
         │ │ is_sorted: true                             ┆                      ┆                               ┆                            ┆ kind: data                  │ │
         │ │ kind: control                               ┆                      ┆                               ┆                            ┆                             │ │
         │ ╞═════════════════════════════════════════════╪══════════════════════╪═══════════════════════════════╪════════════════════════════╪═════════════════════════════╡ │

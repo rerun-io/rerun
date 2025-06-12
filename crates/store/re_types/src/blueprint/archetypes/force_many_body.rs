@@ -46,8 +46,8 @@ impl ForceManyBody {
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.Enabled".into(),
-            archetype_field_name: Some("enabled".into()),
+            component_name: Some("rerun.blueprint.components.Enabled".into()),
+            archetype_field_name: "enabled".into(),
         }
     }
 
@@ -58,8 +58,8 @@ impl ForceManyBody {
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.ForceStrength".into(),
-            archetype_field_name: Some("strength".into()),
+            component_name: Some("rerun.blueprint.components.ForceStrength".into()),
+            archetype_field_name: "strength".into(),
         }
     }
 
@@ -68,8 +68,8 @@ impl ForceManyBody {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
         }
     }
 }

@@ -29,7 +29,7 @@ impl Reflection {
     ///
     /// Useful when the only information available is the short name, e.g. when inferring archetype
     /// names from an indicator component.
-    //TODO(#6889): tagged component will contain a fully qualified archetype name, so this function
+    //TODO(#10065): tagged component will contain a fully qualified archetype name, so this function
     // will be unnecessary.
     pub fn archetype_reflection_from_short_name(
         &self,
@@ -310,8 +310,8 @@ impl ArchetypeFieldReflection {
     #[inline]
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
-            component_name: self.component_name,
-            archetype_field_name: Some(self.name),
+            component_name: Some(self.component_name),
+            archetype_field_name: self.name,
             archetype_name: Some(archetype_name),
         }
     }

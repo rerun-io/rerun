@@ -8,7 +8,7 @@ use arrow::{
         ArrayRef as ArrowArrayRef, AsArray as _, RecordBatch as ArrowRecordBatch,
         RecordBatchOptions,
     },
-    datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema},
+    datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Fields, Schema as ArrowSchema},
 };
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
@@ -223,6 +223,55 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     ArrowRecordBatch::try_new_with_options(
         schema.clone(),
         arrays,
+        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .ok_or_log_error()
+    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
+}
+
+/// Move indicator component to archetype field name.
+// TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
+pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+    re_tracing::profile_function!();
+
+    let fields = batch
+        .schema()
+        .fields()
+        .into_iter()
+        .map(|field| {
+            let mut field = field.as_ref().clone();
+            let mut metadata = field.metadata().clone();
+
+            if let Some(value) = metadata.remove("rerun.component") {
+                if value.ends_with("Indicator") {
+                    re_log::debug_once!("Moving indicator to archetype field: {value}");
+                    metadata.insert("rerun.archetype_field".to_owned(), value);
+
+                    // We also strip the archetype name from any indicators.
+                    // It turns out that too narrow indicator descriptors cause problems while querying.
+                    // More information: <https://github.com/rerun-io/rerun/pull/9938#issuecomment-2888808593>
+                    if let Some(archetype_name) = metadata.remove("rerun.archetype") {
+                        re_log::debug_once!(
+                            "Stripped archetype name from indicator: {archetype_name}"
+                        );
+                    }
+                } else {
+                    metadata.insert("rerun.component".to_owned(), value);
+                }
+            }
+            field.set_metadata(metadata);
+            Arc::new(field)
+        })
+        .collect::<Fields>();
+
+    let schema = Arc::new(ArrowSchema::new_with_metadata(
+        fields,
+        batch.schema().metadata.clone(),
+    ));
+
+    ArrowRecordBatch::try_new_with_options(
+        schema.clone(),
+        batch.columns().to_vec(),
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
     .ok_or_log_error()
