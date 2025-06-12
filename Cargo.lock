@@ -7225,6 +7225,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -7389,12 +7390,14 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_chunk",
  "re_log",
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "similar-asserts",
@@ -7762,6 +7765,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
+ "web-time",
 ]
 
 [[package]]

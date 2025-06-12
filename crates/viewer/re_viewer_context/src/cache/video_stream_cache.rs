@@ -206,7 +206,7 @@ fn load_video_data_from_chunks(
         gops: StableIndexDeque::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
         samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
-        mp4_tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
+        mp4_tracks: Default::default(),
     };
 
     for chunk in sample_chunks {
@@ -371,16 +371,15 @@ fn read_samples_from_chunk(
                 };
 
                 if is_sync {
-                    // Last GOP extends until here now
-                    if let Some(last_gop) = gops.back_mut() {
-                        last_gop.sample_range.end = sample_idx;
-                    }
-
                     // New gop starts at this frame.
                     gops.push_back(re_video::GroupOfPictures {
-                        decode_start_time: decode_timestamp,
                         sample_range: sample_idx..(sample_idx + 1),
                     });
+                } else {
+                    // Last GOP extends until here now, including the current sample.
+                    if let Some(last_gop) = gops.back_mut() {
+                        last_gop.sample_range.end = sample_idx + 1;
+                    }
                 }
 
                 Some(re_video::SampleMetadata {
@@ -435,6 +434,15 @@ fn read_samples_from_chunk(
         source_chunk: chunk.id(),
         sample_index_range: sample_base_idx..samples.next_index(),
     });
+
+    if cfg!(debug_assertions) {
+        if let Err(err) = video_descr.sanity_check() {
+            panic!(
+                "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
+                chunk.entity_path()
+            );
+        }
+    }
 
     Ok(())
 }
@@ -578,6 +586,15 @@ impl Cache for VideoStreamCache {
                                     .map(|b| b.buffer.len())
                                     .sum::<usize>()
                             );
+
+                            if cfg!(debug_assertions) {
+                                if let Err(err) = video_data.sanity_check() {
+                                    panic!(
+                                        "VideoDataDescription sanity check stream at {:?} failed: {err}",
+                                        event.chunk.entity_path()
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -607,11 +624,371 @@ fn adjust_gops_for_removed_samples_back(video_data: &mut re_video::VideoDataDesc
 fn adjust_gops_for_removed_samples_front(video_data: &mut re_video::VideoDataDescription) {
     let start_sample_index = video_data.samples.min_index();
     while let Some(gop) = video_data.gops.front_mut() {
-        if gop.sample_range.end < start_sample_index {
+        if gop.sample_range.end <= start_sample_index {
             video_data.gops.pop_front();
         } else {
-            gop.sample_range.start = start_sample_index;
+            // Do *NOT* forshorten the GOP. The start sample has to be always a keyframe (is_sync==true) sample.
+            // So instead, we may have to remove this GOP entirely if it straddles removed samples.
+            if gop.sample_range.start < start_sample_index {
+                video_data.gops.pop_front();
+            }
             break;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
+    use re_chunk_store::ChunkStoreDiff;
+    use re_log_types::StoreId;
+    use re_types::{archetypes::VideoStream, components::VideoCodec};
+    use re_video::{VideoDataDescription, VideoEncodingDetails};
+
+    use super::*;
+
+    // Generated using:
+    // ffmpeg -i 'rerun-io/internal-test-assets/video/gif_conversion_color_issues_h264.mp4' -c:v libx264 -pix_fmt yuv420p -g 10 -vf scale=iw/2:ih/2 -bf 0 gif_as_h264_nobframes.mp4
+    const RAW_H264_DATA: &[u8] =
+        include_bytes!("../../../../../tests/assets/video/gif_as_h264_nobframes.h264");
+
+    const NUM_FRAMES: usize = 44;
+
+    /// Iter h264 frames of test data.
+    /// Makes a bunch of assumptions on the test data. DO NOT USE THIS IN PRODUCTION.
+    fn iter_h264_frames(data: &[u8]) -> impl Iterator<Item = &[u8]> {
+        // Don't want to depend on `h264_reader`` here, so quickly whip this up by hand!
+        // Assumes Annex-B format with 0x00000001 start codes
+        let mut pos = 0;
+        std::iter::from_fn(move || {
+            if pos >= data.len() {
+                return None;
+            }
+            let start = pos;
+
+            // Skip over current start code.
+            pos += 4;
+
+            // Find next start code
+            while pos < data.len() {
+                if pos + 4 < data.len() && data[pos..pos + 4] == [0, 0, 0, 1] {
+                    // Check NAL type (first byte after start code)
+                    let nal_type = data[pos + 4] & 0x1F;
+
+                    // Cut a frame if the nal type is 1 (regular frame) or 7 (SPS, expected to be followed by a keyframe).
+                    if nal_type == 1 || nal_type == 7 {
+                        return Some(&data[start..pos]);
+                    }
+                }
+                pos += 1;
+            }
+
+            Some(&data[start..])
+        })
+    }
+
+    fn validate_stream_from_test_data(
+        video_stream: &PlayableVideoStream,
+        num_frames_submitted: usize,
+    ) {
+        let data_descr = video_stream.video_renderer.data_descr();
+        data_descr.sanity_check().unwrap();
+
+        let VideoDataDescription {
+            codec,
+            encoding_details,
+            timescale,
+            duration,
+            gops,
+            samples,
+            samples_statistics,
+            mp4_tracks,
+        } = data_descr.clone();
+
+        assert_eq!(codec, re_video::VideoCodec::H264);
+        assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
+        assert_eq!(duration, None); // Open ended video.
+        assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
+        assert!(mp4_tracks.is_empty());
+
+        let VideoEncodingDetails {
+            codec_string,
+            coded_dimensions,
+            bit_depth,
+            chroma_subsampling,
+            stsd,
+        } = encoding_details.unwrap();
+        assert_eq!(codec_string, "avc1.64000A");
+        assert_eq!(coded_dimensions, [110, 82]);
+        assert_eq!(bit_depth, Some(8));
+        assert_eq!(
+            chroma_subsampling,
+            Some(re_video::ChromaSubsamplingModes::Yuv420)
+        );
+        assert_eq!(stsd, None);
+
+        assert_eq!(samples.num_elements(), num_frames_submitted);
+
+        let video_sample_buffers = &video_stream.video_sample_buffers;
+        assert!(
+            samples
+                .iter()
+                .all(|s| s.buffer_index < video_sample_buffers.num_elements())
+        );
+        assert!(
+            samples
+                .iter()
+                .all(|s| (s.byte_offset + s.byte_length) as usize
+                    <= video_sample_buffers[s.buffer_index].buffer.len())
+        );
+
+        // The GOPs in the sample data have a fixed size of 10.
+        assert_eq!(gops[0].sample_range, 0..10.min(num_frames_submitted));
+        if num_frames_submitted > 10 {
+            assert_eq!(gops[1].sample_range, 10..20.min(num_frames_submitted));
+        }
+        if num_frames_submitted > 20 {
+            assert_eq!(gops[2].sample_range, 20..30.min(num_frames_submitted));
+        }
+        if num_frames_submitted > 30 {
+            assert_eq!(gops[3].sample_range, 30..40.min(num_frames_submitted));
+        }
+        if num_frames_submitted > 40 {
+            assert_eq!(gops[4].sample_range, 40..44.min(num_frames_submitted));
+        }
+    }
+
+    fn validate_buffers_fully_compacted(buffers: &StableIndexDeque<SampleBuffer>) {
+        assert_eq!(buffers.num_elements(), 1);
+        assert_eq!(buffers[0].buffer.len(), RAW_H264_DATA.len());
+        assert_eq!(buffers[0].sample_index_range, 0..NUM_FRAMES);
+    }
+
+    fn validate_buffers_no_compaction(buffers: &StableIndexDeque<SampleBuffer>) {
+        assert_eq!(buffers.num_elements(), NUM_FRAMES);
+        assert_eq!(
+            buffers.iter().map(|b| b.buffer.len()).sum::<usize>(),
+            RAW_H264_DATA.len()
+        );
+        assert_eq!(buffers[0].sample_index_range.start, 0);
+        assert_eq!(buffers.back().unwrap().sample_index_range.end, NUM_FRAMES);
+    }
+
+    #[test]
+    fn video_stream_cache_from_single_chunk() {
+        let mut cache = VideoStreamCache::default();
+        let mut store =
+            re_entity_db::EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let timeline = Timeline::new_sequence("frame");
+
+        let mut chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into());
+        for (i, frame_bytes) in iter_h264_frames(RAW_H264_DATA).enumerate() {
+            chunk_builder = chunk_builder.with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i as i64)]),
+                &VideoStream::new(frame_bytes, VideoCodec::H264),
+            );
+        }
+        store
+            .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+            .unwrap();
+
+        let video_stream_lock = cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+        let video_stream = video_stream_lock.read();
+
+        validate_stream_from_test_data(&video_stream, NUM_FRAMES);
+
+        let video_sample_buffers = &video_stream.video_sample_buffers;
+        validate_buffers_fully_compacted(video_sample_buffers);
+    }
+
+    #[test]
+    fn video_stream_cache_from_chunk_per_frame() {
+        let mut cache = VideoStreamCache::default();
+        let mut store = re_entity_db::EntityDb::with_store_config(
+            StoreId::random(re_log_types::StoreKind::Recording),
+            re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let timeline = Timeline::new_sequence("frame");
+
+        for (i, frame_bytes) in iter_h264_frames(RAW_H264_DATA).enumerate() {
+            let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i as i64)]),
+                &VideoStream::new(frame_bytes, VideoCodec::H264),
+            );
+            store
+                .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                .unwrap();
+        }
+
+        let video_stream_lock = cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+        let video_stream = video_stream_lock.read();
+
+        validate_stream_from_test_data(&video_stream, NUM_FRAMES);
+
+        let video_sample_buffers = &video_stream.video_sample_buffers;
+        validate_buffers_no_compaction(video_sample_buffers);
+    }
+
+    #[test]
+    fn video_stream_cache_from_chunk_per_frame_buildup_over_time() {
+        let timeline = Timeline::new_sequence("frame");
+
+        for compaction_enabled in [true, false] {
+            println!("compaction enabled: {compaction_enabled}");
+
+            let mut cache = VideoStreamCache::default();
+            let mut store = re_entity_db::EntityDb::with_store_config(
+                StoreId::random(re_log_types::StoreKind::Recording),
+                if compaction_enabled {
+                    re_chunk_store::ChunkStoreConfig::DEFAULT
+                } else {
+                    re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED
+                },
+            );
+
+            let mut frame_iter = iter_h264_frames(RAW_H264_DATA);
+
+            // Add a first frame so we can populate the cache with something
+            let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, 0)]),
+                &VideoStream::new(frame_iter.next().unwrap(), VideoCodec::H264),
+            );
+            store
+                .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                .unwrap();
+            let video_stream = cache
+                .entry(
+                    &store,
+                    &"vid".into(),
+                    *timeline.name(),
+                    DecodeSettings::default(),
+                )
+                .unwrap();
+            validate_stream_from_test_data(&video_stream.read(), 1);
+
+            for (i, frame_bytes) in frame_iter.enumerate() {
+                let t = 1 + i as i64;
+                let timepoint = TimePoint::from_iter([(timeline, t)]);
+                let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &VideoStream::new(frame_bytes, VideoCodec::H264),
+                );
+                let store_events = store
+                    .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                    .unwrap();
+                cache.on_store_events(&store_events);
+
+                let video_stream = cache
+                    .entry(
+                        &store,
+                        &"vid".into(),
+                        *timeline.name(),
+                        DecodeSettings::default(),
+                    )
+                    .unwrap();
+                validate_stream_from_test_data(&video_stream.read(), t as usize + 1);
+            }
+
+            let video_sample_buffers = &video_stream.read().video_sample_buffers;
+            if compaction_enabled {
+                validate_buffers_fully_compacted(video_sample_buffers);
+            } else {
+                validate_buffers_no_compaction(video_sample_buffers);
+            }
+        }
+    }
+
+    #[test]
+    fn video_stream_cache_from_chunk_per_frame_with_gc() {
+        let mut cache = VideoStreamCache::default();
+        let mut store = re_entity_db::EntityDb::with_store_config(
+            StoreId::random(re_log_types::StoreKind::Recording),
+            re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+        let timeline = Timeline::new_sequence("frame");
+
+        for (i, frame_bytes) in iter_h264_frames(RAW_H264_DATA).enumerate() {
+            let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, i as i64)]),
+                &VideoStream::new(frame_bytes, VideoCodec::H264),
+            );
+            store
+                .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
+                .unwrap();
+        }
+
+        // Create the cache entry.
+        cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+
+        // Instead of relying on the "real" GC, we fake it by creating a GC event, pretending the first chunk got removed.
+        let storage_engine = store.storage_engine();
+        let chunk_store = storage_engine.store();
+        cache.on_store_events(&[ChunkStoreEvent {
+            store_id: store.store_id(),
+            store_generation: store.generation(),
+            event_id: 0, // Wrong but don't care.
+            diff: ChunkStoreDiff::deletion(chunk_store.iter_chunks().next().unwrap().clone()),
+        }]);
+
+        // Check whether the chunk removal had the expected effect.
+
+        let video_stream_lock = cache
+            .entry(
+                &store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+            )
+            .unwrap();
+        let video_stream = video_stream_lock.read();
+
+        // In this setup we have one chunk per sample, this makes it quite easy to reason about it!
+        assert_eq!(
+            video_stream.video_sample_buffers.num_elements(),
+            NUM_FRAMES - 1
+        );
+        assert_eq!(
+            video_stream.video_sample_buffers[1].sample_index_range,
+            1..2
+        ); // Just to make sure it was the right buffer.
+
+        let data_descr = video_stream.video_renderer.data_descr();
+        data_descr.sanity_check().unwrap();
+
+        // Only one frame got removed, BUT the entire first GOP since the first frame was a keyframe!
+        assert_eq!(data_descr.samples.num_elements(), NUM_FRAMES - 1);
+        assert_eq!(data_descr.gops.get(0), None);
+        assert_eq!(
+            data_descr.gops.get(1),
+            Some(&re_video::GroupOfPictures {
+                sample_range: 10..20
+            })
+        );
     }
 }

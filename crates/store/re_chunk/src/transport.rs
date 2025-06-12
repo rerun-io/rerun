@@ -126,6 +126,7 @@ impl Chunk {
             row_id_schema,
             index_schemas,
             data_schemas,
+            Default::default(),
         )
         .with_heap_size_bytes(heap_size_bytes);
 

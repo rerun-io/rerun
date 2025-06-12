@@ -31,6 +31,7 @@
 //!
 
 use clap::{Parser as _, ValueEnum as _};
+use rerun::external::re_log;
 
 mod image;
 mod points3d_large_batch;
@@ -74,6 +75,8 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
     #[cfg(debug_assertions)]
     println!("WARNING: Debug build, timings will be inaccurate!");
 
