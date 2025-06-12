@@ -31,7 +31,7 @@ impl PyCatalogClient {
 impl PyCatalogClient {
     /// Create a new catalog client object.
     #[new]
-    #[pyo3(signature = (addr, token=None))]
+    #[pyo3(text_signature = "(self, addr, token=None)")]
     fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
