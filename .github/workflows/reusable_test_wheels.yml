@@ -152,7 +152,7 @@ jobs:
         with:
           pixi-version: v0.41.4
           # Only has the deps for round-trips. Not all examples.
-          environments: wheel-test-min, cpp
+          environments: wheel-test-min
 
       - name: Download Wheel
         uses: actions/download-artifact@v4
