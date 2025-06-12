@@ -12,6 +12,6 @@ rerun = { path = "../../../crates/top/rerun", features = [
   "data_loaders",
 ] }
 
-anyhow.workspace = true
-clap = { workspace = true, features = ["derive"] }
-emath.workspace = true
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+emath = "0.31.1"
