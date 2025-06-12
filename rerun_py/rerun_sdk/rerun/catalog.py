@@ -62,9 +62,10 @@ class CatalogClient:
         if id is not None and name is not None:
             raise ValueError("Only one of 'id' or 'name' must be provided.")
         elif id is not None:
-            if isinstance(id, str):
-                id = EntryId(id)
-            return id
+            if isinstance(id, EntryId):
+                return id
+            else:
+                return EntryId(id)
         elif name is not None:
             return self._raw_client._entry_id_from_entry_name(name)
         else:
