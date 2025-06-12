@@ -28,6 +28,10 @@ pub struct ComponentColumnSelector {
     pub entity_path: crate::datatypes::EntityPath,
 
     /// The name of the component.
+    ///
+    /// If the component does not have an associated `ArchetypeName`, this is just a plain field name. Otherwise,
+    /// this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`. An example for this would be
+    /// `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
     pub component: crate::datatypes::Utf8,
 }
 

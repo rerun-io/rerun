@@ -15,7 +15,7 @@ table ComponentColumnSelector (
   /// The name of the component.
   ///
   /// If the component does not have an associated `ArchetypeName`, this is just a plain field name. Otherwise,
-  /// this is a combination of `<ArchtypeName>:<ArchetypeFieldName>`. An example for this would be
+  /// this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`. An example for this would be
   /// `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
   // NOTE: this field cannot be named `component_name`, because it would then clash with
   // `ComponentMixin.component_name()` in the Python API.

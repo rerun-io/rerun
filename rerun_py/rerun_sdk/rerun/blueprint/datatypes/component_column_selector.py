@@ -61,6 +61,10 @@ class ComponentColumnSelector(ComponentColumnSelectorExt):
     component: datatypes.Utf8 = field(converter=_component_column_selector__component__special_field_converter_override)
     # The name of the component.
     #
+    # If the component does not have an associated `ArchetypeName`, this is just a plain field name. Otherwise,
+    # this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`. An example for this would be
+    # `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
