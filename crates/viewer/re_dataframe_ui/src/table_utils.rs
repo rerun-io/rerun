@@ -185,15 +185,15 @@ impl TableConfig {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         let response = egui_dnd::dnd(ui, "Columns").show(
             self.columns.iter_mut(),
-            |ui, item, handle, _state| {
-                let visible = item.visible;
+            |ui, column, handle, _state| {
+                let visible = column.visible;
                 egui::Sides::new().show(
                     ui,
                     |ui| {
                         handle.ui(ui, |ui| {
                             ui.small_icon(&icons::DND_HANDLE, None);
                         });
-                        let mut label = RichText::new(&item.name);
+                        let mut label = RichText::new(&column.name);
                         if visible {
                             label = label.strong();
                         } else {
@@ -202,15 +202,13 @@ impl TableConfig {
                         ui.label(label);
                     },
                     |ui| {
-                        if ui
-                            .small_icon_button(if item.visible {
-                                &icons::VISIBLE
-                            } else {
-                                &icons::INVISIBLE
-                            })
-                            .clicked()
-                        {
-                            item.visible = !item.visible;
+                        let (icon, alt_text) = if column.visible {
+                            (&icons::VISIBLE, "Hide column")
+                        } else {
+                            (&icons::INVISIBLE, "Show column")
+                        };
+                        if ui.small_icon_button(icon, alt_text).clicked() {
+                            column.visible = !column.visible;
                         }
                     },
                 );

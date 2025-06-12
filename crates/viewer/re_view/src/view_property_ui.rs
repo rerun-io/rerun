@@ -160,7 +160,7 @@ pub fn view_property_component_ui_custom(
     let component_descr = field.component_descriptor(property.archetype_name);
 
     let singleline_list_item_content = list_item::PropertyContent::new(display_name)
-        .menu_button(&re_ui::icons::MORE, |ui| {
+        .menu_button(&re_ui::icons::MORE, "More options", |ui| {
             menu_more(ctx.viewer_ctx(), ui, property, &component_descr);
         })
         .value_fn(move |ui, _| singleline_ui(ui));

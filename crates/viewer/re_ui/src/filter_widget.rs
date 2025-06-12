@@ -4,7 +4,7 @@ use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{UiExt as _, list_item};
+use crate::{UiExt as _, icons, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]
@@ -111,13 +111,9 @@ impl FilterState {
         ui: &mut egui::Ui,
         section_title: impl Into<egui::WidgetText>,
     ) -> Option<egui::Response> {
-        let mut button_clicked = false;
+        let mut toggle_search_clicked = false;
 
-        let icon = if self.inner_state.is_none() {
-            &crate::icons::SEARCH
-        } else {
-            &crate::icons::CLOSE
-        };
+        let is_searching = self.inner_state.is_some();
 
         // precompute the title layout such that we know the size we need for the list item content
         let section_title = section_title.into();
@@ -168,14 +164,26 @@ impl FilterState {
                     }
                 })
                 .with_content_width(text_width)
-                .action_button(icon, || {
-                    button_clicked = true;
-                }),
+                .action_button(
+                    if is_searching {
+                        &icons::CLOSE
+                    } else {
+                        &icons::SEARCH
+                    },
+                    if is_searching {
+                        "Stop search"
+                    } else {
+                        "Search"
+                    },
+                    || {
+                        toggle_search_clicked = true;
+                    },
+                ),
             );
         });
 
         // defer button handling because we can't mutably borrow `self` in both closures above
-        if button_clicked {
+        if toggle_search_clicked {
             if self.inner_state.is_none() {
                 self.activate("");
             } else {
@@ -219,11 +227,11 @@ impl FilterState {
                 ui.horizontal(|ui| {
                     ui.set_height(19.0);
 
-                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
+                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&icons::SEARCH, "Search"));
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if !inner_state.filter_query.is_empty()
-                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                            && ui.small_icon_button(&icons::CLOSE, "Close").clicked()
                         {
                             *inner_state = Default::default();
                         }

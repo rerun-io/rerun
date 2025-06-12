@@ -71,9 +71,14 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Start")
-                    .action_button_with_enabled(&re_ui::icons::RESET, start != TimeInt::MIN, || {
-                        reset_start = true;
-                    })
+                    .action_button_with_enabled(
+                        &re_ui::icons::RESET,
+                        "Reset",
+                        start != TimeInt::MIN,
+                        || {
+                            reset_start = true;
+                        },
+                    )
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(
@@ -106,9 +111,14 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("End")
-                    .action_button_with_enabled(&re_ui::icons::RESET, end != TimeInt::MAX, || {
-                        reset_to = true;
-                    })
+                    .action_button_with_enabled(
+                        &re_ui::icons::RESET,
+                        "Reset",
+                        end != TimeInt::MAX,
+                        || {
+                            reset_to = true;
+                        },
+                    )
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(

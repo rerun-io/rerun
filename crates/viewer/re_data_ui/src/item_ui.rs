@@ -724,16 +724,16 @@ pub fn entity_db_button_ui(
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
-            let resp =
-                ui.small_icon_button(&icons::CLOSE_SMALL)
-                    .on_hover_text(match store_id.kind {
-                        re_log_types::StoreKind::Recording => {
-                            "Close this recording (unsaved data will be lost)"
-                        }
-                        re_log_types::StoreKind::Blueprint => {
-                            "Close this blueprint (unsaved data will be lost)"
-                        }
-                    });
+            let resp = ui
+                .small_icon_button(&icons::CLOSE_SMALL, "Close recording")
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
             if resp.clicked() {
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseRecordingOrTable(
@@ -804,7 +804,7 @@ pub fn table_id_button_ui(
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close table")
                 .on_hover_text("Close this table (all data will be lost)");
             if resp.clicked() {
                 ctx.command_sender()
