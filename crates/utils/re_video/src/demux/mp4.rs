@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl VideoDataDescription {
-    pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
+    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
@@ -38,12 +38,8 @@ impl VideoDataDescription {
 
             for sample in &track.samples {
                 if sample.is_sync && !samples.is_empty() {
-                    let start = samples[gop_sample_start_index].decode_timestamp;
                     let sample_range = gop_sample_start_index..samples.next_index();
-                    gops.push_back(GroupOfPictures {
-                        decode_start_time: start,
-                        sample_range,
-                    });
+                    gops.push_back(GroupOfPictures { sample_range });
                     gop_sample_start_index = samples.next_index();
                 }
 
@@ -90,12 +86,8 @@ impl VideoDataDescription {
 
         // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
-            let start = samples[gop_sample_start_index].decode_timestamp;
             let sample_range = gop_sample_start_index..samples.next_index();
-            gops.push_back(GroupOfPictures {
-                decode_start_time: start,
-                sample_range,
-            });
+            gops.push_back(GroupOfPictures { sample_range });
         }
 
         {
@@ -140,7 +132,7 @@ impl VideoDataDescription {
             }
         };
 
-        Ok(Self {
+        let video_data_description = Self {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
@@ -149,7 +141,15 @@ impl VideoDataDescription {
             gops,
             samples,
             mp4_tracks,
-        })
+        };
+
+        if cfg!(debug_assertions) {
+            if let Err(err) = video_data_description.sanity_check() {
+                panic!("VideoDataDescription sanity check for {debug_name} failed: {err}");
+            }
+        }
+
+        Ok(video_data_description)
     }
 }
 

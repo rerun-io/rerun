@@ -27,8 +27,8 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let video =
-        re_video::VideoDataDescription::load_mp4(&video_blob).expect("failed to load video");
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
+        .expect("failed to load video");
 
     println!(
         "{} {}x{}",
