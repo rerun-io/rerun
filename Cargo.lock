@@ -7865,6 +7865,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_sorbet",
  "re_tracing",
  "re_types_builder",
  "re_types_core",

@@ -3,7 +3,6 @@ namespace rerun.blueprint.datatypes;
 
 /// Describe a component column to be selected in the dataframe view.
 // TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
-// TODO(#10129): Change this to use newly defined column name.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table ComponentColumnSelector (
   "attr.python.aliases": "str",
@@ -14,6 +13,10 @@ table ComponentColumnSelector (
   entity_path: rerun.datatypes.EntityPath (order: 100);
 
   /// The name of the component.
+  ///
+  /// If the component does not have an associated `ArchetypeName`, this is just a plain field name. Otherwise,
+  /// this is a combination of `<ArchtypeName>:<ArchetypeFieldName>`. An example for this would be
+  /// `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
   // NOTE: this field cannot be named `component_name`, because it would then clash with
   // `ComponentMixin.component_name()` in the Python API.
   component: rerun.datatypes.Utf8 (order: 200);

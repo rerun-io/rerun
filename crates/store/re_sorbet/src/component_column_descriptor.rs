@@ -5,12 +5,6 @@ use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, Comp
 
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
-// TODO(#10065): Make the fields of this private and ensure validity of component name during construction.
-// Also ensure that there are only vetted ways to match a component selector to a column descriptor.
-// Describes a data/component column, such as `Position3D`, in a dataframe.
-//
-// Store the `ComponentDescriptor` directly.
-
 /// This is an [`ArrowField`] that contains specific meta-data.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnDescriptor {
