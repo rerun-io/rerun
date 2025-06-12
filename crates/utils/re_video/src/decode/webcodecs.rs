@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
-use re_mp4::{StsdBox, StsdBoxContent};
+use re_mp4::StsdBoxContent;
 use wasm_bindgen::{JsCast as _, closure::Closure};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
@@ -12,7 +12,7 @@ use web_sys::{
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
-use crate::{Time, Timescale, VideoCodec, VideoDataDescription};
+use crate::{Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDetails};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -35,8 +35,6 @@ impl std::ops::Deref for WebVideoFrame {
 
 pub struct WebVideoDecoder {
     codec: VideoCodec,
-    stsd: Option<StsdBox>,
-    coded_dimensions: Option<[u16; 2]>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -44,7 +42,7 @@ pub struct WebVideoDecoder {
 }
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
-pub enum Error {
+pub enum WebError {
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 
@@ -62,6 +60,11 @@ pub enum Error {
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
     Decoding(String),
+
+    #[error(
+        "Not enough codec information to configure the video decoder. For live streams this typically happens prior to the arrival of the first key frame."
+    )]
+    NotEnoughCodecInformation,
 }
 
 // SAFETY: There is no way to access the same JS object from different OS threads
@@ -109,7 +112,7 @@ impl WebVideoDecoder {
         video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, WebError> {
         let on_output = Arc::new(on_output);
 
         // Web APIs insist on microsecond timestamps throughout.
@@ -121,8 +124,6 @@ impl WebVideoDecoder {
 
         Ok(Self {
             codec: video_descr.codec,
-            stsd: video_descr.stsd.clone(),
-            coded_dimensions: video_descr.coded_dimensions,
             timescale,
             decoder,
             hw_acceleration,
@@ -154,16 +155,16 @@ impl AsyncDecoder for WebVideoDecoder {
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
-            .map_err(|err| Error::CreateChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::CreateChunk(js_error_to_string(&err)))?;
         self.decoder
             .decode(&web_chunk)
-            .map_err(|err| Error::DecodeChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::DecodeChunk(js_error_to_string(&err)))?;
 
         Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()> {
         re_log::trace!("Resetting video decoder.");
 
         if let Err(_err) = self.decoder.reset() {
@@ -173,16 +174,17 @@ impl AsyncDecoder for WebVideoDecoder {
             self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
         };
 
+        let encoding_details = video_descr
+            .encoding_details
+            .as_ref()
+            .ok_or(WebError::NotEnoughCodecInformation)?;
+
         self.decoder
             .configure(&js_video_decoder_config(
-                &self.codec,
-                &self.stsd,
-                &self.coded_dimensions,
+                encoding_details,
                 self.hw_acceleration,
             ))
-            .map_err(|err| Error::ConfigureFailure(js_error_to_string(&err)))?;
-
-        Ok(())
+            .map_err(|err| WebError::ConfigureFailure(js_error_to_string(&err)).into())
     }
 
     /// Called after submitting the last chunk.
@@ -227,7 +229,7 @@ static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
     timescale: Timescale,
-) -> Result<web_sys::VideoDecoder, Error> {
+) -> Result<web_sys::VideoDecoder, WebError> {
     let on_output = {
         let on_output = on_output_callback.clone();
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
@@ -252,7 +254,7 @@ fn init_video_decoder(
     };
 
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
-        on_output_callback(Err(super::Error::WebDecoder(Error::Decoding(
+        on_output_callback(Err(super::DecodeError::WebDecoder(WebError::Decoding(
             js_error_to_string(&err),
         ))));
     }) as Box<dyn Fn(js_sys::Error)>);
@@ -265,32 +267,18 @@ fn init_video_decoder(
     };
 
     web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
-        .map_err(|err| Error::DecoderSetupFailure(js_error_to_string(&err)))
+        .map_err(|err| WebError::DecoderSetupFailure(js_error_to_string(&err)))
 }
 
 fn js_video_decoder_config(
-    codec: &VideoCodec,
-    stsd: &Option<StsdBox>,
-    coded_dimensions: &Option<[u16; 2]>,
+    encoding_details: &VideoEncodingDetails,
     hw_acceleration: DecodeHardwareAcceleration,
 ) -> VideoDecoderConfig {
-    let codec_string = stsd
-        .as_ref()
-        .and_then(|stsd| stsd.contents.codec_string())
-        .unwrap_or_else(|| {
-            // TODO(#7484): This is neat, but doesn't work. Need the full codec string as described by the spec.
-            // For h.264, we have to extract this from the first SPS we find.
-            codec.base_webcodec_string().to_owned()
-        });
+    let js = VideoDecoderConfig::new(&encoding_details.codec_string);
+    js.set_coded_width(encoding_details.coded_dimensions[0] as u32);
+    js.set_coded_height(encoding_details.coded_dimensions[1] as u32);
 
-    let js = VideoDecoderConfig::new(&codec_string);
-
-    if let Some(coded_dimensions) = coded_dimensions {
-        js.set_coded_width(coded_dimensions[0] as u32);
-        js.set_coded_height(coded_dimensions[1] as u32);
-    }
-
-    if let Some(stsd) = stsd {
+    if let Some(stsd) = &encoding_details.stsd {
         let description = match &stsd.contents {
             StsdBoxContent::Av01(content) => Some(content.av1c.raw.clone()),
             StsdBoxContent::Avc1(content) => Some(content.avcc.raw.clone()),
@@ -312,8 +300,15 @@ fn js_video_decoder_config(
             description.copy_from(&description_raw[..]);
             js.set_description(&description);
         }
+    } else {
+        // For H264 & H265, the bitstream is assumed to be in Annex B format if no AVCC box is present.
+        // * H264: https://www.w3.org/TR/webcodecs-avc-codec-registration/#videodecoderconfig-description
+        // * H265: https://www.w3.org/TR/webcodecs-hevc-codec-registration/#videodecoderconfig-description
     }
 
+    // "If true this is a hint that the selected decoder should be optimized to minimize the number
+    // of EncodedVideoChunk objects that have to be decoded before a VideoFrame is output."
+    // https://developer.mozilla.org/en-US/docs/Web/API/VideoDecoder/configure#optimizeforlatency
     js.set_optimize_for_latency(true);
 
     match hw_acceleration {
