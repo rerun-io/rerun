@@ -18,6 +18,7 @@ pub struct PyEntryId {
 impl PyEntryId {
     /// Create a new `EntryId` from a string.
     #[new]
+    #[pyo3(text_signature = "(self, id)")]
     pub fn new(id: String) -> PyResult<Self> {
         Ok(Self {
             id: re_tuid::Tuid::from_str(id.as_str())

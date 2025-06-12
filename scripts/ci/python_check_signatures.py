@@ -136,6 +136,9 @@ def load_stub_signatures(pyi_file: Path) -> TotalSignature:
         elif node.type == "classdef":
             class_name = node.name.value
 
+            if class_name.endswith("Internal"):
+                continue
+
             class_def = {}
 
             doc = None
@@ -175,6 +178,9 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
             api_def = APIDef(name, inspect.signature(obj), obj.__doc__)
             signatures[name] = api_def
         elif inspect.isclass(obj):
+            if name.endswith("Internal"):
+                continue
+
             class_def = {}
             # Get methods within the class
             for method_name, method_obj in inspect.getmembers(obj):

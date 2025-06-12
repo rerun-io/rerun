@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
+from rerun.catalog import CatalogClient
 
 from .types import (
     AnyColumn,
@@ -998,6 +999,9 @@ def asset_video_read_frame_timestamps_nanos(
 class EntryId:
     """A unique identifier for an entry in the catalog."""
 
+    def __init__(self, id: str) -> None:
+        """Create a new `EntryId` from a string."""
+
     def __str__(self) -> str:
         """Return str(self)."""
 
@@ -1333,31 +1337,16 @@ class DataframeQueryView:
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
-class CatalogClient:
-    """Client for a remote Rerun catalog server."""
-
-    def entries(self) -> list[Entry]:
-        """Get a list of all entries in the catalog."""
-
-    def get_dataset(self, name_or_id: str | EntryId) -> Dataset:
-        """Get a dataset by name or id."""
-
-    def create_dataset(self, name: str) -> Dataset:
-        """Create a new dataset with the provided name."""
-
-    def get_table(self, name_or_id: str | EntryId) -> Table:
-        """
-        Get a table by name or id.
-
-        Note: the entry table is named `__entries`.
-        """
-
-    def entries_table(self) -> Table:
-        """Get the entries table."""
-
-    @property
-    def ctx(self) -> Any:
-        """The DataFusion context (if available)."""
+# TODO(ab): internal object, we need auto-gen stubs for these.
+class CatalogClientInternal:
+    def __init__(self, address: str | None, token: str | None) -> None: ...
+    def entries(self) -> list[Entry]: ...
+    def get_dataset(self, id:EntryId) -> Dataset: ...
+    def create_dataset(self, name: str) -> Dataset: ...
+    def get_table(self, id: EntryId) -> Table: ...
+    def entries_table(self) -> Table: ...
+    def ctx(self) -> Any: ...
+    def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class DataFusionTable:
     def __datafusion_table_provider__(self) -> Any:
