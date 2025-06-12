@@ -580,7 +580,7 @@ buf = "1.*"             # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
 buf = "1.*"             # not available for linux-aarch64
-libgfortran5 = ">=14" # Fixes issues with OpenCV
+libgfortran5 = ">=14"   # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 
 [target.win-64.dependencies]
@@ -597,7 +597,7 @@ ninja = "1.11.1.*"
 # Use system compilers for C/C++.
 #
 # This is important in particular on MacOS, where it's really hard to get a custom clang to work,
-# due to various pecularities of the linker setup.
+# due to various peculiarities of the linker setup.
 # (i.e. I have figured out to pick up the right compiler by setting CC/CXX env vars, but couldn't get it to link!)
 #
 # Note however, that as of writing, our web viewer build needs to use a newer compiler than what MacOS ships with,
