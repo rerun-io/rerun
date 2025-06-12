@@ -38,8 +38,10 @@ libc = "2.28"
 
 
 ################################################################################
-# GLOBAL ACTIVATION
+# ACTIVATION
 ################################################################################
+
+# Global
 
 [activation]
 
@@ -50,6 +52,14 @@ EXECUTABLE_EXTENSION = ""
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+
+# python-dev
+
+[feature.python-dev.activation.env]
+# RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk.
+RERUN_ALLOW_MISSING_BIN = "1"
+RERUN_DEV_ENVIRONMENT = "true"
+
 
 ################################################################################
 # ENVIRONMENTS
@@ -593,9 +603,6 @@ ghp-import = "==2.1.0" # for CI documentation handling
 [feature.python-dev]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
-[feature.python-dev.activation.env]
-RERUN_DEV_ENVIRONMENT = "true"
-
 [feature.python-dev.dependencies]
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
 # and other common examples/snippets.
@@ -606,15 +613,6 @@ RERUN_DEV_ENVIRONMENT = "true"
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
 numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
-
-
-[feature.python-dev.activation]
-# Set up environment variables so maturin will do the right thing when
-# installing the python package.
-scripts = ["pixi/maturin_config.sh"]
-
-[feature.python-dev.target.win-64.activation]
-scripts = ["pixi/maturin_config.bat"]
 
 [feature.python-dev.pypi-dependencies]
 # Install the `rerun_py` as a package in editable mode.
