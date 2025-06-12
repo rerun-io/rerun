@@ -568,7 +568,7 @@ buf = "1.*"             # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
 buf = "1.*"             # not available for linux-aarch64
-libgfortran5 = ">=14" # Fixes issues with OpenCV
+libgfortran5 = ">=14"   # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 
 [target.win-64.dependencies]
