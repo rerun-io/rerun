@@ -47,7 +47,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                     joint.limit.lower..=joint.limit.upper,
                 );
 
-                // NOTE: each join already has a fixed origin pose (logged with the URDF file),
+                // NOTE: each joint already has a fixed origin pose (logged with the URDF file),
                 // and Rerun won't allow us to override or add to that transform here.
                 // So instead we apply the dynamic rotation to the child link of the joint:
                 let child_link = urdf.get_joint_child(joint);
