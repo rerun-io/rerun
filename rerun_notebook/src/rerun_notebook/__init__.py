@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-import http.client
+import base64
 import importlib.metadata
 import logging
 import os
 import pathlib
 import time
-import urllib.parse
 from collections.abc import Mapping
-from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, Callable, Literal
+from uuid import uuid4
 
 import anywidget
 import jupyter_ui_poll
 import traitlets
+from ipywidgets import HTML
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")
@@ -43,7 +44,6 @@ ASSET_MAGIC_INLINE = "inline"
 
 
 def _buffer_to_data_url(binary: bytes) -> str:
-    import base64
     import gzip
 
     gz = gzip.compress(binary)
@@ -90,48 +90,7 @@ def _inline_widget() -> str:
     return js
 
 
-def _is_url_accessible(url: urllib.parse.ParseResult) -> tuple[urllib.parse.ParseResult, bool]:
-    conn = http.client.HTTPSConnection(url.netloc) if url.scheme == "https" else http.client.HTTPConnection(url.netloc)
-    try:
-        conn.request("HEAD", url.path or "/")
-        res = conn.getresponse()
-        return url, res.status == 200
-    except Exception:
-        return url, False
-    finally:
-        conn.close()
-
-
-def _set_parsed_url_filename(url: urllib.parse.ParseResult, filename: str) -> urllib.parse.ParseResult:
-    path_parts = url.path.split("/")
-    path_parts[-1] = filename
-    new_path = "/".join(path_parts)
-    return url._replace(path=new_path)
-
-
-def _check_if_assets_accessible(widget_url: str) -> None:
-    parsed_url = urllib.parse.urlparse(widget_url)
-
-    assert parsed_url.path.endswith("widget.js")
-    urls_to_check = [
-        parsed_url,
-        _set_parsed_url_filename(parsed_url, "re_viewer_bg.wasm"),
-    ]
-
-    with ThreadPoolExecutor(max_workers=2) as e:
-        results = list(e.map(_is_url_accessible, urls_to_check))
-
-    success = True
-    for url, exists in results:
-        if not exists:
-            success = False
-            print(f'"{url.geturl()}" is not accessible')
-    if not success:
-        raise ValueError(
-            f"One or more asset URLs are inaccessible. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
-        )
-
-
+ASSET_IS_URL = False
 ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
 if ASSET_ENV is None:
     # if we're in the `rerun` repository, default to `serve-local`
@@ -156,8 +115,28 @@ else:  # remote widget
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
     if not (ASSET_ENV.endswith("widget.js")):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
+    ASSET_IS_URL = True
 
-    _check_if_assets_accessible(ASSET_ENV)
+
+class ErrorWidget:
+    def __init__(self) -> None:
+        widget_id = str(uuid4())
+        js = (
+            (Path(__file__).parent / "error_widget.js")
+            .read_text()
+            .replace("{{widget_id}}", widget_id)
+            .replace("{{widget_url}}", ASSET_ENV or "")
+            .replace("\n", "")
+        )
+        js_base64 = base64.b64encode(js.encode()).decode()
+        onload = f"eval(atob('{js_base64}'))"
+        self._html = HTML(value=f'<div id="{widget_id}"><style onload="{onload}"></style></div>')
+
+    def _ipython_display_(self) -> None:
+        from IPython.display import display
+
+        if ASSET_IS_URL:
+            display(self._html)
 
 
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]

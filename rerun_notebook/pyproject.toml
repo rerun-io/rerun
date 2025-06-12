@@ -27,7 +27,7 @@ features = ["dev"]
 
 [tool.hatch.build]
 only-packages = true
-artifacts = ["src/rerun_notebook/static/*"]
+artifacts = ["src/rerun_notebook/static/*", "src/rerun_notebook/error_widget.js"]
 
 [tool.hatch.build.hooks.jupyter-builder]
 build-function = "hatch_jupyter_builder.npm_builder"

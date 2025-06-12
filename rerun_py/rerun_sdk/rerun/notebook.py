@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 from rerun import bindings
-from rerun_notebook import Viewer as _Viewer
+from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
 
 from .event import (
     ViewerEvent as ViewerEvent,
@@ -108,6 +108,7 @@ class Viewer:
 
         """
 
+        self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
@@ -275,6 +276,7 @@ class Viewer:
 
         from IPython.display import display
 
+        display(self._error_widget)
         display(self._viewer)
 
         if block_until_ready:
