@@ -50,9 +50,15 @@ pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogM
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
+            let sorbet_schema = re_sorbet::ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
-            Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
+            let arrow_msg = re_log_types::ArrowMsg {
+                chunk_id: sorbet_schema.chunk_id().as_tuid(),
+                batch,
+                on_release: None,
+            };
+
+            Some(LogMsg::ArrowMsg(store_id, arrow_msg))
         }
         MessageKind::BlueprintActivationCommand => {
             let blueprint_activation_command = BlueprintActivationCommand::decode(buf)?;

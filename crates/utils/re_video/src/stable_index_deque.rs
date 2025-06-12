@@ -285,7 +285,7 @@ impl<T> StableIndexDeque<T> {
         self.vec.len()
     }
 
-    /// Returns the index of the latest element in the deque that is less than or equal to the given key.
+    /// Returns the index of the latest element in a deque that is less than or equal to the given sorted key.
     ///
     /// Returns the index of:
     /// - The index of `needle` in `v`, if it exists

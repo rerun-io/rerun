@@ -21,6 +21,7 @@ all-features = true
 
 [features]
 default = []
+testing = []
 
 ## Enable loading data from an .rrd file.
 decoder = [
@@ -48,12 +49,14 @@ stream_from_http = [
 [dependencies]
 
 # Rerun:
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 
 # External:

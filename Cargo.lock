@@ -275,6 +275,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "animated_urdf"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "emath",
+ "rerun",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7225,6 +7235,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -7389,12 +7400,14 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_chunk",
  "re_log",
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "similar-asserts",
@@ -7762,6 +7775,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
+ "web-time",
 ]
 
 [[package]]

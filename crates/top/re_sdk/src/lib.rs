@@ -140,7 +140,7 @@ pub mod external {
     pub use re_log_types::external::*;
 
     #[cfg(feature = "data_loaders")]
-    pub use re_data_loader;
+    pub use re_data_loader::{self, external::*};
 }
 
 #[cfg(feature = "web_viewer")]
