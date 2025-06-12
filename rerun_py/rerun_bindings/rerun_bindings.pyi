@@ -146,9 +146,9 @@ class ComponentColumnSelector:
         """
 
     @property
-    def component_name(self) -> str:
+    def archetype_field_name(self) -> str:
         """
-        The component name.
+        The archetype field name.
 
         This property is read-only.
         """
