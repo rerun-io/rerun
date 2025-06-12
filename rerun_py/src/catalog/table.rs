@@ -68,7 +68,8 @@ impl PyTable {
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
-    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+    // add `ctx=None, name=None`
+    pub fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let super_ = self_.as_super();

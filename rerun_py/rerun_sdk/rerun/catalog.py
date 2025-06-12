@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from rerun_bindings import (
     CatalogClientInternal,
@@ -14,46 +14,123 @@ from rerun_bindings import (
     VectorDistanceMetric as VectorDistanceMetric,
 )
 
+if TYPE_CHECKING:
+    import datafusion
+
 
 class CatalogClient:
-    """Client for a remote Rerun catalog server."""
+    """
+    Client for a remote Rerun catalog server.
+
+    Note: the `datafusion` package is required to use this client. Initialization will fail with an error if the package
+    is not installed.
+    """
 
     def __init__(self, address: str, token: str | None = None) -> None:
+        from importlib.util import find_spec
+
+        if find_spec("datafusion") is None:
+            raise ImportError(
+                "The 'datafusion' package is required to use `CatalogClient`. "
+                "You can install it with `pip install datafusion`."
+            )
+
         self._raw_client = CatalogClientInternal(address, token)
 
-    def entries(self) -> list[Entry]:
+    def all_entries(self) -> list[Entry]:
         """Returns a list of all entries in the catalog."""
-        return self._raw_client.entries()
+        return self._raw_client.all_entries()
 
-    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> Dataset:
+    def dataset_entries(self) -> list[Dataset]:
+        """Returns a list of all dataset entries in the catalog."""
+        return self._raw_client.dataset_entries()
+
+    def table_entries(self) -> list[Table]:
+        """Returns a list of all dataset entries in the catalog."""
+        return self._raw_client.table_entries()
+
+    # ---
+
+    def entry_names(self) -> list[str]:
+        """Returns a list of all entry names in the catalog."""
+        return self._raw_client.entry_names()
+
+    def dataset_names(self) -> list[str]:
+        """Returns a list of all dataset names in the catalog."""
+        return self._raw_client.dataset_names()
+
+    def table_names(self) -> list[str]:
+        """Returns a list of all table names in the catalog."""
+        return self._raw_client.table_names()
+
+    # ---
+
+    def entries(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all entries in the catalog."""
+        return self.get_table(name="__entries")
+
+    def datasets(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all dataset entries in the catalog."""
+        from datafusion import col
+
+        return self.entries().filter(col("entry_kind") == int(EntryKind.DATASET)).drop("entry_kind")
+
+    def tables(self) -> datafusion.DataFrame:
+        """Returns a DataFrame containing all table entries in the catalog."""
+        from datafusion import col
+
+        return self.entries().filter(col("entry_kind") == int(EntryKind.TABLE)).drop("entry_kind")
+
+    # ---
+
+    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> Dataset:
         """Returns a dataset by its ID or name."""
 
-        return self._raw_client.get_dataset(self._resolve_name_or_id(id, name))
+        return self._raw_client.get_dataset_entry(self._resolve_name_or_id(id, name))
+
+    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> Table:
+        """Returns a table by its ID or name."""
+
+        return self._raw_client.get_table_entry(self._resolve_name_or_id(id, name))
+
+    # ---
+
+    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> Dataset:
+        """
+        Returns a dataset by its ID or name.
+
+        Note: This is currently an alias for `get_dataset_entry`. In the future, it will return a data-oriented dataset
+        object instead.
+        """
+        return self.get_dataset_entry(id=id, name=name)
+
+    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
+        """
+        Returns a table by its ID or name.
+
+        Note: This is currently an alias for `get_table_entry`. In the future, it will return a data-oriented table
+        object instead.
+        """
+        return self.get_table_entry(id=id, name=name).df()
+
+    # ---
 
     def create_dataset(self, name: str) -> Dataset:
         """Creates a new dataset with the given name."""
-
         return self._raw_client.create_dataset(name)
-
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> Table:
-        """Returns a table by its ID or name."""
-
-        return self._raw_client.get_table(self._resolve_name_or_id(id, name))
 
     def entries_table(self) -> Table:
         """Returns a table containing all entries in the catalog."""
 
-        return self.get_table(name="__entries")
+        return self.get_table_entry(name="__entries")
 
     @property
-    def ctx(self) -> Any:
-        """
-        Returns a DataFusion session context for querying the catalog.
-
-        Note: the `datafusion` package is required to use this method.
-        """
+    def ctx(self) -> datafusion.SessionContext:
+        """Returns a DataFusion session context for querying the catalog."""
 
         return self._raw_client.ctx()
+
+    # ---
 
     def _resolve_name_or_id(self, id: EntryId | str | None = None, name: str | None = None) -> EntryId:
         """Helper method to resolve either ID or name. Returns the id or throw an error."""
