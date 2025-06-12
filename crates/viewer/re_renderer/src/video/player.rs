@@ -299,6 +299,7 @@ impl VideoPlayer {
         Ok(())
     }
 
+    #[expect(clippy::if_same_then_else)]
     fn reset_decoder_if_needed(
         &mut self,
         video_description: &re_video::VideoDataDescription,
@@ -393,13 +394,13 @@ impl VideoPlayer {
         sample_range: &std::ops::Range<SampleIndex>,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
-        debug_assert!(video_description.gops.get(gop_idx).map_or(false, |gop| {
+        debug_assert!(video_description.gops.get(gop_idx).is_some_and(|gop| {
             gop.sample_range.start <= sample_range.start && gop.sample_range.end >= sample_range.end
         }));
 
         for (sample_idx, sample) in video_description
             .samples
-            .iter_index_range_clamped(&sample_range)
+            .iter_index_range_clamped(sample_range)
         {
             let chunk = sample
                 .get(video_buffers, sample_idx)
