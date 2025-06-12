@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import datafusion
+from typing import Any
+
 from rerun_bindings import (
     CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
@@ -45,8 +46,12 @@ class CatalogClient:
         return self.get_table(name="__entries")
 
     @property
-    def ctx(self) -> datafusion.SessionContext:
-        """Returns a DataFusion session context for querying the catalog."""
+    def ctx(self) -> Any:
+        """
+        Returns a DataFusion session context for querying the catalog.
+
+        Note: the `datafusion` package is required to use this method.
+        """
 
         return self._raw_client.ctx()
 
