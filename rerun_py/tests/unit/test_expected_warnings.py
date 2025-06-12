@@ -61,5 +61,7 @@ def test_init_twice() -> None:
         warning_msg = f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording."
         rr.init(application_id=application_id, recording_id=recording_id)
         rr.init(application_id=application_id, recording_id=recording_id)
+        existing_rec_id = rr.get_global_data_recording().get_recording_id()
         assert len(warnings) == 1
         assert warning_msg in str(warnings[0])
+        assert existing_rec_id == str(recording_id)
