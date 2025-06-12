@@ -87,6 +87,10 @@ py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 py-docs = ["base", "python-docs"]
 
 # The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
+#
+# ⚠️ This environment sets the C/C++ compiler to the system compiler (see c-compiler/cxx-compiler dependencies).
+# As of writing this breaks building the web viewer on MacOS, so do not enable it in any environment
+# in which you want to do viewer builds.
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
@@ -105,7 +109,6 @@ cpp = ["base", "cpp"]
 #  Just the deps for running roundtrips
 wheel-test-min = [
   "base",
-  "cpp",
   "wheel-test",
   "wheel-build",
   "py-test-deps",
@@ -115,7 +118,6 @@ wheel-test-min = [
 # The full deps for running all examples
 wheel-test = [
   "base",
-  "cpp",
   "wheel-test",
   "wheel-build",
   "py-test-deps",
@@ -592,6 +594,16 @@ sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see http
 
 [feature.cpp.target.unix.dependencies]
 ninja = "1.11.1.*"
+# Use system compilers for C/C++.
+#
+# This is important in particular on MacOS, where it's really hard to get a custom clang to work,
+# due to various pecularities of the linker setup.
+# (i.e. I have figured out to pick up the right compiler by setting CC/CXX env vars, but couldn't get it to link!)
+#
+# Note however, that as of writing, our web viewer build needs to use a newer compiler than what MacOS ships with,
+# so we have to make sure that anything building the web viewer does **not** use these packages.
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822.*"
