@@ -152,7 +152,7 @@ jobs:
         with:
           pixi-version: v0.41.4
           # Only has the deps for round-trips. Not all examples.
-          environments: wheel-test-min
+          environments: wheel-test-min, cpp
 
       - name: Download Wheel
         uses: actions/download-artifact@v4
@@ -201,7 +201,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # Separated out of roundtrips.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `roundtrips.py`.
-        run: pixi run -e wheel-test-min cpp-build-roundtrips
+        run: pixi run -e cpp cpp-build-roundtrips
 
       - name: Run tests/roundtrips.py
         if: ${{ !inputs.FAST }}
@@ -213,7 +213,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # Separated out of compare_snippet_output.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min cpp-build-snippets
+        run: pixi run -e cpp cpp-build-snippets
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
