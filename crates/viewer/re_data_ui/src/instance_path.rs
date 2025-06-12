@@ -217,39 +217,40 @@ fn component_list_ui(
                         list_item = list_item.force_hovered(is_hovered);
                     }
 
-                    let content =
-                        re_ui::list_item::PropertyContent::new(component_descr.display_name())
-                            .with_icon(icon)
-                            .value_fn(|ui, _| {
-                                if instance.is_all() {
-                                    crate::ComponentPathLatestAtResults {
-                                        component_path: ComponentPath::new(
-                                            entity_path.clone(),
-                                            component_descr.clone(),
-                                        ),
-                                        unit,
-                                    }
-                                    .data_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                    );
-                                } else {
-                                    ctx.component_ui_registry().component_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                        entity_path,
-                                        component_descr,
-                                        unit,
-                                        instance,
-                                    );
-                                }
-                            });
+                    let content = re_ui::list_item::PropertyContent::new(
+                        component_descr.archetype_field_name.as_str(),
+                    )
+                    .with_icon(icon)
+                    .value_fn(|ui, _| {
+                        if instance.is_all() {
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_descr.clone(),
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                            );
+                        } else {
+                            ctx.component_ui_registry().component_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                                entity_path,
+                                component_descr,
+                                unit,
+                                instance,
+                            );
+                        }
+                    });
 
                     let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
                         if let Some(component_name) = component_descr.component_name {

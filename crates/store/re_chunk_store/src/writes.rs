@@ -380,7 +380,8 @@ impl ChunkStore {
                 ));
             {
                 if *datatype != list_array.value_type() {
-                    // TODO(grtlr): we might even need to make the decision to drop that chunk entirely?
+                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
+                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
                     re_log::warn!(
                         "Datatype of column {descr} in {} has changed from {datatype} to {}",
                         chunk.entity_path(),

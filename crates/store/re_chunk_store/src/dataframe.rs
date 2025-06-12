@@ -399,6 +399,9 @@ impl ChunkStore {
     ) -> ComponentColumnDescriptor {
         // Unfortunately, we can't return an error here, so we craft a default descriptor and
         // add information to it that we find.
+
+        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
+        // in long-running servers. In practice this probably doesn't matter.
         let mut result = ComponentColumnDescriptor {
             store_datatype: ArrowDatatype::Null,
             component_name: None,
