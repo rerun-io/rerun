@@ -23,6 +23,9 @@ use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 /// Instead, this is just a description whether any subsampling occurs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChromaSubsamplingModes {
+    /// No subsampling at all, since the format is monochrome.
+    Monochrome,
+
     /// No subsampling.
     ///
     /// Note that this also applies to RGB formats, not just YUV.
@@ -34,18 +37,16 @@ pub enum ChromaSubsamplingModes {
 
     /// Subsampling in both X and Y.
     Yuv420,
-
-    /// No subsampling at all, since the format is monochrome.
-    Monochrome,
 }
 
 impl std::fmt::Display for ChromaSubsamplingModes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            // Could also call this 4:0:0, but that's a fairly uncommon way to describe it.
+            Self::Monochrome => write!(f, "monochrome"),
             Self::Yuv444 => write!(f, "4:4:4"),
             Self::Yuv422 => write!(f, "4:2:2"),
             Self::Yuv420 => write!(f, "4:2:0"),
-            Self::Monochrome => write!(f, "monochrome"),
         }
     }
 }

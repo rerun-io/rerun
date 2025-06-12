@@ -203,15 +203,14 @@ fn subsampling_mode(stsd: &re_mp4::StsdBox) -> Option<ChromaSubsamplingModes> {
                 Some(ChromaSubsamplingModes::Monochrome)
             } else {
                 // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
+                // For spec of meaning see https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
                 match (
                     av01_box.av1c.chroma_subsampling_x != 0,
                     av01_box.av1c.chroma_subsampling_y != 0,
                 ) {
-                    (true, true) => Some(ChromaSubsamplingModes::Yuv420), // May also be monochrome.
+                    (true, true) => Some(ChromaSubsamplingModes::Yuv420), // May also be monochrome, but we already checked for that.
                     (true, false) => Some(ChromaSubsamplingModes::Yuv422),
                     (false, true) => None, // Downsampling in Y but not in X is unheard of!
-                    // Either that or monochrome.
-                    // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
                     (false, false) => Some(ChromaSubsamplingModes::Yuv444),
                 }
             }
