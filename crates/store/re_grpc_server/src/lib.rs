@@ -951,7 +951,7 @@ mod tests {
                             .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
                     )
                     .serve_with_incoming_shutdown(
-                        TcpIncoming::from_listener(tcp_listener, true, None).unwrap(),
+                        TcpIncoming::from(tcp_listener).with_nodelay(Some(true)),
                         completion.wait(),
                     )
                     .await
