@@ -35,8 +35,8 @@ namespace rerun {
         std::optional<std::string_view> component_name;
 
         constexpr ComponentDescriptor(
-            std::optional<std::string_view> archetype_name_,
-            std::optional<std::string_view> component_name_, std::string_view archetype_field_name_
+            std::optional<std::string_view> archetype_name_, std::string_view archetype_field_name_,
+            std::optional<std::string_view> component_name_
         )
             : archetype_name(archetype_name_),
               archetype_field_name(archetype_field_name_),
