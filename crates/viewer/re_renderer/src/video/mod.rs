@@ -38,6 +38,9 @@ pub enum VideoPlayerError {
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
 
+    #[error("The requested frame data is not, or no longer, available.")]
+    MissingSample,
+
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
     BadData,

@@ -107,7 +107,7 @@ impl VideoSampleDecoder {
     /// Get the latest decoded frame at the given time
     /// and copy it to the given texture.
     ///
-    /// Drop all earlier frames to save memory.
+    /// Drops all earlier frames to save memory.
     ///
     /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
     /// which it is just after startup or after a call to [`Self::reset`].
