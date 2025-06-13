@@ -19,7 +19,7 @@ use re_log_types::{
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
-    SerializationError,
+    SerializationError, SerializedComponentColumn,
 };
 
 use crate::{ChunkId, RowId};
@@ -138,6 +138,19 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
         {
             for (component_desc, list_array) in iter {
                 this.insert(component_desc, list_array);
+            }
+        }
+        this
+    }
+}
+
+impl FromIterator<SerializedComponentColumn> for ChunkComponents {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = SerializedComponentColumn>>(iter: T) -> Self {
+        let mut this = Self::default();
+        {
+            for serialized in iter {
+                this.insert(serialized.descriptor, serialized.list_array);
             }
         }
         this
