@@ -5,7 +5,6 @@ from typing import Callable
 import pytest
 import rerun as rr
 from rerun.error_utils import RerunWarning
-from uuid import uuid4
 
 rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context
@@ -54,14 +53,24 @@ def test_expected_warnings() -> None:
 
 
 def test_init_twice() -> None:
-    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)"""
-    with pytest.warns(RerunWarning) as warnings:
-        application_id = "test_app_id"
-        recording_id = uuid4()
-        warning_msg = f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording."
-        rr.init(application_id=application_id, recording_id=recording_id)
-        rr.init(application_id=application_id, recording_id=recording_id)
-        existing_rec_id = rr.get_global_data_recording().get_recording_id()
-        assert len(warnings) == 1
-        assert warning_msg in str(warnings[0])
-        assert existing_rec_id == str(recording_id)
+    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)."""
+    # Always set strict mode to false in case it leaked from another test
+    rr.set_strict_mode(False)
+
+    # Using default recording id
+    rr.init("test_app_id")
+    recording_id = rr.get_recording_id()
+    expect_warning(
+        lambda: rr.init("test_app_id"),
+        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
+    )
+    assert recording_id == rr.get_recording_id()
+
+    # Using a custom recording id
+    recording_id = "test_recording_id"
+    rr.init("test_app_id", recording_id=recording_id)
+    expect_warning(
+        lambda: rr.init("test_app_id", recording_id=recording_id),
+        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
+    )
+    assert recording_id == rr.get_recording_id()
