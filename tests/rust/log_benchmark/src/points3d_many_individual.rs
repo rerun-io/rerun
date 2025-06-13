@@ -2,7 +2,7 @@ use crate::points3d_shared::{Point3DInput, prepare_points3d};
 
 const NUM_POINTS: usize = 1_000_000;
 
-fn execute(input: Point3DInput) -> anyhow::Result<()> {
+fn execute(rec: &mut rerun::RecordingStream, input: Point3DInput) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     let Point3DInput {
@@ -11,10 +11,6 @@ fn execute(input: Point3DInput) -> anyhow::Result<()> {
         radii,
         label: _,
     } = input;
-
-    let (rec, _storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_benchmark_points3d_many_individual")
-            .memory()?;
 
     for i in 0..NUM_POINTS {
         rec.set_time_sequence("my_timeline", i as i64);
@@ -29,8 +25,8 @@ fn execute(input: Point3DInput) -> anyhow::Result<()> {
 }
 
 /// Log many individual points (position, color, radius), each with a different timestamp.
-pub fn run() -> anyhow::Result<()> {
+pub fn run(rec: &mut rerun::RecordingStream) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     let input = std::hint::black_box(prepare_points3d(1337, NUM_POINTS));
-    execute(input)
+    execute(rec, input)
 }
