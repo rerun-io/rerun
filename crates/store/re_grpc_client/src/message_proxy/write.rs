@@ -36,6 +36,7 @@ impl Default for Options {
     }
 }
 
+/// This is the gRPC client used for the SDK-side log-sink.
 pub struct Client {
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
