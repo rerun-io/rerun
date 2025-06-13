@@ -5,18 +5,18 @@
   "small_icon_size": 14,
 
   "Alias": {
-    "native_frame_stroke": {
-      "color": "{Gray.750}",
-      "width": 1
+    "native_frame_stroke": { //couldn't find
+      "color": "{Green.500}",
+      "width": 10
     },
-    "top_bar_color": {
+    "top_bar_color": { // top menu bar
+      "color": "{Gray.1000}"
+    },
+    "tab_bar_color": { //headers for views AND(???) stroke (TO CHANGE)
       "color": "{Gray.800}"
     },
-    "tab_bar_color": {
-      "color": "{Gray.900}"
-    },
-    "bottom_bar_color": {
-      "color": "{Gray.950}"
+    "bottom_bar_color": { //WHOLE bottom panel background
+      "color": "{Gray.1000}"
     },
     "bottom_bar_stroke": {
       "color": "{Gray.800}",
@@ -24,49 +24,47 @@
     },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
-      "alpha": 10
+      "alpha": 5
     },
-    "strong_fg_color": {
-      "color": "{Gray.0}"
-    },
-    "info_log_text_color": {
-      "color": "{Green.500}"
-    },
-    "debug_log_text_color": {
-      "color": "{Blue.500}"
-    },
-    "trace_log_text_color": {
+    "strong_fg_color": { // color of rerun icons in menu (eeeh..), shall be one with all other icons
       "color": "{Gray.300}"
     },
-
+    "info_log_text_color": { //text log view: info font => should go into text.success
+      "color": "{Green.500}"
+    },
+    "debug_log_text_color": { //text log view: debug font => shall go into text.info
+      "color": "{Blue.500}"
+    },
+    "trace_log_text_color": { //?text log view => shall be moved
+      "color": "{Red.300}"
+    },
     "success_text_color": {
       "color": "{Green.300}"
     },
     "info_text_color": {
       "color": "{Blue.300}"
     },
-
-    "label_button_icon_color": {
-      "color": "{Gray.550}"
+    "label_button_icon_color": { //icons next to menu list items AND also on-surface (which needs to be separated)
+      "color": "{Gray.300}"
     },
-    "section_collapsing_header_color": {
+    "section_collapsing_header_color": { //section background of selection panel
       "color": "{Gray.900}"
     },
-    "loop_selection_color": {
-      "color": "#6386C9B2"
+    "loop_selection_color": { //on the timeline
+      "color": "#A1BCFF50"
     },
     "loop_everything_color": {
-      "color": "#06A35C"
+      "color": "#A1BCFF"
     },
-    "thumbnail_background_color": {
+    "thumbnail_background_color": { //when adding a new view/container
       "color": "{Gray.800}"
     },
 
     "example_card_background_color": {
-      "color": "{Gray.850}"
+      "color": "{Gray.900}"
     },
     "example_tag_bg_fill": {
-      "color": "{Gray.700}",
+      "color": "{Gray.800}",
     },
     "example_tag_stroke": {
       "color": "{Gray.800}",
@@ -74,46 +72,47 @@
     },
 
     "breadcrumb_text_color": {
-      "color": "{Blue.300}"
+      "color": "{Blue.900}"
     },
     "breadcrumb_separator_color": {
-      "color": "{Blue.400}"
-    },
-
-    "panel_bg_color": {
-      "color": "{Gray.1000}"
-    },
-
-    "blueprint_time_panel_bg_fill": {
       "color": "{Blue.900}"
     },
 
-    "notification_panel_background_color": {
-      "color": "{Gray.850}"
-    },
-    "notification_background_color": {
-      "color": "{Gray.800}"
+    "panel_bg_color": { //all background panels: side AND centered, need to split the centered
+      "color": "{Gray.1000}"
     },
 
-    "table_header_bg_fill": {
-      "color": "{Gray.850}"
+    "blueprint_time_panel_bg_fill": { //blueprint streams panel
+      "color": "{Gray.900}"
+    },
+
+    "notification_panel_background_color": {
+      "color": "{Gray.1000}"
+    },
+    "notification_background_color": {
+      "color": "{Gray.950}"
+    },
+
+    "table_header_bg_fill": { //redap table
+      "color": "{Gray.900}"
     },
     "table_header_stroke_color": {
-      "color": "{Gray.700}"
+      "color": "{Gray.800}"
     },
     "table_interaction_hovered_bg_stroke": {
       "color": "{Gray.700}"
     },
     "table_interaction_active_bg_stroke": {
-      "color": "{Gray.650}"
+      "color": "{Gray.700}"
     },
     "table_interaction_noninteractive_bg_stroke": {
-      "color": "{Gray.800}"
+      "color": "{Gray.850}"
     },
     "table_sort_icon_color": {
       "color": "{Blue.250}"
     },
 
+/* drag and drop  styles*/
     "drag_pill_droppable_fill": {
       "color": "{Blue.725}"
     },
@@ -131,86 +130,89 @@
       "width": 2
     },
     "tile_drag_preview_stroke" : {
-      "color": "{Gray.0}",
+      "color": "{Blue.500}",
       "alpha": 127,
-      "width": 1
+      "width": 1.5
     },
     "tile_drag_preview_color": {
       "color": "{Gray.0}",
       "alpha": 26
     },
 
-    "floating_color": {
+/*----*/
+    "floating_color": { //pop up backgrounds
       "color": "{Gray.1000}"
     },
-    "faint_bg_color": {
+    "faint_bg_color": { //table zebra
+      "color": "{Gray.950}"
+    },
+    "extreme_bg_color": { //all the inputs AND default image (2D) background
       "color": "{Gray.900}"
     },
-    "extreme_bg_color": {
-      "color": "{Gray.1000}"
+    "extreme_fg_color": { //can't find
+      "color": "{Green.500}"
     },
-    "extreme_fg_color": {
-      "color": "{Gray.0}"
+    "widget_noninteractive_weak_bg_fill": { //in old version it was font of hot keys in menu, now can't find
+      "color": "{Green.550}"
     },
-    "widget_noninteractive_weak_bg_fill": {
-      "color": "{Gray.550}"
+    "widget_noninteractive_bg_fill": { //in old version it was background behind the event timeline (on the left/right of it)
+      "color": "{Green.500}"
     },
-    "widget_noninteractive_bg_fill": {
+    "widget_inactive_bg_fill": { //surface of timeline buttons, checkbox, radios AND (??) also label in 3D scene?
       "color": "{Gray.800}"
     },
-    "widget_inactive_bg_fill": {
+    "widget_hovered_weak_bg_fill": { //in old version it was i.e. background of entities in entity filter, now can't find it
+      "color": "{Green.500}"
+    },
+    "widget_hovered_bg_fill": { //used to be selected view subtitle, now can't find
+      "color": "{Green.500}"
+    },
+    "widget_active_weak_bg_fill": { //no idea
+      "color": "{Green.500}"
+    },
+    "widget_active_bg_fill": { //no idea
+      "color": "{Green.500}"
+    },
+    "widget_open_weak_bg_fill": { //no idea
+      "color": "{Green.500}"
+    },
+    "selection_bg_fill": { // all the selected backgrounds: play btn, selected view, selection panel
+      "color": "{Blue.500}"
+    },
+    "selection_stroke_color": { //icon content of play/stop
+      "color": "{Blue.900}"
+    },
+    "widget_noninteractive_bg_stroke": { //almost ALL the strokes
       "color": "{Gray.800}"
     },
-    "widget_hovered_weak_bg_fill": {
-      "color": "{Gray.800}"
-    },
-    "widget_hovered_bg_fill": {
-      "color": "{Gray.700}"
-    },
-    "widget_active_weak_bg_fill": {
-      "color": "{Gray.750}"
-    },
-    "widget_active_bg_fill": {
-      "color": "{Gray.650}"
-    },
-    "widget_open_weak_bg_fill": {
-      "color": "{Gray.650}"
-    },
-    "selection_bg_fill": {
-      "color": "{Blue.550}"
-    },
-    "selection_stroke_color": {
-      "color": "{Blue.800}"
-    },
-    "widget_noninteractive_bg_stroke": {
-      "color": "{Gray.800}"
-    },
-    "text_subdued": {
+    "text_subdued": { // generic tertiary font, but mixed for few styles
       "color": "{Gray.500}"
     },
-    "text_default": {
-      "color": "{Gray.250}"
+    "text_default": { //generic default font, which is applied not only to text, but to icons as well, needs changes, especially when on_active!
+      "color": "{Gray.300}"
     },
-    "text_strong": {
-      "color": "{Gray.0}"
+    "text_strong": { //generic headers font, (!) also ON_ACTIVE, (!) also hover window, (!) also video loader
+      "color": "{Gray.300}"
     },
     "error_fg_color": {
-      "color": "#AB0116"
+      "color": "{Red.500}"
     },
-    "warn_fg_color": {
+    "warn_fg_color": { //need to add warning palette
       "color": "#FF7A0C"
     },
-    "widget_hovered_color": {
-      "color": "{Gray.700}"
+    "widget_hovered_color": { //generic hover to all, including active states and play menu
+      "color": "{Gray.0}",
+      "alpha": 30
     },
     "popup_shadow_color": {
-      "color": "#00000020"
+      "color": "{Gray.0}",
+      "alpha": 30
     },
 
-    "density_graph_selected": {
+    "density_graph_selected": { //can't find
       "color": "{Blue.200}"
     },
-    "density_graph_unselected": {
+    "density_graph_unselected": { //can't find
       "color": "{Gray.300}"
     },
 
@@ -224,38 +226,38 @@
       "color": "{Blue.550}"
     },
     "frustum_color": {
-      "color": "{Gray.300}"
+      "color": "{Gray.300}",
     },
 
     "list_item_selected_text": {
-      "color": "{Blue.100}"
+      "color": "{Blue.900}"
     },
     "list_item_active_text": {
       "color": "{Gray.0}"
     },
-    "list_item_noninteractive_text": {
-      "color": "{Gray.550}"
+    "list_item_noninteractive_text": { //projections
+      "color": "{Gray.500}"
     },
     "list_item_hovered_text": {
-      "color": "{Gray.250}"
+      "color": "{Gray.300}"
     },
     "list_item_default_text": {
-      "color": "{Gray.350}"
+      "color": "{Gray.300}"
     },
     "list_item_strong_text": {
       "color": "{Gray.300}"
     },
     "list_item_selected_icon": {
-      "color": "{Blue.250}"
+      "color": "{Blue.700}"
     },
     "list_item_active_icon": {
       "color": "{Gray.300}"
     },
     "list_item_hovered_icon": {
-      "color": "{Gray.400}"
+      "color": "{Gray.300}"
     },
     "list_item_default_icon": {
-      "color": "{Gray.550}"
+      "color": "{Gray.400}"
     },
     "list_item_hovered_bg": {
       "color": "{Gray.900}"
@@ -264,7 +266,7 @@
       "color": "{Gray.800}"
     },
     "list_item_collapse_default": {
-      "color": "{Gray.250}"
+      "color": "{Gray.300}"
     },
   },
   "Global": {
@@ -275,7 +277,6 @@
           "fontWeight": "Medium",
           "fontFamily": "Inter",
           "lineHeight": "16px",
-          "letterSpacing": "-0.15px"
         },
         "description": "",
         "type": "typography"
