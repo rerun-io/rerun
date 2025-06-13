@@ -53,9 +53,8 @@ impl IconText {
         };
         let text = names.format(&modifiers, is_mac);
 
-        let mut atoms = Atoms::new(());
-
         if is_mac {
+            let mut atoms = Atoms::new(());
             for char in text.chars() {
                 if char == '⌘' {
                     atoms.push_right(icons::COMMAND);
@@ -79,11 +78,7 @@ impl IconText {
                 .collect();
             vec.pop(); // Remove the last "+"
 
-            // TODO: Add Atoms::from()
-            for item in vec {
-                atoms.push_right(item);
-            }
-            atoms
+            vec.into()
         }
     }
 }

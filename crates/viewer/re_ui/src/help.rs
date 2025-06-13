@@ -1,5 +1,6 @@
 use egui::{
-    AtomKind, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder, Widget as _,
+    AtomKind, AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder,
+    Widget as _,
 };
 
 use crate::{UiExt as _, icons};
@@ -191,7 +192,7 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
             ui.markdown_ui(&md);
         }
         HelpSection::Controls(controls) => {
-            for row in controls {
+            for mut row in controls {
                 egui::Sides::new().spacing(12.0).show(
                     ui,
                     |ui| {
@@ -200,25 +201,10 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
                     |ui| {
                         let color = ui.visuals().widgets.inactive.text_color();
                         ui.set_height(tokens.small_icon_size.y);
-                        ui.spacing_mut().item_spacing.x = 2.0;
                         ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                         ui.visuals_mut().override_text_color = Some(color);
-                        for item in row.items.into_iter().rev() {
-                            match item.kind {
-                                AtomKind::Image(icon) => {
-                                    icon.fit_to_exact_size(tokens.small_icon_size)
-                                        .tint(color)
-                                        .ui(ui);
-                                }
-                                AtomKind::Text(text) => {
-                                    ui.label(text);
-                                }
-                                _ => {
-                                    // We don't support any other kinds in the help popup.
-                                    re_log::warn!("Unexpected AtomKind in Help: {:?}", item.kind);
-                                }
-                            }
-                        }
+                        row.items.map_images(|i| i.tint(color));
+                        AtomLayout::new(row.items).gap(2.0).show(ui);
                     },
                 );
             }
