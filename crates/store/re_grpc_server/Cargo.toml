@@ -20,7 +20,6 @@ all-features = true
 
 
 [dependencies]
-re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
@@ -31,7 +30,6 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
-re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 re_uri.workspace = true
