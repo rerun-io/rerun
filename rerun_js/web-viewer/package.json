@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build:wasm": "node build-wasm.mjs --mode release",
-    "build:js": "tsc && node bundle.mjs",
+    "build:js": "tsc",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
