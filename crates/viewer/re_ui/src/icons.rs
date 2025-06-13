@@ -1,4 +1,4 @@
-use egui::{Image, ImageSource};
+use egui::{Atom, Image, ImageSource};
 
 use crate::DesignTokens;
 
@@ -70,6 +70,13 @@ impl From<&'static Icon> for Image<'static> {
     #[inline]
     fn from(icon: &'static Icon) -> Self {
         icon.as_image()
+    }
+}
+
+impl From<&'static Icon> for Atom<'static> {
+    #[inline]
+    fn from(icon: &'static Icon) -> Self {
+        Atom::from(icon.as_image())
     }
 }
 
