@@ -9,7 +9,7 @@ use re_types::{
         },
     },
 };
-use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icon_text, icons};
+use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
@@ -49,15 +49,12 @@ impl ViewClass for GraphView {
 
         Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
-            .control(
-                "Pan",
-                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
-            )
+            .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
             .control(
                 "Zoom",
                 IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.
