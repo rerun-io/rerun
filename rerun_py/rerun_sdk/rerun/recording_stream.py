@@ -19,6 +19,7 @@ from rerun.memory import MemoryRecording
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike
 
@@ -484,6 +485,22 @@ class RecordingStream:
     get_application_id = get_application_id
     get_recording_id = get_recording_id
     is_enabled = is_enabled
+
+    def tee(
+        self,
+        *sinks: LogSinkLike,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Stream data to multiple different sinks.
+
+        Duplicate sinks are not allowed. For example, two [`GrpcSink`]s that
+        use the same `url`.
+        """
+
+        from .sinks import tee
+
+        tee(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,

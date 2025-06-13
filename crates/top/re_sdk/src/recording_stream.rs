@@ -1461,6 +1461,7 @@ fn forwarding_thread(
             }
             Command::SwapSink(new_sink) => {
                 re_log::trace!("Swapping sink…");
+
                 let backlog = {
                     // Capture the backlog if it exists.
                     let backlog = sink.drain_backlog();

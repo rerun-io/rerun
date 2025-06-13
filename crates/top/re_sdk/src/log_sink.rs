@@ -74,6 +74,52 @@ pub trait LogSink: Send + Sync + 'static {
 
 // ----------------------------------------------------------------------------
 
+/// Stream to multiple sinks at the same time.
+pub struct MultiSink(parking_lot::Mutex<Vec<Box<dyn LogSink>>>);
+
+impl MultiSink {
+    /// Combine multiple sinks into one.
+    ///
+    /// Messages will be cloned to each sink.
+    #[inline]
+    pub fn new(sinks: Vec<Box<dyn LogSink>>) -> Self {
+        Self(parking_lot::Mutex::new(sinks))
+    }
+}
+
+impl LogSink for MultiSink {
+    #[inline]
+    fn send(&self, msg: LogMsg) {
+        for sink in self.0.lock().iter() {
+            sink.send(msg.clone());
+        }
+    }
+
+    #[inline]
+    fn send_all(&self, messages: Vec<LogMsg>) {
+        for sink in self.0.lock().iter() {
+            sink.send_all(messages.clone());
+        }
+    }
+
+    #[inline]
+    fn flush_blocking(&self) {
+        for sink in self.0.lock().iter() {
+            sink.flush_blocking();
+        }
+    }
+
+    // NOTE: this is only really used for BufferedSink,
+    //       and by the time you `set_sink` you probably don't have
+    //       a buffered sink anymore
+    #[inline]
+    fn drain_backlog(&self) -> Vec<LogMsg> {
+        Vec::new()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Store log messages in memory until you call [`LogSink::drain_backlog`].
 #[derive(Default)]
 pub struct BufferedSink(parking_lot::Mutex<Vec<LogMsg>>);
