@@ -107,9 +107,6 @@ class CatalogClient:
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
         """
         Returns a table by its ID or name.
-
-        Note: This is currently an alias for `get_table_entry`. In the future, it will return a data-oriented table
-        object instead.
         """
         return self.get_table_entry(id=id, name=name).df()
 
@@ -118,11 +115,6 @@ class CatalogClient:
     def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
         return self._raw_client.create_dataset(name)
-
-    def entries_table(self) -> TableEntry:
-        """Returns a table containing all entries in the catalog."""
-
-        return self.get_table_entry(name="__entries")
 
     @property
     def ctx(self) -> datafusion.SessionContext:

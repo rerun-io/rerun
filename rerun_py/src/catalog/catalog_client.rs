@@ -217,12 +217,12 @@ impl PyCatalogClientInternal {
 
         let client = self_.clone_ref(py);
 
-        let dataset_entry = connection.read_table(py, id.borrow(py).id)?;
+        let table_entry = connection.read_table(py, id.borrow(py).id)?;
 
         let entry = PyEntry {
             client,
             id,
-            details: dataset_entry.details,
+            details: table_entry.details,
         };
 
         let table = PyTableEntry::default();
