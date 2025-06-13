@@ -15,14 +15,23 @@ arrow::Status run_main() {
     arrow::DoubleBuilder confidences_builder;
     ARROW_RETURN_NOT_OK(confidences_builder.AppendValues({1.2, 3.4, 5.6}));
     ARROW_RETURN_NOT_OK(confidences_builder.Finish(&arrow_array));
-    auto confidences =
-        rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "confidence");
+    auto confidences = rerun::ComponentBatch::from_arrow_array(
+        std::move(arrow_array),
+        rerun::ComponentDescriptor("confidence")
+            .with_component_name(rerun::Loggable<rerun::components::Scalar>::ComponentName)
+    );
 
     arrow::StringBuilder description_builder;
     ARROW_RETURN_NOT_OK(description_builder.Append("Bla bla bla…"));
     ARROW_RETURN_NOT_OK(description_builder.Finish(&arrow_array));
-    auto description =
-        rerun::ComponentBatch::from_arrow_array(std::move(arrow_array), "description");
+    auto description = rerun::ComponentBatch::from_arrow_array(
+        std::move(arrow_array),
+        rerun::ComponentDescriptor("description")
+            .with_component_name(
+
+                rerun::Loggable<rerun::components::Text>::ComponentName
+            )
+    );
     // URIs will become clickable links
     arrow::StringBuilder homepage_builder;
     ARROW_RETURN_NOT_OK(homepage_builder.Append("https://www.rerun.io"));
