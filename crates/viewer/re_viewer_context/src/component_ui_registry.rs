@@ -422,36 +422,31 @@ impl ComponentUiRegistry {
             return;
         }
 
-        let Some(component_name) = component_descr.component_name else {
-            re_log::warn_once!(
-                "Cannot show raw component ui for descriptors without component name: {component_descr}"
-            );
-            return;
-        };
-
-        // Fallback to the more specialized UI callbacks.
-        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
-            self.component_multiline_edit_or_view
-                .get(&component_name.into())
-                .or_else(|| {
-                    self.component_singleline_edit_or_view
-                        .get(&component_name.into())
-                })
-        } else {
-            self.component_singleline_edit_or_view
-                .get(&component_name.into())
-        };
-        if let Some(edit_or_view_ui) = edit_or_view_ui {
-            // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(
-                ctx,
-                ui,
-                component_descr,
-                row_id,
-                component_raw,
-                EditOrView::View,
-            );
-            return;
+        // Fallback to the more specialized UI callbacks (which are only available for known components).
+        if let Some(component_name) = component_descr.component_name {
+            let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
+                self.component_multiline_edit_or_view
+                    .get(&component_name.into())
+                    .or_else(|| {
+                        self.component_singleline_edit_or_view
+                            .get(&component_name.into())
+                    })
+            } else {
+                self.component_singleline_edit_or_view
+                    .get(&component_name.into())
+            };
+            if let Some(edit_or_view_ui) = edit_or_view_ui {
+                // Use it in view mode (no mutation).
+                (*edit_or_view_ui)(
+                    ctx,
+                    ui,
+                    component_descr,
+                    row_id,
+                    component_raw,
+                    EditOrView::View,
+                );
+                return;
+            }
         }
 
         fallback_ui(ui, ui_layout, component_raw);
