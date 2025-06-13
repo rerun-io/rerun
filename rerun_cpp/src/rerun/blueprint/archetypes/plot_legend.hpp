@@ -43,13 +43,11 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `corner` field.
         static constexpr auto Descriptor_corner = ComponentDescriptor(
-            ArchetypeName, "corner",
-            Loggable<rerun::blueprint::components::Corner2D>::Descriptor.component_name
+            ArchetypeName, "corner", Loggable<rerun::blueprint::components::Corner2D>::ComponentName
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentName
         );
 
       public:
