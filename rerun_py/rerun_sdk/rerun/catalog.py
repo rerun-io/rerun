@@ -105,9 +105,7 @@ class CatalogClient:
         return self.get_dataset_entry(id=id, name=name)
 
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
-        """
-        Returns a table by its ID or name.
-        """
+        """Returns a table by its ID or name."""
         return self.get_table_entry(id=id, name=name).df()
 
     # ---
