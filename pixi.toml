@@ -567,8 +567,9 @@ meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*"             # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
-meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*"             # not available for linux-aarch64
+libgfortran5 = ">=14"   # Fixes issues with OpenCV
+meilisearch = "1.5.1.*" # not available for linux-aarch64
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
@@ -581,8 +582,6 @@ sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see http
 
 [feature.cpp.target.unix.dependencies]
 ninja = "1.11.1.*"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822.*"
@@ -662,8 +661,8 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.22.1"
-rerun-notebook = "==0.22.1"
+rerun-sdk = "==0.23.4a2"
+rerun-notebook = "==0.23.4a2"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]

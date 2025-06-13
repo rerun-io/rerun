@@ -16,9 +16,20 @@ use super::{Time, Timescale};
 
 use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 
+/// Chroma subsampling mode.
+///
+/// Unlike [`crate::YuvPixelLayout`] this does not specify a certain planarity/layout of
+/// the chroma components.
+/// Instead, this is just a description whether any subsampling occurs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChromaSubsamplingModes {
+    /// No subsampling at all, since the format is monochrome.
+    Monochrome,
+
     /// No subsampling.
+    ///
+    /// Note that this also applies to RGB formats, not just YUV.
+    /// (but for video data YUV is much more common regardless)
     Yuv444,
 
     /// Subsampling in X only.
@@ -31,6 +42,8 @@ pub enum ChromaSubsamplingModes {
 impl std::fmt::Display for ChromaSubsamplingModes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            // Could also call this 4:0:0, but that's a fairly uncommon way to describe it.
+            Self::Monochrome => write!(f, "monochrome"),
             Self::Yuv444 => write!(f, "4:4:4"),
             Self::Yuv422 => write!(f, "4:2:2"),
             Self::Yuv420 => write!(f, "4:2:0"),
@@ -109,8 +122,13 @@ pub struct VideoDataDescription {
     /// The codec used to encode the video.
     pub codec: VideoCodec,
 
-    /// Encoded width & height if known.
-    pub coded_dimensions: Option<[u16; 2]>,
+    /// Various information about how the video was encoded.
+    ///
+    /// Should any of this change during the lifetime of a decoder, it has to be reset.
+    ///
+    /// For video streams this is derived on the fly, therefore it may arrive only with the first key frame.
+    /// For mp4 this is read from the AVCC box.
+    pub encoding_details: Option<VideoEncodingDetails>,
 
     /// How many time units are there per second.
     ///
@@ -146,19 +164,192 @@ pub struct VideoDataDescription {
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
 
-    /// Optional mp4 stsd box.
-    ///
-    /// Contains info about the codec, bit depth, etc.
-    pub stsd: Option<re_mp4::StsdBox>,
-
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
+impl VideoDataDescription {
+    /// Checks various invariants that the video description should always uphold.
+    ///
+    /// Violation of any of these variants is **not** a user(-data) error, but instead an
+    /// implementation bug of any code manipulating the video description.
+    /// Vice versa, all code using `VideoDataDescription` can assume that these invariants hold.
+    ///
+    /// It's recommended to run these sanity check only in debug builds as they may be expensive for
+    /// large videos.
+    ///
+    /// Check implementation for details.
+    pub fn sanity_check(&self) -> Result<(), String> {
+        self.sanity_check_gops()?;
+        self.sanity_check_samples()?;
+
+        // If an STSD box is present, then its content type must match with the internal codec.
+        if let Some(stsd) = self.encoding_details.as_ref().and_then(|e| e.stsd.as_ref()) {
+            let stsd_codec = match &stsd.contents {
+                re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
+                re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+                re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                    crate::VideoCodec::H265
+                }
+                re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+                re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
+                _ => {
+                    return Err(format!(
+                        "STSD box content type {:?} doesn't have a supported codec.",
+                        stsd.contents
+                    ));
+                }
+            };
+            if stsd_codec != self.codec {
+                return Err(format!(
+                    "STSD box content type {:?} does not match with the internal codec {:?}.",
+                    stsd.contents, self.codec
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn sanity_check_gops(&self) -> Result<(), String> {
+        for gop in self.gops.iter() {
+            // All GOP sample ranges are non-empty.
+            if gop.sample_range.is_empty() {
+                return Err("GOP sample range is empty".to_owned());
+            }
+
+            // GOP sample ranges only refer to samples within the sample description.
+            if gop.sample_range.start < self.samples.min_index() {
+                return Err(format!(
+                    "First index of GOP sample range start {:?} refers to sample outside of the list of samples.",
+                    gop.sample_range
+                ));
+            }
+            if gop.sample_range.end > self.samples.next_index() {
+                return Err(format!(
+                    "Last index of GOP sample range {:?} refers to sample outside of the list of samples.",
+                    gop.sample_range
+                ));
+            }
+
+            // All samples at the beginning of a GOP are marked with `is_sync==true`
+            if !self.samples[gop.sample_range.start].is_sync {
+                return Err(format!(
+                    "First sample of GOP sample range {:?} is not marked with `is_sync`.",
+                    gop.sample_range
+                ));
+            }
+        }
+
+        // GOP sample ranges are sorted and are contiguous (have no gaps).
+        for (a, b) in self.gops.iter().tuple_windows() {
+            if a.sample_range.end != b.sample_range.start {
+                return Err(format!(
+                    "GOPs sample ranges are not contiguous: {:?} {:?}",
+                    a.sample_range, b.sample_range
+                ));
+            }
+            if a.sample_range.start >= b.sample_range.start {
+                return Err(format!(
+                    "GOPs sample ranges are not contiguous or sorted: {:?} {:?}",
+                    a.sample_range, b.sample_range
+                ));
+            }
+        }
+
+        // The last GOP includes the last sample.
+        if let Some(front_gop) = self.gops.back() {
+            if front_gop.sample_range.end != self.samples.next_index() {
+                return Err(format!(
+                    "Last GOP sample range {:?} does not include the last sample {}.",
+                    front_gop.sample_range,
+                    self.samples.next_index() - 1
+                ));
+            }
+        }
+        // Note that this isn't true vice versa!
+        // The first GOP may not include the first few samples.
+
+        Ok(())
+    }
+
+    fn sanity_check_samples(&self) -> Result<(), String> {
+        // Decode timestamps are strictly monotonically increasing.
+        for (a, b) in self.samples.iter().tuple_windows() {
+            if a.decode_timestamp > b.decode_timestamp {
+                return Err(format!(
+                    "Decode timestamps are not strictly monotonically increasing: {:?} {:?}",
+                    a.decode_timestamp, b.decode_timestamp
+                ));
+            }
+        }
+
+        // Sample statistics are consistent with the samples.
+        let expected_statistics = SamplesStatistics::new(&self.samples);
+        if expected_statistics != self.samples_statistics {
+            return Err(format!(
+                "Sample statistics are not consistent with the samples.\nExpected: {:?}\nActual: {:?}",
+                expected_statistics, self.samples_statistics
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+/// Various information about how the video was encoded.
+///
+/// For video streams this is derived on the fly.
+/// For mp4 this is read from the AVCC box.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VideoEncodingDetails {
+    /// Detailed codec string as specified by the `WebCodecs` codec registry.
+    ///
+    /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
+    pub codec_string: String,
+
+    /// Encoded width & height.
+    pub coded_dimensions: [u16; 2],
+
+    /// Per color component bit depth.
+    ///
+    /// Usually 8, but 10 for HDR (for example).
+    ///
+    /// `None` if this couldn't be determined, either because of lack of implementation
+    /// or missing information at this point.
+    pub bit_depth: Option<u8>,
+
+    /// Chroma subsampling mode.
+    ///
+    /// `None` if this couldn't be determined, either because of lack of implementation
+    /// or missing information at this point.
+    pub chroma_subsampling: Option<ChromaSubsamplingModes>,
+
+    /// Optional mp4 stsd box from which this data was derived.
+    ///
+    /// Used by some decoders directly for configuration.
+    /// For H.264 & H.265, its presence implies that the bitstream is in the AVCC format rather than Annex B.
+    // TODO(andreas):
+    // It would be nice to instead have an enum of all the actually needed descriptors.
+    // We know for sure that H.264 & H.265 need an AVCC/HVCC box for data from mp4, since the stream
+    // is otherwise not readable. But what about the other codecs? On Web we *do* pass additional information right now.
+    pub stsd: Option<re_mp4::StsdBox>,
+}
+
+impl VideoEncodingDetails {
+    /// Get the AVCC box from the stsd box if any.
+    pub fn avcc(&self) -> Option<&re_mp4::Avc1Box> {
+        self.stsd.as_ref().and_then(|stsd| match &stsd.contents {
+            re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
+            _ => None,
+        })
+    }
+}
+
 /// Meta informationa about the video samples.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {
     /// Whether all decode timestamps are equal to presentation timestamps.
     ///
@@ -216,12 +407,15 @@ impl SamplesStatistics {
 impl VideoDataDescription {
     /// Loads a video from the given data.
     ///
-    /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
-    /// at the very least the should be a way to extract only metadata.
-    pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+    /// Does not copy any sample data, but instead stores offsets into the buffer.
+    pub fn load_from_bytes(
+        data: &[u8],
+        media_type: &str,
+        debug_name: &str,
+    ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         match media_type {
-            "video/mp4" => Self::load_mp4(data),
+            "video/mp4" => Self::load_mp4(data, debug_name),
 
             media_type => {
                 if media_type.starts_with("video/") {
@@ -250,34 +444,19 @@ impl VideoDataDescription {
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
-        if let Some(stsd) = self.stsd.as_ref() {
-            let human_readable = match &stsd.contents {
-                re_mp4::StsdBoxContent::Av01(_) => "AV1",
-                re_mp4::StsdBoxContent::Avc1(_) => "H.264",
-                re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
-                re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
-                re_mp4::StsdBoxContent::Vp08(_) => "VP8",
-                re_mp4::StsdBoxContent::Vp09(_) => "VP9",
-                re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
-                re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
-                re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
-            };
+        let base_codec_string = match &self.codec {
+            VideoCodec::AV1 => "AV1",
+            VideoCodec::H264 => "H.264 AVC1",
+            VideoCodec::H265 => "H.265 HEV1",
+            VideoCodec::VP8 => "VP8",
+            VideoCodec::VP9 => "VP9",
+        }
+        .to_owned();
 
-            if let Some(codec) = stsd.contents.codec_string() {
-                format!("{human_readable} ({codec})")
-            } else {
-                human_readable.to_owned()
-            }
+        if let Some(encoding_details) = self.encoding_details.as_ref() {
+            format!("{base_codec_string} ({})", encoding_details.codec_string)
         } else {
-            match &self.codec {
-                VideoCodec::AV1 => "AV1",
-                // TODO(andreas): if we found an SPS in the stream, we could show more information.
-                VideoCodec::H264 => "H.265 HVC1",
-                VideoCodec::H265 => "H.265 HEV1",
-                VideoCodec::VP8 => "VP8",
-                VideoCodec::VP9 => "VP9",
-            }
-            .to_owned()
+            base_codec_string
         }
     }
 
@@ -285,93 +464,6 @@ impl VideoDataDescription {
     #[inline]
     pub fn num_samples(&self) -> usize {
         self.samples.num_elements()
-    }
-
-    /// Returns the subsampling mode of the video.
-    ///
-    /// Returns None if not detected or unknown.
-    pub fn subsampling_mode(&self) -> Option<ChromaSubsamplingModes> {
-        match &self.stsd.as_ref()?.contents {
-            re_mp4::StsdBoxContent::Av01(av01_box) => {
-                // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
-                match (
-                    av01_box.av1c.chroma_subsampling_x != 0,
-                    av01_box.av1c.chroma_subsampling_y != 0,
-                ) {
-                    (true, true) => Some(ChromaSubsamplingModes::Yuv420),
-                    (true, false) => Some(ChromaSubsamplingModes::Yuv422),
-                    (false, true) => None, // Downsampling in Y but not in X is unheard of!
-                    // Either that or monochrome.
-                    // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
-                    (false, false) => Some(ChromaSubsamplingModes::Yuv444),
-                }
-            }
-            re_mp4::StsdBoxContent::Avc1(_)
-            | re_mp4::StsdBoxContent::Hvc1(_)
-            | re_mp4::StsdBoxContent::Hev1(_) => {
-                // Surely there's a way to get this!
-                None
-            }
-
-            re_mp4::StsdBoxContent::Vp08(vp08_box) => {
-                // Via https://www.ffmpeg.org/doxygen/4.3/vpcc_8c_source.html#l00116
-                // enum VPX_CHROMA_SUBSAMPLING
-                // {
-                //     VPX_SUBSAMPLING_420_VERTICAL = 0,
-                //     VPX_SUBSAMPLING_420_COLLOCATED_WITH_LUMA = 1,
-                //     VPX_SUBSAMPLING_422 = 2,
-                //     VPX_SUBSAMPLING_444 = 3,
-                // };
-                match vp08_box.vpcc.chroma_subsampling {
-                    0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
-                    2 => Some(ChromaSubsamplingModes::Yuv422),
-                    3 => Some(ChromaSubsamplingModes::Yuv444),
-                    _ => None, // Unknown mode.
-                }
-            }
-            re_mp4::StsdBoxContent::Vp09(vp09_box) => {
-                // As above!
-                match vp09_box.vpcc.chroma_subsampling {
-                    0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
-                    2 => Some(ChromaSubsamplingModes::Yuv422),
-                    3 => Some(ChromaSubsamplingModes::Yuv444),
-                    _ => None, // Unknown mode.
-                }
-            }
-
-            re_mp4::StsdBoxContent::Mp4a(_)
-            | re_mp4::StsdBoxContent::Tx3g(_)
-            | re_mp4::StsdBoxContent::Unknown(_) => None,
-        }
-    }
-
-    /// Per color component bit depth.
-    ///
-    /// Usually 8, but 10 for HDR (for example).
-    pub fn bit_depth(&self) -> Option<u8> {
-        self.stsd.as_ref()?.contents.bit_depth()
-    }
-
-    /// Returns None if the mp4 doesn't specify whether the video is monochrome or
-    /// we haven't yet implemented the logic to determine this.
-    pub fn is_monochrome(&self) -> Option<bool> {
-        match &self.stsd.as_ref()?.contents {
-            re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
-            re_mp4::StsdBoxContent::Avc1(_)
-            | re_mp4::StsdBoxContent::Hvc1(_)
-            | re_mp4::StsdBoxContent::Hev1(_) => {
-                // It should be possible to extract this from the picture parameter set.
-                None
-            }
-            re_mp4::StsdBoxContent::Vp08(_) | re_mp4::StsdBoxContent::Vp09(_) => {
-                // Similar to AVC/HEVC, this information is likely accessible.
-                None
-            }
-
-            re_mp4::StsdBoxContent::Mp4a(_)
-            | re_mp4::StsdBoxContent::Tx3g(_)
-            | re_mp4::StsdBoxContent::Unknown(_) => None,
-        }
     }
 
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
@@ -473,8 +565,10 @@ impl VideoDataDescription {
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
-        self.gops
-            .latest_at_idx(|gop| gop.decode_start_time, &decode_time)
+        self.gops.latest_at_idx(
+            |gop| self.samples[gop.sample_range.start].decode_timestamp,
+            &decode_time,
+        )
     }
 
     /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -498,12 +592,11 @@ impl VideoDataDescription {
 /// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
 /// We generally refer to "closed GOPs" only, such that they are re-entrant for decoders
 /// (as opposed to "open GOPs" which may refer to frames from other GOPs).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupOfPictures {
-    /// Decode timestamp of the first sample in this GOP, in time units.
-    pub decode_start_time: Time,
-
     /// Range of samples contained in this GOP.
+    // TODO(andreas): sample ranges between GOPs are guaranteed to be contiguous.
+    // So we could actually just read the second part of the range by looking at the next gop.
     pub sample_range: Range<SampleIndex>,
 }
 
@@ -636,14 +729,19 @@ pub enum VideoLoadError {
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT
     UnsupportedCodec(re_mp4::FourCC),
+
+    #[error("Unable to determine codec string from the video contents")]
+    UnableToDetermineCodecString,
+
+    #[error("Failed to parse H.264 SPS from mp4: {0:?}")]
+    SpsParsingError(h264_reader::nal::sps::SpsError),
 }
 
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
             .field("codec", &self.codec)
-            .field("stsd", &self.stsd)
-            .field("coded_dimensions", &self.coded_dimensions)
+            .field("encoding_details", &self.encoding_details)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("gops", &self.gops)

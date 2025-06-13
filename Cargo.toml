@@ -180,7 +180,7 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "54.3.1", default-features = false }
+arrow = { version = "55.1", default-features = false }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
@@ -205,8 +205,8 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-datafusion = { version = "46", default-features = false }
-datafusion-ffi = "46"
+datafusion = { version = "47", default-features = false }
+datafusion-ffi = "47"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -217,7 +217,7 @@ env_logger = { version = "0.11", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
-flatbuffers = "24.12.23"
+flatbuffers = "25.2.10"
 futures = "0.3"
 futures-util = "0.3"
 getrandom = "0.2"
@@ -256,12 +256,12 @@ nohash-hasher = "0.2"
 notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
-numpy = "0.23"
-object_store = { version = "0.11.0" }
+numpy = "0.24"
+object_store = { version = "0.12.2" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
-parquet = { version = "54.1", default-features = false }
+parquet = { version = "55.1", default-features = false }
 paste = "1.0"
 pathdiff = "0.2"
 percent-encoding = "2.3"
@@ -277,8 +277,8 @@ prost-build = "0.13.3"
 prost-types = "0.13.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
-pyo3 = "0.23.3"
-pyo3-build-config = "0.23.3"
+pyo3 = "0.24.1"
+pyo3-build-config = "0.24.1"
 quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
@@ -323,12 +323,12 @@ tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
-tonic = { version = "0.12.3", default-features = false }
-tonic-build = { version = "0.12.3", default-features = false }
-tonic-web = "0.12"
-tonic-web-wasm-client = "0.6"
+tonic = { version = "0.13.1", default-features = false }
+tonic-build = { version = "0.13.1", default-features = false }
+tonic-web = "0.13.1"
+tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
-tower-http = "0.5"
+tower-http = "0.6"
 tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"

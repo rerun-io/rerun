@@ -28,8 +28,8 @@ struct DefaultOverrideEntry {
 impl DefaultOverrideEntry {
     fn descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
-            component_name: self.component_name,
-            archetype_field_name: Some(self.archetype_field_name),
+            component_name: Some(self.component_name),
+            archetype_field_name: self.archetype_field_name,
             archetype_name: Some(archetype_name),
         }
     }
@@ -60,19 +60,20 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button = re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
-        add_button_is_open = true;
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        add_popup_ui(
-            ctx,
-            ui,
-            &view.defaults_path,
-            query,
-            components_to_show_in_add_menu.unwrap_or_default(),
-            &visualizers,
-        );
-    })
-    .hover_text("Add more component defaults");
+    let mut add_button =
+        re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add overrides…", |ui| {
+            add_button_is_open = true;
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            add_popup_ui(
+                ctx,
+                ui,
+                &view.defaults_path,
+                query,
+                components_to_show_in_add_menu.unwrap_or_default(),
+                &visualizers,
+            );
+        })
+        .hover_text("Add more component defaults");
 
     if let Some(reason) = reason_we_cannot_add_more {
         add_button = add_button.enabled(false).disabled_hover_text(reason);
@@ -142,32 +143,31 @@ fn active_default_ui(
                 );
             };
 
-            ui.list_item_flat_noninteractive(
+            let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(
-                    if let Some(archetype_field_name) = component_descr.archetype_field_name {
-                        archetype_field_name.syntax_highlighted(ui.style())
-                    } else {
-                        component_descr
-                            .component_name
-                            .syntax_highlighted(ui.style())
-                    },
+                    component_descr
+                        .archetype_field_name
+                        .syntax_highlighted(ui.style()),
                 )
                 .min_desired_width(150.0)
-                .action_button(&re_ui::icons::CLOSE, || {
+                .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                     ctx.clear_blueprint_component(
                         view.defaults_path.clone(),
                         component_descr.clone(),
                     );
                 })
                 .value_fn(|ui, _| value_fn(ui)),
-            )
-            .on_hover_ui(|ui| {
-                component_descr.component_name.data_ui_recording(
-                    ctx.viewer_ctx,
-                    ui,
-                    re_viewer_context::UiLayout::Tooltip,
-                );
-            });
+            );
+
+            if let Some(component_name) = component_descr.component_name {
+                response.on_hover_ui(|ui| {
+                    component_name.data_ui_recording(
+                        ctx.viewer_ctx,
+                        ui,
+                        re_viewer_context::UiLayout::Tooltip,
+                    );
+                });
+            }
         }
     });
 }
@@ -185,16 +185,16 @@ fn visualized_components_by_archetype(
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in visualizers.iter_with_identifiers() {
         for descr in vis.visualizer_query_info().queried.iter() {
-            let (Some(archetype_name), Some(archetype_field_name)) =
-                (descr.archetype_name, descr.archetype_field_name)
+            let (Some(archetype_name), Some(component_name)) =
+                (descr.archetype_name, descr.component_name)
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
-                if !descr.component_name.is_indicator_component() {
+                if !descr.is_indicator_component() {
                     re_log::warn_once!(
                         "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
                         id,
-                        descr.component_name
+                        descr
                     );
                 }
                 continue;
@@ -204,8 +204,8 @@ fn visualized_components_by_archetype(
                 .entry(archetype_name)
                 .or_default()
                 .push(DefaultOverrideEntry {
-                    component_name: descr.component_name,
-                    archetype_field_name,
+                    component_name,
+                    archetype_field_name: descr.archetype_field_name,
                     visualizer_identifier: id,
                 });
         }
@@ -357,9 +357,10 @@ fn add_new_default(
         re_log::warn!("Could not find visualizer for: {}", visualizer);
         return;
     };
+
     let initial_data = visualizer
         .fallback_provider()
-        .fallback_for(query_context, component_descr.component_name);
+        .fallback_for(query_context, &component_descr);
 
     match Chunk::builder(defaults_path.clone())
         .with_row(

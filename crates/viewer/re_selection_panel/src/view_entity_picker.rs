@@ -237,7 +237,7 @@ fn add_entities_line_ui(
                 let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
-                    let response = ui.small_icon_button(&re_ui::icons::ADD);
+                    let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
 
                     if response.clicked() {
                         view.contents.remove_filter_rule_for(ctx, entity_path);
@@ -262,7 +262,7 @@ fn add_entities_line_ui(
             } else {
                 // Reset-button
                 // Shows when an entity is explicitly excluded or included
-                let response = ui.small_icon_button(&re_ui::icons::RESET);
+                let response = ui.small_icon_button(&re_ui::icons::RESET, "Remove this rule");
 
                 if response.clicked() {
                     view.contents.remove_filter_rule_for(ctx, entity_path);
@@ -277,7 +277,7 @@ fn add_entities_line_ui(
         } else if is_included {
             // Remove-button
             // Shows when an entity is already included (but not explicitly)
-            let response = ui.small_icon_button(&re_ui::icons::REMOVE);
+            let response = ui.small_icon_button(&re_ui::icons::REMOVE, "Exclude entity");
 
             if response.clicked() {
                 view.contents.raw_add_entity_exclusion(
@@ -294,7 +294,7 @@ fn add_entities_line_ui(
             let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
             ui.add_enabled_ui(enabled, |ui| {
-                let response = ui.small_icon_button(&re_ui::icons::ADD);
+                let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
 
                 if response.clicked() {
                     view.contents.raw_add_entity_inclusion(

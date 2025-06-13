@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
-use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
+use datafusion::sql::TableReference;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
@@ -17,9 +17,7 @@ use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
     ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
-use crate::table_utils::{
-    CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
-};
+use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
@@ -230,7 +228,10 @@ impl<'a> DataFusionTableWidget<'a> {
                 ui.horizontal(|ui| {
                     ui.error_label(error);
 
-                    if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
+                    if ui
+                        .small_icon_button(&re_ui::icons::RESET, "Refresh")
+                        .clicked()
+                    {
                         // This will trigger a fresh query on the next frame.
                         Self::clear_state(ui.ctx(), &session_ctx, table_ref);
                     }
@@ -328,7 +329,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
-                tokens.table_header_height() + CELL_MARGIN.sum().y,
+                tokens.table_header_height(),
             )])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -401,7 +402,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
             });
 
-            header_ui(ui, |ui| {
+            header_ui(ui, true, |ui| {
                 egui::Sides::new()
                     .show(
                         ui,
@@ -422,7 +423,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         },
                         |ui| {
                             egui::containers::menu::MenuButton::from_button(
-                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                                ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
                             .ui(ui, |ui| {
                                 for sort_direction in SortDirection::iter() {
@@ -456,7 +457,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        cell_ui(ui, |ui| {
+        cell_ui(ui, false, |ui| {
             // find record batch
             let mut row_index = cell.row_nr as usize;
 
@@ -494,7 +495,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height() + CELL_MARGIN.sum().y
+        self.ctx.tokens().table_line_height()
     }
 }
 
@@ -532,7 +533,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             } = desc;
 
             header_property_ui(ui, "Type", "component");
-            header_property_ui(ui, "Component", component_name.full_name());
+            header_property_ui(
+                ui,
+                "Component",
+                component_name.map(|a| a.as_str()).unwrap_or("-"),
+            );
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
@@ -541,11 +546,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
             //TODO(#9978): update this if we rename this descriptor field.
-            header_property_ui(
-                ui,
-                "Archetype field",
-                archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
-            );
+            header_property_ui(ui, "Archetype field", archetype_field_name);
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

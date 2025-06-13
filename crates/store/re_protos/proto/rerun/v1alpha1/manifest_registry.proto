@@ -111,6 +111,9 @@ service ManifestRegistryService {
 
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+
+  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 }
 
 // --- Write data ---
@@ -498,6 +501,16 @@ message FetchChunkManifestRequest {
 message FetchChunkManifestResponse {
   // Chunk manifest as arrow RecordBatches
   rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  bool build_scalar_indexes = 2;
+  bool compact_fragments = 3;
+}
+
+message DoMaintenanceResponse {
+  string report = 1;
 }
 
 // ----------------- Error handling -----------------

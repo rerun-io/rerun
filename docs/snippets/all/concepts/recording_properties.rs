@@ -21,17 +21,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let confidences = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::Float64Array::from(vec![0.3, 0.4, 0.5, 0.6])),
-        rerun::ComponentDescriptor::new("confidences"),
+        rerun::ComponentDescriptor::partial("confidences"),
     );
 
     let traffic = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::StringArray::from(vec!["low"])),
-        rerun::ComponentDescriptor::new("traffic"),
+        rerun::ComponentDescriptor::partial("traffic"),
     );
 
     let weather = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::StringArray::from(vec!["sunny"])),
-        rerun::ComponentDescriptor::new("weather"),
+        rerun::ComponentDescriptor::partial("weather"),
     );
 
     // Adds another property, this time with user-defined data.

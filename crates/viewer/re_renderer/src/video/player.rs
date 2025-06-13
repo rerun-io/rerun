@@ -2,10 +2,7 @@ use std::time::Duration;
 
 use web_time::Instant;
 
-use re_video::{
-    GopIndex, SampleIndex, StableIndexDeque, Time,
-    decode::{DecodeSettings, FrameInfo},
-};
+use re_video::{DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time};
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
@@ -79,8 +76,8 @@ impl VideoPlayer {
             description.human_readable_codec_string()
         );
 
-        if let Some(stsd) = description.stsd.as_ref() {
-            if let Some(bit_depth) = stsd.contents.bit_depth() {
+        if let Some(details) = description.encoding_details.as_ref() {
+            if let Some(bit_depth) = details.bit_depth {
                 #[allow(clippy::comparison_chain)]
                 if bit_depth < 8 {
                     re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
@@ -93,7 +90,7 @@ impl VideoPlayer {
         }
 
         let chunk_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
+            re_video::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
         Ok(Self {
@@ -253,7 +250,7 @@ impl VideoPlayer {
             // because decoding all the samples between the previous sample and the requested
             // one would mean decoding and immediately discarding more frames than we need.
             if self.last_requested_gop_idx.saturating_add(1) != requested_gop_idx {
-                self.reset()?;
+                self.reset(video_description)?;
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
             let requested_sample = video_description
@@ -285,7 +282,7 @@ impl VideoPlayer {
                 // seeking backwards!
                 // Therefore, it's important to compare presentation timestamps instead of sample indices.
                 // (comparing decode timestamps should be equivalent to comparing sample indices)
-                self.reset()?;
+                self.reset(video_description)?;
             }
         }
 
@@ -373,8 +370,11 @@ impl VideoPlayer {
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.chunk_decoder.reset()?;
+    pub fn reset(
+        &mut self,
+        video_descr: &re_video::VideoDataDescription,
+    ) -> Result<(), VideoPlayerError> {
+        self.chunk_decoder.reset(video_descr)?;
         self.last_requested_gop_idx = GopIndex::MAX;
         self.last_requested_sample_idx = SampleIndex::MAX;
         self.last_enqueued_gop_idx = None;

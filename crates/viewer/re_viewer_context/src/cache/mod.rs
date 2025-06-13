@@ -37,7 +37,9 @@ fn filter_blob_removed_events(
                     event
                         .chunk
                         .component_descriptors()
-                        .filter(|descr| descr.component_name == re_types::components::Blob::name())
+                        .filter(|descr| {
+                            descr.component_name == Some(re_types::components::Blob::name())
+                        })
                         .flat_map(|descr| {
                             event
                                 .chunk

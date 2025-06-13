@@ -50,9 +50,9 @@ impl TableStore {
         {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: Some("field".to_owned().into()),
-                component_name: re_types_core::ComponentName::new("component"),
+                archetype_name: Some("archetype".into()),
+                archetype_field_name: "field".into(),
+                component_name: Some("component".into()),
                 store_datatype: arrow::datatypes::DataType::Int64,
                 is_static: true,
                 is_tombstone: false,
@@ -69,9 +69,9 @@ impl TableStore {
 
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: Some("short_list".to_owned().into()),
-                component_name: re_types_core::ComponentName::new("short_list"),
+                archetype_name: Some("archetype".into()),
+                archetype_field_name: "short_list".into(),
+                component_name: Some("short_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
                 is_static: true,
                 is_tombstone: false,
@@ -96,8 +96,8 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: Some("long_list".to_owned().into()),
-                component_name: re_types_core::ComponentName::new("long_list"),
+                archetype_field_name: "long_list".into(),
+                component_name: Some("long_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
                 is_static: true,
                 is_tombstone: false,
@@ -129,8 +129,8 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: Some("thumbnail".to_owned().into()),
-                component_name: "rerun.components.Blob".into(),
+                archetype_field_name: "thumbnail".into(),
+                component_name: Some("rerun.components.Blob".into()),
                 store_datatype: array.data_type().clone(),
                 is_static: true,
                 is_tombstone: false,

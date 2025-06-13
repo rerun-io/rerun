@@ -14,6 +14,7 @@ use re_types::{
     AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
     archetypes::{Asset3D, Transform3D},
     datatypes::Vec3D,
+    external::glam,
 };
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -108,7 +109,10 @@ impl DataLoader for UrdfDataLoader {
     }
 }
 
-struct UrdfTree {
+/// A `.urdf` file loaded into memory (excluding any mesh files).
+///
+/// Can be used to find the [`EntityPath`] of any link or joint in the URDF.
+pub struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
     /// Used to find mesh files (.stl etc) relative to the URDF file.
@@ -116,13 +120,24 @@ struct UrdfTree {
 
     name: String,
     root: Link,
+    joints: Vec<Joint>,
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
     materials: HashMap<String, Material>,
 }
 
 impl UrdfTree {
-    fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    /// Given a path to an `.urdf` file, load it.
+    pub fn from_file_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let path = path.as_ref();
+        let robot = urdf_rs::read_file(path)?;
+        let urdf_dir = path.parent().map(|p| p.to_path_buf());
+        Self::new(robot, urdf_dir)
+    }
+
+    /// The `urdf_dir` is the directory containing the `.urdf` file,
+    /// which can later be used to resolve relative paths to mesh files.
+    pub fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
             links,
@@ -143,7 +158,7 @@ impl UrdfTree {
         let mut children = HashMap::<String, Vec<Joint>>::new();
         let mut child_links = HashSet::<String>::new();
 
-        for joint in joints {
+        for joint in &joints {
             children
                 .entry(joint.parent.link.clone())
                 .or_default()
@@ -168,14 +183,66 @@ impl UrdfTree {
             }
         };
 
+        for joint in &joints {
+            if !links.contains_key(&joint.child.link) {
+                bail!(
+                    "Joint '{}' references unknown child link '{}'",
+                    joint.name,
+                    joint.child.link
+                );
+            }
+            if !links.contains_key(&joint.parent.link) {
+                bail!(
+                    "Joint '{}' references unknown parent link '{}'",
+                    joint.name,
+                    joint.parent.link
+                );
+            }
+        }
+
         Ok(Self {
             urdf_dir,
             name,
             root: root.clone(),
+            joints,
             links,
             children,
             materials,
         })
+    }
+
+    pub fn joints(&self) -> impl Iterator<Item = &Joint> {
+        self.joints.iter()
+    }
+
+    pub fn get_joint_by_name(&self, joint_name: &str) -> Option<&Joint> {
+        self.joints.iter().find(|j| j.name == joint_name)
+    }
+
+    fn get_joint_path(&self, joint: &Joint) -> EntityPath {
+        let parent_path = self.get_link_path_by_name(&joint.parent.link);
+        parent_path / EntityPathPart::new(&joint.name)
+    }
+
+    fn get_link_path_by_name(&self, link_name: &str) -> EntityPath {
+        if let Some(parent_joint) = self.get_parent_of_link(link_name) {
+            self.get_joint_path(parent_joint) / EntityPathPart::new(link_name)
+        } else {
+            format!("{}/{link_name}", self.name).into()
+        }
+    }
+
+    pub fn get_link_path(&self, link: &Link) -> EntityPath {
+        self.get_link_path_by_name(&link.name)
+    }
+
+    /// Find the parent join of a link, if it exists.
+    fn get_parent_of_link(&self, link_name: &str) -> Option<&Joint> {
+        self.joints.iter().find(|j| j.child.link == link_name)
+    }
+
+    pub fn get_joint_child(&self, joint: &Joint) -> &Link {
+        &self.links[&joint.child.link] // Safe because we checked that the joint's child link exists in `new()`
     }
 }
 
@@ -283,7 +350,9 @@ fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
-    Transform3D::from_translation(translation).with_quaternion(quaternion)
+    Transform3D::update_fields()
+        .with_translation(translation)
+        .with_quaternion(quaternion)
 }
 
 fn send_transform(
@@ -319,7 +388,7 @@ fn log_debug_format(
             RowId::new(),
             TimePoint::default(),
             vec![SerializedComponentBatch {
-                descriptor: ComponentDescriptor::new(name),
+                descriptor: ComponentDescriptor::partial(name),
                 array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
             }],
         ),
@@ -401,8 +470,8 @@ fn log_link(
                     (
                         ComponentDescriptor {
                             archetype_name: None,
-                            archetype_field_name: None,
-                            component_name: re_types::components::Visible::name(),
+                            archetype_field_name: "visible".into(),
+                            component_name: Some(re_types::components::Visible::name()),
                         },
                         &re_types::components::Visible::from(false),
                     ),
@@ -549,21 +618,5 @@ fn log_geometry(
 }
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
-    // TODO(emilk): we should use glam for this, but we need to update glam first
-    let (hr, hp, hy) = (roll * 0.5, pitch * 0.5, yaw * 0.5);
-    let (sr, cr) = (hr.sin(), hr.cos());
-    let (sp, cp) = (hp.sin(), hp.cos());
-    let (sy, cy) = (hy.sin(), hy.cos());
-
-    let x = sr * cp * cy + cr * sp * sy;
-    let y = cr * sp * cy - sr * cp * sy;
-    let z = cr * cp * sy + sr * sp * cy;
-    let w = cr * cp * cy - sr * sp * sy;
-
-    let norm = (x * x + y * y + z * z + w * w).sqrt();
-    if norm > 0.0 {
-        [x / norm, y / norm, z / norm, w / norm]
-    } else {
-        [0.0, 0.0, 0.0, 1.0]
-    }
+    glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
 }

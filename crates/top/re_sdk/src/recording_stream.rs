@@ -2389,8 +2389,7 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
     ///
-    /// For example: `rec.set_duration_secs("time_since_start", time_offset)`.
-    /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
+    /// You can remove a timeline again using `rec.disable_timeline(timeline)`.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
@@ -2399,6 +2398,7 @@ impl RecordingStream {
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_duration_secs`]
     /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_timestamp_nanos_since_epoch`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
@@ -2410,6 +2410,37 @@ impl RecordingStream {
         self.set_time(
             timeline,
             TimeCell::from_timestamp_secs_since_epoch(secs.into()),
+        );
+    }
+
+    /// Set a timestamp as nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
+    ///
+    /// Short for `self.set_time(timeline, rerun::TimeCell::set_timestamp_nanos_since_epoch(secs))`.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the index/time setting methods.
+    ///
+    /// You can remove a timeline again using `rec.disable_timeline(timeline)`.
+    ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
+    /// See also:
+    /// - [`Self::set_time`]
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_duration_secs`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_timestamp_secs_since_epoch`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    #[inline]
+    pub fn set_timestamp_nanos_since_epoch(
+        &self,
+        timeline: impl Into<TimelineName>,
+        nanos: impl Into<i64>,
+    ) {
+        self.set_time(
+            timeline,
+            TimeCell::from_timestamp_nanos_since_epoch(nanos.into()),
         );
     }
 

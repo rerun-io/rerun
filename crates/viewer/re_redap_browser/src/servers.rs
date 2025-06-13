@@ -101,7 +101,10 @@ impl Server {
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.heading(RichText::new("Catalog").strong());
-                    if ui.small_icon_button(&icons::RESET).clicked() {
+                    if ui
+                        .small_icon_button(&icons::RESET, "Refresh collection")
+                        .clicked()
+                    {
                         ctx.command_sender
                             .send(Command::RefreshCollection(self.origin.clone()))
                             .ok();
@@ -155,11 +158,15 @@ impl Server {
             dataset.name(),
         )
         .title(dataset.name())
-        .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
-            ctx.command_sender
-                .send(Command::RefreshCollection(self.origin.clone()))
-                .ok();
-        }))
+        .title_button(ItemActionButton::new(
+            &re_ui::icons::RESET,
+            "Refresh collection",
+            || {
+                ctx.command_sender
+                    .send(Command::RefreshCollection(self.origin.clone()))
+                    .ok();
+            },
+        ))
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -219,7 +226,7 @@ impl Server {
         let content =
             list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
                 let response = ui
-                    .small_icon_button(&re_ui::icons::REMOVE)
+                    .small_icon_button(&re_ui::icons::REMOVE, "Remove server")
                     .on_hover_text("Remove server");
 
                 if response.clicked() {

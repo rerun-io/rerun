@@ -103,7 +103,7 @@ impl ChunkUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     let response = ui
-                        .button(component_desc.component_name.short_name())
+                        .button(component_desc.archetype_field_name.as_str())
                         .on_hover_ui(|ui| {
                             ui.label(format!("{datatype}\n\nClick header to copy"));
                         });
@@ -180,9 +180,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(tokens.table_line_height(), header_ui)
+                    .header(tokens.deprecated_table_line_height(), header_ui)
                     .body(|body| {
-                        body.rows(tokens.table_line_height(), row_ids.len(), row_ui);
+                        body.rows(tokens.deprecated_table_line_height(), row_ids.len(), row_ui);
                     });
             });
 

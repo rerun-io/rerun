@@ -15,7 +15,10 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin, TimeRange};
 
-use crate::{ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
+use crate::{
+    ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
+    spawn_future,
+};
 
 pub enum Command {
     SetLoopSelection {
@@ -143,9 +146,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn client(
@@ -157,7 +159,7 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
@@ -171,19 +173,19 @@ pub(crate) async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>;
+
 // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClient = FrontendServiceClient<
-//     tower_http::trace::Trace<
-//         tonic::service::interceptor::InterceptedService<
-//             tonic::transport::Channel,
-//             redap_telemetry::TracingInjectorInterceptor,
-//         >,
-//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+// pub type RedapClientInner = tower_http::trace::Trace<
+//     tonic::service::interceptor::InterceptedService<
+//         tonic::transport::Channel,
+//         redap_telemetry::TracingInjectorInterceptor,
 //     >,
+//     tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
 // >;
+
+pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn client(
@@ -195,7 +197,7 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
@@ -237,7 +239,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
 pub async fn stream_blueprint_and_partition_from_server(
-    mut client: RedapClient,
+    mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
@@ -246,6 +248,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     re_log::debug!("Loading {uri}…");
 
     let response: ReadDatasetEntryResponse = client
+        .inner()
         .read_dataset_entry(ReadDatasetEntryRequest {
             id: Some(uri.dataset_id.into()),
         })
@@ -337,7 +340,7 @@ pub async fn stream_blueprint_and_partition_from_server(
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
 async fn stream_partition_from_server(
-    client: &mut RedapClient,
+    client: &mut ConnectionClient,
     store_info: StoreInfo,
     tx: &re_smart_channel::Sender<LogMsg>,
     dataset_id: EntryId,
@@ -347,6 +350,7 @@ async fn stream_partition_from_server(
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let catalog_chunk_stream = client
+        .inner()
         .get_chunks(GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
             partition_ids: vec![partition_id.into()],

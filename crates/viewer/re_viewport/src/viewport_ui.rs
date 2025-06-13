@@ -538,7 +538,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         if *self.maximized == Some(view_id) {
             // Show minimize-button:
             if ui
-                .small_icon_button(&re_ui::icons::MINIMIZE)
+                .small_icon_button(&re_ui::icons::MINIMIZE, "Restore viewport")
                 .on_hover_ui(|ui| {
                     Help::new_without_title()
                         .control(
@@ -560,7 +560,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             let toggle = is_view_the_only_selected
                 && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
             if ui
-                .small_icon_button(&re_ui::icons::MAXIMIZE)
+                .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
                 .on_hover_ui(|ui| {
                     if is_view_the_only_selected {
                         Help::new_without_title()
@@ -608,7 +608,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 );
             });
 
-        ui.help_hover_button().on_hover_ui(|ui| {
+        ui.help_button(|ui| {
             view_class.help(ui.ctx().os()).ui(ui);
         });
     }

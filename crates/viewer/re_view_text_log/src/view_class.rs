@@ -330,7 +330,7 @@ fn table_ui(
         table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
-        .header(tokens.table_header_height(), |mut header| {
+        .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {

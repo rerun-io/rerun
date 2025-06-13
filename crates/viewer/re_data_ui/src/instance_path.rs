@@ -127,7 +127,7 @@ impl DataUi for InstancePath {
             if !self.is_all() {
                 for components in components_by_archetype.values_mut() {
                     components.retain(|(component, _chunk)| {
-                        component.component_name != components::GraphEdge::name()
+                        component.component_name != Some(components::GraphEdge::name())
                     });
                 }
             }
@@ -217,46 +217,45 @@ fn component_list_ui(
                         list_item = list_item.force_hovered(is_hovered);
                     }
 
-                    let content =
-                        re_ui::list_item::PropertyContent::new(component_descr.display_name())
-                            .with_icon(icon)
-                            .value_fn(|ui, _| {
-                                if instance.is_all() {
-                                    crate::ComponentPathLatestAtResults {
-                                        component_path: ComponentPath::new(
-                                            entity_path.clone(),
-                                            component_descr.clone(),
-                                        ),
-                                        unit,
-                                    }
-                                    .data_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                    );
-                                } else {
-                                    ctx.component_ui_registry().component_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                        entity_path,
-                                        component_descr,
-                                        unit,
-                                        instance,
-                                    );
-                                }
-                            });
+                    let content = re_ui::list_item::PropertyContent::new(
+                        component_descr.archetype_field_name.as_str(),
+                    )
+                    .with_icon(icon)
+                    .value_fn(|ui, _| {
+                        if instance.is_all() {
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_descr.clone(),
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                            );
+                        } else {
+                            ctx.component_ui_registry().component_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                                entity_path,
+                                component_descr,
+                                unit,
+                                instance,
+                            );
+                        }
+                    });
 
                     let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
-                        component_descr.component_name.data_ui_recording(
-                            ctx,
-                            ui,
-                            UiLayout::Tooltip,
-                        );
+                        if let Some(component_name) = component_descr.component_name {
+                            component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                        }
 
                         if let Some(data) = unit.component_batch_raw(component_descr) {
                             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
@@ -292,7 +291,7 @@ fn preview_if_image_ui(
     // There might be several image buffers!
     for (image_buffer_descr, image_buffer_chunk) in components
         .iter()
-        .filter(|(descr, _chunk)| descr.component_name == components::ImageBuffer::name())
+        .filter(|(descr, _chunk)| descr.component_name == Some(components::ImageBuffer::name()))
     {
         preview_single_image(
             ctx,
@@ -324,7 +323,7 @@ fn preview_single_image(
         .ok()?;
 
     let (image_format_descr, image_format_chunk) = components.iter().find(|(descr, _chunk)| {
-        descr.component_name == components::ImageFormat::name()
+        descr.component_name == Some(components::ImageFormat::name())
             && descr.archetype_name == image_buffer_descr.archetype_name
     })?;
     let image_format = image_format_chunk
@@ -514,7 +513,7 @@ fn preview_if_blob_ui(
     // There might be several blobs, all with different meanings.
     for (blob_descr, blob_chunk) in components
         .iter()
-        .filter(|(descr, _chunk)| descr.component_name == components::Blob::name())
+        .filter(|(descr, _chunk)| descr.component_name == Some(components::Blob::name()))
     {
         preview_single_blob(
             ctx,
@@ -588,7 +587,7 @@ fn find_and_deserialize_archetype_mono_component<C: Component>(
     archetype_name: Option<ArchetypeName>,
 ) -> Option<C> {
     components.iter().find_map(|(descr, chunk)| {
-        (descr.component_name == C::name() && descr.archetype_name == archetype_name)
+        (descr.component_name == Some(C::name()) && descr.archetype_name == archetype_name)
             .then(|| chunk.component_mono::<C>(descr).and_then(|r| r.ok()))
             .flatten()
     })

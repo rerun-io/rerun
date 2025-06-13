@@ -35,3 +35,35 @@ final = `Transform3D` * … * `Transform3D` * InstancePoses3D * (Box3D.quaternio
 
 As a concrete example, if you previously scaled boxes/ellipsoids/capsules using `InstancePoses3D` they would be scaled relative to the individual box centers.
 Now instead they are scaled relative to the entity's center.
+
+
+## Tagged components
+
+<!-- TODO(grtlr): These are ad-hoc notes from https://github.com/rerun-io/rerun/pull/10082 and need to be cleaned up! -->
+
+#### `re_types_core`
+
+* The obvious `ComponentDescriptor` changes.
+
+#### `re_types`
+
+* Indicator components now become indicator fields. This is only temporary until we get rid of indicators.
+
+#### `re_log_types`
+
+* Removed auto-filling of `rerun.components.` to `ComponentName` in path parsing.
+
+#### `re_sorbet`
+
+* Lookup `ColumnDescriptor` by `ArchetypeFieldName` instead of `ComponentName`.
+* Changed `ComponentColumnSelector`.
+* Changed `ComponentColumnDescriptor::column_name` to use fully-qualified column names.
+
+#### `rerun_py`
+
+* Dataframe queries now use the new string representation everywhere. It's not allowed to pass in components anymore.
+* `resolve_component_column_selector` now returns an `Option`.
+
+#### LeRobot dataloader
+
+* Fixed an issue where the LeRobot dataloader logged untagged `Name` components for robot observations and actions, `.rrd` files created before `0.24` may include these untagged entries. To fix this, load the dataset in `0.24.0` and resave your episodes to `.rrd` (`0.24.0` now supports saving all selected recordings).

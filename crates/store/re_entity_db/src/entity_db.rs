@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
@@ -18,7 +17,7 @@ use re_query::{
 };
 use re_smart_channel::SmartChannelSource;
 
-use crate::{Error, TimesPerTimeline};
+use crate::{Error, TimesPerTimeline, ingestion_statistics::IngestionStatistics};
 
 // ----------------------------------------------------------------------------
 
@@ -107,7 +106,7 @@ impl EntityDb {
     }
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
-        let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
+        let store = ChunkStoreHandle::new(ChunkStore::new(store_id, store_config));
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
         // Safety: these handles are never going to be leaked outside of the `EntityDb`.
@@ -124,7 +123,7 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
-            stats: IngestionStatistics::new(store_id),
+            stats: IngestionStatistics::default(),
         }
     }
 
@@ -205,7 +204,7 @@ impl EntityDb {
         &self,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_name, C::name());
+        debug_assert_eq!(component_descr.component_name, Some(C::name()));
         debug_assert_eq!(
             component_descr.archetype_name,
             // String from re_types::RecordingProperties::name()
@@ -269,7 +268,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_name, C::name());
+        debug_assert_eq!(component_descr.component_name, Some(C::name()));
 
         let results =
             self.storage_engine
@@ -296,7 +295,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_name, C::name());
+        debug_assert_eq!(component_descr.component_name, Some(C::name()));
 
         let results =
             self.storage_engine
@@ -453,9 +452,14 @@ impl EntityDb {
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 self.last_modified_at = web_time::Instant::now();
 
-                let mut chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)?;
+                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
+                    .map_err(re_chunk::ChunkError::from)?;
+                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
                 chunk.sort_if_unsorted();
-                self.add_chunk(&Arc::new(chunk))?
+                self.add_chunk_with_timestamp_metadata(
+                    &Arc::new(chunk),
+                    &chunk_batch.sorbet_schema().timestamps,
+                )?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -468,6 +472,14 @@ impl EntityDb {
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
+    }
+
+    pub fn add_chunk_with_timestamp_metadata(
+        &mut self,
+        chunk: &Arc<Chunk>,
+        timestamps: &re_sorbet::TimestampMetadata,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let mut engine = self.storage_engine.write();
         let store_events = engine.store().insert_chunk(chunk)?;
         engine.cache().on_events(&store_events);
@@ -503,7 +515,7 @@ impl EntityDb {
             }
 
             // We inform the stats last, since it measures e2e latency.
-            self.stats.on_events(&store_events);
+            self.stats.on_events(timestamps, &store_events);
         }
 
         Ok(store_events)
@@ -867,86 +879,5 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-pub struct IngestionStatistics {
-    store_id: StoreId,
-    e2e_latency_sec_history: Mutex<emath::History<f32>>,
-}
-
-impl ChunkStoreSubscriber for IngestionStatistics {
-    #[inline]
-    fn name(&self) -> String {
-        "rerun.testing.store_subscribers.IngestionStatistics".into()
-    }
-
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
-        for event in events {
-            if event.store_id == self.store_id {
-                for row_id in event.diff.chunk.row_ids() {
-                    self.on_new_row_id(row_id);
-                }
-            }
-        }
-    }
-}
-
-impl IngestionStatistics {
-    pub fn new(store_id: StoreId) -> Self {
-        let min_samples = 0; // 0: we stop displaying e2e latency if input stops
-        let max_samples = 1024; // don't waste too much memory on this - we just need enough to get a good average
-        let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
-        Self {
-            store_id,
-            e2e_latency_sec_history: Mutex::new(emath::History::new(
-                min_samples..max_samples,
-                max_age,
-            )),
-        }
-    }
-
-    fn on_new_row_id(&self, row_id: RowId) {
-        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
-
-            // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
-            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
-            {
-                let now = nanos_since_epoch as f64 / 1e9;
-                let sec_since_log = nanos_since_log as f32 / 1e9;
-
-                self.e2e_latency_sec_history.lock().add(now, sec_since_log);
-            }
-        }
-    }
-
-    /// What is the mean latency between the time data was logged in the SDK and the time it was ingested?
-    ///
-    /// This is based on the clocks of the viewer and the SDK being in sync,
-    /// so if the recording was done on another machine, this is likely very inaccurate.
-    pub fn current_e2e_latency_sec(&self) -> Option<f32> {
-        let mut e2e_latency_sec_history = self.e2e_latency_sec_history.lock();
-
-        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
-            let now = nanos_since_epoch as f64 / 1e9;
-            e2e_latency_sec_history.flush(now); // make sure the average is up-to-date.
-        }
-
-        e2e_latency_sec_history.average()
     }
 }

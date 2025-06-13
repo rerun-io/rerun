@@ -105,7 +105,7 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_queue_interest: web_time::Instant,
+    pub(crate) latest_latency_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -318,7 +318,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_queue_interest: long_time_ago,
+            latest_latency_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -1750,14 +1750,9 @@ impl App {
 
         for event in store_events {
             let chunk = &event.diff.chunk;
-            for component in chunk.component_names() {
-                if let Some(short_archetype_name) =
-                    component.indicator_component_archetype_short_name()
-                {
-                    if let Some(archetype) = self
-                        .reflection
-                        .archetype_reflection_from_short_name(&short_archetype_name)
-                    {
+            for component_descr in chunk.components().keys() {
+                if let Some(archetype_name) = component_descr.archetype_name {
+                    if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
                                 re_log::warn_once!(
@@ -1766,7 +1761,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {short_archetype_name}");
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }

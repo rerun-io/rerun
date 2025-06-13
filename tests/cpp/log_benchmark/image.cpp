@@ -5,13 +5,12 @@
 
 #include <rerun.hpp>
 
-// About 1gb of image data.
-constexpr size_t IMAGE_DIMENSION = 16384;
+constexpr size_t IMAGE_DIMENSION = 1024;
 constexpr size_t IMAGE_CHANNELS = 4;
 
 // How many times we log the image.
 // Each time with a single pixel changed.
-constexpr size_t NUM_LOG_CALLS = 4;
+constexpr size_t NUM_LOG_CALLS = 20'000;
 
 static std::vector<uint8_t> prepare() {
     PROFILE_FUNCTION();
@@ -30,7 +29,9 @@ static void execute(std::vector<uint8_t> raw_image_data) {
     rerun::RecordingStream rec("rerun_example_benchmark_image");
 
     for (size_t i = 0; i < NUM_LOG_CALLS; ++i) {
+        // Change a single pixel of the image data, just to make sure we transmit something different each time.
         raw_image_data[i] += 1;
+
         rec.log(
             "test_image",
             rerun::Image::from_rgba32(

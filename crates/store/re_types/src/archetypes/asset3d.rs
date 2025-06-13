@@ -87,8 +87,8 @@ impl Asset3D {
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: "rerun.components.Blob".into(),
-            archetype_field_name: Some("blob".into()),
+            component_name: Some("rerun.components.Blob".into()),
+            archetype_field_name: "blob".into(),
         }
     }
 
@@ -99,8 +99,8 @@ impl Asset3D {
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: "rerun.components.MediaType".into(),
-            archetype_field_name: Some("media_type".into()),
+            component_name: Some("rerun.components.MediaType".into()),
+            archetype_field_name: "media_type".into(),
         }
     }
 
@@ -111,8 +111,8 @@ impl Asset3D {
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: "rerun.components.AlbedoFactor".into(),
-            archetype_field_name: Some("albedo_factor".into()),
+            component_name: Some("rerun.components.AlbedoFactor".into()),
+            archetype_field_name: "albedo_factor".into(),
         }
     }
 
@@ -121,8 +121,8 @@ impl Asset3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Asset3DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Asset3DIndicator".into(),
         }
     }
 }

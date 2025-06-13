@@ -20,14 +20,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(arrow::array::Float64Array::from_iter(
             (0..STEPS).map(|v| ((v as f64) / 10.0).sin()),
         )),
-        rerun::ComponentDescriptor::new("sin"),
+        rerun::ComponentDescriptor::partial("sin"),
     );
 
     let cos = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::Float64Array::from_iter(
             (0..STEPS).map(|v| ((v as f64) / 10.0).cos()),
         )),
-        rerun::ComponentDescriptor::new("cos"),
+        rerun::ComponentDescriptor::partial("cos"),
     );
 
     rec.send_columns(

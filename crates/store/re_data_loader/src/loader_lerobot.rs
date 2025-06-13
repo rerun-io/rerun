@@ -21,7 +21,6 @@ use re_chunk::{
 };
 use re_log_types::{ApplicationId, StoreId};
 use re_types::{
-    Archetype, ComponentBatch,
     archetypes::{
         self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
     },
@@ -405,34 +404,24 @@ fn load_episode_video(
                 .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
 
-            let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
-            let video_timestamp_list_array = video_timestamp_batch
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
-
-            // Indicator column.
-            let video_frame_reference_indicators =
-                <VideoFrameReference as Archetype>::Indicator::new_array(video_timestamps.len());
-            let video_frame_reference_indicators_list_array = video_frame_reference_indicators
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
+            let video_frame_reference_column = VideoFrameReference::update_fields()
+                .with_many_timestamp(video_timestamps)
+                .columns_of_unit_batches()
+                .with_context(|| {
+                    format!(
+                        "Failed to create `VideoFrameReference` column for episode {episode:?}."
+                    )
+                })?;
 
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.into(),
                 std::iter::once((*timeline.name(), time_column)).collect(),
-                [
-                    (
-                        VideoFrameReference::indicator().descriptor.clone(),
-                        video_frame_reference_indicators_list_array,
-                    ),
-                    (
-                        VideoFrameReference::descriptor_timestamp(),
-                        video_timestamp_list_array,
-                    ),
-                ]
-                .into_iter()
-                .collect(),
+                video_frame_reference_column
+                    .map(|serialized_column| {
+                        (serialized_column.descriptor, serialized_column.list_array)
+                    })
+                    .collect(),
             )?)
         }
         Err(err) => {

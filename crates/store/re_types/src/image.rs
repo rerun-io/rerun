@@ -304,9 +304,8 @@ fn test_find_non_empty_dim_indices() {
 // TODO(andreas): Expose this in the API?
 /// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
 ///
-/// A rigorious definition of the yuv conversion matrix would still require to define
+/// A rigorious definition of the yuv conversion matrix would additionally require to define
 /// the transfer characteristics & color primaries of the resulting RGB space.
-/// See [`re_video::decode`]'s documentation.
 ///
 /// However, at this point we generally assume that no further processing is needed after the transform.
 /// This is acceptable for most non-HDR content because of the following properties of `Bt709`/`Bt601`/ sRGB:
