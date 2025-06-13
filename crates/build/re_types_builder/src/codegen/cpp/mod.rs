@@ -536,7 +536,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #comment
                     static constexpr auto #constant_name = ComponentDescriptor(
-                        ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
+                        ArchetypeName, #field_name, Loggable<#field_type>::ComponentName
                     );
                 }
             })
@@ -2787,8 +2787,6 @@ fn quote_loggable_hpp_and_cpp(
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 
-    hpp_includes.insert_rerun("component_descriptor.hpp");
-
     let (deprecation_ignore_start, deprecation_ignore_end) =
         quote_deprecation_ignore_start_and_end(hpp_includes, obj.is_deprecated());
 
@@ -2801,7 +2799,7 @@ fn quote_loggable_hpp_and_cpp(
             #hide_from_docs_comment
             template<>
             struct #loggable_type_name {
-                static constexpr ComponentDescriptor Descriptor = #fqname;
+                static constexpr std::string_view ComponentName = #fqname;
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #(#methods_hpp)*

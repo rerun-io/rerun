@@ -38,7 +38,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `provider` field.
         static constexpr auto Descriptor_provider = ComponentDescriptor(
             ArchetypeName, "provider",
-            Loggable<rerun::blueprint::components::MapProvider>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::MapProvider>::ComponentName
         );
 
       public:

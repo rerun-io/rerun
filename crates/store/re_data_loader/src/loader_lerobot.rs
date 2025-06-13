@@ -417,11 +417,7 @@ fn load_episode_video(
                 re_chunk::ChunkId::new(),
                 entity_path.into(),
                 std::iter::once((*timeline.name(), time_column)).collect(),
-                video_frame_reference_column
-                    .map(|serialized_column| {
-                        (serialized_column.descriptor, serialized_column.list_array)
-                    })
-                    .collect(),
+                video_frame_reference_column.collect(),
             )?)
         }
         Err(err) => {
