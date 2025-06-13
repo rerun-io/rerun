@@ -37,7 +37,7 @@ use re_sorbet::{
 };
 
 use crate::catalog::to_py_err;
-use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
+use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -1525,7 +1525,7 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 }
 
 #[pymethods]

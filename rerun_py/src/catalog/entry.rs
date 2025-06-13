@@ -5,7 +5,7 @@ use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymeth
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::{EntryKind, ext::EntryDetails};
 
-use crate::catalog::PyCatalogClient;
+use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(name = "EntryId")]
@@ -106,7 +106,7 @@ impl From<PyEntryKind> for EntryKind {
 /// An entry in the catalog.
 #[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 
     pub id: Py<PyEntryId>,
 
@@ -129,7 +129,7 @@ impl PyEntry {
 
     /// The catalog client that this entry belongs to.
     #[getter]
-    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClient> {
+    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
         self.client.clone_ref(py)
     }
 

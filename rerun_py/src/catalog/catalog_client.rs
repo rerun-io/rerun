@@ -11,7 +11,7 @@ use crate::catalog::{ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable, t
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")]
-pub struct PyCatalogClient {
+pub struct PyCatalogClientInternal {
     #[expect(dead_code)]
     origin: re_uri::Origin,
 
@@ -21,14 +21,14 @@ pub struct PyCatalogClient {
     datafusion_ctx: Option<Py<PyAny>>,
 }
 
-impl PyCatalogClient {
+impl PyCatalogClientInternal {
     pub fn connection(&self) -> &ConnectionHandle {
         &self.connection
     }
 }
 
 #[pymethods]
-impl PyCatalogClient {
+impl PyCatalogClientInternal {
     /// Create a new catalog client object.
     #[new]
     #[pyo3(text_signature = "(self, addr, token=None)")]
