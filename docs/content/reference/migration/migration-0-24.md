@@ -63,3 +63,7 @@ Now instead they are scaled relative to the entity's center.
 
 * Dataframe queries now use the new string representation everywhere. It's not allowed to pass in components anymore.
 * `resolve_component_column_selector` now returns an `Option`.
+
+#### LeRobot dataloader
+
+* Fixed an issue where the LeRobot dataloader logged untagged `Name` components for robot observations and actions, `.rrd` files created before `0.24` may include these untagged entries. To fix this, load the dataset in `0.24.0` and resave your episodes to `.rrd` (`0.24.0` now supports saving all selected recordings).
