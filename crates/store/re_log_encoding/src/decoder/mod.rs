@@ -82,6 +82,9 @@ pub enum DecodeError {
     #[error("Sorbet error: {0}")]
     SorbetError(#[from] re_sorbet::SorbetError),
 
+    #[error("Failed to read chunk: {0}")]
+    Chunk(#[from] re_chunk::ChunkError),
+
     #[error("Arrow error: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
