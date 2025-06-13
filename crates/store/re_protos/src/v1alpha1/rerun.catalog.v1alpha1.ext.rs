@@ -16,7 +16,7 @@ impl crate::catalog::v1alpha1::EntryFilter {
         self
     }
 
-    pub fn with_name<S: Into<String>>(mut self, name: S) -> Self {
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
