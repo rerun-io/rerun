@@ -211,7 +211,6 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         id: Py<PyEntryId>,
     ) -> PyResult<Py<PyTable>> {
-        //TODO: don't re-register the table provider???
         let connection = self_.borrow(py).connection.clone();
 
         let client = self_.clone_ref(py);

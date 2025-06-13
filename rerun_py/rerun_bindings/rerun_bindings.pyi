@@ -1017,7 +1017,7 @@ class EntryKind:
         """Return str(self)."""
 
     def __int__(self) -> int:
-        """int(self)"""
+        """int(self)"""  # noqa: D400
 
 class Entry:
     """An entry in the catalog."""
