@@ -19,7 +19,7 @@ use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
 
-pub(crate) use catalog_client::PyCatalogClient;
+pub(crate) use catalog_client::PyCatalogClientInternal;
 pub(crate) use connection_handle::ConnectionHandle;
 pub(crate) use dataset::PyDataset;
 pub(crate) use entry::{PyEntry, PyEntryId, PyEntryKind};
@@ -29,7 +29,7 @@ pub(crate) use task::{PyTask, PyTasks};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyCatalogClient>()?;
+    m.add_class::<PyCatalogClientInternal>()?;
 
     m.add_class::<PyEntryId>()?;
     m.add_class::<PyEntryKind>()?;

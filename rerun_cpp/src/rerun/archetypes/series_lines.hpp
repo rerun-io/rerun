@@ -117,26 +117,25 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `widths` field.
         static constexpr auto Descriptor_widths = ComponentDescriptor(
-            ArchetypeName, "widths",
-            Loggable<rerun::components::StrokeWidth>::Descriptor.component_name
+            ArchetypeName, "widths", Loggable<rerun::components::StrokeWidth>::ComponentName
         );
         /// `ComponentDescriptor` for the `names` field.
         static constexpr auto Descriptor_names = ComponentDescriptor(
-            ArchetypeName, "names", Loggable<rerun::components::Name>::Descriptor.component_name
+            ArchetypeName, "names", Loggable<rerun::components::Name>::ComponentName
         );
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
             ArchetypeName, "visible_series",
-            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
+            Loggable<rerun::components::SeriesVisible>::ComponentName
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
             ArchetypeName, "aggregation_policy",
-            Loggable<rerun::components::AggregationPolicy>::Descriptor.component_name
+            Loggable<rerun::components::AggregationPolicy>::ComponentName
         );
 
       public: // START of extensions from series_lines_ext.cpp:

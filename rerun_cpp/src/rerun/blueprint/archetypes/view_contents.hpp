@@ -75,7 +75,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `query` field.
         static constexpr auto Descriptor_query = ComponentDescriptor(
             ArchetypeName, "query",
-            Loggable<rerun::blueprint::components::QueryExpression>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::QueryExpression>::ComponentName
         );
 
       public:

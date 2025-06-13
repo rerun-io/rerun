@@ -149,12 +149,12 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 GIVEN("component batches") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                                       {{1.0, 2.0}, {4.0, 5.0}},
-                                      rerun::Loggable<rerun::Position2D>::Descriptor
+                                      rerun::Points2D::Descriptor_positions
                     )
                                       .value_or_throw();
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
                                       {rerun::Color(0xFF0000FF)},
-                                      rerun::Loggable<rerun::Color>::Descriptor
+                                      rerun::Points2D::Descriptor_colors
                     )
                                       .value_or_throw();
                     THEN("single component batch can be logged") {
@@ -174,11 +174,11 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 GIVEN("component batches wrapped in `rerun::Result`") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
                         {{1.0, 2.0}, {4.0, 5.0}},
-                        rerun::Loggable<rerun::Position2D>::Descriptor
+                        rerun::Points2D::Descriptor_positions
                     );
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
                         {rerun::Color(0xFF0000FF)},
-                        rerun::Loggable<rerun::Color>::Descriptor
+                        rerun::Points2D::Descriptor_colors
                     );
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);

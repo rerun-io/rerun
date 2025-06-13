@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -41,7 +40,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::Plane3D> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.Plane3D";
+        static constexpr std::string_view ComponentName = "rerun.datatypes.Plane3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
