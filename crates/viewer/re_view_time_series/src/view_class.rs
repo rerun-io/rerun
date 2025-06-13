@@ -16,7 +16,7 @@ use re_types::{
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icon_text, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::{
     controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
     view_property_ui,
@@ -126,7 +126,7 @@ impl ViewClass for TimeSeriesView {
 
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Horizontal pan",
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
@@ -153,23 +153,17 @@ impl ViewClass for TimeSeriesView {
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
+                (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control(
-                "Move time cursor",
-                icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Move time cursor", MouseButtonText(MOVE_TIME_CURSOR_BUTTON))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
             .control_separator()
-            .control(
-                "Hide/show series",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
-            )
+            .control("Hide/show series", (icons::LEFT_MOUSE_CLICK, "legend"))
             .control(
                 "Hide/show other series",
-                icon_text!(
+                (
                     IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
-                    "legend"
+                    "legend",
                 ),
             )
     }

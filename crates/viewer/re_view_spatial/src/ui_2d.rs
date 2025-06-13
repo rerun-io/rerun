@@ -8,7 +8,7 @@ use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
 };
-use re_ui::{ContextExt as _, Help, MouseButtonText, icon_text, icons};
+use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
     ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
@@ -124,15 +124,12 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
 
     Help::new("2D view")
         .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
-        .control(
-            "Pan",
-            icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
-        )
+        .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
         .control(
             "Zoom",
             re_ui::IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
         )
-        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
