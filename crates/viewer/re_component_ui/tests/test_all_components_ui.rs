@@ -38,7 +38,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         TestCase::from_component(
             ComponentColumnSelector::new(
                 &EntityPath::from("/world"),
-                "rerun.components.Position3D",
+                "rerun.components.Position3D".to_owned(),
             ),
             "simple",
         ),

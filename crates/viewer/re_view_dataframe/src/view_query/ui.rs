@@ -174,19 +174,7 @@ impl Query {
 
         let (mut active, filter) = original_filter_is_not_null
             .as_ref()
-            .map(|filter| {
-                (
-                    filter.active(),
-                    ComponentColumnSelector::try_new_from_column_name(
-                        &filter.entity_path(),
-                        filter.component_name().as_str(),
-                    )
-                    .inspect_err(|err| {
-                        re_log::warn!("could not parse component column selector: {err}");
-                    })
-                    .ok(),
-                )
-            })
+            .map(|filter| (filter.active(), Some(filter.column_selector())))
             .unwrap_or((false, None));
 
         //
@@ -347,7 +335,7 @@ impl Query {
             let filter_is_not_null = components::FilterIsNotNull::new(
                 active,
                 &filter_entity,
-                filter_component.qualified_archetype_field_name().into(),
+                filter_component.qualified_archetype_field_name(),
             );
 
             if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {

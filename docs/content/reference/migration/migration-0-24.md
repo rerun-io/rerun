@@ -63,3 +63,18 @@ Now instead they are scaled relative to the entity's center.
 
 * Dataframe queries now use the new string representation everywhere. It's not allowed to pass in components anymore.
 * `resolve_component_column_selector` now returns an `Option`.
+
+With tagged components, our data model becomes much more flexible.
+We can now have multiple components of the same type living on the same archetype, so we also need a new way to identify columns in a recording.
+For this we introduce the following new string-based representation:
+
+```
+<entity_path>:[<archetype_name>]:<archetype_field_name>
+```
+
+Note that the `archetype_name` section is optional, because components can also be logged as plain fields.
+
+### Blueprints
+
+We have updated our logic so that the `component` field of `blueprint.datatypes.ComponentColumnSelector` follows the same schema.
+

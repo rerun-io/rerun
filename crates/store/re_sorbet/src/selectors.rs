@@ -114,7 +114,6 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Name of the `Archetype` associated with this data.
-    // TODO(#10065): This should be the unqualified (short) archetype name in the future.
     pub archetype_name: Option<ArchetypeName>,
 
     /// The field within the `Archetype` associated with this data.
@@ -128,15 +127,6 @@ impl ComponentColumnSelector {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name.to_string(),
         }
-    }
-
-    // TODO(#10065): This is mainly used as a stop-gap until blueprints are updated to new string representation.
-    pub fn try_new_from_column_name(
-        entity_path: &EntityPath,
-        column_name: &str,
-    ) -> Result<Self, ColumnSelectorParseError> {
-        let combined = format!("{entity_path}:{column_name}");
-        <Self as std::str::FromStr>::from_str(&combined)
     }
 
     pub fn qualified_archetype_field_name(&self) -> String {

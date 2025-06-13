@@ -24,37 +24,6 @@ pub struct Reflection {
     pub archetypes: ArchetypeReflectionMap,
 }
 
-impl Reflection {
-    /// Find an [`ArchetypeReflection`] based on its short name.
-    ///
-    /// Useful when the only information available is the short name, e.g. when inferring archetype
-    /// names from an indicator component.
-    //TODO(#10065): tagged component will contain a fully qualified archetype name, so this function
-    // will be unnecessary.
-    pub fn archetype_reflection_from_short_name(
-        &self,
-        short_name: &str,
-    ) -> Option<&ArchetypeReflection> {
-        // note: this mirrors `ArchetypeName::short_name`'s implementation
-        self.archetypes
-            .get(&ArchetypeName::from(short_name))
-            .or_else(|| {
-                self.archetypes.get(&ArchetypeName::from(format!(
-                    "rerun.archetypes.{short_name}"
-                )))
-            })
-            .or_else(|| {
-                self.archetypes.get(&ArchetypeName::from(format!(
-                    "rerun.blueprint.archetypes.{short_name}"
-                )))
-            })
-            .or_else(|| {
-                self.archetypes
-                    .get(&ArchetypeName::from(format!("rerun.{short_name}")))
-            })
-    }
-}
-
 /// Computes a placeholder for a given arrow datatype.
 ///
 /// With the exception of a few unsupported types,
