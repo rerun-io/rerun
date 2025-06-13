@@ -34,14 +34,14 @@ use crate::dataframe::{
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "Dataset", extends=PyEntry)]
-pub struct PyDataset {
+#[pyclass(name = "DatasetEntry", extends=PyEntry)]
+pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
 }
 
 #[pymethods]
-impl PyDataset {
+impl PyDatasetEntry {
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]
@@ -542,7 +542,7 @@ impl PyDataset {
     }
 }
 
-impl PyDataset {
+impl PyDatasetEntry {
     fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow_mut(self_.py()).connection().clone();

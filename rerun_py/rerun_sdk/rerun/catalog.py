@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 from rerun_bindings import (
     CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
-    Dataset as Dataset,
+    DatasetEntry as DatasetEntry,
     Entry as Entry,
     EntryId as EntryId,
     EntryKind as EntryKind,
-    Table as Table,
+    TableEntry as TableEntry,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
 )
@@ -41,11 +41,11 @@ class CatalogClient:
         """Returns a list of all entries in the catalog."""
         return self._raw_client.all_entries()
 
-    def dataset_entries(self) -> list[Dataset]:
+    def dataset_entries(self) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
         return self._raw_client.dataset_entries()
 
-    def table_entries(self) -> list[Table]:
+    def table_entries(self) -> list[TableEntry]:
         """Returns a list of all dataset entries in the catalog."""
         return self._raw_client.table_entries()
 
@@ -83,19 +83,19 @@ class CatalogClient:
 
     # ---
 
-    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> Dataset:
+    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
 
         return self._raw_client.get_dataset_entry(self._resolve_name_or_id(id, name))
 
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> Table:
+    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
 
         return self._raw_client.get_table_entry(self._resolve_name_or_id(id, name))
 
     # ---
 
-    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> Dataset:
+    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """
         Returns a dataset by its ID or name.
 
@@ -115,11 +115,11 @@ class CatalogClient:
 
     # ---
 
-    def create_dataset(self, name: str) -> Dataset:
+    def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
         return self._raw_client.create_dataset(name)
 
-    def entries_table(self) -> Table:
+    def entries_table(self) -> TableEntry:
         """Returns a table containing all entries in the catalog."""
 
         return self.get_table_entry(name="__entries")

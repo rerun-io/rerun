@@ -18,14 +18,14 @@ use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{PyDataset, to_py_err};
+use crate::catalog::{PyDatasetEntry, to_py_err};
 use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
-    dataset: Py<PyDataset>,
+    dataset: Py<PyDatasetEntry>,
 
     query_expression: QueryExpression,
 
@@ -38,7 +38,7 @@ pub struct PyDataframeQueryView {
 impl PyDataframeQueryView {
     #[expect(clippy::fn_params_excessive_bools)]
     pub fn new(
-        dataset: Py<PyDataset>,
+        dataset: Py<PyDatasetEntry>,
         index: String,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,

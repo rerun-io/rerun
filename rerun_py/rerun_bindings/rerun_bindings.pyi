@@ -1049,7 +1049,7 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
-class Dataset(Entry):
+class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
@@ -1060,7 +1060,7 @@ class Dataset(Entry):
     def blueprint_dataset_id(self) -> EntryId | None:
         """The ID of the associated blueprint dataset, if any."""
 
-    def blueprint_dataset(self) -> Dataset | None:
+    def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
 
     def default_blueprint_partition_id(self) -> str | None:
@@ -1163,7 +1163,7 @@ class Dataset(Entry):
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
 
-class Table(Entry):
+class TableEntry(Entry):
     """
     A table entry in the catalog.
 
@@ -1347,8 +1347,8 @@ class CatalogClientInternal:
     # ---
 
     def all_entries(self) -> list[Entry]: ...
-    def dataset_entries(self) -> list[Dataset]: ...
-    def table_entries(self) -> list[Table]: ...
+    def dataset_entries(self) -> list[DatasetEntry]: ...
+    def table_entries(self) -> list[TableEntry]: ...
 
     # ---
 
@@ -1358,12 +1358,12 @@ class CatalogClientInternal:
 
     # ---
 
-    def get_dataset_entry(self, id: EntryId) -> Dataset: ...
-    def get_table_entry(self, id: EntryId) -> Table: ...
+    def get_dataset_entry(self, id: EntryId) -> DatasetEntry: ...
+    def get_table_entry(self, id: EntryId) -> TableEntry: ...
 
     # ---
 
-    def create_dataset(self, name: str) -> Dataset: ...
+    def create_dataset(self, name: str) -> DatasetEntry: ...
     def ctx(self) -> Any: ...
 
     # ---

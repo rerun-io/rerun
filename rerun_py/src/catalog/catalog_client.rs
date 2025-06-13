@@ -7,7 +7,9 @@ use pyo3::{
 
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 
-use crate::catalog::{ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable, to_py_err};
+use crate::catalog::{
+    ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyTableEntry, to_py_err,
+};
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")]
@@ -83,7 +85,7 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all dataset entries in the catalog.
-    fn dataset_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyDataset>>> {
+    fn dataset_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyDatasetEntry>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -101,7 +103,7 @@ impl PyCatalogClientInternal {
                     details,
                 };
 
-                let dataset = PyDataset {
+                let dataset = PyDatasetEntry {
                     dataset_details: dataset_entry.dataset_details,
                     dataset_handle: dataset_entry.handle,
                 };
@@ -112,7 +114,7 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all table entries in the catalog.
-    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTable>>> {
+    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntry>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -129,7 +131,7 @@ impl PyCatalogClientInternal {
                     details,
                 };
 
-                let table = PyTable::default();
+                let table = PyTableEntry::default();
 
                 Py::new(py, (table, entry))
             })
@@ -180,7 +182,7 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         id: Py<PyEntryId>,
         py: Python<'_>,
-    ) -> PyResult<Py<PyDataset>> {
+    ) -> PyResult<Py<PyDatasetEntry>> {
         let connection = self_.borrow(py).connection.clone();
 
         let client = self_.clone_ref(py);
@@ -193,7 +195,7 @@ impl PyCatalogClientInternal {
             details: dataset_entry.details,
         };
 
-        let dataset = PyDataset {
+        let dataset = PyDatasetEntry {
             dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
@@ -210,7 +212,7 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         py: Python<'_>,
         id: Py<PyEntryId>,
-    ) -> PyResult<Py<PyTable>> {
+    ) -> PyResult<Py<PyTableEntry>> {
         let connection = self_.borrow(py).connection.clone();
 
         let client = self_.clone_ref(py);
@@ -223,7 +225,7 @@ impl PyCatalogClientInternal {
             details: dataset_entry.details,
         };
 
-        let table = PyTable::default();
+        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }
@@ -231,7 +233,7 @@ impl PyCatalogClientInternal {
     // ---
 
     /// Create a new dataset with the provided name.
-    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
+    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDatasetEntry>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
         let dataset_entry = connection.create_dataset(py, name.to_owned())?;
@@ -244,7 +246,7 @@ impl PyCatalogClientInternal {
             details: dataset_entry.details,
         };
 
-        let dataset = PyDataset {
+        let dataset = PyDatasetEntry {
             dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
