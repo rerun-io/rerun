@@ -7,7 +7,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
     VideoStreamCache, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    VisualizerSystem, video_time_from_query,
 };
 
 use crate::{
@@ -114,12 +114,6 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
             };
 
-            // Video streams are handled like "infinite" videos both forward and backwards in time.
-            // Therefore, the "time in the video" is whatever time we have on the timeline right now.
-            // Video streams are always using the timeline directly for their timestamps,
-            // therefore, we can use the unaltered time for all timeline types.
-            let video_time = re_video::Time::new(query_context.query.at().as_i64());
-
             let frame_result = {
                 let video = video.read();
 
@@ -130,8 +124,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
-                    video_time,
-                    &video.sample_buffer_slices(),
+                    video_time_from_query(query_context.query),
+                    &video.sample_buffers(),
                 )
             };
 

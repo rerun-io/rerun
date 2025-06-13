@@ -20,7 +20,9 @@ pub use image_decode_cache::ImageDecodeCache;
 pub use image_stats_cache::ImageStatsCache;
 pub use tensor_stats_cache::TensorStatsCache;
 pub use video_asset_cache::VideoAssetCache;
-pub use video_stream_cache::VideoStreamCache;
+pub use video_stream_cache::{
+    SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+};
 
 // ----
 
