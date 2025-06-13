@@ -43,8 +43,8 @@ pub use self::{
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
-        Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoAssetCache,
-        VideoStreamCache,
+        Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+        TensorStatsCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
@@ -74,7 +74,7 @@ pub use self::{
     },
     undo::BlueprintUndoState,
     utils::{
-        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
+        auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_time_from_query,
         video_timestamp_component_to_video_time,
     },
     view::{

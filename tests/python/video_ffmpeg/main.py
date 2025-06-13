@@ -12,9 +12,10 @@ def capture_webcam_h264() -> None:
     """Capture webcam and stream H.264 encoded video to Rerun with proper timing."""
 
     # Initialize Rerun
-    rr.init("rerun_example_webcam_h264_stream")
-    rr.spawn()
-    # rr.serve_web()
+    rr.init("rerun_example_webcam_h264_stream", recording_id="test")
+    #rr.spawn()
+    rr.serve_web()
+    #rr.connect_grpc()
 
     # Target FPS for timing calculations
     target_fps = 30
