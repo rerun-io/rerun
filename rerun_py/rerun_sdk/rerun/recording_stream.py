@@ -453,6 +453,9 @@ class RecordingStream:
                 "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`.",
             )
 
+        # Forward to the context manager of the native recording stream
+        self.inner.__exit__(exc_type, exc_val, exc_tb)
+
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
     def to_native(self) -> bindings.PyRecordingStream:
         return self.inner

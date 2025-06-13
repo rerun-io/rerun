@@ -11,7 +11,7 @@ use itertools::Itertools as _;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
-    types::{PyBytes, PyDict},
+    types::{PyAny, PyBytes, PyDict},
 };
 
 use re_log::ResultExt as _;
@@ -367,6 +367,24 @@ impl PyRecordingStream {
     /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
+    }
+
+    fn __exit__(
+        &self,
+        _exc_type: &Bound<'_, PyAny>,
+        _exc_value: &Bound<'_, PyAny>,
+        _traceback: &Bound<'_, PyAny>,
+    ) {
+        Python::with_gil(|py| {
+            py.allow_threads(|| {
+                if let Some(id) = self.0.store_info().map(|info| info.store_id) {
+                    // Don't remove it if this is the global data recording.
+                    if get_recording_id(None) != Some(id.to_string()) {
+                        all_recordings().remove(&id);
+                    }
+                }
+            });
+        });
     }
 }
 

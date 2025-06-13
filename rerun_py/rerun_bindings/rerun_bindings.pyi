@@ -4,6 +4,7 @@ import os
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from enum import Enum
+from types import TracebackType
 from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
@@ -610,6 +611,14 @@ class PyRecordingStream:
 
         Calling operations such as flush or set_sink will result in an error.
         """
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Exit the recording stream."""
 
 class PyMemorySinkStorage:
     def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
