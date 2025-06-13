@@ -35,8 +35,7 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `scaling` field.
         static constexpr auto Descriptor_scaling = ComponentDescriptor(
-            ArchetypeName, "scaling",
-            Loggable<rerun::blueprint::components::ViewFit>::Descriptor.component_name
+            ArchetypeName, "scaling", Loggable<rerun::blueprint::components::ViewFit>::ComponentName
         );
 
       public:
