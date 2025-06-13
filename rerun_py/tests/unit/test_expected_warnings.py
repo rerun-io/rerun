@@ -50,3 +50,27 @@ def test_expected_warnings() -> None:
         lambda: rr.log("world/image", rr.Pinhole(focal_length=3)),
         "Must provide one of principal_point, resolution, or width/height)",
     )
+
+
+def test_init_twice() -> None:
+    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)."""
+    # Always set strict mode to false in case it leaked from another test
+    rr.set_strict_mode(False)
+
+    # Using default recording id
+    rr.init("rerun_example_test_app_id")
+    recording_id = rr.get_recording_id()
+    expect_warning(
+        lambda: rr.init("rerun_example_test_app_id"),
+        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
+    )
+    assert recording_id == rr.get_recording_id()
+
+    # Using a custom recording id
+    recording_id = "test_recording_id"
+    rr.init("rerun_example_test_app_id", recording_id=recording_id)
+    expect_warning(
+        lambda: rr.init("rerun_example_test_app_id", recording_id=recording_id),
+        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
+    )
+    assert recording_id == rr.get_recording_id()
