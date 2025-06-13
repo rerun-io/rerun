@@ -4,13 +4,11 @@
 
 use crate::ArrowBatchMetadata;
 
-/// When was this batch last encoded into IPC bytes?
-/// Usually this is when the batch was last sent over gRPC.
-pub const KEY_TIMESTAMP_IPC_ENCODED: &str = "sorbet.timestamp_ipc_encoded";
+/// When was this batch sent by the SDK gRPC log sink?
+pub const KEY_TIMESTAMP_SDK_IPC_ENCODE: &str = "sorbet.timestamp_sdk_ipc_encoded";
 
-/// When was this batch last decoded from IPC bytes?
-/// Usually this is when the batch was last received over gRPC.
-pub const KEY_TIMESTAMP_IPC_DECODED: &str = "sorbet.timestamp_ipc_decoded";
+/// When was this batch last decoded from IPC bytes by the gRPC server (presumably in the viewer)?
+pub const KEY_TIMESTAMP_VIEWER_IPC_DECODED: &str = "sorbet.timestamp_viewer_ipc_decoded";
 
 /// We encode time as seconds since the Unix epoch,
 /// with nanosecond precision, e.g. `1700000000.012345678`.
@@ -63,10 +61,10 @@ pub struct TimestampMetadata {
 impl TimestampMetadata {
     pub fn parse_record_batch_metadata(metadata: &ArrowBatchMetadata) -> Self {
         let last_encoded_at = metadata
-            .get(KEY_TIMESTAMP_IPC_ENCODED)
+            .get(KEY_TIMESTAMP_SDK_IPC_ENCODE)
             .and_then(|s| parse_timestamp(s.as_str()));
         let last_decoded_at = metadata
-            .get(KEY_TIMESTAMP_IPC_DECODED)
+            .get(KEY_TIMESTAMP_VIEWER_IPC_DECODED)
             .and_then(|s| parse_timestamp(s.as_str()));
 
         Self {
@@ -85,14 +83,14 @@ impl TimestampMetadata {
 
         if let Some(last_encoded_at) = last_encoded_at {
             metadata.push((
-                KEY_TIMESTAMP_IPC_ENCODED.to_owned(),
+                KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
                 encode_timestamp(*last_encoded_at),
             ));
         }
 
         if let Some(last_decoded_at) = last_decoded_at {
             metadata.push((
-                KEY_TIMESTAMP_IPC_DECODED.to_owned(),
+                KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
                 encode_timestamp(*last_decoded_at),
             ));
         }
