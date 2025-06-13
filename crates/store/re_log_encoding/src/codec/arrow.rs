@@ -46,6 +46,8 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
+    re_tracing::profile_function!();
+
     let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
         .map_err(CodecError::ArrowDeserialization)?;
 
@@ -108,6 +110,7 @@ pub(crate) fn decode_arrow(
     let data = match compression {
         crate::Compression::Off => data,
         crate::Compression::LZ4 => {
+            re_tracing::profile_scope!("LZ4-decompress");
             uncompressed.resize(uncompressed_size, 0);
             lz4_flex::block::decompress_into(data, &mut uncompressed)?;
             uncompressed.as_slice()
