@@ -1,7 +1,31 @@
 use re_log_types::EntryId;
 
+use crate::catalog::v1alpha1::EntryKind;
 use crate::v1alpha1::rerun_common_v1alpha1_ext::{DatasetHandle, PartitionId};
 use crate::{TypeConversionError, missing_field};
+
+// --- EntryFilter ---
+
+impl crate::catalog::v1alpha1::EntryFilter {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_id(mut self, id: EntryId) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn with_entry_kind(mut self, kind: EntryKind) -> Self {
+        self.entry_kind = Some(kind as i32);
+        self
+    }
+}
 
 // --- EntryDetails ---
 
