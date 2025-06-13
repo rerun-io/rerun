@@ -242,10 +242,10 @@ fn new_recording(
     // Check if recording already exists first.
     // NOTE: This is scoped in order to release the Mutex locked by `all_recordings` as soon as possible
     if let Some(existing_recording) = all_recordings().get(&recording_id) {
-        let _=utils::py_rerun_warn(
+        utils::py_rerun_warn(
             format!("Recording with id: {} already exists, will ignore creation and return existing recording.",
             &recording_id).as_str()
-        );
+        )?;
         return Ok(PyRecordingStream(existing_recording.clone()));
     }
 

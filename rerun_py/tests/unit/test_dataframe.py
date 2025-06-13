@@ -11,14 +11,13 @@ from rerun_bindings.rerun_bindings import Schema
 from rerun_bindings.types import AnyColumn, ComponentLike, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
-RECORDING_ID = uuid.uuid4()
 
 
 def test_load_recording() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rrd = tmpdir + "/tmp.rrd"
 
-        with rr.RecordingStream("rerun_example_test_recording") as rec:
+        with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
             rec.save(rrd)
             rec.set_time("my_index", sequence=1)
             rec.log("log", rr.TextLog("Hello"))
@@ -51,7 +50,8 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+            self.expected_recording_id = uuid.uuid4()
+            with rr.RecordingStream(APP_ID, recording_id=self.expected_recording_id) as rec:
                 rec.save(rrd)
                 rec.set_time("my_index", sequence=1)
                 rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
@@ -94,7 +94,7 @@ class TestDataframe:
 
     def test_recording_info(self) -> None:
         assert self.recording.application_id() == APP_ID
-        assert self.recording.recording_id() == str(RECORDING_ID)
+        assert self.recording.recording_id() == str(self.expected_recording_id)
 
     def test_schema_recording(self) -> None:
         schema: Schema = self.recording.schema()
@@ -432,7 +432,7 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.RecordingStream("rerun_example_test_recording") as rec:
+            with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
                 rec.save(rrd)
                 rr.dataframe.send_dataframe(df, rec=rec)
 
