@@ -159,7 +159,7 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
@@ -197,7 +197,7 @@ pub(crate) async fn client(
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
