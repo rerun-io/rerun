@@ -28,16 +28,24 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
+    def do_HEAD(self) -> None:
+        if self.path == "/widget.js":
+            self._serve_HEAD("widget.js")
+        elif self.path == "/re_viewer_bg.wasm":
+            self._serve_HEAD("re_viewer_bg.wasm")
+        else:
+            self.send_error(404, "File not found")
+
     def do_GET(self) -> None:
         if self.path == "/widget.js":  # remap this path
-            self._serve_file("widget.js")
+            self._serve_GET("widget.js")
         elif self.path == "/re_viewer_bg.wasm":
-            self._serve_file("re_viewer_bg.wasm")
+            self._serve_GET("re_viewer_bg.wasm")
         else:
             # Serve other requests normally
             self.send_error(404, "File Not Found")
 
-    def _serve_file(self, name: str) -> None:
+    def _serve_GET(self, name: str) -> None:
         if assets is None:
             self.send_error(500, "Resources not loaded")
             return
@@ -45,10 +53,26 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
         asset = assets[name]
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
         for key, value in asset.headers.items():
             self.send_header(key, value)
         self.end_headers()
         self.wfile.write(asset.data)
+
+    def _serve_HEAD(self, name: str) -> None:
+        if assets is None:
+            self.send_error(500, "Resources not loaded")
+            return
+
+        asset = assets[name]
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
+        for key, value in asset.headers.items():
+            self.send_header(key, value)
+        self.end_headers()
 
     def log_message(self, format: str, *args: Any) -> None:
         # Disable logging
