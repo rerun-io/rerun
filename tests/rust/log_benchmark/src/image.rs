@@ -23,7 +23,7 @@ fn prepare() -> Vec<u8> {
     // image
 }
 
-fn execute(rec: &mut rerun::RecordingStream, mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
+fn execute(rec: &rerun::RecordingStream, mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     for i in 0..NUM_LOG_CALLS {
@@ -49,7 +49,7 @@ fn execute(rec: &mut rerun::RecordingStream, mut raw_image_data: Vec<u8>) -> any
 }
 
 /// Log a single large image.
-pub fn run(rec: &mut rerun::RecordingStream) -> anyhow::Result<()> {
+pub fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     let input = std::hint::black_box(prepare());
     execute(rec, input)

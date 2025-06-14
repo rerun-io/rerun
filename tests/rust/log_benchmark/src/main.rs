@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
         profiler.start();
     }
 
-    let (mut rec, _storage) = if args.connect {
+    let (rec, _storage) = if args.connect {
         let rec = rerun::RecordingStreamBuilder::new("rerun_example_benchmark").connect_grpc()?;
         (rec, None)
     } else {
@@ -111,9 +111,9 @@ fn main() -> anyhow::Result<()> {
         println!("Running benchmark: {benchmark:?}");
 
         match benchmark {
-            Benchmark::Points3DLargeBatch => points3d_large_batch::run(&mut rec)?,
-            Benchmark::Points3DManyIndividual => points3d_many_individual::run(&mut rec)?,
-            Benchmark::Image => image::run(&mut rec)?,
+            Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
+            Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
+            Benchmark::Image => image::run(&rec)?,
         }
     }
 
