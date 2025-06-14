@@ -9,7 +9,7 @@
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Holds the state of the blueprint tree UI.</p>
 </div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.blueprint_tree_scroll_to_item" class="structfield section-header"><a href="#structfield.blueprint_tree_scroll_to_item" class="anchor field">§</a><code>blueprint_tree_scroll_to_item: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>&gt;</code></span><div class="docblock"><p>The item that should be focused on in the blueprint tree.</p>
 <p>Set at each frame by <a href="../struct.BlueprintTree.html#method.tree_ui" title="method re_blueprint_tree::BlueprintTree::tree_ui"><code>Self::tree_ui</code></a>. This is similar to
-<a href="../../re_viewer_context/viewer_context/struct.ViewerContext.html#structfield.focused_item" title="field re_viewer_context::viewer_context::ViewerContext::focused_item"><code>ViewerContext::focused_item</code></a> but account for how specifically the blueprint tree should
+[<code>ViewerContext::focused_item</code>] but account for how specifically the blueprint tree should
 handle the focused item.</p>
 </div><span id="structfield.candidate_drop_parent_container_id" class="structfield section-header"><a href="#structfield.candidate_drop_parent_container_id" class="anchor field">§</a><code>candidate_drop_parent_container_id: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="../../re_global_context/blueprint_id/type.ContainerId.html" title="type re_global_context::blueprint_id::ContainerId">ContainerId</a>&gt;</code></span><div class="docblock"><p>Current candidate parent container for the ongoing drop. Should be drawn with special
 highlight.</p>
@@ -29,19 +29,19 @@ to <code>Some</code>, so that this flag is immediately consumed.</p>
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-BlueprintTree" class="impl"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#68-1254">Source</a><a href="#impl-BlueprintTree" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="../struct.BlueprintTree.html" title="struct re_blueprint_tree::BlueprintTree">BlueprintTree</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.activate_filter" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#70-72">Source</a><h4 class="code-header">pub fn <a href="#method.activate_filter" class="fn">activate_filter</a>(&amp;mut self, query: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>)</h4></section></summary><div class="docblock"><p>Activates the search filter (for e.g. test purposes).</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.show" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#75-125">Source</a><h4 class="code-header">pub fn <a href="#method.show" class="fn">show</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;mut Ui,
 )</h4></section></summary><div class="docblock"><p>Show the Blueprint section of the left panel based on the current <a href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint"><code>ViewportBlueprint</code></a></p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.tree_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#128-185">Source</a><h4 class="code-header">fn <a href="#method.tree_ui" class="fn">tree_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;mut Ui,
 )</h4></section></summary><div class="docblock"><p>Show the blueprint panel tree view.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.root_container_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#191-252">Source</a><h4 class="code-header">fn <a href="#method.root_container_ui" class="fn">root_container_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;mut Ui,
@@ -51,7 +51,7 @@ to <code>Some</code>, so that this flag is immediately consumed.</p>
 collapsed, so it’s drawn without a collapsing triangle.</p>
 </div></details><section id="method.contents_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#254-285">Source</a><h4 class="code-header">fn <a href="#method.contents_ui" class="fn">contents_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;mut Ui,
@@ -59,7 +59,7 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
     parent_visible: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
 )</h4></section><section id="method.container_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#287-371">Source</a><h4 class="code-header">fn <a href="#method.container_ui" class="fn">container_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;mut Ui,
@@ -67,7 +67,7 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
     parent_visible: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
 )</h4></section><section id="method.view_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#373-483">Source</a><h4 class="code-header">fn <a href="#method.view_ui" class="fn">view_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;mut Ui,
@@ -75,7 +75,7 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
     container_visible: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
 )</h4></section><section id="method.data_result_ui" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#486-644">Source</a><h4 class="code-header">fn <a href="#method.data_result_ui" class="fn">data_result_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;mut Ui,
@@ -83,7 +83,7 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
     view_visible: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
 )</h4></section><section id="method.handle_interactions_for_item" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#649-675">Source</a><h4 class="code-header">fn <a href="#method.handle_interactions_for_item" class="fn">handle_interactions_for_item</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     ui: &amp;Ui,
@@ -91,20 +91,20 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
     response: &amp;Response,
 )</h4></section><section id="method.handle_key_navigation" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#677-768">Source</a><h4 class="code-header">fn <a href="#method.handle_key_navigation" class="fn">handle_key_navigation</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     item: &amp;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.handle_range_selection" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#771-821">Source</a><h4 class="code-header">fn <a href="#method.handle_range_selection" class="fn">handle_range_selection</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
     item: <a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>,
     response: &amp;Response,
 )</h4></section></summary><div class="docblock"><p>Handle setting/extending the selection based on shift-clicking.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.items_in_range" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#828-872">Source</a><h4 class="code-header">fn <a href="#method.items_in_range" class="fn">items_in_range</a>(
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     blueprint_tree_data: &amp;<a class="struct" href="../data/struct.BlueprintTreeData.html" title="struct re_blueprint_tree::data::BlueprintTreeData">BlueprintTreeData</a>,
-    collapse_scope: <a class="enum" href="../../re_viewer_context/collapsed_id/enum.CollapseScope.html" title="enum re_viewer_context::collapsed_id::CollapseScope">CollapseScope</a>,
+    collapse_scope: CollapseScope,
     anchor_item: &amp;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>,
     shift_clicked_item: &amp;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>,
 ) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>&gt;</h4></section></summary><div class="docblock"><p>Selects a range of items in the blueprint tree.</p>
@@ -114,14 +114,14 @@ actually visible items may be selected.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.scroll_to_me_if_needed" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#875-891">Source</a><h4 class="code-header">fn <a href="#method.scroll_to_me_if_needed" class="fn">scroll_to_me_if_needed</a>(&amp;mut self, ui: &amp;Ui, item: &amp;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>, response: &amp;Response)</h4></section></summary><div class="docblock"><p>Check if the provided item should be scrolled to.</p>
 </div></details><section id="method.handle_root_container_drag_and_drop_interaction" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#896-944">Source</a><h4 class="code-header">fn <a href="#method.handle_root_container_drag_and_drop_interaction" class="fn">handle_root_container_drag_and_drop_interaction</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;Ui,
     contents: <a class="enum" href="../../re_global_context/contents/enum.Contents.html" title="enum re_global_context::contents::Contents">Contents</a>,
     response: &amp;Response,
 )</h4></section><section id="method.handle_drag_and_drop_interaction" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#946-1024">Source</a><h4 class="code-header">fn <a href="#method.handle_drag_and_drop_interaction" class="fn">handle_drag_and_drop_interaction</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;Ui,
     contents: <a class="enum" href="../../re_global_context/contents/enum.Contents.html" title="enum re_global_context::contents::Contents">Contents</a>,
@@ -129,13 +129,13 @@ actually visible items may be selected.</p>
     body_response: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;Response&gt;,
 )</h4></section><section id="method.handle_empty_space_drag_and_drop_interaction" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1026-1066">Source</a><h4 class="code-header">fn <a href="#method.handle_empty_space_drag_and_drop_interaction" class="fn">handle_empty_space_drag_and_drop_interaction</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;Ui,
     empty_space: Rect,
 )</h4></section><section id="method.handle_contents_drop_target" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1068-1120">Source</a><h4 class="code-header">fn <a href="#method.handle_contents_drop_target" class="fn">handle_contents_drop_target</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;Ui,
     dragged_contents: &amp;[<a class="enum" href="../../re_global_context/contents/enum.Contents.html" title="enum re_global_context::contents::Contents">Contents</a>],
@@ -143,9 +143,9 @@ actually visible items may be selected.</p>
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.is_candidate_drop_parent_container" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1126-1128">Source</a><h4 class="code-header">fn <a href="#method.is_candidate_drop_parent_container" class="fn">is_candidate_drop_parent_container</a>(&amp;self, container_id: &amp;<a class="type" href="../../re_global_context/blueprint_id/type.ContainerId.html" title="type re_global_context::blueprint_id::ContainerId">ContainerId</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Is the provided container the current candidate parent container for the ongoing drag?</p>
 <p>When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
 this can happen when hovering said container, its direct children, or even the item just after it.</p>
-</div></details><section id="method.collapse_scope" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1130-1135">Source</a><h4 class="code-header">pub fn <a href="#method.collapse_scope" class="fn">collapse_scope</a>(&amp;self) -&gt; <a class="enum" href="../../re_viewer_context/collapsed_id/enum.CollapseScope.html" title="enum re_viewer_context::collapsed_id::CollapseScope">CollapseScope</a></h4></section><details class="toggle method-toggle" open><summary><section id="method.handle_focused_item" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1140-1205">Source</a><h4 class="code-header">fn <a href="#method.handle_focused_item" class="fn">handle_focused_item</a>(
+</div></details><section id="method.collapse_scope" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1130-1135">Source</a><h4 class="code-header">pub fn <a href="#method.collapse_scope" class="fn">collapse_scope</a>(&amp;self) -&gt; CollapseScope</h4></section><details class="toggle method-toggle" open><summary><section id="method.handle_focused_item" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1140-1205">Source</a><h4 class="code-header">fn <a href="#method.handle_focused_item" class="fn">handle_focused_item</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport: &amp;<a class="struct" href="../../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
     ui: &amp;Ui,
     focused_item: &amp;<a class="enum" href="../../re_global_context/item/enum.Item.html" title="enum re_global_context::item::Item">Item</a>,
@@ -158,7 +158,7 @@ this can happen when hovering said container, its direct children, or even the i
 )</h4></section></summary><div class="docblock"><p>Expand all containers until reaching the provided content.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.expand_all_data_results_until" class="method"><a class="src rightside" href="../../src/re_blueprint_tree/blueprint_tree.rs.html#1234-1253">Source</a><h4 class="code-header">fn <a href="#method.expand_all_data_results_until" class="fn">expand_all_data_results_until</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     egui_ctx: &amp;Context,
     view_id: &amp;<a class="type" href="../../re_global_context/blueprint_id/type.ViewId.html" title="type re_global_context::blueprint_id::ViewId">ViewId</a>,
     entity_path: &amp;<a class="struct" href="../../re_log_types/path/entity_path/struct.EntityPath.html" title="struct re_log_types::path::entity_path::EntityPath">EntityPath</a>,
@@ -281,7 +281,7 @@ builds.</div></details></div></details><details class="toggle implementors-toggl
     T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/panic/unwind_safe/trait.RefUnwindSafe.html" title="trait core::panic::unwind_safe::RefUnwindSafe">RefUnwindSafe</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,</div></h3></section><section id="impl-ErasedDestructor-for-T" class="impl"><a href="#impl-ErasedDestructor-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; ErasedDestructor for T<div class="where">where
     T: 'static,</div></h3></section><section id="impl-MaybeSendSync-for-T" class="impl"><a href="#impl-MaybeSendSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; MaybeSendSync for T</h3></section><section id="impl-Ungil-for-T" class="impl"><a href="#impl-Ungil-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; Ungil for T<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T" class="impl"><a href="#impl-WasmNotSend-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSend for T<div class="where">where
-    T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T-1" class="impl"><a class="src rightside" href="../../src/re_viewer_context/async_runtime_handle.rs.html#8">Source</a><a href="#impl-WasmNotSend-for-T-1" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; <a class="trait" href="../../re_viewer_context/async_runtime_handle/trait.WasmNotSend.html" title="trait re_viewer_context::async_runtime_handle::WasmNotSend">WasmNotSend</a> for T<div class="where">where
+    T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSend-for-T-1" class="impl"><a href="#impl-WasmNotSend-for-T-1" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSend for T<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>,</div></h3></section><section id="impl-WasmNotSendSync-for-T" class="impl"><a href="#impl-WasmNotSendSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSendSync for T<div class="where">where
     T: WasmNotSend + WasmNotSync,</div></h3></section><section id="impl-WasmNotSync-for-T" class="impl"><a href="#impl-WasmNotSync-for-T" class="anchor">§</a><h3 class="code-header">impl&lt;T&gt; WasmNotSync for T<div class="where">where
     T: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,</div></h3></section></div></section></div></main></body></html>

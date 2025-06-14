@@ -17,7 +17,7 @@ e.g. the time it takes to send the data over the network.</p>
     &amp;mut self,
     now_nanos: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.i64.html">i64</a>,
     timestamps: &amp;TimestampMetadata,
-    chunk: &amp;<a class="struct" href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk">Chunk</a>,
+    chunk: &amp;Chunk,
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.snapshot" class="method"><a class="src rightside" href="../src/re_entity_db/ingestion_statistics.rs.html#136-163">Source</a><h4 class="code-header">pub fn <a href="#method.snapshot" class="fn">snapshot</a>(&amp;mut self) -&gt; <a class="struct" href="struct.LatencySnapshot.html" title="struct re_entity_db::LatencySnapshot">LatencySnapshot</a></h4></section></summary><div class="docblock"><p>What is the mean latency between the time data was logged in the SDK and the time it was ingested?</p>
 <p>This is based on the clocks of the viewer and the SDK being in sync,
 so if the recording was done on another machine, this is likely very inaccurate.</p>
