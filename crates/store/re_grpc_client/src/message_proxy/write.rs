@@ -177,11 +177,11 @@ async fn message_proxy_client(
             tokio::select! {
                 cmd = cmd_rx.recv() => {
                     match cmd {
-                        Some(Cmd::LogMsg( log_msg)) => {
+                        Some(Cmd::LogMsg(log_msg)) => {
                             // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
                             let log_msg = log_msg.with_record_batch_metadata(
-                                    re_sorbet::timestamp_metadata::KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
-                                    re_sorbet::timestamp_metadata::now_timestamp(),
+                                re_sorbet::timestamp_metadata::KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
+                                re_sorbet::timestamp_metadata::now_timestamp(),
                             );
 
                             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(log_msg, compression) {
