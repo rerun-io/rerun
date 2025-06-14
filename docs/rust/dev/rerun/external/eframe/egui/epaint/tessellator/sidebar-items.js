@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PathType"],"mod":["path"],"struct":["Path","TessellationOptions","Tessellator"]};

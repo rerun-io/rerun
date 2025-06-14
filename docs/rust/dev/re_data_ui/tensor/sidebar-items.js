@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_tensor_shape_single_line","tensor_summary_ui","tensor_summary_ui_grid_contents","tensor_ui"]};

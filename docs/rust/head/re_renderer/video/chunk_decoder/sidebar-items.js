@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["alloc_video_frame_texture","copy_native_video_frame_to_texture","latest_at_idx"],"struct":["DecoderOutput","VideoSampleDecoder"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["col"],"struct":["DataFusionAdapter","DataFusionQuery","DataFusionQueryData"],"type":["RequestedSorbetBatches"]};

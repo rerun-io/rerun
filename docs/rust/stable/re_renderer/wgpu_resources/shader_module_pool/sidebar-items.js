@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["RERUN_WGSL_SHADER_DUMP_PATH"],"struct":["GpuShaderModuleHandle","GpuShaderModulePool","ShaderModuleDesc"]};

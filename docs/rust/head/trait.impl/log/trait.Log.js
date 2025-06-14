@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["re_log",[["impl <a class=\"trait\" href=\"https://docs.rs/log/0.4.22/log/trait.Log.html\" title=\"trait log::Log\">Log</a> for <a class=\"struct\" href=\"re_log/multi_logger/struct.MultiLogger.html\" title=\"struct re_log::multi_logger::MultiLogger\">MultiLogger</a>"],["impl <a class=\"trait\" href=\"https://docs.rs/log/0.4.22/log/trait.Log.html\" title=\"trait log::Log\">Log</a> for <a class=\"struct\" href=\"re_log/setup/struct.PanicOnWarn.html\" title=\"struct re_log::setup::PanicOnWarn\">PanicOnWarn</a>"],["impl <a class=\"trait\" href=\"https://docs.rs/log/0.4.22/log/trait.Log.html\" title=\"trait log::Log\">Log</a> for <a class=\"struct\" href=\"re_log/struct.ChannelLogger.html\" title=\"struct re_log::ChannelLogger\">ChannelLogger</a>"]]],["re_sdk",[]],["rerun",[["impl <a class=\"trait\" href=\"rerun/external/log/trait.Log.html\" title=\"trait rerun::external::log::Log\">Log</a> for <a class=\"struct\" href=\"rerun/log_integration/struct.Logger.html\" title=\"struct rerun::log_integration::Logger\">Logger</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[757,14,266]}

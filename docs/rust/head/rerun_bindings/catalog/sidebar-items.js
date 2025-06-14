@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PyVectorDistanceMetric","VectorDistanceMetricLike","VectorLike"],"fn":["register"],"mod":["catalog_client","connection_handle","dataframe_query","dataset_entry","entry","errors","table_entry","task"]};

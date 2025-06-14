@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"derive":["Deserialize","Serialize"],"mod":["blueprint_id","entity_path","instance_id","recording_id","time_real"],"trait":["Deserialize","Deserializer","Serialize","Serializer"]};

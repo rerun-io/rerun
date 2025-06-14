@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_host","is_host_unspecified","is_origin_localhost"],"struct":["Origin"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["prevent_shrinking"],"struct":["ModalHandler","ModalWrapper"]};

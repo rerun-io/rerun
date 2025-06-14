@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_contents_expr"],"struct":["PyDataframeQueryView"]};

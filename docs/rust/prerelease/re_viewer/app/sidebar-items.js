@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_ZOOM_FACTOR","MIN_ZOOM_FACTOR"],"enum":["TimeControlCommand"],"fn":["file_saver_progress_ui","open_file_dialog_native","paint_background_fill","paint_native_window_frame","populate_space_view_class_registry_with_builtin","preview_files_being_dropped","save"],"struct":["App","StartupOptions"]};

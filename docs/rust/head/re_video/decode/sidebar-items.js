@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DecodeError","DecodeHardwareAcceleration","PixelFormat","YuvMatrixCoefficients","YuvPixelLayout","YuvRange"],"fn":["new_decoder"],"mod":["async_decoder_wrapper","av1","ffmpeg_h264","gop_detection"],"struct":["Chunk","DecodeSettings","Frame","FrameContent","FrameInfo"],"trait":["AsyncDecoder"],"type":["OutputCallback","Result"]};

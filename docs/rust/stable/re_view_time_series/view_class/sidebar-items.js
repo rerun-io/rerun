@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_series_to_plot","format_y_axis","make_range_sane","nanos_grid_spacer","round_nanos_to_start_of_day","set_plot_visibility_from_store","update_series_visibility_overrides_from_plot"],"struct":["TimeSeriesView","TimeSeriesViewState"],"type":["ViewType"]};

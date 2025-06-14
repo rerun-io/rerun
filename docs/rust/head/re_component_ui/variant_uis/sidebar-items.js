@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["redap_uri_button"]};

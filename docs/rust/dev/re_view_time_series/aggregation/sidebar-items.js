@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MinMaxAggregator"],"fn":["are_aggregatable"],"struct":["AverageAggregator"]};

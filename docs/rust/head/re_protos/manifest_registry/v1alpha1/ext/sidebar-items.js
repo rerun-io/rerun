@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GetDatasetSchemaResponseError","IndexProperties","PartitionType"],"struct":["DataSource","FuzzyComponentDescriptor","GetChunksRequest","PartitionDescriptor","Query","QueryDatasetRequest","QueryLatestAt","QueryRange"]};

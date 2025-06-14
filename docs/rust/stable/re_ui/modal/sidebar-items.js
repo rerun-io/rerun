@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["prevent_shrinking","view_padding_frame"],"struct":["ModalHandler","ModalWrapper","ModalWrapperResponse","ViewPaddingFrameParams"]};

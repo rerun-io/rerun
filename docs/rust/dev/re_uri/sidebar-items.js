@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_PROXY_PORT","DEFAULT_REDAP_PORT"],"enum":["Error","RedapUri","Scheme"],"mod":["endpoints","error","external","fragment","origin","redap_uri","scheme","time_range"],"struct":["CatalogUri","DatasetDataUri","EntryUri","Fragment","Origin","ProxyUri","TimeRange"]};

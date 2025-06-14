@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["message_proxy_service_client","message_proxy_service_server"],"struct":["ReadMessagesRequest","ReadMessagesResponse","ReadTablesRequest","ReadTablesResponse","WriteMessagesRequest","WriteMessagesResponse","WriteTableRequest","WriteTableResponse"]};

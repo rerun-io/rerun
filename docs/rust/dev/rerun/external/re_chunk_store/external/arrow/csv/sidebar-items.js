@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["infer_schema_from_files"],"mod":["reader","writer"],"struct":["ReaderBuilder","Writer","WriterBuilder"],"type":["Reader"]};

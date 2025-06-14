@@ -1,0 +1,1 @@
+searchState.loadedDescShard("animated_urdf", 0, "An example of how to load and animate a URDF given some …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

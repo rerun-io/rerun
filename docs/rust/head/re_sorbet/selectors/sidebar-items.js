@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ColumnSelector","ColumnSelectorParseError"],"struct":["ComponentColumnSelector","TimeColumnSelector"]};

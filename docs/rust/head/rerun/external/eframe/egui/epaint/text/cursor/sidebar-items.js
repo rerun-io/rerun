@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["CCursor","LayoutCursor"]};

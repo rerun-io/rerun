@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["catalog","dataset","entry","proxy"]};

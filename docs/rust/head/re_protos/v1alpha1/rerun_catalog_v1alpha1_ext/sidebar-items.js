@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["CreateDatasetEntryResponse","DatasetDetails","DatasetEntry","EntryDetails","ReadDatasetEntryResponse","SystemTable","TableEntry","UpdateDatasetEntryRequest","UpdateDatasetEntryResponse"],"trait":["ProviderDetails"]};

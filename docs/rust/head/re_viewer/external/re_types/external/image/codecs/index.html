@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Encoding and decoding for various image file formats."><title>re_viewer::external::re_types::external::image::codecs - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module codecs</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#supported-formats" title="Supported formats">Supported formats</a><ul><li><a href="#a-note-on-format-specific-features" title="A note on format specific features">A note on format specific features</a></li></ul></li></ul><h3><a href="#modules">Module Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In re_<wbr>viewer::<wbr>external::<wbr>re_<wbr>types::<wbr>external::<wbr>image</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">re_viewer</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_types</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">image</a></span><h1>Module <span>codecs</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Encoding and decoding for various image file formats.</p>
+<h2 id="supported-formats"><a class="doc-anchor" href="#supported-formats">§</a>Supported formats</h2><!--- NOTE: Make sure to keep this table in sync with the README -->
+<div><table><thead><tr><th>Format</th><th>Decoding</th><th>Encoding</th></tr></thead><tbody>
+<tr><td>AVIF</td><td>Yes (8-bit only) *</td><td>Yes (lossy only)</td></tr>
+<tr><td>BMP</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>DDS</td><td>Yes</td><td>—</td></tr>
+<tr><td>Farbfeld</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>GIF</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>HDR</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>ICO</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>JPEG</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>EXR</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>PNG</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>PNM</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>QOI</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>TGA</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>TIFF</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>WebP</td><td>Yes</td><td>Yes (lossless only)</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>* Requires the <code>avif-native</code> feature, uses the libdav1d C library.</li>
+</ul>
+<h3 id="a-note-on-format-specific-features"><a class="doc-anchor" href="#a-note-on-format-specific-features">§</a>A note on format specific features</h3>
+<p>One of the main goals of <code>image</code> is stability, in runtime but also for programmers. This
+ensures that performance as well as safety fixes reach a majority of its user base with little
+effort. Re-exporting all details of its dependencies would run counter to this goal as it
+linked <em>all</em> major version bumps between them and <code>image</code>. As such, we are wary of exposing too
+many details, or configuration options, that are not shared between different image formats.</p>
+<p>Nevertheless, the advantage of precise control is hard to ignore. We will thus consider
+<em>wrappers</em>, not direct re-exports, in either of the following cases:</p>
+<ol>
+<li>A standard specifies that configuration <em>x</em> is required for decoders/encoders and there
+exists an essentially canonical way to control it.</li>
+<li>At least two different implementations agree on some (sub-)set of features in practice.</li>
+<li>A technical argument including measurements of the performance, space benefits, or otherwise
+objectively quantified benefits can be made, and the added interface is unlikely to require
+breaking changes.</li>
+</ol>
+<p>Features that fulfill two or more criteria are preferred.</p>
+<p>Re-exports of dependencies that reach version <code>1</code> will be discussed when it happens.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="jpeg/index.html" title="mod re_viewer::external::re_types::external::image::codecs::jpeg">jpeg</a></div><div class="desc docblock-short">Decoding and Encoding of JPEG Images</div></li><li><div class="item-name"><a class="mod" href="png/index.html" title="mod re_viewer::external::re_types::external::image::codecs::png">png</a></div><div class="desc docblock-short">Decoding and Encoding of PNG Images</div></li></ul></section></div></main></body></html>
