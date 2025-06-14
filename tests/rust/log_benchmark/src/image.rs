@@ -23,11 +23,8 @@ fn prepare() -> Vec<u8> {
     // image
 }
 
-fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
+fn execute(rec: &rerun::RecordingStream, mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
     re_tracing::profile_function!();
-
-    let (rec, _storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_benchmark_").memory()?;
 
     for i in 0..NUM_LOG_CALLS {
         raw_image_data[i] += 1; // Change a single pixel of the image data, just to make sure we transmit something different each time.
@@ -52,8 +49,8 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
 }
 
 /// Log a single large image.
-pub fn run() -> anyhow::Result<()> {
+pub fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     let input = std::hint::black_box(prepare());
-    execute(input)
+    execute(rec, input)
 }
