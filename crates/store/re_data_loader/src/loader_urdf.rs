@@ -1,5 +1,4 @@
 use std::{
-    env,
     path::{Path, PathBuf},
     sync::{Arc, mpsc::Sender},
 };
@@ -625,6 +624,7 @@ fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
 /// `ROS_PACKAGE_PATH` (for ROS1) or `AMENT_PREFIX_PATH` (for ROS2), and reads the
 /// resource from the resolved path.
 /// If the path is relative, it will be resolved relative to the `root_dir` provided.
+#[cfg(not(target_arch = "wasm32"))]
 fn read_ros_package_resource(
     root_dir: Option<&PathBuf>,
     resource_path: &str,
@@ -638,25 +638,23 @@ fn read_ros_package_resource(
                 resolved_path.display()
             )
         })
+    } else if let Some(root_dir) = root_dir {
+        // If the path is relative, resolve it relative to the `root_dir`.
+        let full_path = root_dir.join(resolved_path);
+        std::fs::read(&full_path)
+            .with_context(|| format!("Failed to read file: {}", full_path.display()))
     } else {
-        root_dir
-            .map(|root| root.join(resource_path))
-            .and_then(|full_path| {
-                std::fs::read(&full_path)
-                    .with_context(|| format!("Failed to read file: {}", full_path.display()))
-                    .ok()
-            })
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "No root directory set for URDF, cannot load resource: {resource_path}",
-                )
-            })
+        // If no `root_dir` is provided, we cannot resolve the relative path.
+        bail!("No root directory set for URDF, cannot load resource: {resource_path}");
     }
 }
 
 /// Try to resolve the `pkg_name/rel/path` part of a ROS `package://` URI,
 /// by scanning `ROS_PACKAGE_PATH` (ROS1) or `AMENT_PREFIX_PATH` (ROS2).
+#[cfg(not(target_arch = "wasm32"))]
 fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
+    use std::env;
+
     let mut parts = uri.splitn(2, '/');
     let (pkg, rel) = parts
         .next()
