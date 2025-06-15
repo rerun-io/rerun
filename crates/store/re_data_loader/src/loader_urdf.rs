@@ -487,7 +487,7 @@ fn log_link(
 /// TODO(emilk): create a trait for this, so that one can use this URDF loader
 /// from e.g. a ROS-bag loader.
 #[cfg(target_arch = "wasm32")]
-fn load_ros_resource(root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
+fn load_ros_resource(_root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
     anyhow::bail!("Loading ROS resources is not supported in WebAssembly: {resource_path}");
 }
 
