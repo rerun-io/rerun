@@ -1,4 +1,5 @@
 use std::{
+    env,
     path::{Path, PathBuf},
     sync::{Arc, mpsc::Sender},
 };
@@ -486,7 +487,7 @@ fn log_link(
 /// TODO(emilk): create a trait for this, so that one can use this URDF loader
 /// from e.g. a ROS-bag loader.
 #[cfg(target_arch = "wasm32")]
-fn load_ros_resource(_root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
+fn load_ros_resource(root_dir: Option<&PathBuf>, resource_path: &str) -> anyhow::Result<Vec<u8>> {
     anyhow::bail!("Loading ROS resources is not supported in WebAssembly: {resource_path}");
 }
 
@@ -499,10 +500,7 @@ fn load_ros_resource(
     if let Some((scheme, path)) = resource_path.split_once("://") {
         match scheme {
             "file" => std::fs::read(path).with_context(|| format!("Failed to read file: {path}")),
-            "package" => {
-                // This is a ROS package resource, which we don't support yet.
-                bail!("ROS package resources are not supported: {resource_path}");
-            }
+            "package" => read_ros_package_resource(root_dir, path),
             _ => {
                 bail!("Unknown resource scheme: {scheme:?} in {resource_path}");
             }
@@ -619,4 +617,81 @@ fn log_geometry(
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
     glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
+}
+
+/// Read ROS package resource using the `package://` URI scheme.
+///
+/// This function resolves the package URI by looking up the package in the
+/// `ROS_PACKAGE_PATH` (for ROS1) or `AMENT_PREFIX_PATH` (for ROS2), and reads the
+/// resource from the resolved path.
+/// If the path is relative, it will be resolved relative to the `root_dir` provided.
+fn read_ros_package_resource(
+    root_dir: Option<&PathBuf>,
+    resource_path: &str,
+) -> anyhow::Result<Vec<u8>> {
+    let resolved_path = resolve_package_uri(resource_path)?;
+
+    if resolved_path.is_absolute() {
+        std::fs::read(&resolved_path).with_context(|| {
+            format!(
+                "Failed to read package resource: {}",
+                resolved_path.display()
+            )
+        })
+    } else {
+        root_dir
+            .map(|root| root.join(resource_path))
+            .and_then(|full_path| {
+                std::fs::read(&full_path)
+                    .with_context(|| format!("Failed to read file: {}", full_path.display()))
+                    .ok()
+            })
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No root directory set for URDF, cannot load resource: {resource_path}",
+                )
+            })
+    }
+}
+
+/// Try to resolve the `pkg_name/rel/path` part of a ROS `package://` URI,
+/// by scanning `ROS_PACKAGE_PATH` (ROS1) or `AMENT_PREFIX_PATH` (ROS2).
+fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
+    let mut parts = uri.splitn(2, '/');
+    let (pkg, rel) = parts
+        .next()
+        .and_then(|pkg| parts.next().map(|rel| (pkg, rel)))
+        .ok_or_else(|| anyhow::anyhow!("Invalid package URI: {uri}"))?;
+
+    let rel = PathBuf::from(rel);
+
+    if rel.is_absolute() {
+        // If the relative path is absolute, we can just return it.
+        return Ok(rel);
+    }
+
+    // Try ROS1 and then ROS2 package paths, in case of a mixed environment.
+    // ROS1: look in each entry of ROS_PACKAGE_PATH as `<entry>/pkg_name`
+    if let Ok(val) = env::var("ROS_PACKAGE_PATH") {
+        for root in env::split_paths(&val) {
+            let candidate = root.join(pkg);
+            if candidate.exists() {
+                return Ok(candidate.join(rel));
+            }
+        }
+    }
+
+    // ROS2: look in each entry of AMENT_PREFIX_PATH as `<entry>/share/pkg_name`
+    if let Ok(val) = env::var("AMENT_PREFIX_PATH") {
+        for root in env::split_paths(&val) {
+            let candidate = root.join("share").join(pkg);
+            if candidate.exists() {
+                return Ok(candidate.join(rel));
+            }
+        }
+    }
+
+    bail!(
+        "Failed to resolve package URI: {uri}, tried `ROS_PACKAGE_PATH` and `AMENT_PREFIX_PATH`, but no matching package found"
+    );
 }
