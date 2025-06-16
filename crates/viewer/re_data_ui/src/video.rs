@@ -4,15 +4,14 @@ use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
 };
-use re_types::components::VideoTimestamp;
 use re_ui::{
     UiExt as _,
     list_item::{self, PropertyContent},
 };
-use re_video::{FrameInfo, VideoDataDescription};
-use re_viewer_context::UiLayout;
+use re_video::{FrameInfo, StableIndexDeque, VideoDataDescription};
+use re_viewer_context::{SharablePlayableVideoStream, UiLayout, VideoStreamProcessingError};
 
-pub fn video_result_ui(
+pub fn video_asset_result_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
@@ -23,8 +22,16 @@ pub fn video_result_ui(
     match video_result {
         Ok(video) => {
             if !ui_layout.is_single_line() {
-                re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
-                    video_data_ui(ui, ui_layout, video.data_descr());
+                let default_open = true;
+                // Extra scope needed to ensure right spacing.
+                ui.list_item_scope("video_asset", |ui| {
+                    ui.list_item_collapsible_noninteractive_label(
+                        "Video Asset",
+                        default_open,
+                        |ui| {
+                            video_data_ui(ui, ui_layout, video.data_descr());
+                        },
+                    );
                 });
             }
         }
@@ -40,6 +47,41 @@ pub fn video_result_ui(
         }
         Err(err) => {
             let error_message = format!("Failed to load video: {err}");
+            if ui_layout.is_single_line() {
+                ui.error_with_details_on_hover(error_message);
+            } else {
+                ui.error_label(error_message);
+            }
+        }
+    }
+}
+
+pub fn video_stream_result_ui(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    video_result: &Result<SharablePlayableVideoStream, VideoStreamProcessingError>,
+) {
+    re_tracing::profile_function!();
+
+    #[allow(clippy::match_same_arms)]
+    match video_result {
+        Ok(video) => {
+            if !ui_layout.is_single_line() {
+                let default_open = true;
+                // Extra scope needed to ensure right spacing.
+                ui.list_item_scope("video_stream", |ui| {
+                    ui.list_item_collapsible_noninteractive_label(
+                        "Video Stream",
+                        default_open,
+                        |ui| {
+                            video_data_ui(ui, ui_layout, video.read().video_descr());
+                        },
+                    );
+                });
+            }
+        }
+        Err(err) => {
+            let error_message = format!("Failed to process video stream: {err}");
             if ui_layout.is_single_line() {
                 ui.error_with_details_on_hover(error_message);
             } else {
@@ -120,8 +162,9 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
                 );
             }
         });
+    }
 
-        ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
+    ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of GOPs")
                     .value_text(video_descr.gops.num_elements().to_string()),
@@ -135,16 +178,15 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
         });
 
-        ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
-            egui::Resize::default()
-                .with_stroke(true)
-                .resizable([false, true])
-                .max_height(611.0) // Odd value so the user can see half-hidden rows
-                .show(ui, |ui| {
-                    samples_table_ui(ui, video_descr);
-                });
-        });
-    }
+    ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
+        egui::Resize::default()
+            .with_stroke(true)
+            .resizable([false, true])
+            .max_height(611.0) // Odd value so the user can see half-hidden rows
+            .show(ui, |ui| {
+                samples_table_ui(ui, video_descr);
+            });
+    });
 }
 
 fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
@@ -268,29 +310,9 @@ pub fn show_decoded_frame_info(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
-    video_timestamp: Option<VideoTimestamp>,
-    blob: &re_types::datatypes::Blob,
+    video_time: re_video::Time,
+    video_buffers: &StableIndexDeque<&[u8]>,
 ) {
-    let video_timestamp = video_timestamp.unwrap_or_else(|| {
-        // TODO(emilk): Some time controls would be nice,
-        // but the point here is not to have a nice viewer,
-        // but to show the user what they have selected
-        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-        let time = ui.input(|i| i.time);
-
-        if let Some(duration) = video.data_descr().duration() {
-            VideoTimestamp::from_secs(time % duration.as_secs_f64())
-        } else {
-            // TODO(#7484): show something more useful here
-            VideoTimestamp::from_nanos(i64::MAX)
-        }
-    });
-    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-        ctx,
-        video_timestamp,
-        video.data_descr().timescale,
-    );
-
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
@@ -298,7 +320,7 @@ pub fn show_decoded_frame_info(
         ctx.render_ctx(),
         player_stream_id,
         video_time,
-        &std::iter::once(blob.as_ref()).collect(),
+        video_buffers,
     ) {
         Ok(VideoFrameTexture {
             texture,
