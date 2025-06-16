@@ -113,7 +113,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         // .map(|desc| FuzzyComponentDescriptor {
                         //     archetype_name: desc.archetype_name.map(Into::into),
                         //     archetype_field_name: desc.archetype_field_name.map(Into::into),
-                        //     component_name: desc.component_name.map(Into::into),
+                        //     component_type: desc.component_type.map(Into::into),
                         // })
                         // .collect(),
                         .fuzzy_descriptors,
@@ -145,7 +145,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         // .map(|desc| FuzzyComponentDescriptor {
                         //     archetype_name: desc.archetype_name.map(Into::into),
                         //     archetype_field_name: desc.archetype_field_name.map(Into::into),
-                        //     component_name: desc.component_name.map(Into::into),
+                        //     component_type: desc.component_type.map(Into::into),
                         // })
                         // .collect(),
                         .fuzzy_descriptors,
@@ -261,7 +261,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
 pub struct FuzzyComponentDescriptor {
     pub archetype_name: Option<re_chunk::ArchetypeName>,
     pub archetype_field_name: Option<re_chunk::ArchetypeFieldName>,
-    pub component_name: Option<re_chunk::ComponentName>,
+    pub component_type: Option<re_chunk::ComponentType>,
 }
 
 #[derive(Debug, Clone)]
@@ -692,7 +692,7 @@ impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::Ind
             component: Some(ComponentDescriptor {
                 archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
                 archetype_field_name: Some(value.archetype_field_name.to_string()),
-                component_name: value.component_name.map(|c| c.full_name().to_owned()),
+                component_type: value.component_type.map(|c| c.full_name().to_owned()),
             }),
         }
     }

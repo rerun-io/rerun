@@ -88,21 +88,21 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> media_type;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.TextDocumentIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.TextDocument";
 
         /// `ComponentDescriptor` for the `text` field.
         static constexpr auto Descriptor_text = ComponentDescriptor(
-            ArchetypeName, "text", Loggable<rerun::components::Text>::ComponentName
+            ArchetypeName, "text", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentName
+            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentType
         );
 
       public:

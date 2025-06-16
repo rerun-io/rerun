@@ -70,20 +70,20 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> value_range;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
+        static constexpr const char IndicatorComponentType[] = "rerun.components.TensorIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Tensor";
 
         /// `ComponentDescriptor` for the `data` field.
         static constexpr auto Descriptor_data = ComponentDescriptor(
-            ArchetypeName, "data", Loggable<rerun::components::TensorData>::ComponentName
+            ArchetypeName, "data", Loggable<rerun::components::TensorData>::ComponentType
         );
         /// `ComponentDescriptor` for the `value_range` field.
         static constexpr auto Descriptor_value_range = ComponentDescriptor(
-            ArchetypeName, "value_range", Loggable<rerun::components::ValueRange>::ComponentName
+            ArchetypeName, "value_range", Loggable<rerun::components::ValueRange>::ComponentType
         );
 
       public: // START of extensions from tensor_ext.cpp:

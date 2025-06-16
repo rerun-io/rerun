@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
@@ -93,7 +93,7 @@ impl SegmentationImage {
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_name: Some("rerun.components.ImageBuffer".into()),
+            component_type: Some("rerun.components.ImageBuffer".into()),
             archetype_field_name: "buffer".into(),
         }
     }
@@ -105,7 +105,7 @@ impl SegmentationImage {
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_name: Some("rerun.components.ImageFormat".into()),
+            component_type: Some("rerun.components.ImageFormat".into()),
             archetype_field_name: "format".into(),
         }
     }
@@ -117,7 +117,7 @@ impl SegmentationImage {
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_name: Some("rerun.components.Opacity".into()),
+            component_type: Some("rerun.components.Opacity".into()),
             archetype_field_name: "opacity".into(),
         }
     }
@@ -129,7 +129,7 @@ impl SegmentationImage {
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
+            component_type: Some("rerun.components.DrawOrder".into()),
             archetype_field_name: "draw_order".into(),
         }
     }
@@ -139,7 +139,7 @@ impl SegmentationImage {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.SegmentationImageIndicator".into(),
         }
     }

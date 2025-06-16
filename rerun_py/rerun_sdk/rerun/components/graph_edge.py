@@ -24,7 +24,7 @@ class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
 
 
 class GraphEdgeBatch(datatypes.Utf8PairBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.GraphEdge"
+    _COMPONENT_TYPE: str = "rerun.components.GraphEdge"
 
 
 # This is patched in late to avoid circular dependencies.

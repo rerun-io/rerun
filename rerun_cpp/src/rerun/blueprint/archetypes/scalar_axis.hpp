@@ -31,22 +31,22 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> zoom_lock;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.ScalarAxisIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ScalarAxis";
 
         /// `ComponentDescriptor` for the `range` field.
         static constexpr auto Descriptor_range = ComponentDescriptor(
-            ArchetypeName, "range", Loggable<rerun::components::Range1D>::ComponentName
+            ArchetypeName, "range", Loggable<rerun::components::Range1D>::ComponentType
         );
         /// `ComponentDescriptor` for the `zoom_lock` field.
         static constexpr auto Descriptor_zoom_lock = ComponentDescriptor(
             ArchetypeName, "zoom_lock",
-            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::ComponentName
+            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::ComponentType
         );
 
       public:

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: How we interpret the coordinate system of an entity/space.
@@ -77,7 +77,7 @@ impl ViewCoordinates {
     pub fn descriptor_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
-            component_name: Some("rerun.components.ViewCoordinates".into()),
+            component_type: Some("rerun.components.ViewCoordinates".into()),
             archetype_field_name: "xyz".into(),
         }
     }
@@ -87,7 +87,7 @@ impl ViewCoordinates {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.ViewCoordinatesIndicator".into(),
         }
     }

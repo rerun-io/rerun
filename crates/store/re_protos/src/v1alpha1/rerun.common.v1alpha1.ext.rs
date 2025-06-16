@@ -885,7 +885,7 @@ impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor 
         Self {
             archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
             archetype_field_name: Some(value.archetype_field_name.to_string()),
-            component_name: value.component_name.map(|c| c.full_name().to_owned()),
+            component_type: value.component_type.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -897,7 +897,7 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
         let crate::common::v1alpha1::ComponentDescriptor {
             archetype_name,
             archetype_field_name,
-            component_name,
+            component_type,
         } = value;
 
         let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
@@ -909,8 +909,8 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
             descriptor = descriptor.with_archetype_name(archetype_name.into());
         }
 
-        if let Some(component_name) = component_name {
-            descriptor = descriptor.with_component_name(component_name.into());
+        if let Some(component_type) = component_type {
+            descriptor = descriptor.with_component_type(component_type.into());
         }
 
         Ok(descriptor)

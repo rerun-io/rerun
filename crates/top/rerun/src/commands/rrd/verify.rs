@@ -101,12 +101,12 @@ impl Verifier {
         column: &dyn arrow::array::Array,
     ) -> anyhow::Result<()> {
         let re_sdk::ComponentDescriptor {
-            component_name,
+            component_type,
             archetype_name,
             archetype_field_name,
         } = column_descriptor.component_descriptor();
 
-        let Some(component_name) = component_name else {
+        let Some(component_type) = component_type else {
             re_log::debug_once!(
                 "Encountered component descriptor without component name: {}",
                 column_descriptor.component_descriptor()
@@ -114,8 +114,8 @@ impl Verifier {
             return Ok(());
         };
 
-        if !component_name.full_name().starts_with("rerun.") {
-            re_log::debug_once!("Ignoring non-Rerun component {component_name:?}");
+        if !component_type.full_name().starts_with("rerun.") {
+            re_log::debug_once!("Ignoring non-Rerun component {component_type:?}");
             return Ok(());
         }
 
@@ -129,7 +129,7 @@ impl Verifier {
             let component_reflection = self
                 .reflection
                 .components
-                .get(&component_name)
+                .get(&component_type)
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
             if let Some(deprecation_summary) = component_reflection.deprecation_summary {
@@ -177,10 +177,10 @@ impl Verifier {
                             )
                         })?;
 
-                let expected_component_name = &archetype_field_reflection.component_name;
-                if &component_name != expected_component_name {
+                let expected_component_type = &archetype_field_reflection.component_type;
+                if &component_type != expected_component_type {
                     return Err(anyhow::anyhow!(
-                        "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
+                        "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_type:?} in this version of Rerun, but the data column has component {component_type:?}"
                     ));
                 }
             } else {

@@ -69,37 +69,37 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> radii;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.GraphNodesIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphNodes";
 
         /// `ComponentDescriptor` for the `node_ids` field.
         static constexpr auto Descriptor_node_ids = ComponentDescriptor(
-            ArchetypeName, "node_ids", Loggable<rerun::components::GraphNode>::ComponentName
+            ArchetypeName, "node_ids", Loggable<rerun::components::GraphNode>::ComponentType
         );
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions", Loggable<rerun::components::Position2D>::ComponentName
+            ArchetypeName, "positions", Loggable<rerun::components::Position2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
         );
 
       public:

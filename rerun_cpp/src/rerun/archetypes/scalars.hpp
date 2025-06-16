@@ -83,16 +83,16 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> scalars;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.ScalarsIndicator";
+        static constexpr const char IndicatorComponentType[] = "rerun.components.ScalarsIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Scalars";
 
         /// `ComponentDescriptor` for the `scalars` field.
         static constexpr auto Descriptor_scalars = ComponentDescriptor(
-            ArchetypeName, "scalars", Loggable<rerun::components::Scalar>::ComponentName
+            ArchetypeName, "scalars", Loggable<rerun::components::Scalar>::ComponentType
         );
 
       public:

@@ -8,7 +8,7 @@ pub enum ColumnSelectorParseError {
     #[error("Expected column selector, found empty string")]
     EmptyString,
 
-    #[error("Expected string in the form of `entity_path:component_name`, got: {0}")]
+    #[error("Expected string in the form of `entity_path:component_type`, got: {0}")]
     FormatError(String),
 }
 

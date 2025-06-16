@@ -351,15 +351,15 @@ impl ChunkStore {
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(component_name) = component_descr.component_name {
+            if let Some(component_type) = component_descr.component_type {
                 if let Some(old_typ) = self
                     .type_registry
-                    .insert(component_name, list_array.value_type())
+                    .insert(component_type, list_array.value_type())
                 {
                     if old_typ != list_array.value_type() {
                         re_log::warn_once!(
                             "Component column '{}' changed type from {old_typ:?} to {:?}",
-                            component_name,
+                            component_type,
                             list_array.value_type()
                         );
                     }

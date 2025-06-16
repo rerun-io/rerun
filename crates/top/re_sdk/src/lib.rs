@@ -109,7 +109,7 @@ pub use time::{TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
+    ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, NamedIndicatorComponent, SerializationError,
     SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
 };

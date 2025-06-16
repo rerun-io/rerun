@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Video stream consisting of raw video chunks.
@@ -72,7 +72,7 @@ impl VideoStream {
     pub fn descriptor_codec() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.VideoCodec".into()),
+            component_type: Some("rerun.components.VideoCodec".into()),
             archetype_field_name: "codec".into(),
         }
     }
@@ -84,7 +84,7 @@ impl VideoStream {
     pub fn descriptor_sample() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.VideoSample".into()),
+            component_type: Some("rerun.components.VideoSample".into()),
             archetype_field_name: "sample".into(),
         }
     }
@@ -96,7 +96,7 @@ impl VideoStream {
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
+            component_type: Some("rerun.components.DrawOrder".into()),
             archetype_field_name: "draw_order".into(),
         }
     }
@@ -106,7 +106,7 @@ impl VideoStream {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.VideoStreamIndicator".into(),
         }
     }

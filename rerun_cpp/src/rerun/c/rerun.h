@@ -208,7 +208,7 @@ typedef struct rr_component_descriptor {
     /// included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    rr_string component_name;
+    rr_string component_type;
 } rr_component_descriptor;
 
 /// Definition of a component type that can be registered.

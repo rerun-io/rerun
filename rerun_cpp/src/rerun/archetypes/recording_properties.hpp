@@ -28,21 +28,21 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> name;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.RecordingPropertiesIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.RecordingProperties";
 
         /// `ComponentDescriptor` for the `start_time` field.
         static constexpr auto Descriptor_start_time = ComponentDescriptor(
-            ArchetypeName, "start_time", Loggable<rerun::components::Timestamp>::ComponentName
+            ArchetypeName, "start_time", Loggable<rerun::components::Timestamp>::ComponentType
         );
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
-            ArchetypeName, "name", Loggable<rerun::components::Name>::ComponentName
+            ArchetypeName, "name", Loggable<rerun::components::Name>::ComponentType
         );
 
       public:

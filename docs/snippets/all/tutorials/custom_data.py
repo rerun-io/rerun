@@ -31,7 +31,7 @@ class CustomPoints3D(rr.AsComponents):
             rr.ComponentDescriptor(
                 "confidences",
                 archetype_name="user.CustomPoints3D",
-                component_name="user.Confidence",
+                component_type="user.Confidence",
             )
         )
 

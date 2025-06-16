@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An N-dimensional array of numbers.
@@ -78,7 +78,7 @@ impl Tensor {
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: Some("rerun.components.TensorData".into()),
+            component_type: Some("rerun.components.TensorData".into()),
             archetype_field_name: "data".into(),
         }
     }
@@ -90,7 +90,7 @@ impl Tensor {
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: Some("rerun.components.ValueRange".into()),
+            component_type: Some("rerun.components.ValueRange".into()),
             archetype_field_name: "value_range".into(),
         }
     }
@@ -100,7 +100,7 @@ impl Tensor {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.TensorIndicator".into(),
         }
     }

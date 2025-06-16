@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 
-use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ComponentName, RowId};
+use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ComponentType, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::DataUi as _;
 use re_log_types::EntityPath;
@@ -18,7 +18,7 @@ use re_viewport_blueprint::ViewBlueprint;
 /// Entry that we can show in the defaults ui.
 #[derive(Clone, Debug)]
 struct DefaultOverrideEntry {
-    component_name: ComponentName,
+    component_type: ComponentType,
     archetype_field_name: ArchetypeFieldName,
 
     /// Visualizer identifier that provides the fallback value for this component.
@@ -28,7 +28,7 @@ struct DefaultOverrideEntry {
 impl DefaultOverrideEntry {
     fn descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
-            component_name: Some(self.component_name),
+            component_type: Some(self.component_type),
             archetype_field_name: self.archetype_field_name,
             archetype_name: Some(archetype_name),
         }
@@ -159,9 +159,9 @@ fn active_default_ui(
                 .value_fn(|ui, _| value_fn(ui)),
             );
 
-            if let Some(component_name) = component_descr.component_name {
+            if let Some(component_type) = component_descr.component_type {
                 response.on_hover_ui(|ui| {
-                    component_name.data_ui_recording(
+                    component_type.data_ui_recording(
                         ctx.viewer_ctx,
                         ui,
                         re_viewer_context::UiLayout::Tooltip,
@@ -185,8 +185,8 @@ fn visualized_components_by_archetype(
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in visualizers.iter_with_identifiers() {
         for descr in vis.visualizer_query_info().queried.iter() {
-            let (Some(archetype_name), Some(component_name)) =
-                (descr.archetype_name, descr.component_name)
+            let (Some(archetype_name), Some(component_type)) =
+                (descr.archetype_name, descr.component_type)
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
@@ -204,7 +204,7 @@ fn visualized_components_by_archetype(
                 .entry(archetype_name)
                 .or_default()
                 .push(DefaultOverrideEntry {
-                    component_name,
+                    component_type,
                     archetype_field_name: descr.archetype_field_name,
                     visualizer_identifier: id,
                 });
@@ -272,7 +272,7 @@ fn components_to_show_in_add_menu(
                 let types = ctx
                     .viewer_ctx
                     .component_ui_registry()
-                    .registered_ui_types(entry.component_name);
+                    .registered_ui_types(entry.component_type);
 
                 if types.contains(ComponentUiTypes::SingleLineEditor) {
                     true // show it
@@ -318,7 +318,7 @@ fn add_popup_ui(
                 if ui
                     .button(entry.archetype_field_name.syntax_highlighted(ui.style()))
                     .on_hover_ui(|ui| {
-                        entry.component_name.data_ui_recording(
+                        entry.component_type.data_ui_recording(
                             ctx.viewer_ctx,
                             ui,
                             UiLayout::Tooltip,

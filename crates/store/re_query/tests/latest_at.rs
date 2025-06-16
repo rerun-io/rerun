@@ -76,7 +76,7 @@ fn simple_query_with_differently_tagged_components() {
         .serialized(re_types::ComponentDescriptor {
             archetype_name: Some("MyPoints2".into()),
             archetype_field_name: "points2".into(),
-            component_name: Some(<MyPoint as re_types_core::Component>::name()),
+            component_type: Some(<MyPoint as re_types_core::Component>::name()),
         })
         .unwrap();
 

@@ -10,7 +10,7 @@ struct Confidence {
 
 template <>
 struct rerun::Loggable<Confidence> {
-    static constexpr std::string_view ComponentName = "user.Confidence";
+    static constexpr std::string_view ComponentType = "user.Confidence";
 
     static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
         return rerun::Loggable<rerun::Float32>::arrow_datatype();
@@ -47,7 +47,7 @@ struct rerun::AsComponents<CustomPoints3D> {
             auto descriptor =
                 rerun::ComponentDescriptor("confidences")
                     .or_with_archetype_name("user.CustomPoints3D")
-                    .or_with_component_name(rerun::Loggable<Confidence>::ComponentName);
+                    .or_with_component_type(rerun::Loggable<Confidence>::ComponentType);
             batches.push_back(
                 ComponentBatch::from_loggable(*archetype.confidences, descriptor).value_or_throw()
             );

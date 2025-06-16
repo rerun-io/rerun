@@ -204,7 +204,7 @@ impl EntityDb {
         &self,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
         debug_assert_eq!(
             component_descr.archetype_name,
             // String from re_types::RecordingProperties::name()
@@ -268,7 +268,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
         let results =
             self.storage_engine
@@ -295,7 +295,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
         let results =
             self.storage_engine

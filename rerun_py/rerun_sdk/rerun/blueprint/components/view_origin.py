@@ -28,7 +28,7 @@ class ViewOrigin(datatypes.EntityPath, ComponentMixin):
 
 
 class ViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewOrigin"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewOrigin"
 
 
 # This is patched in late to avoid circular dependencies.

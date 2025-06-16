@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video binary.
@@ -147,7 +147,7 @@ impl AssetVideo {
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_name: Some("rerun.components.Blob".into()),
+            component_type: Some("rerun.components.Blob".into()),
             archetype_field_name: "blob".into(),
         }
     }
@@ -159,7 +159,7 @@ impl AssetVideo {
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_name: Some("rerun.components.MediaType".into()),
+            component_type: Some("rerun.components.MediaType".into()),
             archetype_field_name: "media_type".into(),
         }
     }
@@ -169,7 +169,7 @@ impl AssetVideo {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.AssetVideoIndicator".into(),
         }
     }

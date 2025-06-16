@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
@@ -26,7 +26,7 @@ pub struct MarkerSize(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for MarkerSize {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.MarkerSize".into()
     }
 }

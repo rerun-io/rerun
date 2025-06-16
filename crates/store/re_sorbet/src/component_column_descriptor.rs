@@ -1,7 +1,7 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 
 use re_log_types::{ComponentPath, EntityPath};
-use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
+use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentType};
 
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
@@ -21,7 +21,7 @@ pub struct ComponentColumnDescriptor {
     /// included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    pub component_name: Option<ComponentName>,
+    pub component_type: Option<ComponentType>,
 
     /// The path of the entity.
     ///
@@ -75,7 +75,7 @@ impl Ord for ComponentColumnDescriptor {
             entity_path,
             archetype_name,
             archetype_field_name,
-            component_name,
+            component_type,
             store_datatype: _,
             is_static: _,
             is_indicator: _,
@@ -87,7 +87,7 @@ impl Ord for ComponentColumnDescriptor {
             .cmp(&other.entity_path)
             .then_with(|| archetype_name.cmp(&other.archetype_name))
             .then_with(|| archetype_field_name.cmp(&other.archetype_field_name))
-            .then_with(|| component_name.cmp(&other.component_name))
+            .then_with(|| component_type.cmp(&other.component_type))
     }
 }
 
@@ -99,7 +99,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             entity_path,
             archetype_name: _,
             archetype_field_name: _,
-            component_name: _,
+            component_type: _,
             store_datatype: _,
             is_static,
             is_indicator: _,
@@ -124,7 +124,7 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
-            component_name: descr.component_name,
+            component_type: descr.component_type,
         }
     }
 }
@@ -136,7 +136,7 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
         Self {
             archetype_name: descr.archetype_name,
             archetype_field_name: descr.archetype_field_name,
-            component_name: descr.component_name,
+            component_type: descr.component_type,
         }
     }
 }
@@ -146,7 +146,7 @@ impl ComponentColumnDescriptor {
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        if let Some(c) = self.component_name {
+        if let Some(c) = self.component_type {
             c.sanity_check();
         }
         if let Some(archetype_name) = &self.archetype_name {
@@ -165,7 +165,7 @@ impl ComponentColumnDescriptor {
         ComponentDescriptor {
             archetype_name: self.archetype_name,
             archetype_field_name: self.archetype_field_name,
-            component_name: self.component_name,
+            component_type: self.component_type,
         }
     }
 
@@ -197,7 +197,7 @@ impl ComponentColumnDescriptor {
             entity_path,
             archetype_name,
             archetype_field_name,
-            component_name,
+            component_type,
             store_datatype: _,
             is_static,
             is_indicator,
@@ -232,10 +232,10 @@ impl ComponentColumnDescriptor {
             );
         }
 
-        if let Some(component_name) = component_name {
+        if let Some(component_type) = component_type {
             metadata.insert(
                 "rerun.component".to_owned(),
-                component_name.full_name().to_owned(),
+                component_type.full_name().to_owned(),
             );
         }
 
@@ -338,7 +338,7 @@ impl ComponentColumnDescriptor {
             entity_path,
             archetype_name: field.get_opt("rerun.archetype").map(Into::into),
             archetype_field_name,
-            component_name: field.get_opt("rerun.component").map(Into::into),
+            component_type: field.get_opt("rerun.component").map(Into::into),
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),
             is_tombstone: field.get_bool("rerun.is_tombstone"),

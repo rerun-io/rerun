@@ -187,7 +187,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::try_serialize_field;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
-    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
+    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentType};\n");
     code.push_str("use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
@@ -1032,7 +1032,7 @@ fn quote_trait_impls_for_datatype_or_component(
         quote! {
             impl ::re_types_core::Component for #name {
                 #[inline]
-                fn name() -> ComponentName {
+                fn name() -> ComponentType {
                     #fqname.into()
                 }
             }
@@ -1106,7 +1106,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         .fields
         .iter()
         .map(|field| {
-            let Some(component_name) = field.typ.fqname() else {
+            let Some(component_type) = field.typ.fqname() else {
                 reporter.error(
                     &obj.virtpath,
                     &obj.fqname,
@@ -1140,14 +1140,14 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: Some(#archetype_name.into()),
-                        component_name: Some(#component_name.into()),
+                        component_type: Some(#component_type.into()),
                         archetype_field_name: #archetype_field_name.into(),
                     }
                 }
             }
         })
         .chain(std::iter::once({
-            let indicator_component_name = format!(
+            let indicator_component_type = format!(
                 "{}Indicator",
                 obj.fqname.replace("archetypes", "components")
             );
@@ -1160,8 +1160,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 pub fn descriptor_indicator() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: None,
-                        component_name: None,
-                        archetype_field_name: #indicator_component_name.into(),
+                        component_type: None,
+                        archetype_field_name: #indicator_component_type.into(),
                     }
                 }
             }

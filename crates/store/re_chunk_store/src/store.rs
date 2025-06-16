@@ -7,7 +7,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ChunkId, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::{ComponentDescriptor, ComponentType};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
@@ -452,7 +452,7 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+    pub(crate) type_registry: IntMap<ComponentType, ArrowDataType>,
 
     // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
     pub(crate) per_column_metadata: IntMap<
@@ -478,7 +478,7 @@ pub struct ChunkStore {
     pub(crate) temporal_chunk_ids_per_entity_per_component:
         ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
+    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
@@ -705,8 +705,8 @@ impl ChunkStore {
 
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
-        self.type_registry.get(component_name).cloned()
+    pub fn lookup_datatype(&self, component_type: &ComponentType) -> Option<ArrowDataType> {
+        self.type_registry.get(component_type).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].

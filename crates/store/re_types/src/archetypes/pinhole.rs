@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
@@ -149,7 +149,7 @@ impl Pinhole {
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: Some("rerun.components.PinholeProjection".into()),
+            component_type: Some("rerun.components.PinholeProjection".into()),
             archetype_field_name: "image_from_camera".into(),
         }
     }
@@ -161,7 +161,7 @@ impl Pinhole {
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: Some("rerun.components.Resolution".into()),
+            component_type: Some("rerun.components.Resolution".into()),
             archetype_field_name: "resolution".into(),
         }
     }
@@ -173,7 +173,7 @@ impl Pinhole {
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: Some("rerun.components.ViewCoordinates".into()),
+            component_type: Some("rerun.components.ViewCoordinates".into()),
             archetype_field_name: "camera_xyz".into(),
         }
     }
@@ -185,7 +185,7 @@ impl Pinhole {
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: Some("rerun.components.ImagePlaneDistance".into()),
+            component_type: Some("rerun.components.ImagePlaneDistance".into()),
             archetype_field_name: "image_plane_distance".into(),
         }
     }
@@ -195,7 +195,7 @@ impl Pinhole {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.PinholeIndicator".into(),
         }
     }

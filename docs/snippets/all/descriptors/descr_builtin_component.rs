@@ -11,7 +11,7 @@ fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error
                 ComponentDescriptor {
                     archetype_name: Some("user.CustomPoints3D".into()),
                     archetype_field_name: "points".into(),
-                    component_name: Some(
+                    component_type: Some(
                         <rerun::components::Position3D as rerun::Component>::name(),
                     ),
                 },
@@ -65,7 +65,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: "points".into(),
-                component_name: Some(<rerun::components::Position3D as rerun::Component>::name()),
+                component_type: Some(<rerun::components::Position3D as rerun::Component>::name()),
             }, //
         ];
 

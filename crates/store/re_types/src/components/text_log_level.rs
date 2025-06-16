@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The severity level of a text log message.
@@ -34,7 +34,7 @@ pub struct TextLogLevel(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for TextLogLevel {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.TextLogLevel".into()
     }
 }

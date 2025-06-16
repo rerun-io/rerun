@@ -259,7 +259,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         chunk
                             .add_component(
                                 re_types_core::ComponentDescriptor {
-                                    component_name: descr.component_name,
+                                    component_type: descr.component_type,
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
@@ -345,9 +345,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
                         let component_descriptor = store
-                            .entity_component_descriptors_with_name(
+                            .entity_component_descriptors_with_type(
                                 &descr.entity_path,
-                                descr.component_name?,
+                                descr.component_type?,
                             )
                             .into_iter()
                             .next()?;
@@ -454,7 +454,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                         .archetype_field_name
                                         .as_str()
                                         .into(),
-                                    component_name: None,
+                                    component_type: None,
                                     store_datatype: ArrowDataType::Null,
                                     is_static: false,
                                     is_indicator: false,
@@ -629,15 +629,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .components
             .into_iter()
             .next()
-            .map(|(_component_name, chunks)| {
+            .map(|(_component_type, chunks)| {
                 chunks
                     .into_iter()
                     .map(|chunk| {
                         // NOTE: Keep in mind that the range APIs would have already taken care
                         // of A) sorting the chunk on the `filtered_index` (and row-id) and
-                        // B) densifying it according to the current `component_name`.
+                        // B) densifying it according to the current `component_type`.
                         // Both of these are mandatory requirements for the deduplication logic to
-                        // do what we want: keep the latest known value for `component_name` at all
+                        // do what we want: keep the latest known value for `component_type` at all
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
@@ -1188,9 +1188,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         StreamingJoinState::Retrofilled(unit) => {
                             let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
-                                if let Some(component_name) = descr.component_name  { component_name.sanity_check(); }
+                                if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
                                 Some(re_types_core::ComponentDescriptor {
-                                    component_name: descr.component_name,
+                                    component_type: descr.component_type,
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 })

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how tensor scalars are mapped to color.
@@ -50,7 +50,7 @@ impl TensorScalarMapping {
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: Some("rerun.components.MagnificationFilter".into()),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
             archetype_field_name: "mag_filter".into(),
         }
     }
@@ -62,7 +62,7 @@ impl TensorScalarMapping {
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: Some("rerun.components.Colormap".into()),
+            component_type: Some("rerun.components.Colormap".into()),
             archetype_field_name: "colormap".into(),
         }
     }
@@ -74,7 +74,7 @@ impl TensorScalarMapping {
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: Some("rerun.components.GammaCorrection".into()),
+            component_type: Some("rerun.components.GammaCorrection".into()),
             archetype_field_name: "gamma".into(),
         }
     }
@@ -84,7 +84,7 @@ impl TensorScalarMapping {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
         }
     }

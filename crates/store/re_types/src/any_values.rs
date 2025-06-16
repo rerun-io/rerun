@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 use crate::{
     ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, SerializedComponentBatch,
 };
-use re_types_core::{try_serialize_field, AsComponents, ComponentName, Loggable};
+use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 
 /// A helper for logging arbitrary data to Rerun.
 #[derive(Default)]
@@ -40,7 +40,7 @@ impl AnyValues {
                 array,
                 descriptor: ComponentDescriptor {
                     archetype_name: self.archetype_name,
-                    component_name: None,
+                    component_type: None,
                     archetype_field_name,
                 },
             },
@@ -65,7 +65,7 @@ impl AnyValues {
     pub fn with_loggable<L: Loggable>(
         mut self,
         archetype_field_name: impl Into<ArchetypeFieldName>,
-        component_name: impl Into<ComponentName>,
+        component_type: impl Into<ComponentType>,
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {
         let archetype_field_name = archetype_field_name.into();
@@ -73,7 +73,7 @@ impl AnyValues {
             ComponentDescriptor {
                 archetype_name: self.archetype_name,
                 archetype_field_name,
-                component_name: Some(component_name.into()),
+                component_type: Some(component_type.into()),
             },
             loggable,
         )

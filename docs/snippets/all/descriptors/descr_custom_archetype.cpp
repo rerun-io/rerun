@@ -48,7 +48,7 @@ struct rerun::AsComponents<CustomPoints3D> {
             auto colors_descr =
                 rerun::ComponentDescriptor("colors")
                     .with_archetype_name("user.CustomPoints3D")
-                    .with_component_name(rerun::Loggable<rerun::components::Color>::ComponentName);
+                    .with_component_type(rerun::Loggable<rerun::components::Color>::ComponentType);
             batches.push_back(
                 ComponentBatch::from_loggable(archetype.colors, colors_descr).value_or_throw()
             );

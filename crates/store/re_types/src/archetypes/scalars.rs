@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more double-precision scalar values, e.g. for use for time-series plots.
@@ -100,7 +100,7 @@ impl Scalars {
     pub fn descriptor_scalars() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalars".into()),
-            component_name: Some("rerun.components.Scalar".into()),
+            component_type: Some("rerun.components.Scalar".into()),
             archetype_field_name: "scalars".into(),
         }
     }
@@ -110,7 +110,7 @@ impl Scalars {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.ScalarsIndicator".into(),
         }
     }

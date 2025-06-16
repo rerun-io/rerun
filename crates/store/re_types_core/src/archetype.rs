@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
+    ComponentBatch, ComponentDescriptor, ComponentType, DeserializationResult, SerializationResult,
     SerializedComponentBatch,
 };
 
@@ -107,7 +107,7 @@ pub trait Archetype {
         )
     }
 
-    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
+    /// Given an iterator of Arrow arrays and their respective [`ComponentDescriptor`]s, deserializes them
     /// into this archetype.
     ///
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
@@ -288,7 +288,7 @@ impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
 ///
 /// [indicator component]: [`Archetype::Indicator`]
 #[derive(Debug, Clone, Copy)]
-pub struct NamedIndicatorComponent(pub ComponentName);
+pub struct NamedIndicatorComponent(pub ComponentType);
 
 impl crate::ComponentBatch for NamedIndicatorComponent {
     #[inline]

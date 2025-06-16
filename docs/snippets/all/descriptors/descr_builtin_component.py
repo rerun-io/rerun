@@ -14,7 +14,7 @@ rr.log(
             rr.ComponentDescriptor(
                 "points",
                 archetype_name="user.CustomPoints3D",
-                component_name="rerun.components.Position3D",
+                component_type="rerun.components.Position3D",
             )
         )
     ],

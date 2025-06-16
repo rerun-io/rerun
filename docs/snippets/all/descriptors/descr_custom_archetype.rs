@@ -10,14 +10,14 @@ impl CustomPoints3D {
         ComponentDescriptor {
             archetype_name: Some("user.CustomPoints3D".into()),
             archetype_field_name: "custom_positions".into(),
-            component_name: Some("user.CustomPosition3D".into()),
+            component_type: Some("user.CustomPosition3D".into()),
         }
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
         ComponentDescriptor::partial("colors")
             .or_with_archetype_name(|| "user.CustomPoints3D".into())
-            .or_with_component_name(<rerun::components::Color as rerun::Component>::name)
+            .or_with_component_type(<rerun::components::Color as rerun::Component>::name)
     }
 }
 
@@ -93,12 +93,12 @@ fn check_tags(rec: &rerun::RecordingStream) {
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: "colors".into(),
-                component_name: Some("rerun.components.Color".into()),
+                component_type: Some("rerun.components.Color".into()),
             },
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: "custom_positions".into(),
-                component_name: Some("user.CustomPosition3D".into()),
+                component_type: Some("user.CustomPosition3D".into()),
             },
         ];
 

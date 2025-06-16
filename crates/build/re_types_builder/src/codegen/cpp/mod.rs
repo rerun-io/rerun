@@ -536,7 +536,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #comment
                     static constexpr auto #constant_name = ComponentDescriptor(
-                        ArchetypeName, #field_name, Loggable<#field_type>::ComponentName
+                        ArchetypeName, #field_name, Loggable<#field_type>::ComponentType
                     );
                 }
             })
@@ -796,11 +796,11 @@ impl QuotedObject {
                     #(#field_declarations;)*
 
                 public:
-                    static constexpr const char IndicatorComponentName[] = #indicator_component_fqname;
+                    static constexpr const char IndicatorComponentType[] = #indicator_component_fqname;
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #indicator_comment
-                    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+                    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
 
                     #NEWLINE_TOKEN
                     #name_doc_string
@@ -2811,7 +2811,7 @@ fn quote_loggable_hpp_and_cpp(
             #hide_from_docs_comment
             template<>
             struct #loggable_type_name {
-                static constexpr std::string_view ComponentName = #fqname;
+                static constexpr std::string_view ComponentType = #fqname;
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #(#methods_hpp)*

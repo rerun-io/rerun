@@ -350,8 +350,8 @@ pub struct ComponentDescriptor {
     #[prost(string, optional, tag = "2")]
     pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
     /// Semantic name associated with this data.
-    #[prost(string, optional, tag = "3")]
-    pub component_name: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "4")]
+    pub component_type: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ComponentDescriptor {
     const NAME: &'static str = "ComponentDescriptor";

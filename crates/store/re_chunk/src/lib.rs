@@ -41,7 +41,7 @@ pub use arrow::array::Array as ArrowArray;
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 #[doc(no_inline)]
-pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId};
+pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentType, RowId};
 
 pub mod external {
     pub use arrow;

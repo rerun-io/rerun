@@ -88,7 +88,7 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str | None:
+    def component_type(self) -> str | None:
         """
         The component name, if any.
 
@@ -209,7 +209,7 @@ class Schema:
             The selector to look up.
 
             String arguments are expected to follow the following format:
-            `"<entity_path>:<component_name>"`
+            `"<entity_path>:<component_type>"`
 
         Returns
         -------

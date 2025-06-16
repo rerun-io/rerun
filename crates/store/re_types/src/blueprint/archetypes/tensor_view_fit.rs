@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how a selected tensor slice is shown on screen.
@@ -36,7 +36,7 @@ impl TensorViewFit {
     pub fn descriptor_scaling() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-            component_name: Some("rerun.blueprint.components.ViewFit".into()),
+            component_type: Some("rerun.blueprint.components.ViewFit".into()),
             archetype_field_name: "scaling".into(),
         }
     }
@@ -46,7 +46,7 @@ impl TensorViewFit {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
         }
     }

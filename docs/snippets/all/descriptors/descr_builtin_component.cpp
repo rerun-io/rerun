@@ -11,7 +11,7 @@ int main() {
             rerun::ComponentDescriptor(
                 "user.CustomPoints3D",                            // archetype name
                 "points",                                         // archetype field name
-                rerun::Loggable<rerun::Position3D>::ComponentName // component name
+                rerun::Loggable<rerun::Position3D>::ComponentType // component type
             )
         )
     );

@@ -188,8 +188,8 @@ impl PyComponentColumnDescriptor {
     ///
     /// This property is read-only.
     #[getter]
-    fn component_name(&self) -> Option<&str> {
-        self.0.component_name.map(|c| c.as_str())
+    fn component_type(&self) -> Option<&str> {
+        self.0.component_type.map(|c| c.as_str())
     }
 
     /// The archetype name, if any.
@@ -588,7 +588,7 @@ impl PySchema {
     ///     The selector to look up.
     ///
     ///     String arguments are expected to follow the following format:
-    ///     `"<entity_path>:<component_name>"`
+    ///     `"<entity_path>:<component_type>"`
     ///
     /// Returns
     /// -------

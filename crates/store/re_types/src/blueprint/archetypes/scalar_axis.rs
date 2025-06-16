@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the scalar (Y) axis of a plot.
@@ -41,7 +41,7 @@ impl ScalarAxis {
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-            component_name: Some("rerun.components.Range1D".into()),
+            component_type: Some("rerun.components.Range1D".into()),
             archetype_field_name: "range".into(),
         }
     }
@@ -53,7 +53,7 @@ impl ScalarAxis {
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-            component_name: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
             archetype_field_name: "zoom_lock".into(),
         }
     }
@@ -63,7 +63,7 @@ impl ScalarAxis {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.ScalarAxisIndicator".into(),
         }
     }

@@ -110,54 +110,54 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.Boxes3DIndicator";
+        static constexpr const char IndicatorComponentType[] = "rerun.components.Boxes3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Boxes3D";
 
         /// `ComponentDescriptor` for the `half_sizes` field.
         static constexpr auto Descriptor_half_sizes = ComponentDescriptor(
-            ArchetypeName, "half_sizes", Loggable<rerun::components::HalfSize3D>::ComponentName
+            ArchetypeName, "half_sizes", Loggable<rerun::components::HalfSize3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `centers` field.
         static constexpr auto Descriptor_centers = ComponentDescriptor(
-            ArchetypeName, "centers", Loggable<rerun::components::PoseTranslation3D>::ComponentName
+            ArchetypeName, "centers", Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
             ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentName
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
             ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::ComponentName
+            Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
-            ArchetypeName, "fill_mode", Loggable<rerun::components::FillMode>::ComponentName
+            ArchetypeName, "fill_mode", Loggable<rerun::components::FillMode>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from boxes3d_ext.cpp:

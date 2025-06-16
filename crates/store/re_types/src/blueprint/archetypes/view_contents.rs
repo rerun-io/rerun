@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The contents of a `View`.
@@ -75,7 +75,7 @@ impl ViewContents {
     pub fn descriptor_query() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component_name: Some("rerun.blueprint.components.QueryExpression".into()),
+            component_type: Some("rerun.blueprint.components.QueryExpression".into()),
             archetype_field_name: "query".into(),
         }
     }
@@ -85,7 +85,7 @@ impl ViewContents {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
         }
     }

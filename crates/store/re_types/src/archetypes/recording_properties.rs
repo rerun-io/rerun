@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of properties associated with a recording.
@@ -39,7 +39,7 @@ impl RecordingProperties {
     pub fn descriptor_start_time() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: Some("rerun.components.Timestamp".into()),
+            component_type: Some("rerun.components.Timestamp".into()),
             archetype_field_name: "start_time".into(),
         }
     }
@@ -51,7 +51,7 @@ impl RecordingProperties {
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-            component_name: Some("rerun.components.Name".into()),
+            component_type: Some("rerun.components.Name".into()),
             archetype_field_name: "name".into(),
         }
     }
@@ -61,7 +61,7 @@ impl RecordingProperties {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.RecordingPropertiesIndicator".into(),
         }
     }

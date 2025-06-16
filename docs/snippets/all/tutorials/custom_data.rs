@@ -27,7 +27,7 @@ impl rerun::AsComponents for CustomPoints3D {
                     batch.serialized(ComponentDescriptor {
                         archetype_name: Some("user.CustomPoints3D".into()),
                         archetype_field_name: "confidences".into(),
-                        component_name: Some(<Confidence as rerun::Component>::name()),
+                        component_type: Some(<Confidence as rerun::Component>::name()),
                     })
                 }))
                 .flatten(),
@@ -74,7 +74,7 @@ impl rerun::Loggable for Confidence {
 
 impl rerun::Component for Confidence {
     #[inline]
-    fn name() -> rerun::ComponentName {
+    fn name() -> rerun::ComponentType {
         "user.Confidence".into()
     }
 }

@@ -548,7 +548,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
         ColumnDescriptorRef::Component(desc) => {
             let re_sorbet::ComponentColumnDescriptor {
                 store_datatype,
-                component_name,
+                component_type,
                 entity_path,
                 archetype_name,
                 archetype_field_name,
@@ -562,7 +562,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(
                 ui,
                 "Component",
-                component_name.map(|a| a.as_str()).unwrap_or("-"),
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);

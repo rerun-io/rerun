@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A text element intended to be displayed in its own text box.
@@ -111,7 +111,7 @@ impl TextDocument {
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_name: Some("rerun.components.Text".into()),
+            component_type: Some("rerun.components.Text".into()),
             archetype_field_name: "text".into(),
         }
     }
@@ -123,7 +123,7 @@ impl TextDocument {
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_name: Some("rerun.components.MediaType".into()),
+            component_type: Some("rerun.components.MediaType".into()),
             archetype_field_name: "media_type".into(),
         }
     }
@@ -133,7 +133,7 @@ impl TextDocument {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.TextDocumentIndicator".into(),
         }
     }

@@ -33,9 +33,9 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
         None
     };
 
-    let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
-    let component_name: Option<Cow<'_, str>> = if !component_name.is_none() {
-        Some(component_name.extract()?)
+    let component_type = component_descr.getattr(pyo3::intern!(py, "component_type"))?;
+    let component_type: Option<Cow<'_, str>> = if !component_type.is_none() {
+        Some(component_type.extract()?)
     } else {
         None
     };
@@ -47,7 +47,7 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let descr = ComponentDescriptor {
         archetype_name: archetype_name.map(|s| s.as_ref().into()),
         archetype_field_name: archetype_field_name.as_ref().into(),
-        component_name: component_name.map(|s| s.as_ref().into()),
+        component_type: component_type.map(|s| s.as_ref().into()),
     };
     descr.sanity_check();
     Ok(descr)

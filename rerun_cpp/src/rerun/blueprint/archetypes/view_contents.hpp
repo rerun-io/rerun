@@ -64,18 +64,18 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> query;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.ViewContentsIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewContents";
 
         /// `ComponentDescriptor` for the `query` field.
         static constexpr auto Descriptor_query = ComponentDescriptor(
             ArchetypeName, "query",
-            Loggable<rerun::blueprint::components::QueryExpression>::ComponentName
+            Loggable<rerun::blueprint::components::QueryExpression>::ComponentType
         );
 
       public:

@@ -44,20 +44,20 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.BarChartIndicator";
+        static constexpr const char IndicatorComponentType[] = "rerun.components.BarChartIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
 
         /// `ComponentDescriptor` for the `values` field.
         static constexpr auto Descriptor_values = ComponentDescriptor(
-            ArchetypeName, "values", Loggable<rerun::components::TensorData>::ComponentName
+            ArchetypeName, "values", Loggable<rerun::components::TensorData>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public: // START of extensions from bar_chart_ext.cpp:

@@ -7,7 +7,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
 use re_log_types::{Instance, StoreId};
-use re_types::{ComponentDescriptor, ComponentName};
+use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
@@ -66,14 +66,14 @@ re_string_interner::declare_new_type!(
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum ComponentUiIdentifier {
     /// Component UI for a specific component.
-    Component(ComponentName),
+    Component(ComponentType),
 
     /// Component UI explicitly opted into by providing a variant name.
     Variant(VariantName),
 }
 
-impl From<ComponentName> for ComponentUiIdentifier {
-    fn from(name: ComponentName) -> Self {
+impl From<ComponentType> for ComponentUiIdentifier {
+    fn from(name: ComponentType) -> Self {
         Self::Component(name)
     }
 }
@@ -120,7 +120,7 @@ pub struct ComponentUiRegistry {
     ///   This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
     /// * unawareness of `ListItem` context:
     ///   We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
-    legacy_display_component_uis: BTreeMap<ComponentName, LegacyDisplayComponentUiCallback>,
+    legacy_display_component_uis: BTreeMap<ComponentType, LegacyDisplayComponentUiCallback>,
 
     /// Implements viewing and probably editing
     component_singleline_edit_or_view:
@@ -151,7 +151,7 @@ impl ComponentUiRegistry {
     /// If the component has already a display UI registered, the new callback replaces the old one.
     pub fn add_legacy_display_ui(
         &mut self,
-        name: ComponentName,
+        name: ComponentType,
         callback: LegacyDisplayComponentUiCallback,
     ) {
         self.legacy_display_component_uis.insert(name, callback);
@@ -226,7 +226,7 @@ impl ComponentUiRegistry {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
                 // if we end up being called with a mismatching component, its likely a bug.
-                debug_assert_eq!(_component_descriptor.component_name, Some(C::name()));
+                debug_assert_eq!(_component_descriptor.component_type, Some(C::name()));
 
                 try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
                     EditOrView::View => {
@@ -303,7 +303,7 @@ impl ComponentUiRegistry {
     /// Queries which UI types are registered for a component.
     ///
     /// Note that there's always a fallback display UI.
-    pub fn registered_ui_types(&self, name: ComponentName) -> ComponentUiTypes {
+    pub fn registered_ui_types(&self, name: ComponentType) -> ComponentUiTypes {
         let mut types = ComponentUiTypes::empty();
 
         if self.legacy_display_component_uis.contains_key(&name) {
@@ -405,7 +405,7 @@ impl ComponentUiRegistry {
 
         // Prefer the versatile UI callback if there is one.
         if let Some(ui_callback) = component_descr
-            .component_name
+            .component_type
             .and_then(|cn| self.legacy_display_component_uis.get(&cn))
         {
             (*ui_callback)(
@@ -423,17 +423,17 @@ impl ComponentUiRegistry {
         }
 
         // Fallback to the more specialized UI callbacks (which are only available for known components).
-        if let Some(component_name) = component_descr.component_name {
+        if let Some(component_type) = component_descr.component_type {
             let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
                 self.component_multiline_edit_or_view
-                    .get(&component_name.into())
+                    .get(&component_type.into())
                     .or_else(|| {
                         self.component_singleline_edit_or_view
-                            .get(&component_name.into())
+                            .get(&component_type.into())
                     })
             } else {
                 self.component_singleline_edit_or_view
-                    .get(&component_name.into())
+                    .get(&component_type.into())
             };
             if let Some(edit_or_view_ui) = edit_or_view_ui {
                 // Use it in view mode (no mutation).
@@ -662,7 +662,7 @@ impl ComponentUiRegistry {
 
         // We use the component name to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
-        let Some(ui_identifier) = component_descr.component_name else {
+        let Some(ui_identifier) = component_descr.component_type else {
             re_log::warn_once!(
                 "Cannot show edit ui for descriptors without component name: {component_descr}"
             );
@@ -710,14 +710,14 @@ impl ComponentUiRegistry {
 }
 
 fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
-    let component_name = C::name();
+    let component_type = C::name();
     let deserialized = C::from_arrow(value);
     match deserialized {
         Ok(values) => {
             if values.len() > 1 {
                 // Whatever we did prior to calling this should have taken care if it!
                 re_log::error_once!(
-                    "Can only edit a single value at a time, got {} values for editing {component_name}",
+                    "Can only edit a single value at a time, got {} values for editing {component_type}",
                     values.len()
                 );
             }
@@ -725,13 +725,13 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> O
                 Some(v)
             } else {
                 re_log::warn_once!(
-                    "Editor UI for {component_name} needs a start value to operate on."
+                    "Editor UI for {component_type} needs a start value to operate on."
                 );
                 None
             }
         }
         Err(err) => {
-            re_log::error_once!("Failed to deserialize component of type {component_name}: {err}",);
+            re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
             None
         }
     }

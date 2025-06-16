@@ -25,17 +25,17 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> scaling;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.TensorViewFitIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TensorViewFit";
 
         /// `ComponentDescriptor` for the `scaling` field.
         static constexpr auto Descriptor_scaling = ComponentDescriptor(
-            ArchetypeName, "scaling", Loggable<rerun::blueprint::components::ViewFit>::ComponentName
+            ArchetypeName, "scaling", Loggable<rerun::blueprint::components::ViewFit>::ComponentType
         );
 
       public:

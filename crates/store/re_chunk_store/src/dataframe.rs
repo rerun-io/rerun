@@ -337,7 +337,7 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
-                if let Some(c) = component_descr.component_name {
+                if let Some(c) = component_descr.component_type {
                     c.sanity_check();
                 }
 
@@ -352,7 +352,7 @@ impl ChunkStore {
                     entity_path: entity_path.clone(),
                     archetype_name: component_descr.archetype_name,
                     archetype_field_name: component_descr.archetype_field_name,
-                    component_name: component_descr.component_name,
+                    component_type: component_descr.component_type,
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -404,7 +404,7 @@ impl ChunkStore {
         // in long-running servers. In practice this probably doesn't matter.
         let mut result = ComponentColumnDescriptor {
             store_datatype: ArrowDatatype::Null,
-            component_name: None,
+            component_type: None,
             entity_path: selector.entity_path.clone(),
             archetype_name: selector.archetype_name,
             archetype_field_name: selector.archetype_field_name.as_str().into(),

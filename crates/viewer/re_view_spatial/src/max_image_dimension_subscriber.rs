@@ -139,7 +139,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 max_dim.image_types.insert(image_type);
 
                 // Size detection for various types of components.
-                if descr.component_name == Some(components::ImageFormat::name()) {
+                if descr.component_type == Some(components::ImageFormat::name()) {
                     for new_dim in list_array.iter().filter_map(|array| {
                         array.and_then(|array| {
                             let array = arrow::array::ArrayRef::from(array);
@@ -152,12 +152,12 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                         max_dim.width = max_dim.width.max(new_dim.width);
                         max_dim.height = max_dim.height.max(new_dim.height);
                     }
-                } else if descr.component_name == Some(components::Blob::name()) {
+                } else if descr.component_type == Some(components::Blob::name()) {
                     let blobs = chunk.iter_slices::<&[u8]>(descr.clone());
 
                     // Is there a media type paired up with this blob?
                     let media_type_descr = components.keys().find(|desc| {
-                        desc.component_name == Some(components::MediaType::name())
+                        desc.component_type == Some(components::MediaType::name())
                             && desc.archetype_name == descr.archetype_name
                     });
                     let media_types = media_type_descr.map_or(Vec::new(), |media_type_descr| {
@@ -189,7 +189,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                             max_dim.height = max_dim.height.max(height);
                         }
                     }
-                } else if descr.component_name == Some(components::VideoSample::name()) {
+                } else if descr.component_type == Some(components::VideoSample::name()) {
                     let Some(video_codec) = self.video_codecs.get(&entity_path.hash()).copied()
                     else {
                         // Codec is typically logged earlier.

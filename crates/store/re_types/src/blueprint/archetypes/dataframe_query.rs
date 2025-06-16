@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The query for the dataframe view.
@@ -52,7 +52,7 @@ impl DataframeQuery {
     pub fn descriptor_timeline() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: Some("rerun.blueprint.components.TimelineName".into()),
+            component_type: Some("rerun.blueprint.components.TimelineName".into()),
             archetype_field_name: "timeline".into(),
         }
     }
@@ -64,7 +64,7 @@ impl DataframeQuery {
     pub fn descriptor_filter_by_range() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: Some("rerun.blueprint.components.FilterByRange".into()),
+            component_type: Some("rerun.blueprint.components.FilterByRange".into()),
             archetype_field_name: "filter_by_range".into(),
         }
     }
@@ -76,7 +76,7 @@ impl DataframeQuery {
     pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: Some("rerun.blueprint.components.FilterIsNotNull".into()),
+            component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
             archetype_field_name: "filter_is_not_null".into(),
         }
     }
@@ -88,7 +88,7 @@ impl DataframeQuery {
     pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: Some("rerun.blueprint.components.ApplyLatestAt".into()),
+            component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
             archetype_field_name: "apply_latest_at".into(),
         }
     }
@@ -100,7 +100,7 @@ impl DataframeQuery {
     pub fn descriptor_select() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: Some("rerun.blueprint.components.SelectedColumns".into()),
+            component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
             archetype_field_name: "select".into(),
         }
     }
@@ -110,7 +110,7 @@ impl DataframeQuery {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
         }
     }

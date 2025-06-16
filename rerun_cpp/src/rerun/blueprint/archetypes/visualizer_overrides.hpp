@@ -34,11 +34,11 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> ranges;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.VisualizerOverridesIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.VisualizerOverrides";
@@ -46,7 +46,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `ranges` field.
         static constexpr auto Descriptor_ranges = ComponentDescriptor(
             ArchetypeName, "ranges",
-            Loggable<rerun::blueprint::components::VisualizerOverride>::ComponentName
+            Loggable<rerun::blueprint::components::VisualizerOverride>::ComponentType
         );
 
       public:

@@ -64,25 +64,25 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> colors;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.GeoLineStringsIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GeoLineStrings";
 
         /// `ComponentDescriptor` for the `line_strings` field.
         static constexpr auto Descriptor_line_strings = ComponentDescriptor(
-            ArchetypeName, "line_strings", Loggable<rerun::components::GeoLineString>::ComponentName
+            ArchetypeName, "line_strings", Loggable<rerun::components::GeoLineString>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

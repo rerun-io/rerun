@@ -1,4 +1,4 @@
-use crate::{ArchetypeName, ComponentDescriptor, ComponentName, Loggable, SerializationResult};
+use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
 
 use arrow::array::ListArray as ArrowListArray;
 
@@ -159,10 +159,10 @@ impl SerializedComponentBatch {
         self
     }
 
-    /// Unconditionally sets the descriptor's `component_name` to the given one.
+    /// Unconditionally sets the descriptor's `component_type` to the given one.
     #[inline]
-    pub fn with_component_name(mut self, component_name: ComponentName) -> Self {
-        self.descriptor = self.descriptor.with_component_name(component_name);
+    pub fn with_component_type(mut self, component_type: ComponentType) -> Self {
+        self.descriptor = self.descriptor.with_component_type(component_type);
         self
     }
 
@@ -175,11 +175,11 @@ impl SerializedComponentBatch {
 
     /// Sets the descriptor's `archetype_field_name` to the given one iff it's not already set.
     #[inline]
-    pub fn or_with_component_name(
+    pub fn or_with_component_type(
         mut self,
-        component_name: impl FnOnce() -> ComponentName,
+        component_type: impl FnOnce() -> ComponentType,
     ) -> Self {
-        self.descriptor = self.descriptor.or_with_component_name(component_name);
+        self.descriptor = self.descriptor.or_with_component_type(component_type);
         self
     }
 }
@@ -267,11 +267,13 @@ impl SerializedComponentBatch {
 
 // TODO(cmc): we really shouldn't be duplicating these.
 
-/// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
+/// The key used to identify the [`ArchetypeName`] in field-level metadata.
+// TODO(#10142): Use new colon-based identifier here.
 const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
 
-/// The key used to identify the [`crate::ComponentName`] in field-level metadata.
-const FIELD_METADATA_KEY_COMPONENT_NAME: &str = "rerun.component_name";
+/// The key used to identify the [`ComponentType`] in field-level metadata.
+// TODO(#10142): Use new colon-based identifier here.
+const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun.component_type";
 
 impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     #[inline]
@@ -289,9 +291,9 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
                         name.to_string(),
                     )
                 }),
-                batch.descriptor.component_name.map(|name| {
+                batch.descriptor.component_type.map(|name| {
                     (
-                        FIELD_METADATA_KEY_COMPONENT_NAME.to_owned(),
+                        FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                         name.to_string(),
                     )
                 }),

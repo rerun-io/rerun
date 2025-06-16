@@ -28,7 +28,7 @@ class ActiveTab(datatypes.EntityPath, ComponentMixin):
 
 
 class ActiveTabBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ActiveTab"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ActiveTab"
 
 
 # This is patched in late to avoid circular dependencies.

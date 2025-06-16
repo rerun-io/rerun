@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
@@ -46,7 +46,7 @@ impl ForceLink {
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: Some("rerun.blueprint.components.Enabled".into()),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
             archetype_field_name: "enabled".into(),
         }
     }
@@ -58,7 +58,7 @@ impl ForceLink {
     pub fn descriptor_distance() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: Some("rerun.blueprint.components.ForceDistance".into()),
+            component_type: Some("rerun.blueprint.components.ForceDistance".into()),
             archetype_field_name: "distance".into(),
         }
     }
@@ -70,7 +70,7 @@ impl ForceLink {
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: Some("rerun.blueprint.components.ForceIterations".into()),
+            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
             archetype_field_name: "iterations".into(),
         }
     }
@@ -80,7 +80,7 @@ impl ForceLink {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
         }
     }

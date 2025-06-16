@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
@@ -87,7 +87,7 @@ impl Asset3D {
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.Blob".into()),
+            component_type: Some("rerun.components.Blob".into()),
             archetype_field_name: "blob".into(),
         }
     }
@@ -99,7 +99,7 @@ impl Asset3D {
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.MediaType".into()),
+            component_type: Some("rerun.components.MediaType".into()),
             archetype_field_name: "media_type".into(),
         }
     }
@@ -111,7 +111,7 @@ impl Asset3D {
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.AlbedoFactor".into()),
+            component_type: Some("rerun.components.AlbedoFactor".into()),
             archetype_field_name: "albedo_factor".into(),
         }
     }
@@ -121,7 +121,7 @@ impl Asset3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.Asset3DIndicator".into(),
         }
     }

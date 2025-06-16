@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
@@ -118,7 +118,7 @@ impl Boxes3D {
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.HalfSize3D".into()),
+            component_type: Some("rerun.components.HalfSize3D".into()),
             archetype_field_name: "half_sizes".into(),
         }
     }
@@ -130,7 +130,7 @@ impl Boxes3D {
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.PoseTranslation3D".into()),
+            component_type: Some("rerun.components.PoseTranslation3D".into()),
             archetype_field_name: "centers".into(),
         }
     }
@@ -142,7 +142,7 @@ impl Boxes3D {
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.PoseRotationAxisAngle".into()),
+            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
             archetype_field_name: "rotation_axis_angles".into(),
         }
     }
@@ -154,7 +154,7 @@ impl Boxes3D {
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.PoseRotationQuat".into()),
+            component_type: Some("rerun.components.PoseRotationQuat".into()),
             archetype_field_name: "quaternions".into(),
         }
     }
@@ -166,7 +166,7 @@ impl Boxes3D {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.Color".into()),
+            component_type: Some("rerun.components.Color".into()),
             archetype_field_name: "colors".into(),
         }
     }
@@ -178,7 +178,7 @@ impl Boxes3D {
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.Radius".into()),
+            component_type: Some("rerun.components.Radius".into()),
             archetype_field_name: "radii".into(),
         }
     }
@@ -190,7 +190,7 @@ impl Boxes3D {
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.FillMode".into()),
+            component_type: Some("rerun.components.FillMode".into()),
             archetype_field_name: "fill_mode".into(),
         }
     }
@@ -202,7 +202,7 @@ impl Boxes3D {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.Text".into()),
+            component_type: Some("rerun.components.Text".into()),
             archetype_field_name: "labels".into(),
         }
     }
@@ -214,7 +214,7 @@ impl Boxes3D {
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.ShowLabels".into()),
+            component_type: Some("rerun.components.ShowLabels".into()),
             archetype_field_name: "show_labels".into(),
         }
     }
@@ -226,7 +226,7 @@ impl Boxes3D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: Some("rerun.components.ClassId".into()),
+            component_type: Some("rerun.components.ClassId".into()),
             archetype_field_name: "class_ids".into(),
         }
     }
@@ -236,7 +236,7 @@ impl Boxes3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.components.Boxes3DIndicator".into(),
         }
     }

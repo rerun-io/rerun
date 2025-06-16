@@ -2,16 +2,16 @@ use re_types_core::ComponentDescriptor;
 
 use crate::path::EntityPath;
 
-/// A [`EntityPath`] plus a [`re_types_core::ComponentName`].
+/// A [`EntityPath`] plus a [`ComponentDescriptor`].
 ///
-/// Example: `camera/left/points:Color`
+/// Example: `camera/left/points:Points3D:color#Color`
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ComponentPath {
     /// `camera / "left" / points / #42`
     pub entity_path: EntityPath,
 
-    /// e.g. `Points3D:Color#color`
+    /// e.g. `Points3D:color#Color`
     pub component_descriptor: ComponentDescriptor,
 }
 

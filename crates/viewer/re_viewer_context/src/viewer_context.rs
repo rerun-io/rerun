@@ -285,7 +285,7 @@ impl ViewerContext<'_> {
     /// The rationale is that to get into this situation, we need to know of a component name for which
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
-    pub fn placeholder_for(&self, component: re_chunk::ComponentName) -> ArrayRef {
+    pub fn placeholder_for(&self, component: re_chunk::ComponentType) -> ArrayRef {
         let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {

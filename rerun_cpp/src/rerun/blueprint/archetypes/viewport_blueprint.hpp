@@ -53,11 +53,11 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> past_viewer_recommendations;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.ViewportBlueprintIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.ViewportBlueprint";
@@ -65,27 +65,27 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `root_container` field.
         static constexpr auto Descriptor_root_container = ComponentDescriptor(
             ArchetypeName, "root_container",
-            Loggable<rerun::blueprint::components::RootContainer>::ComponentName
+            Loggable<rerun::blueprint::components::RootContainer>::ComponentType
         );
         /// `ComponentDescriptor` for the `maximized` field.
         static constexpr auto Descriptor_maximized = ComponentDescriptor(
             ArchetypeName, "maximized",
-            Loggable<rerun::blueprint::components::ViewMaximized>::ComponentName
+            Loggable<rerun::blueprint::components::ViewMaximized>::ComponentType
         );
         /// `ComponentDescriptor` for the `auto_layout` field.
         static constexpr auto Descriptor_auto_layout = ComponentDescriptor(
             ArchetypeName, "auto_layout",
-            Loggable<rerun::blueprint::components::AutoLayout>::ComponentName
+            Loggable<rerun::blueprint::components::AutoLayout>::ComponentType
         );
         /// `ComponentDescriptor` for the `auto_views` field.
         static constexpr auto Descriptor_auto_views = ComponentDescriptor(
             ArchetypeName, "auto_views",
-            Loggable<rerun::blueprint::components::AutoViews>::ComponentName
+            Loggable<rerun::blueprint::components::AutoViews>::ComponentType
         );
         /// `ComponentDescriptor` for the `past_viewer_recommendations` field.
         static constexpr auto Descriptor_past_viewer_recommendations = ComponentDescriptor(
             ArchetypeName, "past_viewer_recommendations",
-            Loggable<rerun::blueprint::components::ViewerRecommendationHash>::ComponentName
+            Loggable<rerun::blueprint::components::ViewerRecommendationHash>::ComponentType
         );
 
       public:

@@ -196,8 +196,11 @@ message ComponentDescriptor {
   // Optional name of the field within `Archetype` associated with this data.
   optional string archetype_field_name = 2;
 
+  reserved 3;
+  reserved "component_name";
+
   // Semantic name associated with this data.
-  optional string component_name = 3;
+  optional string component_type = 4;
 }
 
 // Unique identifier of a task submitted in the redap

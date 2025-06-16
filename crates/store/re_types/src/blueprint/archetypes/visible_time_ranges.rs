@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures what range of each timeline is shown on a view.
@@ -46,7 +46,7 @@ impl VisibleTimeRanges {
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-            component_name: Some("rerun.blueprint.components.VisibleTimeRange".into()),
+            component_type: Some("rerun.blueprint.components.VisibleTimeRange".into()),
             archetype_field_name: "ranges".into(),
         }
     }
@@ -56,7 +56,7 @@ impl VisibleTimeRanges {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: None,
+            component_type: None,
             archetype_field_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
         }
     }

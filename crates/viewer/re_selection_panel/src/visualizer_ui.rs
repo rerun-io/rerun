@@ -430,10 +430,10 @@ fn visualizer_components(
             )
             .item_response;
 
-        if let Some(component_name) = component_descr.component_name {
+        if let Some(component_type) = component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
-                component_name.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
         }
     }

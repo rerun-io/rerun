@@ -24,7 +24,7 @@ class Visible(datatypes.Bool, ComponentMixin):
 
 
 class VisibleBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Visible"
+    _COMPONENT_TYPE: str = "rerun.components.Visible"
 
 
 # This is patched in late to avoid circular dependencies.

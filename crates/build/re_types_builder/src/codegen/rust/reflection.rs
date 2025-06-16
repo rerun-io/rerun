@@ -47,7 +47,7 @@ pub fn generate_reflection(
     let quoted_reflection = quote! {
         use re_types_core::{
             ArchetypeName,
-            ComponentName,
+            ComponentType,
             Component,
             Loggable as _,
             ComponentBatch as _,
@@ -111,7 +111,7 @@ fn generate_component_reflection(
         } else {
             // Works too
             let fqname = &obj.fqname;
-            quote!( ComponentName::new(#fqname) )
+            quote!( ComponentType::new(#fqname) )
         };
 
         let docstring_md = doc_as_lines(
@@ -190,7 +190,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         .filter(|obj| !obj.is_testing())
     {
         let quoted_field_reflections = obj.fields.iter().map(|field| {
-            let Some(component_name) = field.typ.fqname() else {
+            let Some(component_type) = field.typ.fqname() else {
                 reporter.error(
                     &field.virtpath,
                     &field.fqname,
@@ -216,7 +216,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 ArchetypeFieldReflection {
                     name: #name.into(),
                     display_name: #display_name,
-                    component_name: #component_name.into(),
+                    component_type: #component_type.into(),
                     docstring_md: #docstring_md,
                     is_required: #required,
                 }

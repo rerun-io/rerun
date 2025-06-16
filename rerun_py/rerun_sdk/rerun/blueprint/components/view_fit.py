@@ -62,7 +62,7 @@ ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewFit"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewFit"
 
     @staticmethod
     def _native_to_pa_array(data: ViewFitArrayLike, data_type: pa.DataType) -> pa.Array:
