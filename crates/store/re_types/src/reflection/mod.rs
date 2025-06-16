@@ -1470,9 +1470,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     .into(), display_name : "Colors", component_name :
                     "rerun.components.Color".into(), docstring_md :
                     "Optional colors for the capsules.", is_required : false, },
-                    ArchetypeFieldReflection { name : "labels".into(), display_name :
-                    "Labels", component_name : "rerun.components.Text".into(),
+                    ArchetypeFieldReflection { name : "line_radii".into(), display_name :
+                    "Line radii", component_name : "rerun.components.Radius".into(),
                     docstring_md :
+                    "Optional radii for the lines used when the cylinder is rendered as a wireframe.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "fill_mode"
+                    .into(), display_name : "Fill mode", component_name :
+                    "rerun.components.FillMode".into(), docstring_md :
+                    "Optionally choose whether the cylinders are drawn with lines or solid.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "labels"
+                    .into(), display_name : "Labels", component_name :
+                    "rerun.components.Text".into(), docstring_md :
                     "Optional text labels for the capsules, which will be located at their centers.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :

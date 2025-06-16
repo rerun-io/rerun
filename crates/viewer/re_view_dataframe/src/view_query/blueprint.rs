@@ -94,18 +94,7 @@ impl Query {
         Ok(self
             .filter_is_not_null_raw()?
             .filter(|filter_is_not_null| filter_is_not_null.active())
-            .and_then(|filter| {
-                let maybe_selector = ComponentColumnSelector::try_new_from_column_name(
-                    &filter.entity_path(),
-                    &filter.component_name(),
-                );
-
-                if let Err(err) = maybe_selector.as_ref() {
-                    re_log::warn!("Could not parse filter {filter:?}: {err}");
-                }
-
-                maybe_selector.ok()
-            }))
+            .map(|filter| filter.column_selector()))
     }
 
     /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
@@ -169,8 +158,7 @@ impl Query {
                 ColumnSelector::Component(selector) => {
                     let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
                         &selector.entity_path,
-                        // TODO(#10065): Needs to be a proper column name:
-                        &selector.qualified_archetype_field_name(),
+                        selector.qualified_archetype_field_name(),
                     );
 
                     selected_columns
@@ -235,7 +223,7 @@ impl Query {
             .collect();
         let selected_component_columns = component_columns
             .iter()
-            .map(|selector| selector.column_name())
+            .map(|selector| selector.column_selector().column_name())
             .collect::<HashSet<_>>();
 
         let query_timeline_name = self.timeline_name(ctx)?;

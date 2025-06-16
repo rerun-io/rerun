@@ -887,14 +887,14 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
     }
 
     fn end_of_video(&mut self) -> crate::decode::Result<()> {
-        re_log::debug!("End of video - flushing ffmpeg decoder {}", self.debug_name);
+        re_log::trace!("End of video - flushing ffmpeg decoder {}", self.debug_name);
         self.ffmpeg.end_of_video();
         Ok(())
     }
 
     fn reset(&mut self, video_descr: &VideoDataDescription) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
-        re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
+        re_log::trace!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),

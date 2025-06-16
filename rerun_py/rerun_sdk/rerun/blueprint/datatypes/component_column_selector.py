@@ -61,6 +61,11 @@ class ComponentColumnSelector(ComponentColumnSelectorExt):
     component: datatypes.Utf8 = field(converter=_component_column_selector__component__special_field_converter_override)
     # The name of the component.
     #
+    # This acts as the column name in the context of a given `entity_path`
+    # By convention, for all Rerun typtes this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`.
+    # (if there's no `ArchetypeName` it is just the field name).
+    # An example for this would be `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 

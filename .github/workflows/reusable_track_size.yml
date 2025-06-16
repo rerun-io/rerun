@@ -188,6 +188,7 @@ jobs:
           # Don't push to gh-pages
           save-data-file: false
           auto-push: false
+          skip-fetch-gh-pages: true
 
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:

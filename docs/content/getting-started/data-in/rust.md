@@ -127,7 +127,7 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
-Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual _components_ like positions, colors,
+Under the hood, the Rerun [Rust SDK](https://docs.rs/rerun) logs individual _components_ like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.

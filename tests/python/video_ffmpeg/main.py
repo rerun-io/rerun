@@ -67,11 +67,6 @@ def capture_webcam_h264() -> None:
         "-pix_fmt", "yuv420p",  # Ensure pixel format compatible with baseline profile.
         "-preset", "veryfast",  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
         "-tune", "zerolatency",  # Low latency
-        #'-refs', '1',  # Force single reference frame
-        #'-bf', '0',  # No B-frames (alternative way to forcing baseline profile)
-        # GOP (Group of Pictures) size - smaller value for lower latency.
-        # TODO(#7484): This is too aggressive, but needed until we handle gop extending in the viewer better.
-        "-g", "4",
 
         # Setup output.
         "-f", "h264",  # Output format

@@ -674,7 +674,7 @@ dependencies = [
  "enumflags2",
  "futures-channel",
  "futures-util",
- "rand 0.8.5",
+ "rand",
  "raw-window-handle",
  "serde",
  "serde_repr",
@@ -1493,7 +1493,6 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
- "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -2181,7 +2180,7 @@ dependencies = [
  "object_store",
  "parking_lot",
  "parquet",
- "rand 0.8.5",
+ "rand",
  "regex",
  "sqlparser",
  "tempfile",
@@ -2303,7 +2302,7 @@ dependencies = [
  "log",
  "object_store",
  "parquet",
- "rand 0.8.5",
+ "rand",
  "tempfile",
  "tokio",
  "tokio-util",
@@ -2389,7 +2388,7 @@ dependencies = [
  "object_store",
  "parking_lot",
  "parquet",
- "rand 0.8.5",
+ "rand",
  "tokio",
 ]
 
@@ -2413,7 +2412,7 @@ dependencies = [
  "log",
  "object_store",
  "parking_lot",
- "rand 0.8.5",
+ "rand",
  "tempfile",
  "url",
 ]
@@ -2494,7 +2493,7 @@ dependencies = [
  "itertools 0.14.0",
  "log",
  "md-5",
- "rand 0.8.5",
+ "rand",
  "regex",
  "sha2",
  "unicode-segmentation",
@@ -2866,7 +2865,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.5",
 ]
 
 [[package]]
@@ -2874,7 +2873,7 @@ name = "dna"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "itertools 0.14.0",
- "rand 0.8.5",
+ "rand",
  "rerun",
 ]
 
@@ -2902,7 +2901,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2919,7 +2918,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2959,7 +2958,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2972,13 +2971,14 @@ dependencies = [
  "profiling",
  "ron",
  "serde",
+ "smallvec",
  "unicode-segmentation",
 ]
 
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2997,7 +2997,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -3061,7 +3061,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "ahash",
  "egui",
@@ -3078,7 +3078,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3095,7 +3095,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "dify",
  "eframe",
@@ -3110,7 +3110,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.32.1"
-source = "git+https://github.com/emilk/egui_plot.git?branch=main#364293fa6f0fe47b52d5f7904d120a580b13b7ff"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#e397e9c71e8c0716648c37a18d77954b235a9f07"
 dependencies = [
  "ahash",
  "egui",
@@ -3166,7 +3166,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3283,7 +3283,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3302,7 +3302,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#5194c0df3ef162ec6e2df9bb29bbe944d6d68aa9"
 
 [[package]]
 name = "equivalent"
@@ -4206,7 +4206,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
- "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
@@ -4450,7 +4449,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "rand 0.8.5",
+ "rand",
  "rerun",
 ]
 
@@ -4744,7 +4743,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 [[package]]
 name = "kittest"
 version = "0.1.0"
-source = "git+https://github.com/rerun-io/kittest?branch=main#679f9ade828021295c5f86f38275d9271d001004"
+source = "git+https://github.com/rerun-io/kittest?branch=main#32af4e7449824cfe97ffe590066b7ab23a196bc4"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -5317,7 +5316,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
 dependencies = [
  "ndarray",
- "rand 0.8.5",
+ "rand",
  "rand_distr",
 ]
 
@@ -5785,26 +5784,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7781f96d79ed0f961a7021424ab01840efbda64ae7a505aaea195efc91eaaec4"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
  "bytes",
  "chrono",
- "form_urlencoded",
  "futures",
  "http",
- "http-body-util",
  "humantime",
- "hyper",
  "itertools 0.14.0",
- "md-5",
  "parking_lot",
  "percent-encoding",
- "quick-xml 0.37.2",
- "rand 0.9.1",
- "reqwest",
- "ring",
- "serde",
- "serde_json",
- "serde_urlencoded",
  "thiserror 2.0.7",
  "tokio",
  "tracing",
@@ -6111,7 +6098,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
 dependencies = [
  "phf_shared",
- "rand 0.8.5",
+ "rand",
 ]
 
 [[package]]
@@ -6184,7 +6171,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "rand 0.8.5",
+ "rand",
  "rand_distr",
  "re_log",
  "rerun",
@@ -6565,16 +6552,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quick-xml"
-version = "0.37.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "165859e9e55f79d67b96c5d96f4e88b6f2695a1972849c15a6a3f5c59fc2c003"
-dependencies = [
- "memchr",
- "serde",
-]
-
-[[package]]
 name = "quinn"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6599,7 +6576,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fadfaed2cd7f389d0161bb73eeb07b7b78f8691047a6f3e73caaeae55310a4a6"
 dependencies = [
  "bytes",
- "rand 0.8.5",
+ "rand",
  "ring",
  "rustc-hash 2.0.0",
  "rustls",
@@ -6645,18 +6622,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fbfd9d094a40bf3ae768db9361049ace4c0e04a4fd6b359518bd7b73a73dd97"
-dependencies = [
- "rand_chacha 0.9.0",
- "rand_core 0.9.3",
+ "rand_chacha",
+ "rand_core",
 ]
 
 [[package]]
@@ -6666,17 +6633,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
- "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.9.3",
+ "rand_core",
 ]
 
 [[package]]
@@ -6689,22 +6646,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_core"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
-dependencies = [
- "getrandom 0.3.2",
-]
-
-[[package]]
 name = "rand_distr"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand 0.8.5",
+ "rand",
 ]
 
 [[package]]
@@ -6804,7 +6752,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "base64 0.22.1",
  "jsonwebtoken",
- "rand 0.8.5",
+ "rand",
  "re_log",
  "serde",
  "thiserror 1.0.65",
@@ -6895,7 +6843,7 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "nohash-hasher",
- "rand 0.8.5",
+ "rand",
  "re_arrow_util",
  "re_byte_size",
  "re_error",
@@ -6925,7 +6873,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
- "rand 0.8.5",
+ "rand",
  "re_arrow_util",
  "re_byte_size",
  "re_chunk",
@@ -7538,7 +7486,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "paste",
- "rand 0.8.5",
+ "rand",
  "re_arrow_util",
  "re_byte_size",
  "re_chunk",
@@ -7671,7 +7619,7 @@ dependencies = [
  "itertools 0.14.0",
  "macaw",
  "pollster 0.4.0",
- "rand 0.8.5",
+ "rand",
  "re_log",
  "re_renderer",
  "wasm-bindgen-futures",
@@ -7799,7 +7747,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "once_cell",
- "rand 0.8.5",
+ "rand",
  "re_chunk_store",
  "re_context_menu",
  "re_data_ui",
@@ -7839,7 +7787,7 @@ dependencies = [
  "document-features",
  "getrandom 0.2.15",
  "once_cell",
- "rand 0.8.5",
+ "rand",
  "re_byte_size",
  "serde",
  "web-time",
@@ -7877,6 +7825,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_sorbet",
  "re_tracing",
  "re_types_builder",
  "re_types_core",
@@ -7961,7 +7910,7 @@ dependencies = [
  "itertools 0.14.0",
  "notify",
  "parking_lot",
- "rand 0.8.5",
+ "rand",
  "re_arrow_util",
  "re_build_tools",
  "re_entity_db",
@@ -8589,7 +8538,6 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
- "h2",
  "http",
  "http-body",
  "http-body-util",
@@ -8605,7 +8553,6 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls",
- "rustls-native-certs",
  "rustls-pemfile",
  "rustls-pki-types",
  "serde",
@@ -8614,13 +8561,11 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tokio-util",
  "tower",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
  "web-sys",
  "webpki-roots",
  "windows-registry",
@@ -8745,13 +8690,12 @@ dependencies = [
  "itertools 0.14.0",
  "mimalloc",
  "numpy",
- "object_store",
  "once_cell",
  "parking_lot",
  "prost-types",
  "pyo3",
  "pyo3-build-config",
- "rand 0.8.5",
+ "rand",
  "re_arrow_util",
  "re_auth",
  "re_build_info",
@@ -8773,6 +8717,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_web_viewer_server",
+ "rustls",
  "strum",
  "strum_macros",
  "thiserror 1.0.65",
@@ -9612,7 +9557,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "itertools 0.14.0",
  "ndarray",
- "rand 0.8.5",
+ "rand",
  "rand_distr",
  "re_build_tools",
  "rerun",
@@ -9893,7 +9838,7 @@ dependencies = [
  "itertools 0.14.0",
  "ndarray",
  "ndarray-rand",
- "rand 0.8.5",
+ "rand",
  "re_log",
  "rerun",
 ]
@@ -9903,7 +9848,7 @@ name = "test_data_density_graph"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "rand 0.8.5",
+ "rand",
  "re_log",
  "rerun",
 ]
@@ -10548,7 +10493,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "074515a3e6dc230bbbdcf35830fd71b67b55ae2ac22bc4ff69d89412fc84b830"
 dependencies = [
  "RustyXML",
- "quick-xml 0.36.2",
+ "quick-xml",
  "regex",
  "serde",
  "serde-xml-rs",
@@ -11030,7 +10975,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "597f2001b2e5fc1121e3d5b9791d3e78f05ba6bfa4641053846248e3a13661c3"
 dependencies = [
  "proc-macro2",
- "quick-xml 0.36.2",
+ "quick-xml",
  "quote",
 ]
 
@@ -12017,7 +11962,7 @@ dependencies = [
  "hex",
  "nix",
  "ordered-stream",
- "rand 0.8.5",
+ "rand",
  "serde",
  "serde_repr",
  "sha1",
@@ -12148,7 +12093,7 @@ version = "5.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589e9a02bfafb9754bb2340a9e3b38f389772684c63d9637e76b1870377bec29"
 dependencies = [
- "quick-xml 0.36.2",
+ "quick-xml",
  "serde",
  "static_assertions",
  "zbus_names 4.2.0",
