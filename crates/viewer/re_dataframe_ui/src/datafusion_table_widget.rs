@@ -411,6 +411,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     .show(
                         ui,
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             let response = ui.label(
                                 egui::RichText::new(column_display_name)
                                     .strong()
@@ -426,6 +427,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             response
                         },
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             egui::containers::menu::MenuButton::from_button(
                                 ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
