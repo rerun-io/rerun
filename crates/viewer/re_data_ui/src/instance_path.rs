@@ -12,7 +12,8 @@ use re_types::{
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{
     ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
-    VideoStreamCache, ViewerContext, gpu_bridge::image_data_range_heuristic, video_time_from_query,
+    VideoStreamCache, ViewerContext, gpu_bridge::image_data_range_heuristic,
+    video_stream_time_from_query,
 };
 
 use crate::{
@@ -613,7 +614,7 @@ fn preview_if_video_stream_ui(
     video_stream_result_ui(ui, ui_layout, &video_stream_result);
     if let Ok(video) = video_stream_result {
         let video = video.read();
-        let time = video_time_from_query(query);
+        let time = video_stream_time_from_query(query);
         let buffers = video.sample_buffers();
         show_decoded_frame_info(ctx, ui, ui_layout, &video.video_renderer, time, &buffers);
     }

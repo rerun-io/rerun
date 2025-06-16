@@ -7,7 +7,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
     VideoStreamCache, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem, video_time_from_query,
+    VisualizerSystem, video_stream_time_from_query,
 };
 
 use crate::{
@@ -124,7 +124,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
-                    video_time_from_query(query_context.query),
+                    video_stream_time_from_query(query_context.query),
                     &video.sample_buffers(),
                 )
             };
