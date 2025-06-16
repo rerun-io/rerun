@@ -80,6 +80,7 @@ pub struct ColumnBlueprint {
     pub display_name: Option<String>,
     pub default_visibility: bool,
     pub variant_ui: Option<VariantName>,
+    pub sort_key: i64,
 }
 
 impl Default for ColumnBlueprint {
@@ -88,6 +89,7 @@ impl Default for ColumnBlueprint {
             display_name: None,
             default_visibility: true,
             variant_ui: None,
+            sort_key: 0,
         }
     }
 }
@@ -122,6 +124,16 @@ impl ColumnBlueprint {
             variant_ui: Some(variant_ui.into()),
             ..self
         }
+    }
+
+    /// Customize the order of the columns in the UI.
+    ///
+    /// Default is `0`. The lower the number, the earlier the column will be shown.
+    ///
+    /// Order of columns with identical sort keys will depend on the order of columns in the
+    /// datafusion query.
+    pub fn sort_key(self, sort_key: i64) -> Self {
+        Self { sort_key, ..self }
     }
 }
 

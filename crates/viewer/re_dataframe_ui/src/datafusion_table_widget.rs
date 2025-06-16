@@ -289,10 +289,12 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        let mut sorted_columns = columns.iter().collect::<Vec<_>>();
+        sorted_columns.sort_by_key(|c| c.blueprint.sort_key);
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            columns.iter().map(|column| {
+            sorted_columns.iter().map(|column| {
                 ColumnConfig::new_with_visible(
                     column.id,
                     column.display_name(),
