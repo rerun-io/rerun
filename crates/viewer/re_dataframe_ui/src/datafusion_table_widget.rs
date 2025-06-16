@@ -551,7 +551,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 component_type,
                 entity_path,
                 archetype_name,
-                archetype_field_name,
+                component,
                 is_static,
                 is_indicator,
                 is_tombstone,
@@ -572,7 +572,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
             //TODO(#9978): update this if we rename this descriptor field.
-            header_property_ui(ui, "Archetype field", archetype_field_name);
+            header_property_ui(ui, "Archetype field", component);
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

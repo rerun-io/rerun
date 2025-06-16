@@ -104,7 +104,7 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
         The archetype field name.
 
@@ -147,7 +147,7 @@ class ComponentColumnSelector:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
         The archetype field name.
 

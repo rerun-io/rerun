@@ -19,7 +19,7 @@ use re_viewport_blueprint::ViewBlueprint;
 #[derive(Clone, Debug)]
 struct DefaultOverrideEntry {
     component_type: ComponentType,
-    archetype_field_name: ArchetypeFieldName,
+    component: ArchetypeFieldName,
 
     /// Visualizer identifier that provides the fallback value for this component.
     visualizer_identifier: ViewSystemIdentifier,
@@ -29,7 +29,7 @@ impl DefaultOverrideEntry {
     fn descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
             component_type: Some(self.component_type),
-            archetype_field_name: self.archetype_field_name,
+            component: self.component,
             archetype_name: Some(archetype_name),
         }
     }
@@ -146,7 +146,7 @@ fn active_default_ui(
             let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(
                     component_descr
-                        .archetype_field_name
+                        .component
                         .syntax_highlighted(ui.style()),
                 )
                 .min_desired_width(150.0)
@@ -205,7 +205,7 @@ fn visualized_components_by_archetype(
                 .or_default()
                 .push(DefaultOverrideEntry {
                     component_type,
-                    archetype_field_name: descr.archetype_field_name,
+                    component: descr.component,
                     visualizer_identifier: id,
                 });
         }
@@ -316,7 +316,7 @@ fn add_popup_ui(
         ui.menu_button(archetype_name.syntax_highlighted(ui.style()), |ui| {
             for entry in components {
                 if ui
-                    .button(entry.archetype_field_name.syntax_highlighted(ui.style()))
+                    .button(entry.component.syntax_highlighted(ui.style()))
                     .on_hover_ui(|ui| {
                         entry.component_type.data_ui_recording(
                             ctx.viewer_ctx,

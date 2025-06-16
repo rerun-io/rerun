@@ -61,7 +61,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component_type: Some("rerun.components.Visible".into()),
-            archetype_field_name: "visible".into(),
+            component: "visible".into(),
         }
     }
 
@@ -73,7 +73,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component_type: Some("rerun.blueprint.components.GridSpacing".into()),
-            archetype_field_name: "spacing".into(),
+            component: "spacing".into(),
         }
     }
 
@@ -85,7 +85,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component_type: Some("rerun.components.Plane3D".into()),
-            archetype_field_name: "plane".into(),
+            component: "plane".into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component_type: Some("rerun.components.StrokeWidth".into()),
-            archetype_field_name: "stroke_width".into(),
+            component: "stroke_width".into(),
         }
     }
 
@@ -109,7 +109,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "color".into(),
+            component: "color".into(),
         }
     }
 
@@ -119,7 +119,7 @@ impl LineGrid3D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.LineGrid3DIndicator".into(),
+            component: "rerun.blueprint.components.LineGrid3DIndicator".into(),
         }
     }
 }

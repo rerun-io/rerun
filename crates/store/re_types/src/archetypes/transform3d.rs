@@ -368,7 +368,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.Translation3D".into()),
-            archetype_field_name: "translation".into(),
+            component: "translation".into(),
         }
     }
 
@@ -380,7 +380,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.RotationAxisAngle".into()),
-            archetype_field_name: "rotation_axis_angle".into(),
+            component: "rotation_axis_angle".into(),
         }
     }
 
@@ -392,7 +392,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.RotationQuat".into()),
-            archetype_field_name: "quaternion".into(),
+            component: "quaternion".into(),
         }
     }
 
@@ -404,7 +404,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.Scale3D".into()),
-            archetype_field_name: "scale".into(),
+            component: "scale".into(),
         }
     }
 
@@ -416,7 +416,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.TransformMat3x3".into()),
-            archetype_field_name: "mat3x3".into(),
+            component: "mat3x3".into(),
         }
     }
 
@@ -428,7 +428,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.TransformRelation".into()),
-            archetype_field_name: "relation".into(),
+            component: "relation".into(),
         }
     }
 
@@ -440,7 +440,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
             component_type: Some("rerun.components.AxisLength".into()),
-            archetype_field_name: "axis_length".into(),
+            component: "axis_length".into(),
         }
     }
 
@@ -450,7 +450,7 @@ impl Transform3D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.Transform3DIndicator".into(),
+            component: "rerun.components.Transform3DIndicator".into(),
         }
     }
 }

@@ -30,18 +30,18 @@ impl AnyValues {
     #[inline]
     pub fn with_field(
         mut self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
+        component: impl Into<ArchetypeFieldName>,
         array: arrow::array::ArrayRef,
     ) -> Self {
-        let archetype_field_name = archetype_field_name.into();
+        let component = component.into();
         self.batches.insert(
-            archetype_field_name,
+            component,
             SerializedComponentBatch {
                 array,
                 descriptor: ComponentDescriptor {
                     archetype_name: self.archetype_name,
                     component_type: None,
-                    archetype_field_name,
+                    component,
                 },
             },
         );
@@ -52,10 +52,10 @@ impl AnyValues {
     #[inline]
     pub fn with_component<C: Component>(
         self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
-        component: impl IntoIterator<Item = impl Into<C>>,
+        component: impl Into<ArchetypeFieldName>,
+        loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
-        self.with_loggable(archetype_field_name, C::name(), component)
+        self.with_loggable(component, C::name(), loggable)
     }
 
     /// Adds an existing Rerun [`Component`] to this archetype.
@@ -64,20 +64,20 @@ impl AnyValues {
     #[inline]
     pub fn with_loggable<L: Loggable>(
         mut self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
+        component: impl Into<ArchetypeFieldName>,
         component_type: impl Into<ComponentType>,
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {
-        let archetype_field_name = archetype_field_name.into();
+        let component = component.into();
         try_serialize_field(
             ComponentDescriptor {
                 archetype_name: self.archetype_name,
-                archetype_field_name,
+                component,
                 component_type: Some(component_type.into()),
             },
             loggable,
         )
-        .and_then(|serialized| self.batches.insert(archetype_field_name, serialized));
+        .and_then(|serialized| self.batches.insert(component, serialized));
         self
     }
 }

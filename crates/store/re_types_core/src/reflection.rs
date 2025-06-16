@@ -258,7 +258,7 @@ impl ArchetypeReflection {
 /// Additional information about an archetype's field.
 #[derive(Clone, Debug)]
 pub struct ArchetypeFieldReflection {
-    /// The name of the field (i.e. same as `ComponentDescriptor::archetype_field_name`).
+    /// The name of the field (i.e. same as `ComponentDescriptor::component`).
     pub name: ArchetypeFieldName,
 
     /// The name of the field in human case.
@@ -280,7 +280,7 @@ impl ArchetypeFieldReflection {
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
             component_type: Some(self.component_type),
-            archetype_field_name: self.name,
+            component: self.name,
             archetype_name: Some(archetype_name),
         }
     }

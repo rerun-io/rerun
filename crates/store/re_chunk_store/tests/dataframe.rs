@@ -101,11 +101,11 @@ fn schema_for_query() -> anyhow::Result<()> {
                 [
                     ColumnIdentifier {
                         archetype_name: Some(MyPoints::name()),
-                        archetype_field_name: MyPoints::descriptor_colors().archetype_field_name,
+                        component: MyPoints::descriptor_colors().component,
                     },
                     ColumnIdentifier {
                         archetype_name: Some(MyPoints::name()),
-                        archetype_field_name: MyPoints::descriptor_labels().archetype_field_name,
+                        component: MyPoints::descriptor_labels().component,
                     },
                 ]
                 .into(),

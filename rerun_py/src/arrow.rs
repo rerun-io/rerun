@@ -40,13 +40,12 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
         None
     };
 
-    let archetype_field_name =
-        component_descr.getattr(pyo3::intern!(py, "archetype_field_name"))?;
-    let archetype_field_name: Cow<'_, str> = archetype_field_name.extract()?;
+    let component = component_descr.getattr(pyo3::intern!(py, "component"))?;
+    let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
         archetype_name: archetype_name.map(|s| s.as_ref().into()),
-        archetype_field_name: archetype_field_name.as_ref().into(),
+        component: component.as_ref().into(),
         component_type: component_type.map(|s| s.as_ref().into()),
     };
     descr.sanity_check();

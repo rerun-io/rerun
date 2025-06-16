@@ -171,7 +171,7 @@ fn test_schema_over_ipc() {
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype_name: Some("archetype".to_owned().into()),
-            archetype_field_name: "field".to_owned().into(),
+            component: "field".to_owned().into(),
             component_type: Some(re_types_core::ComponentType::new("component")),
             store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,

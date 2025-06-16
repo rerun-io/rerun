@@ -1088,8 +1088,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     .try_get_attr::<String>(requirement_attr_value)
                     .map(|_| {
                         let archetype_name = format_ident!("{}", obj.name);
-                        let archetype_field_name = field.snake_case_name();
-                        let fn_name = format_ident!("descriptor_{archetype_field_name}");
+                        let component = field.snake_case_name();
+                        let fn_name = format_ident!("descriptor_{component}");
 
                         quote!(#archetype_name::#fn_name())
                     })
@@ -1116,13 +1116,13 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             };
 
             let archetype_name = &obj.fqname;
-            let archetype_field_name = field.snake_case_name();
+            let component = field.snake_case_name();
             let (typ, _) = quote_field_type_from_typ(&field.typ, true);
 
             // Make the `#doc` string nice (avoids `/** */`).
             let lines = [
                 format!(
-                    "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
+                    "Returns the [`ComponentDescriptor`] for [`Self::{component}`]."
                 ),
                 String::new(),
                 format!("The corresponding component is [`{typ}`]."),
@@ -1132,7 +1132,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 quote! { #[doc = #line] }
             });
 
-            let fn_name = format_ident!("descriptor_{archetype_field_name}");
+            let fn_name = format_ident!("descriptor_{component}");
 
             quote! {
             #(#doc_attrs)*
@@ -1141,7 +1141,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     ComponentDescriptor {
                         archetype_name: Some(#archetype_name.into()),
                         component_type: Some(#component_type.into()),
-                        archetype_field_name: #archetype_field_name.into(),
+                        component: #component.into(),
                     }
                 }
             }
@@ -1161,7 +1161,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     ComponentDescriptor {
                         archetype_name: None,
                         component_type: None,
-                        archetype_field_name: #indicator_component_type.into(),
+                        component: #indicator_component_type.into(),
                     }
                 }
             }

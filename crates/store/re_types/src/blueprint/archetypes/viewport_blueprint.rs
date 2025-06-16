@@ -61,7 +61,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.RootContainer".into()),
-            archetype_field_name: "root_container".into(),
+            component: "root_container".into(),
         }
     }
 
@@ -73,7 +73,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
-            archetype_field_name: "maximized".into(),
+            component: "maximized".into(),
         }
     }
 
@@ -85,7 +85,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.AutoLayout".into()),
-            archetype_field_name: "auto_layout".into(),
+            component: "auto_layout".into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.AutoViews".into()),
-            archetype_field_name: "auto_views".into(),
+            component: "auto_views".into(),
         }
     }
 
@@ -109,7 +109,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
-            archetype_field_name: "past_viewer_recommendations".into(),
+            component: "past_viewer_recommendations".into(),
         }
     }
 
@@ -119,7 +119,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
+            component: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
         }
     }
 }

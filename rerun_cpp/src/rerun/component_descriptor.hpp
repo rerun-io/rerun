@@ -22,7 +22,7 @@ namespace rerun {
         /// Name of the field within `Archetype` associated with this data.
         ///
         /// Example: `positions`.
-        std::string_view archetype_field_name;
+        std::string_view component;
 
         /// Optional semantic name associated with this data.
         ///
@@ -35,35 +35,35 @@ namespace rerun {
         std::optional<std::string_view> component_type;
 
         constexpr ComponentDescriptor(
-            std::optional<std::string_view> archetype_name_, std::string_view archetype_field_name_,
+            std::optional<std::string_view> archetype_name_, std::string_view component_,
             std::optional<std::string_view> component_type_
         )
             : archetype_name(archetype_name_),
-              archetype_field_name(archetype_field_name_),
+              component(component_),
               component_type(component_type_) {}
 
         constexpr ComponentDescriptor(
-            const char* archetype_name_, const char* archetype_field_name_,
+            const char* archetype_name_, const char* component_,
             const char* component_type_
         )
             : archetype_name(archetype_name_),
-              archetype_field_name(archetype_field_name_),
+              component(component_),
               component_type(component_type_) {}
 
-        constexpr ComponentDescriptor(std::string_view archetype_field_name_)
-            : archetype_field_name(archetype_field_name_) {}
+        constexpr ComponentDescriptor(std::string_view component_)
+            : component(component_) {}
 
-        constexpr ComponentDescriptor(const char* archetype_field_name_)
-            : archetype_field_name(archetype_field_name_) {}
+        constexpr ComponentDescriptor(const char* component_)
+            : component(component_) {}
 
         ComponentDescriptorHash hashed() const {
             std::size_t archetype_name_h =
                 std::hash<std::optional<std::string_view>>{}(this->archetype_name);
             std::size_t component_type_h =
                 std::hash<std::optional<std::string_view>>{}(this->component_type);
-            std::size_t archetype_field_name_h =
-                std::hash<std::string_view>{}(this->archetype_field_name);
-            return archetype_name_h ^ component_type_h ^ archetype_field_name_h;
+            std::size_t component_h =
+                std::hash<std::string_view>{}(this->component);
+            return archetype_name_h ^ component_type_h ^ component_h;
         }
 
         /// Unconditionally sets `archetype_name` to the given one.
@@ -117,7 +117,7 @@ namespace rerun {
             return descriptor;
         }
 
-        /// Sets `archetype_field_name` to the given one iff it's not already set.
+        /// Sets `component` to the given one iff it's not already set.
         ComponentDescriptor or_with_component_type(std::optional<std::string_view> component_type_
         ) const {
             if (this->component_type.has_value()) {

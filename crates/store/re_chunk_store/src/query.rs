@@ -278,10 +278,10 @@ impl ChunkStore {
         &self,
         entity_path: &EntityPath,
         archetype_name: Option<ArchetypeName>,
-        archetype_field_name: ArchetypeFieldName,
+        component: ArchetypeFieldName,
     ) -> Option<ComponentDescriptor> {
         let matches = |descr: &&ComponentDescriptor| {
-            descr.archetype_field_name == archetype_field_name
+            descr.component == component
                 && descr.archetype_name == archetype_name
         };
 

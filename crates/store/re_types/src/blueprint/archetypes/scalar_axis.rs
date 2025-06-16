@@ -42,7 +42,7 @@ impl ScalarAxis {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
             component_type: Some("rerun.components.Range1D".into()),
-            archetype_field_name: "range".into(),
+            component: "range".into(),
         }
     }
 
@@ -54,7 +54,7 @@ impl ScalarAxis {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
             component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
-            archetype_field_name: "zoom_lock".into(),
+            component: "zoom_lock".into(),
         }
     }
 
@@ -64,7 +64,7 @@ impl ScalarAxis {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.ScalarAxisIndicator".into(),
+            component: "rerun.blueprint.components.ScalarAxisIndicator".into(),
         }
     }
 }

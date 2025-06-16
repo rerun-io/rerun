@@ -75,7 +75,7 @@ impl GeoPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
             component_type: Some("rerun.components.LatLon".into()),
-            archetype_field_name: "positions".into(),
+            component: "positions".into(),
         }
     }
 
@@ -87,7 +87,7 @@ impl GeoPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -99,7 +99,7 @@ impl GeoPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -111,7 +111,7 @@ impl GeoPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            archetype_field_name: "class_ids".into(),
+            component: "class_ids".into(),
         }
     }
 
@@ -121,7 +121,7 @@ impl GeoPoints {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.GeoPointsIndicator".into(),
+            component: "rerun.components.GeoPointsIndicator".into(),
         }
     }
 }

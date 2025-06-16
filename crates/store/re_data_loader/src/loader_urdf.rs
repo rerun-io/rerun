@@ -470,7 +470,7 @@ fn log_link(
                     (
                         ComponentDescriptor {
                             archetype_name: None,
-                            archetype_field_name: "visible".into(),
+                            component: "visible".into(),
                             component_type: Some(re_types::components::Visible::name()),
                         },
                         &re_types::components::Visible::from(false),

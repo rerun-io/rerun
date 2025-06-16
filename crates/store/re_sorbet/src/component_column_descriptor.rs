@@ -44,7 +44,7 @@ pub struct ComponentColumnDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub archetype_field_name: ArchetypeFieldName,
+    pub component: ArchetypeFieldName,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -74,7 +74,7 @@ impl Ord for ComponentColumnDescriptor {
         let Self {
             entity_path,
             archetype_name,
-            archetype_field_name,
+            component,
             component_type,
             store_datatype: _,
             is_static: _,
@@ -86,7 +86,7 @@ impl Ord for ComponentColumnDescriptor {
         entity_path
             .cmp(&other.entity_path)
             .then_with(|| archetype_name.cmp(&other.archetype_name))
-            .then_with(|| archetype_field_name.cmp(&other.archetype_field_name))
+            .then_with(|| component.cmp(&other.component))
             .then_with(|| component_type.cmp(&other.component_type))
     }
 }
@@ -98,7 +98,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
         let Self {
             entity_path,
             archetype_name: _,
-            archetype_field_name: _,
+            component: _,
             component_type: _,
             store_datatype: _,
             is_static,
@@ -123,7 +123,7 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
         descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
-            archetype_field_name: descr.archetype_field_name,
+            component: descr.component,
             component_type: descr.component_type,
         }
     }
@@ -135,7 +135,7 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
         descr.sanity_check();
         Self {
             archetype_name: descr.archetype_name,
-            archetype_field_name: descr.archetype_field_name,
+            component: descr.component,
             component_type: descr.component_type,
         }
     }
@@ -164,7 +164,7 @@ impl ComponentColumnDescriptor {
     pub fn component_descriptor(&self) -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: self.archetype_name,
-            archetype_field_name: self.archetype_field_name,
+            component: self.component,
             component_type: self.component_type,
         }
     }
@@ -187,7 +187,7 @@ impl ComponentColumnDescriptor {
         // We convert down to `str` for comparison to avoid interning new fields.
         self.entity_path == selector.entity_path
             && matches_archetype_name_weak()
-            && self.archetype_field_name.as_str() == selector.archetype_field_name
+            && self.component.as_str() == selector.component
     }
 
     fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {
@@ -196,7 +196,7 @@ impl ComponentColumnDescriptor {
         let Self {
             entity_path,
             archetype_name,
-            archetype_field_name,
+            component,
             component_type,
             store_datatype: _,
             is_static,
@@ -211,7 +211,7 @@ impl ComponentColumnDescriptor {
             ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
             (
                 "rerun.archetype_field".to_owned(),
-                archetype_field_name.to_string(),
+                component.to_string(),
             ),
         ]);
 
@@ -284,9 +284,9 @@ impl ComponentColumnDescriptor {
                         } else {
                             archetype_name.full_name()
                         },
-                        self.archetype_field_name
+                        self.component
                     ),
-                    None => format!("{}:{}", self.entity_path, self.archetype_field_name),
+                    None => format!("{}:{}", self.entity_path, self.component),
                 }
             }
         }
@@ -326,9 +326,9 @@ impl ComponentColumnDescriptor {
             EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
-        let archetype_field_name =
-            if let Some(archetype_field_name) = field.get_opt("rerun.archetype_field") {
-                ArchetypeFieldName::from(archetype_field_name)
+        let component =
+            if let Some(component) = field.get_opt("rerun.archetype_field") {
+                ArchetypeFieldName::from(component)
             } else {
                 ArchetypeFieldName::new(field.name()) // fallback
             };
@@ -337,7 +337,7 @@ impl ComponentColumnDescriptor {
             store_datatype: field.data_type().clone(),
             entity_path,
             archetype_name: field.get_opt("rerun.archetype").map(Into::into),
-            archetype_field_name,
+            component,
             component_type: field.get_opt("rerun.component").map(Into::into),
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),

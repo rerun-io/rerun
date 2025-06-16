@@ -20,7 +20,7 @@ pub struct ComponentDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub archetype_field_name: ArchetypeFieldName,
+    pub component: ArchetypeFieldName,
 
     /// Semantic type associated with this data.
     ///
@@ -36,17 +36,17 @@ impl std::hash::Hash for ComponentDescriptor {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let Self {
             archetype_name,
-            archetype_field_name,
+            component,
             component_type,
         } = self;
 
         let archetype_name = archetype_name.map_or(0, |v| v.hash());
-        let archetype_field_name = archetype_field_name.hash();
+        let component = component.hash();
         let component_type = component_type.map_or(0, |v| v.hash());
 
         // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
         // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
-        state.write_u64(archetype_name ^ archetype_field_name ^ component_type);
+        state.write_u64(archetype_name ^ component ^ component_type);
     }
 }
 
@@ -86,27 +86,27 @@ impl ComponentDescriptor {
         self.sanity_check();
         let Self {
             archetype_name,
-            archetype_field_name,
+            component,
             ..
         } = self;
 
         if let Some(archetype_name) = &archetype_name {
-            format!("{}:{archetype_field_name}", archetype_name.short_name())
+            format!("{}:{component}", archetype_name.short_name())
         } else {
-            archetype_field_name.to_string()
+            component.to_string()
         }
     }
 
     /// Is this an indicator component for an archetype?
     // TODO(#8129): Remove when we remove tagging.
     pub fn is_indicator_component(&self) -> bool {
-        self.archetype_field_name.ends_with("Indicator")
+        self.component.ends_with("Indicator")
     }
 
     /// If this is an indicator component, for which archetype?
     // TODO(#8129): Remove
     pub fn indicator_component_archetype_short_name(&self) -> Option<String> {
-        ComponentType::new(&self.archetype_field_name)
+        ComponentType::new(&self.component)
             .short_name()
             .strip_suffix("Indicator")
             .map(|name| name.to_owned())
@@ -131,20 +131,20 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             archetype_name,
-            archetype_field_name,
+            component,
             component_type,
         } = self;
         archetype_name.heap_size_bytes()
             + component_type.heap_size_bytes()
-            + archetype_field_name.heap_size_bytes()
+            + component.heap_size_bytes()
     }
 }
 
 impl ComponentDescriptor {
-    pub fn partial(archetype_field_name: impl Into<ArchetypeFieldName>) -> Self {
+    pub fn partial(component: impl Into<ArchetypeFieldName>) -> Self {
         Self {
             archetype_name: None,
-            archetype_field_name: archetype_field_name.into(),
+            component: component.into(),
             component_type: None,
         }
     }
@@ -156,7 +156,7 @@ impl ComponentDescriptor {
         self
     }
 
-    /// Unconditionally sets [`Self::archetype_field_name`] to the given one.
+    /// Unconditionally sets [`Self::component`] to the given one.
     #[inline]
     pub fn with_component_type(mut self, component_type: ComponentType) -> Self {
         self.component_type = Some(component_type);
@@ -209,7 +209,7 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
                 .get(FIELD_METADATA_KEY_ARCHETYPE_NAME)
                 .cloned()
                 .map(Into::into),
-            archetype_field_name: field.name().to_string().into(),
+            component: field.name().to_string().into(),
             component_type: md
                 .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                 .cloned()

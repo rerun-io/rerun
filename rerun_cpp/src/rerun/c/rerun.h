@@ -200,7 +200,7 @@ typedef struct rr_component_descriptor {
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    rr_string archetype_field_name;
+    rr_string component;
 
     /// Semantic name associated with this data.
     ///

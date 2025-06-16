@@ -44,7 +44,7 @@ impl PlotLegend {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
             component_type: Some("rerun.blueprint.components.Corner2D".into()),
-            archetype_field_name: "corner".into(),
+            component: "corner".into(),
         }
     }
 
@@ -56,7 +56,7 @@ impl PlotLegend {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
             component_type: Some("rerun.components.Visible".into()),
-            archetype_field_name: "visible".into(),
+            component: "visible".into(),
         }
     }
 
@@ -66,7 +66,7 @@ impl PlotLegend {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
+            component: "rerun.blueprint.components.PlotLegendIndicator".into(),
         }
     }
 }

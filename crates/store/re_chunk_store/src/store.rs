@@ -396,14 +396,14 @@ impl ChunkStoreHandle {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ColumnIdentifier {
     pub archetype_name: Option<ArchetypeName>,
-    pub archetype_field_name: ArchetypeFieldName,
+    pub component: ArchetypeFieldName,
 }
 
 impl From<ComponentDescriptor> for ColumnIdentifier {
     fn from(value: ComponentDescriptor) -> Self {
         Self {
             archetype_name: value.archetype_name,
-            archetype_field_name: value.archetype_field_name,
+            component: value.component,
         }
     }
 }
@@ -414,15 +414,15 @@ impl std::hash::Hash for ColumnIdentifier {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let Self {
             archetype_name,
-            archetype_field_name,
+            component,
         } = self;
 
         let archetype_name = archetype_name.map_or(0, |v| v.hash());
-        let archetype_field_name = archetype_field_name.hash();
+        let component = component.hash();
 
         // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
         // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
-        state.write_u64(archetype_name ^ archetype_field_name);
+        state.write_u64(archetype_name ^ component);
     }
 }
 

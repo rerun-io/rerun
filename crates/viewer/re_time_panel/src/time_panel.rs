@@ -869,7 +869,7 @@ impl TimePanel {
                     )
                     .show_hierarchical(
                         ui,
-                        list_item::LabelContent::new(component_descr.archetype_field_name.as_str())
+                        list_item::LabelContent::new(component_descr.component.as_str())
                             .with_icon(if is_static {
                                 &re_ui::icons::COMPONENT_STATIC
                             } else {

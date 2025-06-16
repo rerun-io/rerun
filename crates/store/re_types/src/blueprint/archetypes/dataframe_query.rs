@@ -53,7 +53,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.TimelineName".into()),
-            archetype_field_name: "timeline".into(),
+            component: "timeline".into(),
         }
     }
 
@@ -65,7 +65,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.FilterByRange".into()),
-            archetype_field_name: "filter_by_range".into(),
+            component: "filter_by_range".into(),
         }
     }
 
@@ -77,7 +77,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
-            archetype_field_name: "filter_is_not_null".into(),
+            component: "filter_is_not_null".into(),
         }
     }
 
@@ -89,7 +89,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
-            archetype_field_name: "apply_latest_at".into(),
+            component: "apply_latest_at".into(),
         }
     }
 
@@ -101,7 +101,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
-            archetype_field_name: "select".into(),
+            component: "select".into(),
         }
     }
 
@@ -111,7 +111,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
+            component: "rerun.blueprint.components.DataframeQueryIndicator".into(),
         }
     }
 }

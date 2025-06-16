@@ -51,7 +51,7 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".into()),
-                archetype_field_name: "field".into(),
+                component: "field".into(),
                 component_type: Some("component".into()),
                 store_datatype: arrow::datatypes::DataType::Int64,
                 is_static: true,
@@ -70,7 +70,7 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".into()),
-                archetype_field_name: "short_list".into(),
+                component: "short_list".into(),
                 component_type: Some("short_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
                 is_static: true,
@@ -96,7 +96,7 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: "long_list".into(),
+                component: "long_list".into(),
                 component_type: Some("long_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
                 is_static: true,
@@ -129,7 +129,7 @@ impl TableStore {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
                 archetype_name: Some("archetype".to_owned().into()),
-                archetype_field_name: "thumbnail".into(),
+                component: "thumbnail".into(),
                 component_type: Some("rerun.components.Blob".into()),
                 store_datatype: array.data_type().clone(),
                 is_static: true,

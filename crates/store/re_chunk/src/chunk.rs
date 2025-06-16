@@ -284,7 +284,7 @@ impl Chunk {
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-                archetype_field_name: "start_time".into(),
+                component: "start_time".into(),
                 component_type: Some("rerun.components.Timestamp".into()),
             };
 

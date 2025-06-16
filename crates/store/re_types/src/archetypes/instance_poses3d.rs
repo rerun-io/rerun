@@ -118,7 +118,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            archetype_field_name: "translations".into(),
+            component: "translations".into(),
         }
     }
 
@@ -130,7 +130,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            archetype_field_name: "rotation_axis_angles".into(),
+            component: "rotation_axis_angles".into(),
         }
     }
 
@@ -142,7 +142,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            archetype_field_name: "quaternions".into(),
+            component: "quaternions".into(),
         }
     }
 
@@ -154,7 +154,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseScale3D".into()),
-            archetype_field_name: "scales".into(),
+            component: "scales".into(),
         }
     }
 
@@ -166,7 +166,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseTransformMat3x3".into()),
-            archetype_field_name: "mat3x3".into(),
+            component: "mat3x3".into(),
         }
     }
 
@@ -176,7 +176,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.InstancePoses3DIndicator".into(),
+            component: "rerun.components.InstancePoses3DIndicator".into(),
         }
     }
 }

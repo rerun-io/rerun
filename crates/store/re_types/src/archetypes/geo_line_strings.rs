@@ -79,7 +79,7 @@ impl GeoLineStrings {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
             component_type: Some("rerun.components.GeoLineString".into()),
-            archetype_field_name: "line_strings".into(),
+            component: "line_strings".into(),
         }
     }
 
@@ -91,7 +91,7 @@ impl GeoLineStrings {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -103,7 +103,7 @@ impl GeoLineStrings {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -113,7 +113,7 @@ impl GeoLineStrings {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.GeoLineStringsIndicator".into(),
+            component: "rerun.components.GeoLineStringsIndicator".into(),
         }
     }
 }

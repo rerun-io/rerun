@@ -124,7 +124,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLines".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -136,7 +136,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLines".into()),
             component_type: Some("rerun.components.StrokeWidth".into()),
-            archetype_field_name: "widths".into(),
+            component: "widths".into(),
         }
     }
 
@@ -148,7 +148,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLines".into()),
             component_type: Some("rerun.components.Name".into()),
-            archetype_field_name: "names".into(),
+            component: "names".into(),
         }
     }
 
@@ -160,7 +160,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLines".into()),
             component_type: Some("rerun.components.SeriesVisible".into()),
-            archetype_field_name: "visible_series".into(),
+            component: "visible_series".into(),
         }
     }
 
@@ -172,7 +172,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesLines".into()),
             component_type: Some("rerun.components.AggregationPolicy".into()),
-            archetype_field_name: "aggregation_policy".into(),
+            component: "aggregation_policy".into(),
         }
     }
 
@@ -182,7 +182,7 @@ impl SeriesLines {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.SeriesLinesIndicator".into(),
+            component: "rerun.components.SeriesLinesIndicator".into(),
         }
     }
 }

@@ -114,42 +114,42 @@ class TestDataframe:
         # Content columns
         assert schema.component_columns()[col].entity_path == "/points"
         assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[col].component == "rerun.components.Points3DIndicator"
         assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
         assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "colors"
+        assert schema.component_columns()[col].component == "colors"
         assert schema.component_columns()[col].component_type == "rerun.components.Color"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
         assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "positions"
+        assert schema.component_columns()[col].component == "positions"
         assert schema.component_columns()[col].component_type == "rerun.components.Position3D"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
         assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "radii"
+        assert schema.component_columns()[col].component == "radii"
         assert schema.component_columns()[col].component_type == "rerun.components.Radius"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
         assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[col].component == "rerun.components.TextLogIndicator"
         assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
         assert schema.component_columns()[col].archetype_name == "rerun.archetypes.TextLog"
-        assert schema.component_columns()[col].archetype_field_name == "text"
+        assert schema.component_columns()[col].component == "text"
         assert schema.component_columns()[col].component_type == "rerun.components.Text"
         assert schema.component_columns()[col].is_static is True
         col += 1
@@ -157,14 +157,14 @@ class TestDataframe:
         # Default property columns
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
         assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.RecordingPropertiesIndicator"
+        assert schema.component_columns()[col].component == "rerun.components.RecordingPropertiesIndicator"
         assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
         assert schema.component_columns()[col].archetype_name == "rerun.archetypes.RecordingProperties"
-        assert schema.component_columns()[col].archetype_field_name == "start_time"
+        assert schema.component_columns()[col].component == "start_time"
         assert schema.component_columns()[col].component_type == "rerun.components.Timestamp"
         assert schema.component_columns()[col].is_static is True
 
@@ -180,11 +180,11 @@ class TestDataframe:
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
         assert schema.component_columns()[0].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[0].archetype_field_name == "colors"
+        assert schema.component_columns()[0].component == "colors"
         assert schema.component_columns()[0].component_type == "rerun.components.Color"
         assert schema.component_columns()[1].entity_path == "/points"
         assert schema.component_columns()[1].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[1].archetype_field_name == "positions"
+        assert schema.component_columns()[1].component == "positions"
         assert schema.component_columns()[1].component_type == "rerun.components.Position3D"
 
         # Force radius to be included

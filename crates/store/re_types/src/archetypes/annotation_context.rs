@@ -87,7 +87,7 @@ impl AnnotationContext {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
             component_type: Some("rerun.components.AnnotationContext".into()),
-            archetype_field_name: "context".into(),
+            component: "context".into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl AnnotationContext {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.AnnotationContextIndicator".into(),
+            component: "rerun.components.AnnotationContextIndicator".into(),
         }
     }
 }

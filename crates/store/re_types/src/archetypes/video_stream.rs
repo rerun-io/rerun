@@ -73,7 +73,7 @@ impl VideoStream {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
             component_type: Some("rerun.components.VideoCodec".into()),
-            archetype_field_name: "codec".into(),
+            component: "codec".into(),
         }
     }
 
@@ -85,7 +85,7 @@ impl VideoStream {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
             component_type: Some("rerun.components.VideoSample".into()),
-            archetype_field_name: "sample".into(),
+            component: "sample".into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl VideoStream {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            component: "draw_order".into(),
         }
     }
 
@@ -107,7 +107,7 @@ impl VideoStream {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.VideoStreamIndicator".into(),
+            component: "rerun.components.VideoStreamIndicator".into(),
         }
     }
 }

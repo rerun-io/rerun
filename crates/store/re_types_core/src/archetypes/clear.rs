@@ -88,7 +88,7 @@ impl Clear {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Clear".into()),
             component_type: Some("rerun.components.ClearIsRecursive".into()),
-            archetype_field_name: "is_recursive".into(),
+            component: "is_recursive".into(),
         }
     }
 
@@ -98,7 +98,7 @@ impl Clear {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.ClearIndicator".into(),
+            component: "rerun.components.ClearIndicator".into(),
         }
     }
 }

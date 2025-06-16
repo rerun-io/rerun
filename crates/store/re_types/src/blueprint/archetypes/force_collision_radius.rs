@@ -47,7 +47,7 @@ impl ForceCollisionRadius {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component_type: Some("rerun.blueprint.components.Enabled".into()),
-            archetype_field_name: "enabled".into(),
+            component: "enabled".into(),
         }
     }
 
@@ -59,7 +59,7 @@ impl ForceCollisionRadius {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-            archetype_field_name: "strength".into(),
+            component: "strength".into(),
         }
     }
 
@@ -71,7 +71,7 @@ impl ForceCollisionRadius {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component_type: Some("rerun.blueprint.components.ForceIterations".into()),
-            archetype_field_name: "iterations".into(),
+            component: "iterations".into(),
         }
     }
 
@@ -81,7 +81,7 @@ impl ForceCollisionRadius {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
+            component: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
         }
     }
 }

@@ -37,7 +37,7 @@ impl PanelBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
             component_type: Some("rerun.blueprint.components.PanelState".into()),
-            archetype_field_name: "state".into(),
+            component: "state".into(),
         }
     }
 
@@ -47,7 +47,7 @@ impl PanelBlueprint {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
+            component: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
         }
     }
 }

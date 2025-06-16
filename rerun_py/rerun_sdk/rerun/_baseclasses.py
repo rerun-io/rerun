@@ -30,7 +30,7 @@ class ComponentDescriptor:
     Example: `rerun.archetypes.Points3D`.
     """
 
-    archetype_field_name: str
+    component: str
     """
     Name of the field within `Archetype` associated with this data.
 
@@ -51,7 +51,7 @@ class ComponentDescriptor:
 
     def __init__(
         self,
-        archetype_field_name: str,
+        component: str,
         *,
         archetype_name: str | None = None,
         component_type: str | None = None,
@@ -65,7 +65,7 @@ class ComponentDescriptor:
             )
 
         self.archetype_name = archetype_name
-        self.archetype_field_name = archetype_field_name
+        self.component = component
         self.component_type = component_type
 
     def __eq__(self, other: object) -> bool:
@@ -73,45 +73,45 @@ class ComponentDescriptor:
             return NotImplemented
         return (
             self.archetype_name == other.archetype_name
-            and self.archetype_field_name == other.archetype_field_name
+            and self.component == other.component
             and self.component_type == other.component_type
         )
 
     def __hash__(self) -> int:
-        return hash((self.archetype_name, self.archetype_field_name, self.component_type))
+        return hash((self.archetype_name, self.component, self.component_type))
 
     def __str__(self) -> str:
         archetype_name = self.archetype_name
-        archetype_field_name = self.archetype_field_name
+        component = self.component
         component_type = self.component_type
 
         if archetype_name is not None and component_type is None:
-            return f"{archetype_name}:{archetype_field_name}"
+            return f"{archetype_name}:{component}"
         elif archetype_name is None and component_type is not None:
-            return f"{archetype_field_name}#{component_type}"
+            return f"{component}#{component_type}"
         elif archetype_name is not None and component_type is not None:
-            return f"{archetype_name}:{archetype_field_name}#{component_type}"
+            return f"{archetype_name}:{component}#{component_type}"
 
-        return archetype_field_name
+        return component
 
     def with_overrides(self, *, archetype_name: str | None, component_type: str | None) -> ComponentDescriptor:
         """Unconditionally sets `archetype_name` & `component_type` to the given ones (if specified)."""
-        archetype_field_name = self.archetype_field_name
+        component = self.component
         archetype_name = archetype_name if archetype_name is not None else self.archetype_name
         component_type = component_type if component_type is not None else self.component_type
         return ComponentDescriptor(
-            archetype_field_name,
+            component,
             component_type=component_type,
             archetype_name=archetype_name,
         )
 
     def or_with_overrides(self, *, archetype_name: str | None, component_type: str | None) -> ComponentDescriptor:
         """Sets `archetype_name` & `component_type` to the given one iff it's not already set."""
-        archetype_field_name = self.archetype_field_name
+        component = self.component
         archetype_name = self.archetype_name if self.archetype_name is not None else archetype_name
         component_type = self.component_type if self.component_type is not None else component_type
         return ComponentDescriptor(
-            archetype_field_name,
+            component,
             archetype_name=archetype_name,
             component_type=component_type,
         )
@@ -424,7 +424,7 @@ class ComponentColumn:
         self.descriptor = descriptor
         self.component_batch = component_batch
 
-        if "Indicator" in descriptor.archetype_field_name:
+        if "Indicator" in descriptor.component:
             if lengths is None:
                 # Indicator component, no lengths -> zero-sized batches by default
                 self.lengths = np.zeros(len(component_batch.as_arrow_array()), dtype=np.int32)

@@ -180,8 +180,8 @@ impl PyComponentColumnDescriptor {
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 
     /// The component type, if any.
@@ -239,7 +239,7 @@ impl PyComponentColumnSelector {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
             archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.component,
         })
     }
 
@@ -259,8 +259,8 @@ impl PyComponentColumnSelector {
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 }
 
@@ -442,7 +442,7 @@ impl IndexValuesLike<'_> {
 
 pub struct ComponentLike {
     pub archetype_name: Option<String>,
-    pub archetype_field_name: String,
+    pub component: String,
 }
 
 // TODO(#7699): Avoid interning strings from requests here.
@@ -450,7 +450,7 @@ impl From<ComponentLike> for ColumnIdentifier {
     fn from(value: ComponentLike) -> Self {
         Self {
             archetype_name: value.archetype_name.map(Into::into),
-            archetype_field_name: value.archetype_field_name.into(),
+            component: value.component.into(),
         }
     }
 }
@@ -461,16 +461,16 @@ impl FromPyObject<'_> for ComponentLike {
             match column_name.rfind(':') {
                 Some(i) => Ok(Self {
                     archetype_name: Some(column_name[..i].into()),
-                    archetype_field_name: column_name[(i + 1)..].into(),
+                    component: column_name[(i + 1)..].into(),
                 }),
                 None => Ok(Self {
-                    archetype_field_name: column_name,
+                    component: column_name,
                     archetype_name: None,
                 }),
             }
         } else {
             Err(PyTypeError::new_err(
-                "ComponentLike input must be a string of format [<archetype_name>:]archetype_field_name",
+                "ComponentLike input must be a string of format [<archetype_name>:]component",
             ))
         }
     }
@@ -566,7 +566,7 @@ impl PySchema {
         let selector = ComponentColumnSelector {
             entity_path,
             archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.component,
         };
 
         self.schema.component_columns().find_map(|col| {

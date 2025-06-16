@@ -130,21 +130,21 @@ impl std::str::FromStr for DataPath {
                 None
             };
 
-            let archetype_field_name_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
-            let archetype_field_name_tokens_end =
+            let component_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
+            let component_tokens_end =
                 component_type_delimiter.unwrap_or(component_descriptor_tokens.len());
-            if archetype_field_name_tokens_start == archetype_field_name_tokens_end {
+            if component_tokens_start == component_tokens_end {
                 return Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
                     join(component_descriptor_tokens),
                 ));
             }
 
-            let archetype_field_name = join(
+            let component = join(
                 &component_descriptor_tokens
-                    [archetype_field_name_tokens_start..archetype_field_name_tokens_end],
+                    [component_tokens_start..component_tokens_end],
             );
             component_descriptor = Some(ComponentDescriptor {
-                archetype_field_name: ArchetypeFieldName::from(archetype_field_name),
+                component: ArchetypeFieldName::from(component),
                 archetype_name: archetype_name.map(ArchetypeName::from),
                 component_type: component_type.map(ComponentType::from),
             });

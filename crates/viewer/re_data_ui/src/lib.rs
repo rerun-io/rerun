@@ -58,7 +58,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
                 reflection
                     .fields
                     .iter()
-                    .position(|field| field.name == c.archetype_field_name)
+                    .position(|field| field.name == c.component)
                     .unwrap_or(usize::MAX)
             });
         } else {

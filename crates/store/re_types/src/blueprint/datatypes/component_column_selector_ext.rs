@@ -22,11 +22,11 @@ impl super::ComponentColumnSelector {
             Some(i) => re_sorbet::ComponentColumnSelector {
                 entity_path,
                 archetype_name: Some(component[..i].into()),
-                archetype_field_name: component[(i + 1)..].into(),
+                component: component[(i + 1)..].into(),
             },
             None => re_sorbet::ComponentColumnSelector {
                 entity_path,
-                archetype_field_name: component.to_owned(),
+                component: component.to_owned(),
                 archetype_name: None,
             },
         }

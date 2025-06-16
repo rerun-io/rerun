@@ -209,7 +209,7 @@ impl Query {
                     list_item::PropertyContent::new("Component").value_text(
                         filter
                             .as_ref()
-                            .map(|f| f.qualified_archetype_field_name())
+                            .map(|f| f.qualified_component())
                             .unwrap_or_else(|| "-".to_owned()),
                     ),
                 )
@@ -314,12 +314,12 @@ impl Query {
                         .selected_text(
                             filter_component
                                 .as_ref()
-                                .map(|f| f.qualified_archetype_field_name())
+                                .map(|f| f.qualified_component())
                                 .unwrap_or("-".to_owned()),
                         )
                         .show_ui(ui, |ui| {
                             for descr in all_components {
-                                let label = descr.qualified_archetype_field_name();
+                                let label = descr.qualified_component();
                                 ui.selectable_value(&mut filter_component, Some(descr), label);
                             }
                         });
@@ -335,7 +335,7 @@ impl Query {
             let filter_is_not_null = components::FilterIsNotNull::new(
                 active,
                 &filter_entity,
-                filter_component.qualified_archetype_field_name(),
+                filter_component.qualified_component(),
             );
 
             if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {

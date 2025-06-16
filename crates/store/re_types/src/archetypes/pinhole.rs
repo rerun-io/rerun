@@ -150,7 +150,7 @@ impl Pinhole {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
             component_type: Some("rerun.components.PinholeProjection".into()),
-            archetype_field_name: "image_from_camera".into(),
+            component: "image_from_camera".into(),
         }
     }
 
@@ -162,7 +162,7 @@ impl Pinhole {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
             component_type: Some("rerun.components.Resolution".into()),
-            archetype_field_name: "resolution".into(),
+            component: "resolution".into(),
         }
     }
 
@@ -174,7 +174,7 @@ impl Pinhole {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
             component_type: Some("rerun.components.ViewCoordinates".into()),
-            archetype_field_name: "camera_xyz".into(),
+            component: "camera_xyz".into(),
         }
     }
 
@@ -186,7 +186,7 @@ impl Pinhole {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
             component_type: Some("rerun.components.ImagePlaneDistance".into()),
-            archetype_field_name: "image_plane_distance".into(),
+            component: "image_plane_distance".into(),
         }
     }
 
@@ -196,7 +196,7 @@ impl Pinhole {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.PinholeIndicator".into(),
+            component: "rerun.components.PinholeIndicator".into(),
         }
     }
 }

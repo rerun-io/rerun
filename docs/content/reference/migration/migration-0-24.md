@@ -69,7 +69,7 @@ We can now have multiple components of the same type living on the same archetyp
 For this we introduce the following new string-based representation:
 
 ```
-<entity_path>:[<archetype_name>]:<archetype_field_name>
+<entity_path>:[<archetype_name>]:<component>
 ```
 
 Note that the `archetype_name` section is optional, because components can also be logged as plain fields.

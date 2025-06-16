@@ -173,7 +173,7 @@ impl SerializedComponentBatch {
         self
     }
 
-    /// Sets the descriptor's `archetype_field_name` to the given one iff it's not already set.
+    /// Sets the descriptor's `component` to the given one iff it's not already set.
     #[inline]
     pub fn or_with_component_type(
         mut self,
@@ -279,7 +279,7 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     #[inline]
     fn from(batch: &SerializedComponentBatch) -> Self {
         Self::new(
-            batch.descriptor.archetype_field_name.to_string(),
+            batch.descriptor.component.to_string(),
             batch.array.data_type().clone(),
             false,
         )

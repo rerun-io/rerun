@@ -78,7 +78,7 @@ impl ViewCoordinates {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
             component_type: Some("rerun.components.ViewCoordinates".into()),
-            archetype_field_name: "xyz".into(),
+            component: "xyz".into(),
         }
     }
 
@@ -88,7 +88,7 @@ impl ViewCoordinates {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.ViewCoordinatesIndicator".into(),
+            component: "rerun.components.ViewCoordinatesIndicator".into(),
         }
     }
 }

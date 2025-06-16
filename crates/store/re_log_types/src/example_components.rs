@@ -33,7 +33,7 @@ impl MyPoints {
     pub fn descriptor_points() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "points".into(),
+            component: "points".into(),
             component_type: Some(MyPoint::name()),
         }
     }
@@ -41,7 +41,7 @@ impl MyPoints {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
             component_type: Some(MyColor::name()),
         }
     }
@@ -49,7 +49,7 @@ impl MyPoints {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "labels".into(),
+            component: "labels".into(),
             component_type: Some(MyLabel::name()),
         }
     }
@@ -57,7 +57,7 @@ impl MyPoints {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "rerun.components.MyPointsIndicator".into(),
+            component: "rerun.components.MyPointsIndicator".into(),
             component_type: None,
         }
     }
@@ -525,7 +525,7 @@ impl MyIndex {
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_field_name: "my_index".into(),
+            component: "my_index".into(),
             archetype_name: None,
             component_type: Some(Self::name()),
         }

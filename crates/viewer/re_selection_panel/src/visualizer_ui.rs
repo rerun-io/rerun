@@ -406,7 +406,7 @@ fn visualizer_components(
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
                     // since usually archetypes match 1:1 with visualizers.
-                    component_descr.archetype_field_name.as_str(),
+                    component_descr.component.as_str(),
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)

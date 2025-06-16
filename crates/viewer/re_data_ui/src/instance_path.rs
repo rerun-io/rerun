@@ -225,7 +225,7 @@ fn component_list_ui(
                     }
 
                     let content = re_ui::list_item::PropertyContent::new(
-                        component_descr.archetype_field_name.as_str(),
+                        component_descr.component.as_str(),
                     )
                     .with_icon(icon)
                     .value_fn(|ui, _| {

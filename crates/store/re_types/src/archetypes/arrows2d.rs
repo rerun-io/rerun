@@ -100,7 +100,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Vector2D".into()),
-            archetype_field_name: "vectors".into(),
+            component: "vectors".into(),
         }
     }
 
@@ -112,7 +112,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            archetype_field_name: "origins".into(),
+            component: "origins".into(),
         }
     }
 
@@ -124,7 +124,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -136,7 +136,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -148,7 +148,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Text".into()),
-            archetype_field_name: "labels".into(),
+            component: "labels".into(),
         }
     }
 
@@ -160,7 +160,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            archetype_field_name: "show_labels".into(),
+            component: "show_labels".into(),
         }
     }
 
@@ -172,7 +172,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            component: "draw_order".into(),
         }
     }
 
@@ -184,7 +184,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            archetype_field_name: "class_ids".into(),
+            component: "class_ids".into(),
         }
     }
 
@@ -194,7 +194,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.Arrows2DIndicator".into(),
+            component: "rerun.components.Arrows2DIndicator".into(),
         }
     }
 }

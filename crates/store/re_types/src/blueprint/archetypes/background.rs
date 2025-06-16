@@ -40,7 +40,7 @@ impl Background {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
             component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
-            archetype_field_name: "kind".into(),
+            component: "kind".into(),
         }
     }
 
@@ -52,7 +52,7 @@ impl Background {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "color".into(),
+            component: "color".into(),
         }
     }
 
@@ -62,7 +62,7 @@ impl Background {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.blueprint.components.BackgroundIndicator".into(),
+            component: "rerun.blueprint.components.BackgroundIndicator".into(),
         }
     }
 }

@@ -351,7 +351,7 @@ impl ChunkStore {
 
                     entity_path: entity_path.clone(),
                     archetype_name: component_descr.archetype_name,
-                    archetype_field_name: component_descr.archetype_field_name,
+                    component: component_descr.component,
                     component_type: component_descr.component_type,
                     is_static,
                     is_indicator,
@@ -407,7 +407,7 @@ impl ChunkStore {
             component_type: None,
             entity_path: selector.entity_path.clone(),
             archetype_name: selector.archetype_name,
-            archetype_field_name: selector.archetype_field_name.as_str().into(),
+            component: selector.component.as_str().into(),
             is_static: false,
             is_indicator: false,
             is_tombstone: false,
@@ -421,7 +421,7 @@ impl ChunkStore {
         // We perform a scan over all component descriptors in the queried entity path.
         let Some((component_descr, _, datatype)) = per_identifier.get(&ColumnIdentifier {
             archetype_name: selector.archetype_name,
-            archetype_field_name: selector.archetype_field_name.as_str().into(),
+            component: selector.component.as_str().into(),
         }) else {
             return result;
         };
@@ -474,12 +474,12 @@ impl ChunkStore {
                             components.as_ref().is_none_or(|components| {
                                 components.contains(&ColumnIdentifier {
                                     archetype_name: column.archetype_name,
-                                    archetype_field_name: column.archetype_field_name,
+                                    component: column.component,
                                 }) || components.contains(&ColumnIdentifier {
                                     archetype_name: column
                                         .archetype_name
                                         .map(|a| a.short_name().into()),
-                                    archetype_field_name: column.archetype_field_name,
+                                    component: column.component,
                                 })
                             })
                         })

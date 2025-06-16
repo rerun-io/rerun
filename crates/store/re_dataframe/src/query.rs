@@ -261,7 +261,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
                                     archetype_name: descr.archetype_name,
-                                    archetype_field_name: descr.archetype_field_name,
+                                    component: descr.component,
                                 },
                                 re_arrow_util::new_list_array_of_empties(
                                     &child_datatype,
@@ -450,8 +450,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 ColumnDescriptor::Component(ComponentColumnDescriptor {
                                     entity_path: selected_column.entity_path.clone(),
                                     archetype_name: selected_column.archetype_name,
-                                    archetype_field_name: selected_column
-                                        .archetype_field_name
+                                    component: selected_column
+                                        .component
                                         .as_str()
                                         .into(),
                                     component_type: None,
@@ -1068,7 +1068,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .entity_component_descriptor(
                             &descr.entity_path,
                             descr.archetype_name,
-                            descr.archetype_field_name,
+                            descr.component,
                         )
                         .into_iter()
                         .next()?;
@@ -1192,7 +1192,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 Some(re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
                                     archetype_name: descr.archetype_name,
-                                    archetype_field_name: descr.archetype_field_name,
+                                    component: descr.component,
                                 })
                             } else {
                                 None
@@ -1641,7 +1641,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_points();
 
@@ -1650,7 +1650,7 @@ mod tests {
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: "no/such/entity".into(),
                     archetype_name,
-                    archetype_field_name: archetype_field_name.to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1677,7 +1677,7 @@ mod tests {
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     archetype_name: None,
-                    archetype_field_name: "AFieldThatDoesntExist".to_owned(),
+                    component: "AFieldThatDoesntExist".to_owned(),
                 }),
                 ..Default::default()
             };
@@ -1701,7 +1701,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_points();
 
@@ -1710,7 +1710,7 @@ mod tests {
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     archetype_name,
-                    archetype_field_name: archetype_field_name.to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1734,7 +1734,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_colors();
 
@@ -1743,7 +1743,7 @@ mod tests {
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     archetype_name,
-                    archetype_field_name: archetype_field_name.to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1816,7 +1816,7 @@ mod tests {
                                 MyPoints::descriptor_labels().into(),
                                 MyPoints::descriptor_colors().into(),
                                 ColumnIdentifier {
-                                    archetype_field_name: "AColumnThatDoesntEvenExist".into(),
+                                    component: "AColumnThatDoesntEvenExist".into(),
                                     archetype_name: None,
                                 },
                             ]
@@ -1914,7 +1914,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_points();
 
@@ -1924,32 +1924,32 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name,
-                        archetype_field_name: archetype_field_name.to_string(),
+                        component: component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name,
-                        archetype_field_name: archetype_field_name.to_string(),
+                        component: component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: "non_existing_entity".into(),
                         archetype_name,
-                        archetype_field_name: archetype_field_name.to_string(),
+                        component: component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name,
-                        archetype_field_name: "AFieldThatDoesntExist".into(),
+                        component: "AFieldThatDoesntExist".into(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name: None,
-                        archetype_field_name: "AFieldThatDoesntExist".into(),
+                        component: "AFieldThatDoesntExist".into(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name: Some("AArchetypeNameThatDoesNotExist".into()),
-                        archetype_field_name: archetype_field_name.to_string(),
+                        component: component.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -1974,7 +1974,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_labels();
 
@@ -1997,7 +1997,7 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name,
-                        archetype_field_name: archetype_field_name.to_string(),
+                        component: component.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -2060,22 +2060,22 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name: MyPoints::descriptor_points().archetype_name,
-                        archetype_field_name: MyPoints::descriptor_points()
-                            .archetype_field_name
+                        component: MyPoints::descriptor_points()
+                            .component
                             .to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name: MyPoints::descriptor_colors().archetype_name,
-                        archetype_field_name: MyPoints::descriptor_colors()
-                            .archetype_field_name
+                        component: MyPoints::descriptor_colors()
+                            .component
                             .to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         archetype_name: MyPoints::descriptor_labels().archetype_name,
-                        archetype_field_name: MyPoints::descriptor_labels()
-                            .archetype_field_name
+                        component: MyPoints::descriptor_labels()
+                            .component
                             .to_string(),
                     }),
                 ]),
@@ -2221,7 +2221,7 @@ mod tests {
         {
             let ComponentDescriptor {
                 archetype_name,
-                archetype_field_name,
+                component,
                 ..
             } = MyPoints::descriptor_points();
             let query = QueryExpression {
@@ -2229,7 +2229,7 @@ mod tests {
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     archetype_name,
-                    archetype_field_name: archetype_field_name.to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };

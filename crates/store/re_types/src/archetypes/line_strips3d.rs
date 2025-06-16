@@ -137,7 +137,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.LineStrip3D".into()),
-            archetype_field_name: "strips".into(),
+            component: "strips".into(),
         }
     }
 
@@ -149,7 +149,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -161,7 +161,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -173,7 +173,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            archetype_field_name: "labels".into(),
+            component: "labels".into(),
         }
     }
 
@@ -185,7 +185,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            archetype_field_name: "show_labels".into(),
+            component: "show_labels".into(),
         }
     }
 
@@ -197,7 +197,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            archetype_field_name: "class_ids".into(),
+            component: "class_ids".into(),
         }
     }
 
@@ -207,7 +207,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.LineStrips3DIndicator".into(),
+            component: "rerun.components.LineStrips3DIndicator".into(),
         }
     }
 }

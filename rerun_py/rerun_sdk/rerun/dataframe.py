@@ -65,7 +65,7 @@ class RawComponentBatchLike(ComponentColumn):
         if SORBET_COMPONENT_TYPE in self.metadata:
             kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
         if SORBET_ARCHETYPE_FIELD in self.metadata:
-            kwargs["archetype_field_name"] = self.metadata[SORBET_ARCHETYPE_FIELD].decode("utf-8")
+            kwargs["component"] = self.metadata[SORBET_ARCHETYPE_FIELD].decode("utf-8")
 
         if "component_type" not in kwargs:
             kwargs["component_type"] = "Unknown"

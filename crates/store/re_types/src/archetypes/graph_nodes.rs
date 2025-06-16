@@ -83,7 +83,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.GraphNode".into()),
-            archetype_field_name: "node_ids".into(),
+            component: "node_ids".into(),
         }
     }
 
@@ -95,7 +95,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            archetype_field_name: "positions".into(),
+            component: "positions".into(),
         }
     }
 
@@ -107,7 +107,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -119,7 +119,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Text".into()),
-            archetype_field_name: "labels".into(),
+            component: "labels".into(),
         }
     }
 
@@ -131,7 +131,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            archetype_field_name: "show_labels".into(),
+            component: "show_labels".into(),
         }
     }
 
@@ -143,7 +143,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -153,7 +153,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.GraphNodesIndicator".into(),
+            component: "rerun.components.GraphNodesIndicator".into(),
         }
     }
 }

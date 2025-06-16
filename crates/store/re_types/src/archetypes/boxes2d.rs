@@ -92,7 +92,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.HalfSize2D".into()),
-            archetype_field_name: "half_sizes".into(),
+            component: "half_sizes".into(),
         }
     }
 
@@ -104,7 +104,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            archetype_field_name: "centers".into(),
+            component: "centers".into(),
         }
     }
 
@@ -116,7 +116,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            component: "colors".into(),
         }
     }
 
@@ -128,7 +128,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            component: "radii".into(),
         }
     }
 
@@ -140,7 +140,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.Text".into()),
-            archetype_field_name: "labels".into(),
+            component: "labels".into(),
         }
     }
 
@@ -152,7 +152,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            archetype_field_name: "show_labels".into(),
+            component: "show_labels".into(),
         }
     }
 
@@ -164,7 +164,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            component: "draw_order".into(),
         }
     }
 
@@ -176,7 +176,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            archetype_field_name: "class_ids".into(),
+            component: "class_ids".into(),
         }
     }
 
@@ -186,7 +186,7 @@ impl Boxes2D {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.Boxes2DIndicator".into(),
+            component: "rerun.components.Boxes2DIndicator".into(),
         }
     }
 }

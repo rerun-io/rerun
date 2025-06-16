@@ -41,14 +41,14 @@ class IndicatorComponentBatch:
         )
         self._archetype_name = archetype_name
 
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_array(self) -> pa.Array:
         return self.data
 
     def component_descriptor(self) -> ComponentDescriptor:
-        return ComponentDescriptor(self.archetype_field_name())
+        return ComponentDescriptor(self.component())
 
 
 @catch_and_log_exceptions()

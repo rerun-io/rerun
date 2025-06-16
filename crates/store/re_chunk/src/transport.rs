@@ -87,7 +87,7 @@ impl Chunk {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
                         archetype_name,
-                        archetype_field_name,
+                        component,
                         component_type,
                     } = *component_desc;
 
@@ -100,7 +100,7 @@ impl Chunk {
                         entity_path: entity_path.clone(),
 
                         archetype_name,
-                        archetype_field_name,
+                        component,
                         component_type,
 
                         // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
@@ -203,7 +203,7 @@ impl Chunk {
 
                 let component_desc = ComponentDescriptor {
                     archetype_name: schema.archetype_name,
-                    archetype_field_name: schema.archetype_field_name,
+                    component: schema.component,
                     component_type: schema.component_type,
                 };
 

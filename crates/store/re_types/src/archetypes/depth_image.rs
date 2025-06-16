@@ -125,7 +125,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.ImageBuffer".into()),
-            archetype_field_name: "buffer".into(),
+            component: "buffer".into(),
         }
     }
 
@@ -137,7 +137,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.ImageFormat".into()),
-            archetype_field_name: "format".into(),
+            component: "format".into(),
         }
     }
 
@@ -149,7 +149,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.DepthMeter".into()),
-            archetype_field_name: "meter".into(),
+            component: "meter".into(),
         }
     }
 
@@ -161,7 +161,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.Colormap".into()),
-            archetype_field_name: "colormap".into(),
+            component: "colormap".into(),
         }
     }
 
@@ -173,7 +173,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.ValueRange".into()),
-            archetype_field_name: "depth_range".into(),
+            component: "depth_range".into(),
         }
     }
 
@@ -185,7 +185,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.FillRatio".into()),
-            archetype_field_name: "point_fill_ratio".into(),
+            component: "point_fill_ratio".into(),
         }
     }
 
@@ -197,7 +197,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            component: "draw_order".into(),
         }
     }
 
@@ -207,7 +207,7 @@ impl DepthImage {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.DepthImageIndicator".into(),
+            component: "rerun.components.DepthImageIndicator".into(),
         }
     }
 }

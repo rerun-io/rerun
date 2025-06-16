@@ -112,7 +112,7 @@ impl TextDocument {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_type: Some("rerun.components.Text".into()),
-            archetype_field_name: "text".into(),
+            component: "text".into(),
         }
     }
 
@@ -124,7 +124,7 @@ impl TextDocument {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_type: Some("rerun.components.MediaType".into()),
-            archetype_field_name: "media_type".into(),
+            component: "media_type".into(),
         }
     }
 
@@ -134,7 +134,7 @@ impl TextDocument {
         ComponentDescriptor {
             archetype_name: None,
             component_type: None,
-            archetype_field_name: "rerun.components.TextDocumentIndicator".into(),
+            component: "rerun.components.TextDocumentIndicator".into(),
         }
     }
 }
