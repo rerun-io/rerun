@@ -78,7 +78,7 @@ impl SpawnOptions {
     /// Resolves the final connect address value.
     pub fn connect_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            "127.0.0.1".parse().expect("Failed to parse ip address"),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
             self.port,
         )
     }
@@ -86,7 +86,7 @@ impl SpawnOptions {
     /// Resolves the final listen address value.
     pub fn listen_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            "0.0.0.0".parse().expect("Failed to parse ip address"),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
             self.port,
         )
     }
