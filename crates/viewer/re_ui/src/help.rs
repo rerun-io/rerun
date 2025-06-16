@@ -1,7 +1,4 @@
-use egui::{
-    AtomKind, AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder,
-    Widget as _,
-};
+use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 use crate::{UiExt as _, icons};
 
