@@ -9,6 +9,9 @@ use crate::MAX_DECODING_MESSAGE_SIZE;
 use crate::StreamError;
 use crate::TonicStatusError;
 
+/// Read log messages from a proxy server.
+///
+/// This is used by the viewer to _receive_ log messages.
 pub fn stream(
     uri: re_uri::ProxyUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
@@ -63,10 +66,17 @@ async fn stream_async(
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {
-                log_msg: Some(log_msg),
+                log_msg: Some(log_msg_proto),
             })) => {
-                let msg = log_msg_from_proto(log_msg)?;
-                if tx.send(msg).is_err() {
+                let log_msg = log_msg_from_proto(log_msg_proto)?;
+
+                // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                let log_msg = log_msg.with_record_batch_metadata(
+                    re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
+                    re_sorbet::timestamp_metadata::now_timestamp(),
+                );
+
+                if tx.send(log_msg).is_err() {
                     re_log::debug!("gRPC stream smart channel closed");
                     break;
                 }

@@ -36,6 +36,7 @@ impl Default for Options {
     }
 }
 
+/// This is the gRPC client used for the SDK-side log-sink.
 pub struct Client {
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
@@ -176,8 +177,14 @@ async fn message_proxy_client(
             tokio::select! {
                 cmd = cmd_rx.recv() => {
                     match cmd {
-                        Some(Cmd::LogMsg(msg)) => {
-                            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(msg, compression) {
+                        Some(Cmd::LogMsg(log_msg)) => {
+                            // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                            let log_msg = log_msg.with_record_batch_metadata(
+                                re_sorbet::timestamp_metadata::KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
+                                re_sorbet::timestamp_metadata::now_timestamp(),
+                            );
+
+                            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(log_msg, compression) {
                                 Ok(msg) => msg,
                                 Err(err) => {
                                     re_log::error!("Failed to encode message: {err}");

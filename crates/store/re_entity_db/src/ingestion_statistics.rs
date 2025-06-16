@@ -89,12 +89,12 @@ impl LatencyStats {
         let chunk_creation_nanos = chunk.id().nanos_since_epoch() as i64;
 
         let TimestampMetadata {
-            last_encoded_at,
-            last_decoded_at,
+            grpc_encoded_at,
+            grpc_decoded_at,
         } = timestamps;
 
-        let last_encoded_at_nanos = last_encoded_at.and_then(system_time_to_nanos);
-        let last_decoded_at_nanos = last_decoded_at.and_then(system_time_to_nanos);
+        let grpc_encoded_at_nanos = grpc_encoded_at.and_then(system_time_to_nanos);
+        let grpc_decoded_at_nanos = grpc_decoded_at.and_then(system_time_to_nanos);
 
         for row_id in chunk.row_ids() {
             let row_creation_nanos = row_id.nanos_since_epoch() as i64;
@@ -110,22 +110,22 @@ impl LatencyStats {
             }
         }
 
-        if let Some(last_encoded_at_nanos) = last_encoded_at_nanos {
+        if let Some(grpc_encoded_at_nanos) = grpc_encoded_at_nanos {
             chunk2encode.add(
                 now,
-                (last_encoded_at_nanos - chunk_creation_nanos) as f32 / 1e9,
+                (grpc_encoded_at_nanos - chunk_creation_nanos) as f32 / 1e9,
             );
 
-            if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
+            if let Some(grpc_decoded_at_nanos) = grpc_decoded_at_nanos {
                 transmission.add(
                     now,
-                    (last_decoded_at_nanos - last_encoded_at_nanos) as f32 / 1e9,
+                    (grpc_decoded_at_nanos - grpc_encoded_at_nanos) as f32 / 1e9,
                 );
             }
         }
 
-        if let Some(last_decoded_at_nanos) = last_decoded_at_nanos {
-            decode2ingest.add(now, (now_nanos - last_decoded_at_nanos) as f32 / 1e9);
+        if let Some(grpc_decoded_at_nanos) = grpc_decoded_at_nanos {
+            decode2ingest.add(now, (now_nanos - grpc_decoded_at_nanos) as f32 / 1e9);
         }
     }
 

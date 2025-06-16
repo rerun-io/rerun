@@ -1827,6 +1827,8 @@ impl RecordingStream {
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
+        re_tracing::profile_function!();
+
         if self.is_forked_child() {
             re_log::error_once!(
                 "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
