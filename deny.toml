@@ -52,24 +52,25 @@ deny = [
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
-  { name = "base64" },         # Too popular
-  { name = "cargo_metadata" }, # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "hashbrown" },      # Old version used by polar-rs
-  { name = "itertools" },      # once egui_tiles updates this can be removed
-  { name = "libloading" },     # datafusion-ffi needs an older version than wgpu
-  { name = "ordered-float" },  # Old version being used by parquet, but super small!
-  { name = "pollster" },       # rfd is still on 0.3
-  { name = "pulldown-cmark" }, # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "redox_syscall" },  # Plenty of versions in the wild
-  { name = "rustc-hash" },     # numpy with compatible pyo3 requires different version than wgpu
-  { name = "twox-hash" },      # https://github.com/PSeitz/lz4_flex/pull/175 and then update needed to arrow-ipc
+  { name = "base64" },          # Too popular
+  { name = "cargo_metadata" },  # Older version used by ply-rs. It's small, and it's build-time only!
+  { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "hashbrown" },       # Old version used by polar-rs
+  { name = "itertools" },       # once egui_tiles updates this can be removed
+  { name = "libloading" },      # datafusion-ffi needs an older version than wgpu
+  { name = "ordered-float" },   # Old version being used by parquet, but super small!
+  { name = "pollster" },        # rfd is still on 0.3
+  { name = "pulldown-cmark" },  # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
+  { name = "redox_syscall" },   # Plenty of versions in the wild
+  { name = "rustc-hash" },      # numpy with compatible pyo3 requires different version than wgpu
+  { name = "twox-hash" },       # https://github.com/PSeitz/lz4_flex/pull/175 and then update needed to arrow-ipc
 ]
 skip-tree = [
   { name = "quick-xml" }, # Old version via rfd
-  { name = "rand" },      # DF and object store are on different versions
-  { name = "walkers" },   # TODO(#7876): suppress that when `walkers` is updated
-  { name = "windows" },   # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
-  { name = "zbus" },      # Old version via rfd
+  # { name = "rand" },      # DF and object store are on different versions
+  { name = "walkers" }, # TODO(#7876): suppress that when `walkers` is updated
+  { name = "windows" }, # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
+  { name = "zbus" },    # Old version via rfd
 ]
 
 [licenses]
