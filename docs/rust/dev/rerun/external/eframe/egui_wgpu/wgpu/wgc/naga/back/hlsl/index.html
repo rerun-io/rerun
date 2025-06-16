@@ -1,0 +1,88 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Backend for HLSL (High-Level Shading Language)."><title>rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../" data-static-root-path="../../../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.3</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module hlsl</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#supported-shader-model-versions" title="Supported shader model versions:">Supported shader model versions:</a></li><li><a href="#layout-of-values-in-uniform-buffers" title="Layout of values in `uniform` buffers">Layout of values in <code>uniform</code> buffers</a><ul><li><a href="#row--and-column-major-ordering-for-matrices" title="Row- and column-major ordering for matrices">Row- and column-major ordering for matrices</a></li><li><a href="#padding-in-two-row-matrices" title="Padding in two-row matrices">Padding in two-row matrices</a></li><li><a href="#sampler-handling" title="Sampler Handling">Sampler Handling</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu::<wbr>wgc::<wbr>naga::<wbr>back</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../../../index.html">external</a>::<wbr><a href="../../../../../../index.html">eframe</a>::<wbr><a href="../../../../../index.html">egui_wgpu</a>::<wbr><a href="../../../../index.html">wgpu</a>::<wbr><a href="../../../index.html">wgc</a>::<wbr><a href="../../index.html">naga</a>::<wbr><a href="../index.html">back</a></span><h1>Module <span>hlsl</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Backend for <a href="https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl">HLSL</a> (High-Level Shading Language).</p>
+<h2 id="supported-shader-model-versions"><a class="doc-anchor" href="#supported-shader-model-versions">§</a>Supported shader model versions:</h2>
+<ul>
+<li>5.0</li>
+<li>5.1</li>
+<li>6.0</li>
+</ul>
+<h2 id="layout-of-values-in-uniform-buffers"><a class="doc-anchor" href="#layout-of-values-in-uniform-buffers">§</a>Layout of values in <code>uniform</code> buffers</h2>
+<p>WGSL’s <a href="https://gpuweb.github.io/gpuweb/wgsl/#internal-value-layout">“Internal Layout of Values”</a> rules specify how each WGSL
+type should be stored in <code>uniform</code> and <code>storage</code> buffers. The HLSL we
+generate must access values in that form, even when it is not what
+HLSL would use normally.</p>
+<p>The rules described here only apply to WGSL <code>uniform</code> variables. WGSL
+<code>storage</code> buffers are translated as HLSL <code>ByteAddressBuffers</code>, for
+which we generate <code>Load</code> and <code>Store</code> method calls with explicit byte
+offsets. WGSL pipeline inputs must be scalars or vectors; they cannot
+be matrices, which is where the interesting problems arise.</p>
+<h3 id="row--and-column-major-ordering-for-matrices"><a class="doc-anchor" href="#row--and-column-major-ordering-for-matrices">§</a>Row- and column-major ordering for matrices</h3>
+<p>WGSL specifies that matrices in uniform buffers are stored in
+column-major order. This matches HLSL’s default, so one might expect
+things to be straightforward. Unfortunately, WGSL and HLSL disagree on
+what indexing a matrix means: in WGSL, <code>m[i]</code> retrieves the <code>i</code>’th
+<em>column</em> of <code>m</code>, whereas in HLSL it retrieves the <code>i</code>’th <em>row</em>. We
+want to avoid translating <code>m[i]</code> into some complicated reassembly of a
+vector from individually fetched components, so this is a problem.</p>
+<p>However, with a bit of trickery, it is possible to use HLSL’s <code>m[i]</code>
+as the translation of WGSL’s <code>m[i]</code>:</p>
+<ul>
+<li>
+<p>We declare all matrices in uniform buffers in HLSL with the
+<code>row_major</code> qualifier, and transpose the row and column counts: a
+WGSL <code>mat3x4&lt;f32&gt;</code>, say, becomes an HLSL <code>row_major float3x4</code>. (Note
+that WGSL and HLSL type names put the row and column in reverse
+order.) Since the HLSL type is the transpose of how WebGPU directs
+the user to store the data, HLSL will load all matrices transposed.</p>
+</li>
+<li>
+<p>Since matrices are transposed, an HLSL indexing expression retrieves
+the “columns” of the intended WGSL value, as desired.</p>
+</li>
+<li>
+<p>For vector-matrix multiplication, since <code>mul(transpose(m), v)</code> is
+equivalent to <code>mul(v, m)</code> (note the reversal of the arguments), and
+<code>mul(v, transpose(m))</code> is equivalent to <code>mul(m, v)</code>, we can
+translate WGSL <code>m * v</code> and <code>v * m</code> to HLSL by simply reversing the
+arguments to <code>mul</code>.</p>
+</li>
+</ul>
+<h3 id="padding-in-two-row-matrices"><a class="doc-anchor" href="#padding-in-two-row-matrices">§</a>Padding in two-row matrices</h3>
+<p>An HLSL <code>row_major floatKx2</code> matrix has padding between its rows that
+the WGSL <code>matKx2&lt;f32&gt;</code> matrix it represents does not. HLSL stores all
+matrix rows <a href="https://github.com/microsoft/DirectXShaderCompiler/wiki/Buffer-Packing#constant-buffer-packing">aligned on 16-byte boundaries</a>, whereas WGSL says
+that the columns of a <code>matKx2&lt;f32&gt;</code> need only be <a href="https://gpuweb.github.io/gpuweb/wgsl/#internal-value-layout">aligned as required
+for <code>vec2&lt;f32&gt;</code></a>, which is <a href="https://gpuweb.github.io/gpuweb/wgsl/#alignment-and-size">eight-byte alignment</a>.</p>
+<p>To compensate for this, any time a <code>matKx2&lt;f32&gt;</code> appears in a WGSL
+<code>uniform</code> variable, whether directly as the variable’s type or as part
+of a struct/array, we actually emit <code>K</code> separate <code>float2</code> members, and
+assemble/disassemble the matrix from its columns (in WGSL; rows in
+HLSL) upon load and store.</p>
+<p>For example, the following WGSL struct type:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">struct </span>Baz {
+        m: mat3x2&lt;f32&gt;,
+}</code></pre></div>
+<p>is rendered as the HLSL struct type:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">struct </span>Baz {
+    float2 m_0; float2 m_1; float2 m_2;
+};</code></pre></div>
+<p>The <code>wrapped_struct_matrix</code> functions in <code>help.rs</code> generate HLSL
+helper functions to access such members, converting between the stored
+form and the HLSL matrix types appropriately. For example, for reading
+the member <code>m</code> of the <code>Baz</code> struct above, we emit:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>float3x2 GetMatmOnBaz(Baz obj) {
+    <span class="kw">return </span>float3x2(obj.m_0, obj.m_1, obj.m_2);
+}</code></pre></div>
+<p>We also emit an analogous <code>Set</code> function, as well as functions for
+accessing individual columns by dynamic index.</p>
+<h3 id="sampler-handling"><a class="doc-anchor" href="#sampler-handling">§</a>Sampler Handling</h3>
+<p>Due to limitations in how sampler heaps work in D3D12, we need to access samplers
+through a layer of indirection. Instead of directly binding samplers, we bind the entire
+sampler heap as both a standard and a comparison sampler heap. We then use a sampler
+index buffer for each bind group. This buffer is accessed in the shader to get the actual
+sampler index within the heap. See the wgpu_hal dx12 backend documentation for more
+information.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.BindTarget.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::BindTarget">Bind<wbr>Target</a></div></li><li><div class="item-name"><a class="struct" href="struct.FragmentEntryPoint.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::FragmentEntryPoint">Fragment<wbr>Entry<wbr>Point</a></div><div class="desc docblock-short">A fragment entry point to be considered when generating HLSL for the output interface of vertex
+entry points.</div></li><li><div class="item-name"><a class="struct" href="struct.OffsetsBindTarget.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::OffsetsBindTarget">Offsets<wbr>Bind<wbr>Target</a></div><div class="desc docblock-short">BindTarget for dynamic storage buffer offsets</div></li><li><div class="item-name"><a class="struct" href="struct.Options.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::Options">Options</a></div><div class="desc docblock-short">Configuration used in the <a href="struct.Writer.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::Writer"><code>Writer</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.ReflectionInfo.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::ReflectionInfo">Reflection<wbr>Info</a></div><div class="desc docblock-short">Reflection info for entry point names.</div></li><li><div class="item-name"><a class="struct" href="struct.SamplerHeapBindTargets.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::SamplerHeapBindTargets">Sampler<wbr>Heap<wbr>Bind<wbr>Targets</a></div></li><li><div class="item-name"><a class="struct" href="struct.SamplerIndexBufferKey.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::SamplerIndexBufferKey">Sampler<wbr>Index<wbr>Buffer<wbr>Key</a></div></li><li><div class="item-name"><a class="struct" href="struct.Writer.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::Writer">Writer</a></div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.EntryPointError.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::EntryPointError">Entry<wbr>Point<wbr>Error</a></div></li><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::Error">Error</a></div></li><li><div class="item-name"><a class="enum" href="enum.ShaderModel.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::ShaderModel">Shader<wbr>Model</a></div><div class="desc docblock-short">A HLSL shader model version.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.BindingMap.html" title="type rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::BindingMap">Binding<wbr>Map</a></div></li><li><div class="item-name"><a class="type" href="type.DynamicStorageBufferOffsetsTargets.html" title="type rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::DynamicStorageBufferOffsetsTargets">Dynamic<wbr>Storage<wbr>Buffer<wbr>Offsets<wbr>Targets</a></div></li><li><div class="item-name"><a class="type" href="type.SamplerIndexBufferBindingMap.html" title="type rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::back::hlsl::SamplerIndexBufferBindingMap">Sampler<wbr>Index<wbr>Buffer<wbr>Binding<wbr>Map</a></div></li></ul></section></div></main></body></html>

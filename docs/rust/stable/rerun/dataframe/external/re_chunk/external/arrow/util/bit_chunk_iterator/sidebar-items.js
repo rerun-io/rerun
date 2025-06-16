@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BitChunkIterator","BitChunks","UnalignedBitChunk"],"type":["UnalignedBitChunkIterator"]};

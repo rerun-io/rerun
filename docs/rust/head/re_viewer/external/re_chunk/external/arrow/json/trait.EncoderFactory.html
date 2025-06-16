@@ -1,0 +1,114 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A trait to create custom encoders for specific data types."><title>EncoderFactory in re_viewer::external::re_chunk::external::arrow::json - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Encoder<wbr>Factory</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.make_default_encoder" title="make_default_encoder">make_default_encoder</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In re_<wbr>viewer::<wbr>external::<wbr>re_<wbr>chunk::<wbr>external::<wbr>arrow::<wbr>json</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">re_viewer</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_chunk</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">arrow</a>::<wbr><a href="index.html">json</a></span><h1>Trait <span class="trait">EncoderFactory</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub trait EncoderFactory:
+    <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a>
+    + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a>
+    + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> {
+    // Provided method
+    fn <a href="#method.make_default_encoder" class="fn">make_default_encoder</a>&lt;'a&gt;(
+        &amp;self,
+        _field: &amp;'a <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../../../../arrow/datatypes/struct.Field.html" title="struct re_viewer::external::arrow::datatypes::Field">Field</a>&gt;,
+        _array: &amp;'a dyn <a class="trait" href="../../../trait.ArrowArray.html" title="trait re_viewer::external::re_chunk::ArrowArray">Array</a>,
+        _options: &amp;'a <a class="struct" href="../../../../arrow/json/struct.EncoderOptions.html" title="struct re_viewer::external::arrow::json::EncoderOptions">EncoderOptions</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../../arrow/json/writer/struct.NullableEncoder.html" title="struct re_viewer::external::arrow::json::writer::NullableEncoder">NullableEncoder</a>&lt;'a&gt;&gt;, <a class="enum" href="../../../../arrow/error/enum.ArrowError.html" title="enum re_viewer::external::arrow::error::ArrowError">ArrowError</a>&gt; { ... }
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A trait to create custom encoders for specific data types.</p>
+<p>This allows overriding the default encoders for specific data types,
+or adding new encoders for custom data types.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::io::Write;
+<span class="kw">use </span>arrow_array::{ArrayAccessor, Array, BinaryArray, Float64Array, RecordBatch};
+<span class="kw">use </span>arrow_array::cast::AsArray;
+<span class="kw">use </span>arrow_schema::{DataType, Field, Schema, FieldRef};
+<span class="kw">use </span>arrow_json::{writer::{WriterBuilder, JsonArray, NullableEncoder}, StructMode};
+<span class="kw">use </span>arrow_json::{Encoder, EncoderFactory, EncoderOptions};
+<span class="kw">use </span>arrow_schema::ArrowError;
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>serde_json::json;
+<span class="kw">use </span>serde_json::Value;
+
+<span class="kw">struct </span>IntArrayBinaryEncoder&lt;B&gt; {
+    array: B,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, B&gt; Encoder <span class="kw">for </span>IntArrayBinaryEncoder&lt;B&gt;
+<span class="kw">where
+    </span>B: ArrayAccessor&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;,
+{
+    <span class="kw">fn </span>encode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: usize, out: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+        out.push(<span class="string">b'['</span>);
+        <span class="kw">let </span>child = <span class="self">self</span>.array.value(idx);
+        <span class="kw">for </span>(idx, byte) <span class="kw">in </span>child.iter().enumerate() {
+            <span class="macro">write!</span>(out, <span class="string">"{byte}"</span>).unwrap();
+            <span class="kw">if </span>idx &lt; child.len() - <span class="number">1 </span>{
+                out.push(<span class="string">b','</span>);
+            }
+        }
+        out.push(<span class="string">b']'</span>);
+    }
+}
+
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>IntArayBinaryEncoderFactory;
+
+<span class="kw">impl </span>EncoderFactory <span class="kw">for </span>IntArayBinaryEncoderFactory {
+    <span class="kw">fn </span>make_default_encoder&lt;<span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        _field: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>FieldRef,
+        array: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw">dyn </span>Array,
+        _options: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>EncoderOptions,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NullableEncoder&lt;<span class="lifetime">'a</span>&gt;&gt;, ArrowError&gt; {
+        <span class="kw">match </span>array.data_type() {
+            DataType::Binary =&gt; {
+                <span class="kw">let </span>array = array.as_binary::&lt;i32&gt;();
+                <span class="kw">let </span>encoder = IntArrayBinaryEncoder { array };
+                <span class="kw">let </span>array_encoder = Box::new(encoder) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Encoder + <span class="lifetime">'a</span>&gt;;
+                <span class="kw">let </span>nulls = array.nulls().cloned();
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(NullableEncoder::new(array_encoder, nulls)))
+            }
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        }
+    }
+}
+
+<span class="kw">let </span>binary_array = BinaryArray::from_iter([<span class="prelude-val">Some</span>(<span class="string">b"a"</span>.as_slice()), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="string">b"b"</span>.as_slice())]);
+<span class="kw">let </span>float_array = Float64Array::from(<span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="number">1.0</span>), <span class="prelude-val">Some</span>(<span class="number">2.3</span>), <span class="prelude-val">None</span>]);
+<span class="kw">let </span>fields = <span class="macro">vec!</span>[
+    Field::new(<span class="string">"bytes"</span>, DataType::Binary, <span class="bool-val">true</span>),
+    Field::new(<span class="string">"float"</span>, DataType::Float64, <span class="bool-val">true</span>),
+];
+<span class="kw">let </span>batch = RecordBatch::try_new(
+    Arc::new(Schema::new(fields)),
+    <span class="macro">vec!</span>[
+        Arc::new(binary_array) <span class="kw">as </span>Arc&lt;<span class="kw">dyn </span>Array&gt;,
+        Arc::new(float_array) <span class="kw">as </span>Arc&lt;<span class="kw">dyn </span>Array&gt;,
+    ],
+)
+.unwrap();
+
+<span class="kw">let </span>json_value: Value = {
+    <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>writer = WriterBuilder::new()
+        .with_encoder_factory(Arc::new(IntArayBinaryEncoderFactory))
+        .build::&lt;<span class="kw">_</span>, JsonArray&gt;(<span class="kw-2">&amp;mut </span>buf);
+    writer.write_batches(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>batch]).unwrap();
+    writer.finish().unwrap();
+    serde_json::from_slice(<span class="kw-2">&amp;</span>buf).unwrap()
+};
+
+<span class="kw">let </span>expected = <span class="macro">json!</span>([
+    {<span class="string">"bytes"</span>: [<span class="number">97</span>], <span class="string">"float"</span>: <span class="number">1.0</span>},
+    {<span class="string">"float"</span>: <span class="number">2.3</span>},
+    {<span class="string">"bytes"</span>: [<span class="number">98</span>]},
+]);
+
+<span class="macro">assert_eq!</span>(json_value, expected);</code></pre></div>
+</div></details><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.make_default_encoder" class="method"><h4 class="code-header">fn <a href="#method.make_default_encoder" class="fn">make_default_encoder</a>&lt;'a&gt;(
+    &amp;self,
+    _field: &amp;'a <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../../../../arrow/datatypes/struct.Field.html" title="struct re_viewer::external::arrow::datatypes::Field">Field</a>&gt;,
+    _array: &amp;'a dyn <a class="trait" href="../../../trait.ArrowArray.html" title="trait re_viewer::external::re_chunk::ArrowArray">Array</a>,
+    _options: &amp;'a <a class="struct" href="../../../../arrow/json/struct.EncoderOptions.html" title="struct re_viewer::external::arrow::json::EncoderOptions">EncoderOptions</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../../arrow/json/writer/struct.NullableEncoder.html" title="struct re_viewer::external::arrow::json::writer::NullableEncoder">NullableEncoder</a>&lt;'a&gt;&gt;, <a class="enum" href="../../../../arrow/error/enum.ArrowError.html" title="enum re_viewer::external::arrow::error::ArrowError">ArrowError</a>&gt;</h4></section></summary><div class="docblock"><p>Make an encoder that overrides the default encoder for a specific field and array or provides an encoder for a custom data type.
+This can be used to override how e.g. binary data is encoded so that it is an encoded string or an array of integers.</p>
+<p>Note that the type of the field may not match the type of the array: for dictionary arrays unless the top-level dictionary is handled this
+will be called again for the keys and values of the dictionary, at which point the field type will still be the outer dictionary type but the
+array will have a different type.
+For example, <code>field`` might have the type </code>Dictionary(i32, Utf8)<code>but</code>array<code>will be</code>Utf8`.</p>
+</div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../../../../trait.impl/arrow_json/writer/encoder/trait.EncoderFactory.js" async></script></section></div></main></body></html>

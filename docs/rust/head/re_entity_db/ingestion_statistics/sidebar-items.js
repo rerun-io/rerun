@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["nanos_since_epoch","system_time_to_nanos"],"struct":["IngestionStatistics","LatencySnapshot","LatencyStats"]};

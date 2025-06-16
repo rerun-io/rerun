@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["points3d_color_view","points3d_color_visualizer"],"static":["GLOBAL"]};

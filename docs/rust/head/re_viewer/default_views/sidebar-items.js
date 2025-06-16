@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_view_class_registry","populate_view_class_registry_with_builtin"]};

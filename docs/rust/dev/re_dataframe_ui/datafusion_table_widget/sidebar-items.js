@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["column_descriptor_ui","datatype_ui","header_property_ui","id_from_session_context_and_table","sorted_text","title_ui"],"struct":["Column","Columns","DataFusionTableDelegate","DataFusionTableWidget"],"type":["ColumnBlueprintFn"]};

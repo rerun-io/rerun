@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_blueprint_path","encode_to_file","sanitize_app_id"]};

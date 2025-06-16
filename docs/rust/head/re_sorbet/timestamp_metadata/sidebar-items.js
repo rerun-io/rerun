@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["KEY_TIMESTAMP_IPC_DECODED","KEY_TIMESTAMP_IPC_ENCODED"],"fn":["encode_timestamp","now_timestamp","parse_timestamp"],"struct":["TimestampMetadata"]};

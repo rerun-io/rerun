@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DocumentKind"],"fn":["run"],"mod":["cpp","docs","examples","python","rust"],"struct":["Context","Document","DocumentData","IdGen"]};

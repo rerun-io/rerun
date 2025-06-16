@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["new_recommended"],"struct":["FileResolver","ImportClause","InterpolatedFile","SearchPath"],"type":["RecommendedFileResolver"]};

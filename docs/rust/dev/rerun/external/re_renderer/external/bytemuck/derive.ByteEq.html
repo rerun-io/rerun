@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Derive the `PartialEq` and `Eq` trait for a type"><title>ByteEq in rerun::external::re_renderer::external::bytemuck - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc derive"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.3</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">ByteEq</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#warning" title="Warning">Warning</a></li><li><a href="#examples" title="Examples">Examples</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>renderer::<wbr>external::<wbr>bytemuck</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_renderer</a>::<wbr><a href="../index.html">external</a>::<wbr><a href="index.html">bytemuck</a></span><h1>Derive Macro <span class="derive">ByteEq</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>#[derive(ByteEq)]</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Derive the <code>PartialEq</code> and <code>Eq</code> trait for a type</p>
+<p>The macro implements <code>PartialEq</code> and <code>Eq</code> by casting both sides of the
+comparison to a byte slice and then compares those.</p>
+<h3 id="warning"><a class="doc-anchor" href="#warning">§</a>Warning</h3>
+<p>Since this implements a byte wise comparison, the behavior of floating point
+numbers does not match their usual comparison behavior. Additionally other
+custom comparison behaviors of the individual fields are also ignored. This
+also does not implement <code>StructuralPartialEq</code> / <code>StructuralEq</code> like
+<code>PartialEq</code> / <code>Eq</code> would. This means you can’t pattern match on the values.</p>
+<h3 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, NoUninit, ByteEq)]
+#[repr(C)]
+</span><span class="kw">struct </span>Test {
+  a: u32,
+  b: char,
+  c: f32,
+}</code></pre></div>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Copy, Clone, ByteEq)]
+#[repr(C)]
+</span><span class="kw">struct </span>Test&lt;<span class="kw">const </span>N: usize&gt; {
+  a: [u32; N],
+}
+<span class="kw">unsafe impl</span>&lt;<span class="kw">const </span>N: usize&gt; NoUninit <span class="kw">for </span>Test&lt;N&gt; {}</code></pre></div>
+</div></details></section></div></main></body></html>

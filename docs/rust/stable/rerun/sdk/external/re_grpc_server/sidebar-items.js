@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_MEMORY_LIMIT","DEFAULT_SERVER_PORT"],"fn":["serve","serve_from_channel","spawn_from_rx_set","spawn_with_recv"],"mod":["shutdown"],"struct":["MessageProxy"]};

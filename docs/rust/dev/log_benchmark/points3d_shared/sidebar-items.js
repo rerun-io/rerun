@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["prepare_points3d"],"struct":["Point3DInput"]};

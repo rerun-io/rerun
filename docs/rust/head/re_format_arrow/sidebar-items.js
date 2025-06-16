@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["custom_array_formatter","format_cell","format_dataframe_with_metadata","format_dataframe_without_metadata","format_record_batch","format_record_batch_opts","format_record_batch_with_width","parse_tuid","trim_name"],"struct":["DisplayMetadata","RecordBatchFormatOpts"],"type":["CustomArrayFormatter","Metadata"]};

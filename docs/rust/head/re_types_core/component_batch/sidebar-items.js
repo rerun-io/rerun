@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FIELD_METADATA_KEY_ARCHETYPE_NAME","FIELD_METADATA_KEY_COMPONENT_NAME"],"fn":["assert_component_batch_object_safe"],"struct":["SerializedComponentBatch","SerializedComponentColumn"],"trait":["ComponentBatch"]};

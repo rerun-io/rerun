@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["all_scalars_indices","allocate_plot_points","collect_colors","collect_radius_ui","collect_scalars","collect_series_name","collect_series_visibility","determine_num_series"],"type":["PlotPointsPerSeries"]};

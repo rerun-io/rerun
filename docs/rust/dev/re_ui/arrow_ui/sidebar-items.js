@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["arrow_ui","make_formatter","simple_datatype_string"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_safe_filename_char","santitize_file_name"]};

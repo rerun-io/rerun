@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["main","selection_item_ui"],"static":["GLOBAL"],"struct":["MyApp","SharedState"]};

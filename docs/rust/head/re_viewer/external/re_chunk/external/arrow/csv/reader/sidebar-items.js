@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["infer_schema_from_files"],"struct":["BufReader","Decoder","Format","ReaderBuilder"],"type":["Reader"]};

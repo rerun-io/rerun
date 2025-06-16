@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_urdf_file","load_ros_resource","log_debug_format","log_geometry","log_joint","log_link","log_robot","quat_xyzw_from_roll_pitch_yaw","read_ros_package_resource","resolve_package_uri","send_archetype","send_chunk_builder","send_transform","transform_from_pose","walk_tree"],"struct":["UrdfDataLoader","UrdfTree"]};

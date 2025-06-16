@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ExternalError"],"fn":["to_py_err"]};

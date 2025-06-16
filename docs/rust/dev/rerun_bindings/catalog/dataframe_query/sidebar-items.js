@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_contents_expr","find_best_component"],"struct":["PyDataframeQueryView"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["InherentItemKind","ItemKind","ParentItemKind"],"fn":["base_url","document","ingest"],"struct":["Visitor"],"trait":["CrateExt","ImplExt","ItemKindExt","WithItemExt"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clean_length"],"struct":["Capsules3DComponentData","Capsules3DVisualizer","Fallback"]};

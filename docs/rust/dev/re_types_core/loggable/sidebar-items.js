@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ComponentName","DatatypeName"],"trait":["Component","Loggable"],"type":["ComponentDescriptorSet","UnorderedComponentDescriptorSet"]};

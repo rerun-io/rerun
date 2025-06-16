@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StructMode"],"mod":["reader","writer"],"struct":["EncoderOptions","Reader","ReaderBuilder","Writer","WriterBuilder"],"trait":["Encoder","EncoderFactory","JsonSerializable"],"type":["ArrayWriter","LineDelimitedWriter"]};

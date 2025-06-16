@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Geometry","JointType"],"fn":["read_file","read_from_string","write_to_string"],"mod":["utils"],"struct":["Axis","Calibration","Collision","Color","Dynamics","Inertia","Inertial","Joint","JointLimit","Link","LinkName","Mass","Material","Mimic","Pose","Robot","SafetyController","Texture","UrdfError","Vec3","Vec4","Visual"],"type":["Result"]};

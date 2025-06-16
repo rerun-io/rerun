@@ -1,0 +1,213 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="glam"><title>rerun::external::re_types::external::glam - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../../../crates.js"></script><script defer src="../../../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../../../rerun/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../../../../rerun/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate glam</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.9.0-alpha.9</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_types</a>::<wbr><a href="../index.html">external</a>::<wbr><a class="mod" href="#">glam</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="https://docs.rs/glam/0.22.0/src/glam/lib.rs.html#1-324">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="glam"><a href="#glam">glam</a></h2>
+<p><code>glam</code> is a simple and fast linear algebra library for games and graphics.</p>
+<h3 id="features"><a href="#features">Features</a></h3>
+<ul>
+<li><a href="f32/index.html" title="mod rerun::external::re_types::external::glam::f32"><code>f32</code></a> types
+<ul>
+<li>vectors: <a href="struct.Vec2.html" title="struct rerun::external::re_types::external::glam::Vec2"><code>Vec2</code></a>, <a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a>, <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> and <a href="struct.Vec4.html" title="struct rerun::external::re_types::external::glam::Vec4"><code>Vec4</code></a></li>
+<li>square matrices: <a href="struct.Mat2.html" title="struct rerun::external::re_types::external::glam::Mat2"><code>Mat2</code></a>, <a href="struct.Mat3.html" title="struct rerun::external::re_types::external::glam::Mat3"><code>Mat3</code></a>, <a href="struct.Mat3A.html" title="struct rerun::external::re_types::external::glam::Mat3A"><code>Mat3A</code></a> and <a href="struct.Mat4.html" title="struct rerun::external::re_types::external::glam::Mat4"><code>Mat4</code></a></li>
+<li>a quaternion type: <a href="struct.Quat.html" title="struct rerun::external::re_types::external::glam::Quat"><code>Quat</code></a></li>
+<li>affine transformation types: <a href="struct.Affine2.html" title="struct rerun::external::re_types::external::glam::Affine2"><code>Affine2</code></a> and <a href="struct.Affine3A.html" title="struct rerun::external::re_types::external::glam::Affine3A"><code>Affine3A</code></a></li>
+</ul>
+</li>
+<li><a href="f64/index.html" title="mod rerun::external::re_types::external::glam::f64"><code>f64</code></a> types
+<ul>
+<li>vectors: <a href="struct.DVec2.html" title="struct rerun::external::re_types::external::glam::DVec2"><code>DVec2</code></a>, <a href="struct.DVec3.html" title="struct rerun::external::re_types::external::glam::DVec3"><code>DVec3</code></a> and <a href="struct.DVec4.html" title="struct rerun::external::re_types::external::glam::DVec4"><code>DVec4</code></a></li>
+<li>square matrices: <a href="struct.DMat2.html" title="struct rerun::external::re_types::external::glam::DMat2"><code>DMat2</code></a>, <a href="struct.DMat3.html" title="struct rerun::external::re_types::external::glam::DMat3"><code>DMat3</code></a> and <a href="struct.DMat4.html" title="struct rerun::external::re_types::external::glam::DMat4"><code>DMat4</code></a></li>
+<li>a quaternion type: <a href="struct.DQuat.html" title="struct rerun::external::re_types::external::glam::DQuat"><code>DQuat</code></a></li>
+<li>affine transformation types: <a href="struct.DAffine2.html" title="struct rerun::external::re_types::external::glam::DAffine2"><code>DAffine2</code></a> and <a href="struct.DAffine3.html" title="struct rerun::external::re_types::external::glam::DAffine3"><code>DAffine3</code></a></li>
+</ul>
+</li>
+<li><a href="i32/index.html" title="mod rerun::external::re_types::external::glam::i32"><code>i32</code></a> types
+<ul>
+<li>vectors: <a href="struct.IVec2.html" title="struct rerun::external::re_types::external::glam::IVec2"><code>IVec2</code></a>, <a href="struct.IVec3.html" title="struct rerun::external::re_types::external::glam::IVec3"><code>IVec3</code></a> and <a href="struct.IVec4.html" title="struct rerun::external::re_types::external::glam::IVec4"><code>IVec4</code></a></li>
+</ul>
+</li>
+<li><a href="u32/index.html" title="mod rerun::external::re_types::external::glam::u32"><code>u32</code></a> types
+<ul>
+<li>vectors: <a href="struct.UVec2.html" title="struct rerun::external::re_types::external::glam::UVec2"><code>UVec2</code></a>, <a href="struct.UVec3.html" title="struct rerun::external::re_types::external::glam::UVec3"><code>UVec3</code></a> and <a href="struct.UVec4.html" title="struct rerun::external::re_types::external::glam::UVec4"><code>UVec4</code></a></li>
+</ul>
+</li>
+<li><a href="bool/index.html" title="mod rerun::external::re_types::external::glam::bool"><code>bool</code></a> types
+<ul>
+<li>vectors: <a href="struct.BVec2.html" title="struct rerun::external::re_types::external::glam::BVec2"><code>BVec2</code></a>, <a href="struct.BVec3.html" title="struct rerun::external::re_types::external::glam::BVec3"><code>BVec3</code></a> and <a href="struct.BVec4.html" title="struct rerun::external::re_types::external::glam::BVec4"><code>BVec4</code></a></li>
+</ul>
+</li>
+</ul>
+<h3 id="simd"><a href="#simd">SIMD</a></h3>
+<p><code>glam</code> is built with SIMD in mind. Many <code>f32</code> types use 128-bit SIMD vector types for storage
+and/or implementation. The use of SIMD generally enables better performance than using primitive
+numeric types such as <code>f32</code>.</p>
+<p>Some <code>glam</code> types use SIMD for storage meaning they are 16 byte aligned, these types include
+<code>Mat2</code>, <code>Mat3A</code>, <code>Mat4</code>, <code>Quat</code>, <code>Vec3A</code>, <code>Vec4</code>, <code>Affine2</code> an <code>Affine3A</code>. Types
+with an <code>A</code> suffix are a SIMD alternative to a scalar type, e.g. <code>Vec3</code> uses <code>f32</code> storage and
+<code>Vec3A</code> uses SIMD storage.</p>
+<p>When SIMD is not available on the target the types will maintain 16 byte alignment and internal
+padding so that object sizes and layouts will not change between architectures. There are scalar
+math fallback implementations exist when SIMD is not available. It is intended to add support for
+other SIMD architectures once they appear in stable Rust.</p>
+<p>Currently only SSE2 on x86/x86_64 is supported as this is what stable Rust supports.</p>
+<h3 id="vec3a-and-mat3a"><a href="#vec3a-and-mat3a">Vec3A and Mat3A</a></h3>
+<p><code>Vec3A</code> is a SIMD optimized version of the <code>Vec3</code> type, which due to 16 byte alignment results
+in <code>Vec3A</code> containing 4 bytes of padding making it 16 bytes in size in total. <code>Mat3A</code> is composed
+of three <code>Vec3A</code> columns.</p>
+<div><table><thead><tr><th style="text-align: left">Type</th><th style="text-align: right"><code>f32</code> bytes</th><th style="text-align: right">Align bytes</th><th style="text-align: right">Size bytes</th><th style="text-align: right">Padding</th></tr></thead><tbody>
+<tr><td style="text-align: left"><a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a></td><td style="text-align: right">12</td><td style="text-align: right">4</td><td style="text-align: right">12</td><td style="text-align: right">0</td></tr>
+<tr><td style="text-align: left"><a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a></td><td style="text-align: right">12</td><td style="text-align: right">16</td><td style="text-align: right">16</td><td style="text-align: right">4</td></tr>
+<tr><td style="text-align: left"><a href="struct.Mat3.html" title="struct rerun::external::re_types::external::glam::Mat3"><code>Mat3</code></a></td><td style="text-align: right">36</td><td style="text-align: right">4</td><td style="text-align: right">36</td><td style="text-align: right">0</td></tr>
+<tr><td style="text-align: left"><a href="struct.Mat3A.html" title="struct rerun::external::re_types::external::glam::Mat3A"><code>Mat3A</code></a></td><td style="text-align: right">36</td><td style="text-align: right">16</td><td style="text-align: right">48</td><td style="text-align: right">12</td></tr>
+</tbody></table>
+</div>
+<p>Despite this wasted space the SIMD implementations tend to outperform <code>f32</code> implementations in
+<a href="https://github.com/bitshifter/mathbench-rs"><strong>mathbench</strong></a> benchmarks.</p>
+<p><code>glam</code> treats <a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a> as the default 3D vector type and <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> a special case for optimization.
+When methods need to return a 3D vector they will generally return <a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a>.</p>
+<p>There are <a href="https://doc.rust-lang.org/1.72.1/core/convert/trait.From.html" title="trait core::convert::From"><code>From</code></a> trait implementations for converting from <a href="struct.Vec4.html" title="struct rerun::external::re_types::external::glam::Vec4"><code>Vec4</code></a> to a <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> and between
+<a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a> and <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> (and vice versa).</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>glam::{Vec3, Vec3A, Vec4};
+
+<span class="kw">let </span>v4 = Vec4::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>);
+
+<span class="comment">// Convert from `Vec4` to `Vec3A`, this is a no-op if SIMD is supported.
+</span><span class="kw">let </span>v3a = Vec3A::from(v4);
+<span class="macro">assert_eq!</span>(Vec3A::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>), v3a);
+
+<span class="comment">// Convert from `Vec3A` to `Vec3`.
+</span><span class="kw">let </span>v3 = Vec3::from(v3a);
+<span class="macro">assert_eq!</span>(Vec3::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>), v3);
+
+<span class="comment">// Convert from `Vec3` to `Vec3A`.
+</span><span class="kw">let </span>v3a = Vec3A::from(v3);
+<span class="macro">assert_eq!</span>(Vec3A::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>), v3a);</code></pre></div>
+<h3 id="affine2-and-affine3a"><a href="#affine2-and-affine3a">Affine2 and Affine3A</a></h3>
+<p><code>Affine2</code> and <code>Affine3A</code> are composed of a linear transform matrix and a vector translation. The
+represent 2D and 3D affine transformations which are commonly used in games.</p>
+<p>The table below shows the performance advantage of <code>Affine2</code> over <code>Mat3A</code> and <code>Mat3A</code> over <code>Mat3</code>.</p>
+<div><table><thead><tr><th>operation</th><th><code>Mat3</code></th><th><code>Mat3A</code></th><th><code>Affine2</code></th></tr></thead><tbody>
+<tr><td>inverse</td><td>11.4±0.09ns</td><td>7.1±0.09ns</td><td>5.4±0.06ns</td></tr>
+<tr><td>mul self</td><td>10.5±0.04ns</td><td>5.2±0.05ns</td><td>4.0±0.05ns</td></tr>
+<tr><td>transform point2</td><td>2.7±0.02ns</td><td>2.7±0.03ns</td><td>2.8±0.04ns</td></tr>
+<tr><td>transform vector2</td><td>2.6±0.01ns</td><td>2.6±0.03ns</td><td>2.3±0.02ns</td></tr>
+</tbody></table>
+</div>
+<p>Performance is much closer between <code>Mat4</code> and <code>Affine3A</code> with the affine type being faster to
+invert.</p>
+<div><table><thead><tr><th>operation</th><th><code>Mat4</code></th><th><code>Affine3A</code></th></tr></thead><tbody>
+<tr><td>inverse</td><td>15.9±0.11ns</td><td>10.8±0.06ns</td></tr>
+<tr><td>mul self</td><td>7.3±0.05ns</td><td>7.0±0.06ns</td></tr>
+<tr><td>transform point3</td><td>3.6±0.02ns</td><td>4.3±0.04ns</td></tr>
+<tr><td>transform point3a</td><td>3.0±0.02ns</td><td>3.0±0.04ns</td></tr>
+<tr><td>transform vector3</td><td>4.1±0.02ns</td><td>3.9±0.04ns</td></tr>
+<tr><td>transform vector3a</td><td>2.8±0.02ns</td><td>2.8±0.02ns</td></tr>
+</tbody></table>
+</div>
+<p>Benchmarks were taken on an Intel Core i7-4710HQ.</p>
+<h3 id="linear-algebra-conventions"><a href="#linear-algebra-conventions">Linear algebra conventions</a></h3>
+<p><code>glam</code> interprets vectors as column matrices (also known as column vectors) meaning when
+transforming a vector with a matrix the matrix goes on the left.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>glam::{Mat3, Vec3};
+<span class="kw">let </span>m = Mat3::IDENTITY;
+<span class="kw">let </span>x = Vec3::X;
+<span class="kw">let </span>v = m * x;
+<span class="macro">assert_eq!</span>(v, x);</code></pre></div>
+<p>Matrices are stored in memory in column-major order.</p>
+<p>All angles are in radians. Rust provides the <code>f32::to_radians()</code> and <code>f64::to_radians()</code> methods to
+convert from degrees.</p>
+<h3 id="direct-element-access"><a href="#direct-element-access">Direct element access</a></h3>
+<p>Because some types may internally be implemented using SIMD types, direct access to vector elements
+is supported by implementing the <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html"><code>Deref</code></a> and <a href="https://doc.rust-lang.org/std/ops/trait.DerefMut.html"><code>DerefMut</code></a> traits.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>glam::Vec3A;
+<span class="kw">let </span><span class="kw-2">mut </span>v = Vec3A::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>);
+<span class="macro">assert_eq!</span>(<span class="number">3.0</span>, v.z);
+v.z += <span class="number">1.0</span>;
+<span class="macro">assert_eq!</span>(<span class="number">4.0</span>, v.z);</code></pre></div>
+<h3 id="glam-assertions"><a href="#glam-assertions">glam assertions</a></h3>
+<p><code>glam</code> does not enforce validity checks on method parameters at runtime. For example methods that
+require normalized vectors as input such as <code>Quat::from_axis_angle(axis, angle)</code> will not check
+that axis is a valid normalized vector. To help catch unintended misuse of <code>glam</code> the
+<code>debug-glam-assert</code> or <code>glam-assert</code> features can be enabled to add checks ensure that inputs to
+are valid.</p>
+<h3 id="vector-swizzles"><a href="#vector-swizzles">Vector swizzles</a></h3>
+<p><code>glam</code> vector types have functions allowing elements of vectors to be reordered, this includes
+creating a vector of a different size from the vectors elements.</p>
+<p>The swizzle functions are implemented using traits to add them to each vector type. This is
+primarily because there are a lot of swizzle functions which can obfuscate the other vector
+functions in documentation and so on. The traits are <a href="trait.Vec2Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec2Swizzles"><code>Vec2Swizzles</code></a>, <a href="trait.Vec3Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec3Swizzles"><code>Vec3Swizzles</code></a> and
+<a href="trait.Vec4Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec4Swizzles"><code>Vec4Swizzles</code></a>.</p>
+<p>Note that the <a href="trait.Vec3Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec3Swizzles"><code>Vec3Swizzles</code></a> implementation for <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> will return a <a href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A"><code>Vec3A</code></a> for 3 element
+swizzles, all other implementations will return <a href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3"><code>Vec3</code></a>.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>glam::{swizzles::<span class="kw-2">*</span>, Vec2, Vec3, Vec3A, Vec4};
+
+<span class="kw">let </span>v = Vec4::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>);
+
+<span class="comment">// Reverse elements of `v`, if SIMD is supported this will use a vector shuffle.
+</span><span class="kw">let </span>wzyx = v.wzyx();
+<span class="macro">assert_eq!</span>(Vec4::new(<span class="number">4.0</span>, <span class="number">3.0</span>, <span class="number">2.0</span>, <span class="number">1.0</span>), wzyx);
+
+<span class="comment">// Swizzle the yzw elements of `v` into a `Vec3`
+</span><span class="kw">let </span>yzw = v.yzw();
+<span class="macro">assert_eq!</span>(Vec3::new(<span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>), yzw);
+
+<span class="comment">// To swizzle a `Vec4` into a `Vec3A` swizzle the `Vec4` first then convert to
+// `Vec3A`. If SIMD is supported this will use a vector shuffle. The last
+// element of the shuffled `Vec4` is ignored by the `Vec3A`.
+</span><span class="kw">let </span>yzw = Vec3A::from(v.yzwx());
+<span class="macro">assert_eq!</span>(Vec3A::new(<span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>), yzw);
+
+<span class="comment">// You can swizzle from a `Vec4` to a `Vec2`
+</span><span class="kw">let </span>xy = v.xy();
+<span class="macro">assert_eq!</span>(Vec2::new(<span class="number">1.0</span>, <span class="number">2.0</span>), xy);
+
+<span class="comment">// And back again
+</span><span class="kw">let </span>yyxx = xy.yyxx();
+<span class="macro">assert_eq!</span>(Vec4::new(<span class="number">2.0</span>, <span class="number">2.0</span>, <span class="number">1.0</span>, <span class="number">1.0</span>), yyxx);</code></pre></div>
+<h3 id="simd-and-scalar-consistency"><a href="#simd-and-scalar-consistency">SIMD and scalar consistency</a></h3>
+<p><code>glam</code> types implement <code>serde</code> <code>Serialize</code> and <code>Deserialize</code> traits to ensure
+that they will serialize and deserialize exactly the same whether or not
+SIMD support is being used.</p>
+<p>The SIMD versions implement the <code>core::fmt::Debug</code> and <code>core::fmt::Display</code>
+traits so they print the same as the scalar version.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>glam::Vec4;
+<span class="kw">let </span>a = Vec4::new(<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>);
+<span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, a), <span class="string">&quot;[1, 2, 3, 4]&quot;</span>);</code></pre></div>
+<h3 id="feature-gates"><a href="#feature-gates">Feature gates</a></h3>
+<p>All <code>glam</code> dependencies are optional, however some are required for tests
+and benchmarks.</p>
+<ul>
+<li><code>std</code> - the default feature, has no dependencies.</li>
+<li><code>approx</code> - traits and macros for approximate float comparisons</li>
+<li><code>bytemuck</code> - for casting into slices of bytes</li>
+<li><code>libm</code> - required to compile with <code>no_std</code></li>
+<li><code>mint</code> - for interoperating with other 3D math libraries</li>
+<li><code>num-traits</code> - required to compile <code>no_std</code>, will be included when enabling
+the <code>libm</code> feature</li>
+<li><code>rand</code> - implementations of <code>Distribution</code> trait for all <code>glam</code> types.</li>
+<li><code>rkyv</code> - implementations of <code>Archive</code>, <code>Serialize</code> and <code>Deserialize</code> for all
+<code>glam</code> types. Note that serialization is not interoperable with and without the
+<code>scalar-math</code> feature. It should work between all other builds of <code>glam</code>.
+Endian conversion is currently not supported</li>
+<li><code>bytecheck</code> - to perform archive validation when using the <code>rkyv</code> feature</li>
+<li><code>serde</code> - implementations of <code>Serialize</code> and <code>Deserialize</code> for all <code>glam</code>
+types. Note that serialization should work between builds of <code>glam</code> with and without SIMD enabled</li>
+<li><code>scalar-math</code> - disables SIMD support and uses native alignment for all types.</li>
+<li><code>debug-glam-assert</code> - adds assertions in debug builds which check the validity of parameters
+passed to <code>glam</code> to help catch runtime errors.</li>
+<li><code>glam-assert</code> - adds assertions to all builds which check the validity of parameters passed to
+<code>glam</code> to help catch runtime errors.</li>
+<li><code>cuda</code> - forces <code>glam</code> types to match expected cuda alignment</li>
+<li><code>fast-math</code> - By default, glam attempts to provide bit-for-bit identical
+results on all platforms. Using this feature will enable platform specific
+optimizations that may not be identical to other platforms. <strong>Intermediate
+libraries should not use this feature and defer the decision to the final
+binary build</strong>.</li>
+<li><code>core-simd</code> - enables SIMD support via the portable simd module. This is an
+unstable feature which requires a nightly Rust toolchain and <code>std</code> support.</li>
+</ul>
+<h3 id="minimum-supported-rust-version-msrv"><a href="#minimum-supported-rust-version-msrv">Minimum Supported Rust Version (MSRV)</a></h3>
+<p>The minimum supported Rust version is <code>1.58.1</code>.</p>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="bool/index.html" title="mod rerun::external::re_types::external::glam::bool">bool</a></div><div class="desc docblock-short"><code>bool</code> vector mask types. </div></li><li><div class="item-name"><a class="mod" href="f32/index.html" title="mod rerun::external::re_types::external::glam::f32">f32</a></div><div class="desc docblock-short"><code>f32</code> vector, quaternion and matrix types. </div></li><li><div class="item-name"><a class="mod" href="f64/index.html" title="mod rerun::external::re_types::external::glam::f64">f64</a></div><div class="desc docblock-short"><code>f64</code> vector, quaternion and matrix types. </div></li><li><div class="item-name"><a class="mod" href="i32/index.html" title="mod rerun::external::re_types::external::glam::i32">i32</a></div><div class="desc docblock-short"><code>i32</code> vector types. </div></li><li><div class="item-name"><a class="mod" href="swizzles/index.html" title="mod rerun::external::re_types::external::glam::swizzles">swizzles</a></div><div class="desc docblock-short">Traits adding swizzle methods to all vector types. </div></li><li><div class="item-name"><a class="mod" href="u32/index.html" title="mod rerun::external::re_types::external::glam::u32">u32</a></div><div class="desc docblock-short"><code>u32</code> vector types. </div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Affine2.html" title="struct rerun::external::re_types::external::glam::Affine2">Affine2</a></div><div class="desc docblock-short">A 2D affine transform, which can represent translation, rotation, scaling and shear.</div></li><li><div class="item-name"><a class="struct" href="struct.Affine3A.html" title="struct rerun::external::re_types::external::glam::Affine3A">Affine3A</a></div><div class="desc docblock-short">A 3D affine transform, which can represent translation, rotation, scaling and shear.</div></li><li><div class="item-name"><a class="struct" href="struct.BVec2.html" title="struct rerun::external::re_types::external::glam::BVec2">BVec2</a></div><div class="desc docblock-short">A 2-dimensional <code>bool</code> vector mask.</div></li><li><div class="item-name"><a class="struct" href="struct.BVec3.html" title="struct rerun::external::re_types::external::glam::BVec3">BVec3</a></div><div class="desc docblock-short">A 3-dimensional <code>bool</code> vector mask.</div></li><li><div class="item-name"><a class="struct" href="struct.BVec3A.html" title="struct rerun::external::re_types::external::glam::BVec3A">BVec3A</a></div><div class="desc docblock-short">A 3-dimensional SIMD vector mask.</div></li><li><div class="item-name"><a class="struct" href="struct.BVec4.html" title="struct rerun::external::re_types::external::glam::BVec4">BVec4</a></div><div class="desc docblock-short">A 4-dimensional <code>bool</code> vector mask.</div></li><li><div class="item-name"><a class="struct" href="struct.BVec4A.html" title="struct rerun::external::re_types::external::glam::BVec4A">BVec4A</a></div><div class="desc docblock-short">A 4-dimensional SIMD vector mask.</div></li><li><div class="item-name"><a class="struct" href="struct.DAffine2.html" title="struct rerun::external::re_types::external::glam::DAffine2">DAffine2</a></div><div class="desc docblock-short">A 2D affine transform, which can represent translation, rotation, scaling and shear.</div></li><li><div class="item-name"><a class="struct" href="struct.DAffine3.html" title="struct rerun::external::re_types::external::glam::DAffine3">DAffine3</a></div><div class="desc docblock-short">A 3D affine transform, which can represent translation, rotation, scaling and shear.</div></li><li><div class="item-name"><a class="struct" href="struct.DMat2.html" title="struct rerun::external::re_types::external::glam::DMat2">DMat2</a></div><div class="desc docblock-short">A 2x2 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.DMat3.html" title="struct rerun::external::re_types::external::glam::DMat3">DMat3</a></div><div class="desc docblock-short">A 3x3 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.DMat4.html" title="struct rerun::external::re_types::external::glam::DMat4">DMat4</a></div><div class="desc docblock-short">A 4x4 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.DQuat.html" title="struct rerun::external::re_types::external::glam::DQuat">DQuat</a></div><div class="desc docblock-short">A quaternion representing an orientation.</div></li><li><div class="item-name"><a class="struct" href="struct.DVec2.html" title="struct rerun::external::re_types::external::glam::DVec2">DVec2</a></div><div class="desc docblock-short">A 2-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.DVec3.html" title="struct rerun::external::re_types::external::glam::DVec3">DVec3</a></div><div class="desc docblock-short">A 3-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.DVec4.html" title="struct rerun::external::re_types::external::glam::DVec4">DVec4</a></div><div class="desc docblock-short">A 4-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.IVec2.html" title="struct rerun::external::re_types::external::glam::IVec2">IVec2</a></div><div class="desc docblock-short">A 2-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.IVec3.html" title="struct rerun::external::re_types::external::glam::IVec3">IVec3</a></div><div class="desc docblock-short">A 3-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.IVec4.html" title="struct rerun::external::re_types::external::glam::IVec4">IVec4</a></div><div class="desc docblock-short">A 4-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.Mat2.html" title="struct rerun::external::re_types::external::glam::Mat2">Mat2</a></div><div class="desc docblock-short">A 2x2 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.Mat3.html" title="struct rerun::external::re_types::external::glam::Mat3">Mat3</a></div><div class="desc docblock-short">A 3x3 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.Mat3A.html" title="struct rerun::external::re_types::external::glam::Mat3A">Mat3A</a></div><div class="desc docblock-short">A 3x3 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.Mat4.html" title="struct rerun::external::re_types::external::glam::Mat4">Mat4</a></div><div class="desc docblock-short">A 4x4 column major matrix.</div></li><li><div class="item-name"><a class="struct" href="struct.Quat.html" title="struct rerun::external::re_types::external::glam::Quat">Quat</a></div><div class="desc docblock-short">A quaternion representing an orientation.</div></li><li><div class="item-name"><a class="struct" href="struct.UVec2.html" title="struct rerun::external::re_types::external::glam::UVec2">UVec2</a></div><div class="desc docblock-short">A 2-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.UVec3.html" title="struct rerun::external::re_types::external::glam::UVec3">UVec3</a></div><div class="desc docblock-short">A 3-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.UVec4.html" title="struct rerun::external::re_types::external::glam::UVec4">UVec4</a></div><div class="desc docblock-short">A 4-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.Vec2.html" title="struct rerun::external::re_types::external::glam::Vec2">Vec2</a></div><div class="desc docblock-short">A 2-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.Vec3.html" title="struct rerun::external::re_types::external::glam::Vec3">Vec3</a></div><div class="desc docblock-short">A 3-dimensional vector.</div></li><li><div class="item-name"><a class="struct" href="struct.Vec3A.html" title="struct rerun::external::re_types::external::glam::Vec3A">Vec3A</a></div><div class="desc docblock-short">A 3-dimensional vector with SIMD support.</div></li><li><div class="item-name"><a class="struct" href="struct.Vec4.html" title="struct rerun::external::re_types::external::glam::Vec4">Vec4</a></div><div class="desc docblock-short">A 4-dimensional vector with SIMD support.</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.EulerRot.html" title="enum rerun::external::re_types::external::glam::EulerRot">EulerRot</a></div><div class="desc docblock-short">Euler rotation sequences.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Vec2Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec2Swizzles">Vec2Swizzles</a></div></li><li><div class="item-name"><a class="trait" href="trait.Vec3Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec3Swizzles">Vec3Swizzles</a></div></li><li><div class="item-name"><a class="trait" href="trait.Vec4Swizzles.html" title="trait rerun::external::re_types::external::glam::Vec4Swizzles">Vec4Swizzles</a></div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.dmat2.html" title="fn rerun::external::re_types::external::glam::dmat2">dmat2</a></div><div class="desc docblock-short">Creates a 2x2 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.dmat3.html" title="fn rerun::external::re_types::external::glam::dmat3">dmat3</a></div><div class="desc docblock-short">Creates a 3x3 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.dmat4.html" title="fn rerun::external::re_types::external::glam::dmat4">dmat4</a></div><div class="desc docblock-short">Creates a 4x4 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.dquat.html" title="fn rerun::external::re_types::external::glam::dquat">dquat</a></div><div class="desc docblock-short">Creates a quaternion from <code>x</code>, <code>y</code>, <code>z</code> and <code>w</code> values.</div></li><li><div class="item-name"><a class="fn" href="fn.dvec2.html" title="fn rerun::external::re_types::external::glam::dvec2">dvec2</a></div><div class="desc docblock-short">Creates a 2-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.dvec3.html" title="fn rerun::external::re_types::external::glam::dvec3">dvec3</a></div><div class="desc docblock-short">Creates a 3-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.dvec4.html" title="fn rerun::external::re_types::external::glam::dvec4">dvec4</a></div><div class="desc docblock-short">Creates a 4-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.ivec2.html" title="fn rerun::external::re_types::external::glam::ivec2">ivec2</a></div><div class="desc docblock-short">Creates a 2-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.ivec3.html" title="fn rerun::external::re_types::external::glam::ivec3">ivec3</a></div><div class="desc docblock-short">Creates a 3-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.ivec4.html" title="fn rerun::external::re_types::external::glam::ivec4">ivec4</a></div><div class="desc docblock-short">Creates a 4-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.mat2.html" title="fn rerun::external::re_types::external::glam::mat2">mat2</a></div><div class="desc docblock-short">Creates a 2x2 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.mat3.html" title="fn rerun::external::re_types::external::glam::mat3">mat3</a></div><div class="desc docblock-short">Creates a 3x3 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.mat3a.html" title="fn rerun::external::re_types::external::glam::mat3a">mat3a</a></div><div class="desc docblock-short">Creates a 3x3 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.mat4.html" title="fn rerun::external::re_types::external::glam::mat4">mat4</a></div><div class="desc docblock-short">Creates a 4x4 matrix from column vectors.</div></li><li><div class="item-name"><a class="fn" href="fn.quat.html" title="fn rerun::external::re_types::external::glam::quat">quat</a></div><div class="desc docblock-short">Creates a quaternion from <code>x</code>, <code>y</code>, <code>z</code> and <code>w</code> values.</div></li><li><div class="item-name"><a class="fn" href="fn.uvec2.html" title="fn rerun::external::re_types::external::glam::uvec2">uvec2</a></div><div class="desc docblock-short">Creates a 2-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.uvec3.html" title="fn rerun::external::re_types::external::glam::uvec3">uvec3</a></div><div class="desc docblock-short">Creates a 3-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.uvec4.html" title="fn rerun::external::re_types::external::glam::uvec4">uvec4</a></div><div class="desc docblock-short">Creates a 4-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.vec2.html" title="fn rerun::external::re_types::external::glam::vec2">vec2</a></div><div class="desc docblock-short">Creates a 2-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.vec3.html" title="fn rerun::external::re_types::external::glam::vec3">vec3</a></div><div class="desc docblock-short">Creates a 3-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.vec3a.html" title="fn rerun::external::re_types::external::glam::vec3a">vec3a</a></div><div class="desc docblock-short">Creates a 3-dimensional vector.</div></li><li><div class="item-name"><a class="fn" href="fn.vec4.html" title="fn rerun::external::re_types::external::glam::vec4">vec4</a></div><div class="desc docblock-short">Creates a 4-dimensional vector.</div></li></ul></section></div></main></body></html>

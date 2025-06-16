@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SortDirection"],"fn":["default_display_name_for_column"],"struct":["ColumnBlueprint","PartitionLinksSpec","SortBy","TableBlueprint"]};

@@ -1,0 +1,1 @@
+searchState.loadedDescShard("re_view_bar_chart", 0, "Rerun bar chart View.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nConfigures the legend of the plot.\nA bar chart system, with everything needed to render it.\nReturns the argument unchanged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.")

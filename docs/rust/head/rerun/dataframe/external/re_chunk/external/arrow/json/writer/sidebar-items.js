@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["make_encoder"],"struct":["EncoderOptions","JsonArray","LineDelimited","NullableEncoder","Writer","WriterBuilder"],"trait":["Encoder","EncoderFactory","JsonFormat"],"type":["ArrayWriter","LineDelimitedWriter"]};

@@ -1,0 +1,130 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="egui_kittest"><title>re_viewer::external::egui_kittest - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../crates.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#egui_kittest" title="egui_kittest">egui_kittest</a><ul><li><a href="#example-usage" title="Example usage">Example usage</a></li><li><a href="#snapshot-testing" title="Snapshot testing">Snapshot testing</a></li><li><a href="#feature-flags" title="Feature flags">Feature flags</a></li></ul></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#functions" title="Functions">Functions</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In re_<wbr>viewer::<wbr>external</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">re_viewer</a>::<wbr><a href="../index.html">external</a></span><h1>Crate <span>egui_kittest</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="egui_kittest"><a class="doc-anchor" href="#egui_kittest">§</a>egui_kittest</h2>
+<p><a href="https://crates.io/crates/egui_kittest"><img src="https://img.shields.io/crates/v/egui_kittest.svg" alt="Latest version" /></a>
+<a href="https://docs.rs/egui_kittest"><img src="https://docs.rs/egui_kittest/badge.svg" alt="Documentation" /></a>
+<img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT" />
+<img src="https://img.shields.io/badge/license-Apache-blue.svg" alt="Apache" /></p>
+<p>Ui testing library for egui, based on <a href="https://github.com/rerun-io/kittest">kittest</a> (an <a href="https://github.com/AccessKit/accesskit">AccessKit</a> based testing library).</p>
+<h3 id="example-usage"><a class="doc-anchor" href="#example-usage">§</a>Example usage</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>egui::accesskit::Toggled;
+<span class="kw">use </span>egui_kittest::{Harness, kittest::Queryable};
+
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span><span class="kw-2">mut </span>checked = <span class="bool-val">false</span>;
+    <span class="kw">let </span>app = |ui: <span class="kw-2">&amp;mut </span>egui::Ui| {
+        ui.checkbox(<span class="kw-2">&amp;mut </span>checked, <span class="string">"Check me!"</span>);
+    };
+
+    <span class="kw">let </span><span class="kw-2">mut </span>harness = Harness::new_ui(app);
+
+    <span class="kw">let </span>checkbox = harness.get_by_label(<span class="string">"Check me!"</span>);
+    <span class="macro">assert_eq!</span>(checkbox.toggled(), <span class="prelude-val">Some</span>(Toggled::False));
+    checkbox.click();
+
+    harness.run();
+
+    <span class="kw">let </span>checkbox = harness.get_by_label(<span class="string">"Check me!"</span>);
+    <span class="macro">assert_eq!</span>(checkbox.toggled(), <span class="prelude-val">Some</span>(Toggled::True));
+
+    <span class="comment">// Shrink the window size to the smallest size possible
+    </span>harness.fit_contents();
+
+    <span class="comment">// You can even render the ui and do image snapshot tests
+    </span><span class="attr">#[cfg(all(feature = <span class="string">"wgpu"</span>, feature = <span class="string">"snapshot"</span>))]
+    </span>harness.snapshot(<span class="string">"readme_example"</span>);
+}</code></pre></div>
+<h3 id="snapshot-testing"><a class="doc-anchor" href="#snapshot-testing">§</a>Snapshot testing</h3>
+<p>There is a snapshot testing feature. To create snapshot tests, enable the <code>snapshot</code> and <code>wgpu</code> features.
+Once enabled, you can call <code>Harness::snapshot</code> to render the ui and save the image to the <code>tests/snapshots</code> directory.</p>
+<p>To update the snapshots, run your tests with <code>UPDATE_SNAPSHOTS=true</code>, so e.g. <code>UPDATE_SNAPSHOTS=true cargo test</code>.
+Running with <code>UPDATE_SNAPSHOTS=true</code> will cause the tests to succeed.
+This is so that you can set <code>UPDATE_SNAPSHOTS=true</code> and update <em>all</em> tests, without <code>cargo test</code> failing on the first failing crate.</p>
+<p>If you want to have multiple snapshots in the same test, it makes sense to collect the results in a <code>Vec</code>
+(<a href="https://github.com/emilk/egui/blob/70a01138b77f9c5724a35a6ef750b9ae1ab9f2dc/crates/egui_demo_lib/src/demo/demo_app_windows.rs#L388-L427">look here</a> for an example).
+This way they can all be updated at the same time.</p>
+<p>You should add the following to your <code>.gitignore</code>:</p>
+<div class="example-wrap"><pre class="language-gitignore"><code>**/tests/snapshots/**/*.diff.png
+**/tests/snapshots/**/*.new.png</code></pre></div><h4 id="guidelines-for-writing-snapshot-tests"><a class="doc-anchor" href="#guidelines-for-writing-snapshot-tests">§</a>Guidelines for writing snapshot tests</h4>
+<ul>
+<li>Whenever <strong>possible</strong> prefer regular Rust tests or <code>insta</code> snapshot tests over image comparison tests because…
+<ul>
+<li>…compared to regular Rust tests, they can be relatively slow to run</li>
+<li>…they are brittle since unrelated side effects (like a change in color) can cause the test to fail</li>
+<li>…images take up repo space</li>
+</ul>
+</li>
+<li>images should…
+<ul>
+<li>…be checked in or otherwise be available (egui use <a href="https://git-lfs.com/">git LFS</a> files for this purpose)</li>
+<li>…depict exactly what’s tested and nothing else</li>
+<li>…have a low resolution to avoid growth in repo size</li>
+<li>…have a low comparison threshold to avoid the test passing despite unwanted differences (the default threshold should be fine for most usecases!)</li>
+</ul>
+</li>
+</ul>
+<h4 id="what-do-do-when-ci--another-computer-produces-a-different-image"><a class="doc-anchor" href="#what-do-do-when-ci--another-computer-produces-a-different-image">§</a>What do do when CI / another computer produces a different image?</h4>
+<p>The default tolerance settings should be fine for almost all gui comparison tests.
+However, especially when you’re using custom rendering, you may observe images difference with different setups leading to unexpected test failures.</p>
+<p>First check whether the difference is due to a change in enabled rendering features, potentially due to difference in hardware (/software renderer) capabilitites.
+Generally you should carefully enforcing the same set of features for all test runs, but this may happen nonetheless.</p>
+<p>Once you validated that the differences are miniscule and hard to avoid, you can try to <em>carefully</em> adjust the comparison tolerance setting (<code>SnapshotOptions::threshold</code>, TODO(<a href="https://github.com/emilk/egui/issues/5683">#5683</a>): as well as number of pixels allowed to differ) for the specific test.</p>
+<p>⚠️ <strong>WARNING</strong> ⚠️
+Picking too high tolerances may mean that you are missing actual test failures.
+It is recommended to manually verify that the tests still break under the right circumstances as expected after adjusting the tolerances.</p>
+<hr />
+<p>In order to avoid image differences, it can be useful to form an understanding of how they occur in the first place.</p>
+<p>Discrepancies can be caused by a variety of implementation details that depend on the concrete GPU, OS, rendering backend (Metal/Vulkan/DX12 etc.) or graphics driver (even between different versions of the same driver).</p>
+<p>Common issues include:</p>
+<ul>
+<li>multi-sample anti-aliasing
+<ul>
+<li>sample placement and sample resolve steps are implementation defined</li>
+<li>alpha-to-coverage algorithm/pattern can wary wildly between implementations</li>
+</ul>
+</li>
+<li>texture filtering
+<ul>
+<li>different implementations may apply different optimizations <em>even</em> for simple linear texture filtering</li>
+</ul>
+</li>
+<li>out of bounds texture access (via <code>textureLoad</code>)
+<ul>
+<li>implementations are free to return indeterminate values instead of clamping</li>
+</ul>
+</li>
+<li>floating point evaluation, for details see <a href="https://www.w3.org/TR/WGSL/#floating-point-evaluation">WGSL spec § 15.7. Floating Point Evaluation</a>. Notably:
+<ul>
+<li>rounding mode may be inconsistent</li>
+<li>floating point math “optimizations” may occur
+<ul>
+<li>depending on output shading language, different arithmetic optimizations may be performed upon floating point operations even if they change the result</li>
+</ul>
+</li>
+<li>floating point denormal flush
+<ul>
+<li>even on modern implementations, denormal float values may be flushed to zero</li>
+</ul>
+</li>
+<li><code>NaN</code>/<code>Inf</code> handling
+<ul>
+<li>whenever the result of a function should yield <code>NaN</code>/<code>Inf</code>, implementations may free to yield an indeterminate value instead</li>
+</ul>
+</li>
+<li>builtin-function function precision &amp; error handling (trigonometric functions and others)</li>
+</ul>
+</li>
+<li><a href="https://www.w3.org/TR/WGSL/#dpdx-builtin">partial derivatives (dpdx/dpdx)</a>
+<ul>
+<li>implementations are free to use either <code>dpdxFine</code> or <code>dpdxCoarse</code></li>
+</ul>
+</li>
+<li>[…]</li>
+</ul>
+<p>From this follow a few simple recommendations (these may or may not apply as they may impose unwanted restrictions on your rendering setup):</p>
+<ul>
+<li>avoid enabling mult-sample anti-aliasing whenever it’s not explicitly tested or needed</li>
+<li>do not rely on NaN, Inf and denormal float values</li>
+<li>consider dedicated test paths for texture sampling</li>
+<li>prefer explicit partial derivative functions</li>
+</ul>
+<h3 id="feature-flags"><a class="doc-anchor" href="#feature-flags">§</a>Feature flags</h3></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="kittest/index.html" title="mod re_viewer::external::egui_kittest::kittest">kittest</a></div><div class="desc docblock-short">💻🐈 kittest: UI Testing Library for Rust Powered by AccessKit</div></li><li><div class="item-name"><a class="mod" href="wgpu/index.html" title="mod re_viewer::external::egui_kittest::wgpu">wgpu</a></div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.ExceededMaxStepsError.html" title="struct re_viewer::external::egui_kittest::ExceededMaxStepsError">Exceeded<wbr>MaxSteps<wbr>Error</a></div></li><li><div class="item-name"><a class="struct" href="struct.Harness.html" title="struct re_viewer::external::egui_kittest::Harness">Harness</a></div><div class="desc docblock-short">The test Harness. This contains everything needed to run the test.
+Create a new Harness using <a href="struct.Harness.html#method.new" title="associated function re_viewer::external::egui_kittest::Harness::new"><code>Harness::new</code></a> or <a href="struct.Harness.html#method.builder" title="associated function re_viewer::external::egui_kittest::Harness::builder"><code>Harness::builder</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.HarnessBuilder.html" title="struct re_viewer::external::egui_kittest::HarnessBuilder">Harness<wbr>Builder</a></div><div class="desc docblock-short">Builder for <a href="struct.Harness.html" title="struct re_viewer::external::egui_kittest::Harness"><code>Harness</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.SnapshotOptions.html" title="struct re_viewer::external::egui_kittest::SnapshotOptions">Snapshot<wbr>Options</a></div></li><li><div class="item-name"><a class="struct" href="struct.SnapshotResults.html" title="struct re_viewer::external::egui_kittest::SnapshotResults">Snapshot<wbr>Results</a></div><div class="desc docblock-short">Utility to collect snapshot errors and display them at the end of the test.</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.LazyRenderer.html" title="enum re_viewer::external::egui_kittest::LazyRenderer">Lazy<wbr>Renderer</a></div><div class="desc docblock-short">A lazy renderer that initializes the renderer on the first render call.</div></li><li><div class="item-name"><a class="enum" href="enum.SnapshotError.html" title="enum re_viewer::external::egui_kittest::SnapshotError">Snapshot<wbr>Error</a></div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.TestRenderer.html" title="trait re_viewer::external::egui_kittest::TestRenderer">Test<wbr>Renderer</a></div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.image_snapshot.html" title="fn re_viewer::external::egui_kittest::image_snapshot">image_<wbr>snapshot</a></div><div class="desc docblock-short">Image snapshot test.</div></li><li><div class="item-name"><a class="fn" href="fn.image_snapshot_options.html" title="fn re_viewer::external::egui_kittest::image_snapshot_options">image_<wbr>snapshot_<wbr>options</a></div><div class="desc docblock-short">Image snapshot test with custom options.</div></li><li><div class="item-name"><a class="fn" href="fn.try_image_snapshot.html" title="fn re_viewer::external::egui_kittest::try_image_snapshot">try_<wbr>image_<wbr>snapshot</a></div><div class="desc docblock-short">Image snapshot test.</div></li><li><div class="item-name"><a class="fn" href="fn.try_image_snapshot_options.html" title="fn re_viewer::external::egui_kittest::try_image_snapshot_options">try_<wbr>image_<wbr>snapshot_<wbr>options</a></div><div class="desc docblock-short">Image snapshot test with custom options.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.SnapshotResult.html" title="type re_viewer::external::egui_kittest::SnapshotResult">Snapshot<wbr>Result</a></div></li></ul></section></div></main></body></html>
