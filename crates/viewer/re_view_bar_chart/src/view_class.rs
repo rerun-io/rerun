@@ -272,14 +272,21 @@ impl ViewClass for BarChartView {
             });
 
             // Interact with the plot items.
-            if let Some(entity_path) = hovered_plot_item
+            let hovered_data_result = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
-            {
-                ctx.viewer_ctx.handle_select_hover_drag_interactions(
-                    &response,
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into()),
-                    false,
-                );
+                .map(|entity_path| {
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
+                })
+                .or_else(|| {
+                    if response.hovered() {
+                        Some(re_viewer_context::Item::View(query.view_id))
+                    } else {
+                        None
+                    }
+                });
+            if let Some(hovered) = hovered_data_result {
+                ctx.viewer_ctx
+                    .handle_select_hover_drag_interactions(&response, hovered, false);
             }
         });
 
