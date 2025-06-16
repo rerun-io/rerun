@@ -148,26 +148,6 @@ jobs:
           destination: "rerun-builds/benches/"
           process_gcloudignore: false
 
-      - name: Alert on regression
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Rust Benchmark
-          tool: "cargo"
-          output-file-path: /tmp/${{ env.SHORT_SHA }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Show alert with commit comment on detecting possible performance regression
-          comment-on-alert: true
-          alert-threshold: "125%"
-          fail-on-alert: false
-          comment-always: false # Generates too much GitHub notification spam
-
-          # Don't push to gh-pages
-          save-data-file: false
-          auto-push: false
-          skip-fetch-gh-pages: true
-
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
         run: |
