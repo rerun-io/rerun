@@ -166,6 +166,7 @@ jobs:
           # Don't push to gh-pages
           save-data-file: false
           auto-push: false
+          skip-fetch-gh-pages: true
 
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
