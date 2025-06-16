@@ -176,7 +176,7 @@ impl PyComponentColumnDescriptor {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]
@@ -255,7 +255,7 @@ impl PyComponentColumnSelector {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]

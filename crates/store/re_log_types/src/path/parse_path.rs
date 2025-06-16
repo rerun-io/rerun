@@ -42,8 +42,8 @@ pub enum PathParseError {
     #[error("Found trailing hash (#)")]
     TrailingHash,
 
-    #[error("Component descriptor doesn't have an archetype field name: {0:?}")]
-    ComponentDescriptorMissesArchetypeFieldName(String),
+    #[error("Component descriptor doesn't have a component identifier: {0:?}")]
+    ComponentDescriptorMissesComponentIdentifier(String),
 
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
@@ -134,15 +134,15 @@ impl std::str::FromStr for DataPath {
             let component_tokens_end =
                 component_type_delimiter.unwrap_or(component_descriptor_tokens.len());
             if component_tokens_start == component_tokens_end {
-                return Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
-                    join(component_descriptor_tokens),
-                ));
+                return Err(
+                    PathParseError::ComponentDescriptorMissesComponentIdentifier(join(
+                        component_descriptor_tokens,
+                    )),
+                );
             }
 
-            let component = join(
-                &component_descriptor_tokens
-                    [component_tokens_start..component_tokens_end],
-            );
+            let component =
+                join(&component_descriptor_tokens[component_tokens_start..component_tokens_end]);
             component_descriptor = Some(ComponentDescriptor {
                 component: ArchetypeFieldName::from(component),
                 archetype_name: archetype_name.map(ArchetypeName::from),
@@ -523,9 +523,11 @@ mod tests {
         );
         assert_eq!(
             ComponentPath::from_str("world/points:Points3D:#colors"),
-            Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
-                "Points3D:#colors".to_owned()
-            ))
+            Err(
+                PathParseError::ComponentDescriptorMissesComponentIdentifier(
+                    "Points3D:#colors".to_owned()
+                )
+            )
         );
     }
 

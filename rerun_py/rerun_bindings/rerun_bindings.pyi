@@ -106,7 +106,7 @@ class ComponentColumnDescriptor:
     @property
     def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """
@@ -149,7 +149,7 @@ class ComponentColumnSelector:
     @property
     def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """

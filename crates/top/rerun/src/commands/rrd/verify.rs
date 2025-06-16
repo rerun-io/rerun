@@ -172,7 +172,7 @@ impl Verifier {
                         .get_field(&component)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
-                                "Input column referred to the archetype field name {component:?} of {archetype_name:?}, which only has the fields: {}",
+                                "Input column referred to the component {component:?} of {archetype_name:?}, which only has the fields: {}",
                                 archetype_reflection.fields.iter().map(|field| field.name).join(" ")
                             )
                         })?;

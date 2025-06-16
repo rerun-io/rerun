@@ -299,7 +299,7 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }
 
-/// Move indicator component to archetype field name.
+/// Move indicator component to component identifier.
 // TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {

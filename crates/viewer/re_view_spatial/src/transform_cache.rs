@@ -1001,7 +1001,7 @@ fn query_and_resolve_instance_poses_at_entity(
 
 /// Queries pose transforms for a specific archetype.
 ///
-/// Note that the archetype field name for translation specifically may vary.
+/// Note that the component for translation specifically may vary.
 /// (this is technical debt, we should fix this)
 fn query_and_resolve_instance_from_pose_for_archetype_name(
     entity_path: &EntityPath,
