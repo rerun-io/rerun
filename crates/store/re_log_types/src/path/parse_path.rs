@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentType};
+use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
@@ -144,7 +144,7 @@ impl std::str::FromStr for DataPath {
             let component =
                 join(&component_descriptor_tokens[component_tokens_start..component_tokens_end]);
             component_descriptor = Some(ComponentDescriptor {
-                component: ArchetypeFieldName::from(component),
+                component: ComponentIdentifier::from(component),
                 archetype_name: archetype_name.map(ArchetypeName::from),
                 component_type: component_type.map(ComponentType::from),
             });

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{ArchetypeFieldName, ArchetypeName, ComponentType};
+use crate::{ArchetypeName, ComponentIdentifier, ComponentType};
 
 /// A [`ComponentDescriptor`] fully describes the semantics of a column of data.
 ///
@@ -20,7 +20,7 @@ pub struct ComponentDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub component: ArchetypeFieldName,
+    pub component: ComponentIdentifier,
 
     /// Semantic type associated with this data.
     ///
@@ -141,7 +141,7 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
 }
 
 impl ComponentDescriptor {
-    pub fn partial(component: impl Into<ArchetypeFieldName>) -> Self {
+    pub fn partial(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
             archetype_name: None,
             component: component.into(),
@@ -196,7 +196,7 @@ impl ComponentDescriptor {
 /// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
 const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
 
-/// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
+/// The key used to identify the [`crate::ComponentType`] in field-level metadata.
 const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun.component_type";
 
 impl From<arrow::datatypes::Field> for ComponentDescriptor {

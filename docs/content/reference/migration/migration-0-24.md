@@ -55,7 +55,7 @@ Now instead they are scaled relative to the entity's center.
 
 #### `re_sorbet`
 
-* Lookup `ColumnDescriptor` by `ArchetypeFieldName` instead of `ComponentType`.
+* Lookup `ColumnDescriptor` by `ComponentIdentifier` instead of `ComponentType`.
 * Changed `ComponentColumnSelector`.
 * Changed `ComponentColumnDescriptor::column_name` to use fully-qualified column names.
 

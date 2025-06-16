@@ -36,7 +36,7 @@ mod view;
 
 pub use self::{
     archetype::{
-        Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
+        Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
         GenericIndicatorComponent, NamedIndicatorComponent,
     },
     arrow_string::ArrowString,

@@ -4,7 +4,7 @@ use re_entity_db::InstancePath;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, Instance,
     external::re_types_core::{
-        ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentType,
+        ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
     },
 };
 
@@ -150,7 +150,7 @@ impl SyntaxHighlighting for ArchetypeName {
     }
 }
 
-impl SyntaxHighlighting for ArchetypeFieldName {
+impl SyntaxHighlighting for ComponentIdentifier {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         self.as_str().syntax_highlight_into(style, job);
     }

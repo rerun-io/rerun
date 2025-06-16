@@ -204,12 +204,12 @@ impl re_byte_size::SizeBytes for ArchetypeName {
 // ---
 
 re_string_interner::declare_new_type!(
-    /// The name of an [`Archetype`]'s field, e.g. `positions`.
+    /// An identifier for a component, i.e. a field in an [`Archetype`].
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct ArchetypeFieldName;
+    pub struct ComponentIdentifier;
 );
 
-impl re_byte_size::SizeBytes for ArchetypeFieldName {
+impl re_byte_size::SizeBytes for ComponentIdentifier {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

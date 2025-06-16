@@ -3,7 +3,7 @@
 use nohash_hasher::IntMap;
 
 use crate::{
-    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, SerializedComponentBatch,
+    ArchetypeName, Component, ComponentDescriptor, ComponentIdentifier, SerializedComponentBatch,
 };
 use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 
@@ -11,7 +11,7 @@ use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 #[derive(Default)]
 pub struct AnyValues {
     archetype_name: Option<ArchetypeName>,
-    batches: IntMap<ArchetypeFieldName, SerializedComponentBatch>,
+    batches: IntMap<ComponentIdentifier, SerializedComponentBatch>,
 }
 
 impl AnyValues {
@@ -30,7 +30,7 @@ impl AnyValues {
     #[inline]
     pub fn with_field(
         mut self,
-        component: impl Into<ArchetypeFieldName>,
+        component: impl Into<ComponentIdentifier>,
         array: arrow::array::ArrayRef,
     ) -> Self {
         let component = component.into();
@@ -52,7 +52,7 @@ impl AnyValues {
     #[inline]
     pub fn with_component<C: Component>(
         self,
-        component: impl Into<ArchetypeFieldName>,
+        component: impl Into<ComponentIdentifier>,
         loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
         self.with_loggable(component, C::name(), loggable)
@@ -64,7 +64,7 @@ impl AnyValues {
     #[inline]
     pub fn with_loggable<L: Loggable>(
         mut self,
-        component: impl Into<ArchetypeFieldName>,
+        component: impl Into<ComponentIdentifier>,
         component_type: impl Into<ComponentType>,
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {

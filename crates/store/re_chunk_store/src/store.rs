@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicU64;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ChunkId, RowId, TimelineName};
+use re_chunk::{ArchetypeName, Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
@@ -391,12 +391,11 @@ impl ChunkStoreHandle {
     }
 }
 
-/// A column in a given [`EntityPath`] is uniquely identified by its [`ArchetypeName`] (which can be optional),
-/// and its [`ArchetypeFieldName`].
+/// A column in a given [`EntityPath`] is uniquely identified by its [`ComponentIdentifier`].
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ColumnIdentifier {
     pub archetype_name: Option<ArchetypeName>,
-    pub component: ArchetypeFieldName,
+    pub component: ComponentIdentifier,
 }
 
 impl From<ComponentDescriptor> for ColumnIdentifier {

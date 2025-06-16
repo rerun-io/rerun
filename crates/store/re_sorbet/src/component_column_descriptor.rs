@@ -1,7 +1,7 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 
 use re_log_types::{ComponentPath, EntityPath};
-use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentType};
+use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
@@ -15,7 +15,7 @@ pub struct ComponentColumnDescriptor {
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
 
-    /// Semantic name associated with this data.
+    /// Optional semantic name associated with this data.
     ///
     /// This is fully implied by `archetype_name` and `archetype_field`, but
     /// included for semantic convenience.
@@ -39,12 +39,12 @@ pub struct ComponentColumnDescriptor {
     /// Example: `rerun.archetypes.Points3D`.
     pub archetype_name: Option<ArchetypeName>,
 
-    /// Optional name of the field within `Archetype` associated with this data.
+    /// Identifier of the field associated with this data.
     ///
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub component: ArchetypeFieldName,
+    pub component: ComponentIdentifier,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -209,10 +209,7 @@ impl ComponentColumnDescriptor {
         // We use the long names for the archetype and component types so that they roundtrip properly!
         let mut metadata = std::collections::HashMap::from([
             ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
-            (
-                "rerun.archetype_field".to_owned(),
-                component.to_string(),
-            ),
+            ("rerun.archetype_field".to_owned(), component.to_string()),
         ]);
 
         match batch_type {
@@ -326,12 +323,11 @@ impl ComponentColumnDescriptor {
             EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
-        let component =
-            if let Some(component) = field.get_opt("rerun.archetype_field") {
-                ArchetypeFieldName::from(component)
-            } else {
-                ArchetypeFieldName::new(field.name()) // fallback
-            };
+        let component = if let Some(component) = field.get_opt("rerun.archetype_field") {
+            ComponentIdentifier::from(component)
+        } else {
+            ComponentIdentifier::new(field.name()) // fallback
+        };
 
         let schema = Self {
             store_datatype: field.data_type().clone(),

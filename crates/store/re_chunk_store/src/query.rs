@@ -6,7 +6,9 @@ use std::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
-use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{
+    ArchetypeName, Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName,
+};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
@@ -272,17 +274,15 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ArchetypeName`]
-    /// (which can be optional) and [`ArchetypeFieldName`].
+    /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ComponentIdentifier`].
     pub fn entity_component_descriptor(
         &self,
         entity_path: &EntityPath,
         archetype_name: Option<ArchetypeName>,
-        component: ArchetypeFieldName,
+        identifier: ComponentIdentifier,
     ) -> Option<ComponentDescriptor> {
         let matches = |descr: &&ComponentDescriptor| {
-            descr.component == component
-                && descr.archetype_name == archetype_name
+            descr.component == identifier && descr.archetype_name == archetype_name
         };
 
         let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);

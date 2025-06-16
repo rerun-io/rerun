@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 
-use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ComponentType, RowId};
+use re_chunk::{ArchetypeName, Chunk, ComponentIdentifier, ComponentType, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::DataUi as _;
 use re_log_types::EntityPath;
@@ -19,7 +19,7 @@ use re_viewport_blueprint::ViewBlueprint;
 #[derive(Clone, Debug)]
 struct DefaultOverrideEntry {
     component_type: ComponentType,
-    component: ArchetypeFieldName,
+    component: ComponentIdentifier,
 
     /// Visualizer identifier that provides the fallback value for this component.
     visualizer_identifier: ViewSystemIdentifier,
@@ -145,9 +145,7 @@ fn active_default_ui(
 
             let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(
-                    component_descr
-                        .component
-                        .syntax_highlighted(ui.style()),
+                    component_descr.component.syntax_highlighted(ui.style()),
                 )
                 .min_desired_width(150.0)
                 .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {

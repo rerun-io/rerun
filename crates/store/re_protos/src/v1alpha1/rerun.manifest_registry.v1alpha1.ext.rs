@@ -260,7 +260,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FuzzyComponentDescriptor {
     pub archetype_name: Option<re_chunk::ArchetypeName>,
-    pub component: Option<re_chunk::ArchetypeFieldName>,
+    pub component: Option<re_chunk::ComponentIdentifier>,
     pub component_type: Option<re_chunk::ComponentType>,
 }
 
