@@ -146,7 +146,9 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                             continue;
                         };
 
-                        if let Some([width, height]) = size_from_blob(blob, &media_type) {
+                        if let Some([width, height]) =
+                            size_from_blob(blob, &media_type, chunk.entity_path())
+                        {
                             let max_dim = self
                                 .max_dimensions
                                 .entry(chunk.entity_path().clone())
@@ -168,7 +170,11 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
     }
 }
 
-fn size_from_blob(blob: &[u8], media_type: &MediaType) -> Option<[u32; 2]> {
+fn size_from_blob(
+    blob: &[u8],
+    media_type: &MediaType,
+    entity_path: &EntityPath,
+) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
     if media_type.is_image() {
@@ -192,9 +198,9 @@ fn size_from_blob(blob: &[u8], media_type: &MediaType) -> Option<[u32; 2]> {
         reader.into_dimensions().ok().map(|size| size.into())
     } else if media_type.is_video() {
         re_tracing::profile_scope!("video");
-        re_video::VideoDataDescription::load_from_bytes(blob, media_type)
+        re_video::VideoDataDescription::load_from_bytes(blob, media_type, &entity_path.to_string())
             .ok()
-            .and_then(|video| video.coded_dimensions)
+            .and_then(|video| video.encoding_details.map(|e| e.coded_dimensions))
             .map(|[w, h]| [w as _, h as _])
     } else {
         None

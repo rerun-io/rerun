@@ -53,17 +53,15 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `mag_filter` field.
         static constexpr auto Descriptor_mag_filter = ComponentDescriptor(
             ArchetypeName, "mag_filter",
-            Loggable<rerun::components::MagnificationFilter>::Descriptor.component_name
+            Loggable<rerun::components::MagnificationFilter>::ComponentName
         );
         /// `ComponentDescriptor` for the `colormap` field.
         static constexpr auto Descriptor_colormap = ComponentDescriptor(
-            ArchetypeName, "colormap",
-            Loggable<rerun::components::Colormap>::Descriptor.component_name
+            ArchetypeName, "colormap", Loggable<rerun::components::Colormap>::ComponentName
         );
         /// `ComponentDescriptor` for the `gamma` field.
         static constexpr auto Descriptor_gamma = ComponentDescriptor(
-            ArchetypeName, "gamma",
-            Loggable<rerun::components::GammaCorrection>::Descriptor.component_name
+            ArchetypeName, "gamma", Loggable<rerun::components::GammaCorrection>::ComponentName
         );
 
       public:

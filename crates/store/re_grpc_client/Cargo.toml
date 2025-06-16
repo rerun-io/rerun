@@ -45,7 +45,6 @@ url.workspace = true
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tonic = { workspace = true, default-features = false, features = [
   "transport",
-  "tls",
   "tls-native-roots",
 ] }
 

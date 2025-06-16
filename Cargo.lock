@@ -275,6 +275,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "animated_urdf"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "emath",
+ "rerun",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -990,11 +1000,10 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.7.7"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504e3947307ac8326a5437504c517c4b56716c9d98fac0028c2acc7ca47d70ae"
+checksum = "021e862c184ae977658b36c4500f7feac3221ca5da43e3f25bd04ab6c79a29b5"
 dependencies = [
- "async-trait",
  "axum-core",
  "bytes",
  "futures-util",
@@ -1010,20 +1019,19 @@ dependencies = [
  "rustversion",
  "serde",
  "sync_wrapper",
- "tower 0.5.2",
+ "tower",
  "tower-layer",
  "tower-service",
 ]
 
 [[package]]
 name = "axum-core"
-version = "0.4.5"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09f2bd6146b97ae3359fa0cc6d6b376d9539582c7b4220f041a33ec24c226199"
+checksum = "68464cd0412f486726fb3373129ef5d2993f90c34bc2bc1c1e9943b2f4fc7ca6"
 dependencies = [
- "async-trait",
  "bytes",
- "futures-util",
+ "futures-core",
  "http",
  "http-body",
  "http-body-util",
@@ -2858,7 +2866,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.5",
 ]
 
 [[package]]
@@ -2894,7 +2902,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2911,7 +2919,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2951,7 +2959,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2964,13 +2972,14 @@ dependencies = [
  "profiling",
  "ron",
  "serde",
+ "smallvec",
  "unicode-segmentation",
 ]
 
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2989,7 +2998,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -3053,7 +3062,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "egui",
@@ -3070,7 +3079,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3087,7 +3096,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "dify",
  "eframe",
@@ -3158,7 +3167,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3275,7 +3284,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3294,7 +3303,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#f0abce9bb8591466ce01f741eced5b271d3a4dc1"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 
 [[package]]
 name = "equivalent"
@@ -4736,7 +4745,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 [[package]]
 name = "kittest"
 version = "0.1.0"
-source = "git+https://github.com/rerun-io/kittest?branch=main#679f9ade828021295c5f86f38275d9271d001004"
+source = "git+https://github.com/rerun-io/kittest?branch=main#32af4e7449824cfe97ffe590066b7ab23a196bc4"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -5032,9 +5041,9 @@ dependencies = [
 
 [[package]]
 name = "matchit"
-version = "0.7.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
+checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "matrixmultiply"
@@ -7225,6 +7234,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -7318,7 +7328,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-web-wasm-client",
- "tower 0.5.2",
+ "tower",
  "url",
  "wasm-bindgen-futures",
 ]
@@ -7389,12 +7399,14 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_chunk",
  "re_log",
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "similar-asserts",
@@ -7762,6 +7774,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
+ "web-time",
 ]
 
 [[package]]
@@ -8604,7 +8617,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tokio-util",
- "tower 0.5.2",
+ "tower",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -9148,9 +9161,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.18"
+version = "0.23.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9cc1d47e243d655ace55ed38201c19ae02c148ae56412ab8750e8f0166ab7f"
+checksum = "47796c98c480fce5406ef69d1c76378375492c3b0a0de587be0c1d9feb12f395"
 dependencies = [
  "log",
  "once_cell",
@@ -10140,9 +10153,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.44.2"
+version = "1.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
+checksum = "75ef51a33ef1da925cea3e4eb122833cb377c61439ca401b770f54902b806779"
 dependencies = [
  "backtrace",
  "bytes",
@@ -10168,12 +10181,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.26.0"
+version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c7bc40d0e5a97695bb96e27995cd3a08538541b0a846f65bba7a359f36700d4"
+checksum = "8e727b36a1a0e8b74c376ac2211e40c2c8af09fb4013c60d910495810f008e9b"
 dependencies = [
  "rustls",
- "rustls-pki-types",
  "tokio",
 ]
 
@@ -10239,11 +10251,10 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.12.3"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52"
+checksum = "7e581ba15a835f4d9ea06c55ab1bd4dce26fc53752c69a04aac00703bfb49ba9"
 dependencies = [
- "async-stream",
  "async-trait",
  "axum",
  "base64 0.22.1",
@@ -10259,12 +10270,11 @@ dependencies = [
  "pin-project",
  "prost",
  "rustls-native-certs",
- "rustls-pemfile",
  "socket2",
  "tokio",
  "tokio-rustls",
  "tokio-stream",
- "tower 0.4.13",
+ "tower",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -10272,9 +10282,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.12.3"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9557ce109ea773b399c9b9e5dca39294110b74f1f342cb347a80d1fce8c26a11"
+checksum = "eac6f67be712d12f0b41328db3137e0d0757645d8904b4cb7d51cd9c2279e847"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -10286,19 +10296,17 @@ dependencies = [
 
 [[package]]
 name = "tonic-web"
-version = "0.12.3"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5299dd20801ad736dccb4a5ea0da7376e59cd98f213bf1c3d478cf53f4834b58"
+checksum = "774cad0f35370f81b6c59e3a1f5d0c3188bdb4a2a1b8b7f0921c860bfbd3aec6"
 dependencies = [
  "base64 0.22.1",
  "bytes",
  "http",
  "http-body",
- "http-body-util",
  "pin-project",
  "tokio-stream",
  "tonic",
- "tower-http",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -10306,9 +10314,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-web-wasm-client"
-version = "0.6.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5ca6e7bdd0042c440d36b6df97c1436f1d45871ce18298091f114004b1beb4"
+checksum = "66e3bb7acca55e6790354be650f4042d418fcf8e2bc42ac382348f2b6bf057e5"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -10320,7 +10328,7 @@ dependencies = [
  "httparse",
  "js-sys",
  "pin-project",
- "thiserror 1.0.65",
+ "thiserror 2.0.7",
  "tonic",
  "tower-service",
  "wasm-bindgen",
@@ -10331,17 +10339,16 @@ dependencies = [
 
 [[package]]
 name = "tower"
-version = "0.4.13"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
+checksum = "d039ad9159c98b70ecfd540b2573b97f7f52c3e8d9f8ad57a24b916a536975f9"
 dependencies = [
  "futures-core",
  "futures-util",
- "indexmap 1.9.3",
- "pin-project",
+ "indexmap 2.9.0",
  "pin-project-lite",
- "rand 0.8.5",
  "slab",
+ "sync_wrapper",
  "tokio",
  "tokio-util",
  "tower-layer",
@@ -10350,31 +10357,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "tower"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d039ad9159c98b70ecfd540b2573b97f7f52c3e8d9f8ad57a24b916a536975f9"
-dependencies = [
- "futures-core",
- "futures-util",
- "pin-project-lite",
- "sync_wrapper",
- "tokio",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
 name = "tower-http"
-version = "0.5.2"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
+checksum = "adc82fd73de2a9722ac5da747f12383d2bfdb93591ee6c58486e0097890f05f2"
 dependencies = [
  "bitflags 2.9.1",
  "bytes",
  "http",
- "http-body",
- "http-body-util",
  "pin-project-lite",
  "tower-layer",
  "tower-service",

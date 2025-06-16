@@ -109,7 +109,10 @@ impl DataLoader for UrdfDataLoader {
     }
 }
 
-struct UrdfTree {
+/// A `.urdf` file loaded into memory (excluding any mesh files).
+///
+/// Can be used to find the [`EntityPath`] of any link or joint in the URDF.
+pub struct UrdfTree {
     /// The dir containing the .urdf file.
     ///
     /// Used to find mesh files (.stl etc) relative to the URDF file.
@@ -117,13 +120,24 @@ struct UrdfTree {
 
     name: String,
     root: Link,
+    joints: Vec<Joint>,
     links: HashMap<String, Link>,
     children: HashMap<String, Vec<Joint>>,
     materials: HashMap<String, Material>,
 }
 
 impl UrdfTree {
-    fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
+    /// Given a path to an `.urdf` file, load it.
+    pub fn from_file_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let path = path.as_ref();
+        let robot = urdf_rs::read_file(path)?;
+        let urdf_dir = path.parent().map(|p| p.to_path_buf());
+        Self::new(robot, urdf_dir)
+    }
+
+    /// The `urdf_dir` is the directory containing the `.urdf` file,
+    /// which can later be used to resolve relative paths to mesh files.
+    pub fn new(robot: Robot, urdf_dir: Option<PathBuf>) -> anyhow::Result<Self> {
         let urdf_rs::Robot {
             name,
             links,
@@ -144,7 +158,7 @@ impl UrdfTree {
         let mut children = HashMap::<String, Vec<Joint>>::new();
         let mut child_links = HashSet::<String>::new();
 
-        for joint in joints {
+        for joint in &joints {
             children
                 .entry(joint.parent.link.clone())
                 .or_default()
@@ -169,14 +183,66 @@ impl UrdfTree {
             }
         };
 
+        for joint in &joints {
+            if !links.contains_key(&joint.child.link) {
+                bail!(
+                    "Joint '{}' references unknown child link '{}'",
+                    joint.name,
+                    joint.child.link
+                );
+            }
+            if !links.contains_key(&joint.parent.link) {
+                bail!(
+                    "Joint '{}' references unknown parent link '{}'",
+                    joint.name,
+                    joint.parent.link
+                );
+            }
+        }
+
         Ok(Self {
             urdf_dir,
             name,
             root: root.clone(),
+            joints,
             links,
             children,
             materials,
         })
+    }
+
+    pub fn joints(&self) -> impl Iterator<Item = &Joint> {
+        self.joints.iter()
+    }
+
+    pub fn get_joint_by_name(&self, joint_name: &str) -> Option<&Joint> {
+        self.joints.iter().find(|j| j.name == joint_name)
+    }
+
+    fn get_joint_path(&self, joint: &Joint) -> EntityPath {
+        let parent_path = self.get_link_path_by_name(&joint.parent.link);
+        parent_path / EntityPathPart::new(&joint.name)
+    }
+
+    fn get_link_path_by_name(&self, link_name: &str) -> EntityPath {
+        if let Some(parent_joint) = self.get_parent_of_link(link_name) {
+            self.get_joint_path(parent_joint) / EntityPathPart::new(link_name)
+        } else {
+            format!("{}/{link_name}", self.name).into()
+        }
+    }
+
+    pub fn get_link_path(&self, link: &Link) -> EntityPath {
+        self.get_link_path_by_name(&link.name)
+    }
+
+    /// Find the parent join of a link, if it exists.
+    fn get_parent_of_link(&self, link_name: &str) -> Option<&Joint> {
+        self.joints.iter().find(|j| j.child.link == link_name)
+    }
+
+    pub fn get_joint_child(&self, joint: &Joint) -> &Link {
+        &self.links[&joint.child.link] // Safe because we checked that the joint's child link exists in `new()`
     }
 }
 
@@ -284,7 +350,9 @@ fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
-    Transform3D::from_translation(translation).with_quaternion(quaternion)
+    Transform3D::update_fields()
+        .with_translation(translation)
+        .with_quaternion(quaternion)
 }
 
 fn send_transform(
@@ -431,10 +499,7 @@ fn load_ros_resource(
     if let Some((scheme, path)) = resource_path.split_once("://") {
         match scheme {
             "file" => std::fs::read(path).with_context(|| format!("Failed to read file: {path}")),
-            "package" => {
-                // This is a ROS package resource, which we don't support yet.
-                bail!("ROS package resources are not supported: {resource_path}");
-            }
+            "package" => read_ros_package_resource(root_dir, path),
             _ => {
                 bail!("Unknown resource scheme: {scheme:?} in {resource_path}");
             }
@@ -551,4 +616,80 @@ fn log_geometry(
 
 fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
     glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
+}
+
+/// Read ROS package resource using the `package://` URI scheme.
+///
+/// This function resolves the package URI by looking up the package in the
+/// `ROS_PACKAGE_PATH` (for ROS1) or `AMENT_PREFIX_PATH` (for ROS2), and reads the
+/// resource from the resolved path.
+/// If the path is relative, it will be resolved relative to the `root_dir` provided.
+#[cfg(not(target_arch = "wasm32"))]
+fn read_ros_package_resource(
+    root_dir: Option<&PathBuf>,
+    resource_path: &str,
+) -> anyhow::Result<Vec<u8>> {
+    let resolved_path = resolve_package_uri(resource_path)?;
+
+    if resolved_path.is_absolute() {
+        std::fs::read(&resolved_path).with_context(|| {
+            format!(
+                "Failed to read package resource: {}",
+                resolved_path.display()
+            )
+        })
+    } else if let Some(root_dir) = root_dir {
+        // If the path is relative, resolve it relative to the `root_dir`.
+        let full_path = root_dir.join(resolved_path);
+        std::fs::read(&full_path)
+            .with_context(|| format!("Failed to read file: {}", full_path.display()))
+    } else {
+        // If no `root_dir` is provided, we cannot resolve the relative path.
+        bail!("No root directory set for URDF, cannot load resource: {resource_path}");
+    }
+}
+
+/// Try to resolve the `pkg_name/rel/path` part of a ROS `package://` URI,
+/// by scanning `ROS_PACKAGE_PATH` (ROS1) or `AMENT_PREFIX_PATH` (ROS2).
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_package_uri(uri: &str) -> anyhow::Result<PathBuf> {
+    use std::env;
+
+    let mut parts = uri.splitn(2, '/');
+    let (pkg, rel) = parts
+        .next()
+        .and_then(|pkg| parts.next().map(|rel| (pkg, rel)))
+        .ok_or_else(|| anyhow::anyhow!("Invalid package URI: {uri}"))?;
+
+    let rel = PathBuf::from(rel);
+
+    if rel.is_absolute() {
+        // If the relative path is absolute, we can just return it.
+        return Ok(rel);
+    }
+
+    // Try ROS1 and then ROS2 package paths, in case of a mixed environment.
+    // ROS1: look in each entry of ROS_PACKAGE_PATH as `<entry>/pkg_name`
+    if let Ok(val) = env::var("ROS_PACKAGE_PATH") {
+        for root in env::split_paths(&val) {
+            let candidate = root.join(pkg);
+            if candidate.exists() {
+                return Ok(candidate.join(rel));
+            }
+        }
+    }
+
+    // ROS2: look in each entry of AMENT_PREFIX_PATH as `<entry>/share/pkg_name`
+    if let Ok(val) = env::var("AMENT_PREFIX_PATH") {
+        for root in env::split_paths(&val) {
+            let candidate = root.join("share").join(pkg);
+            if candidate.exists() {
+                return Ok(candidate.join(rel));
+            }
+        }
+    }
+
+    bail!(
+        "Failed to resolve package URI: {uri}, tried `ROS_PACKAGE_PATH` and `AMENT_PREFIX_PATH`, but no matching package found"
+    );
 }

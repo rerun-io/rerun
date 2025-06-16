@@ -13,6 +13,7 @@ mod load_file;
 mod loader_archetype;
 mod loader_directory;
 mod loader_rrd;
+mod loader_urdf;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
@@ -24,11 +25,10 @@ pub mod loader_lerobot;
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
-mod loader_urdf;
-
 pub use self::{
     load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
     loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
+    loader_urdf::UrdfTree,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -40,6 +40,10 @@ pub use self::{
     },
     loader_lerobot::LeRobotDatasetLoader,
 };
+
+pub mod external {
+    pub use urdf_rs;
+}
 
 // ----------------------------------------------------------------------------
 

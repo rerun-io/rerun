@@ -36,8 +36,9 @@ use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
+use super::utils::py_rerun_warn_cstr;
 use crate::catalog::to_py_err;
-use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
+use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -56,16 +57,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
 
     Ok(())
-}
-
-fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
-    Python::with_gil(|py| {
-        let warning_type = PyModule::import(py, "rerun")?
-            .getattr("error_utils")?
-            .getattr("RerunWarning")?;
-        PyErr::warn(py, &warning_type, msg, 0)?;
-        Ok(())
-    })
 }
 
 /// The descriptor of an index column.
@@ -816,7 +807,7 @@ impl PyRecordingView {
                     && all_contents_are_static
                     && any_selected_data_is_static
                 {
-                    py_rerun_warn(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                    py_rerun_warn_cstr(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
                 let schema = query_handle.schema().clone();
@@ -1525,7 +1516,7 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 }
 
 #[pymethods]

@@ -10,8 +10,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // ----------------
@@ -140,7 +138,7 @@ pub mod external {
     pub use re_log_types::external::*;
 
     #[cfg(feature = "data_loaders")]
-    pub use re_data_loader;
+    pub use re_data_loader::{self, external::*};
 }
 
 #[cfg(feature = "web_viewer")]

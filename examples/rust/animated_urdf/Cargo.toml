@@ -1,0 +1,17 @@
+[package]
+name = "animated_urdf"
+version = "0.24.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun", features = [
+  "clap",
+  "data_loaders",
+] }
+
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+emath = "0.31.1"

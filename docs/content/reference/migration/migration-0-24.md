@@ -78,3 +78,6 @@ Note that the `archetype_name` section is optional, because components can also 
 
 We have updated our logic so that the `component` field of `blueprint.datatypes.ComponentColumnSelector` follows the same schema.
 
+#### LeRobot dataloader
+
+* Fixed an issue where the LeRobot dataloader logged untagged `Name` components for robot observations and actions, `.rrd` files created before `0.24` may include these untagged entries. To fix this, load the dataset in `0.24.0` and resave your episodes to `.rrd` (`0.24.0` now supports saving all selected recordings).

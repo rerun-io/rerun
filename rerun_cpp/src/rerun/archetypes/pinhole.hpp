@@ -138,22 +138,20 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `image_from_camera` field.
         static constexpr auto Descriptor_image_from_camera = ComponentDescriptor(
             ArchetypeName, "image_from_camera",
-            Loggable<rerun::components::PinholeProjection>::Descriptor.component_name
+            Loggable<rerun::components::PinholeProjection>::ComponentName
         );
         /// `ComponentDescriptor` for the `resolution` field.
         static constexpr auto Descriptor_resolution = ComponentDescriptor(
-            ArchetypeName, "resolution",
-            Loggable<rerun::components::Resolution>::Descriptor.component_name
+            ArchetypeName, "resolution", Loggable<rerun::components::Resolution>::ComponentName
         );
         /// `ComponentDescriptor` for the `camera_xyz` field.
         static constexpr auto Descriptor_camera_xyz = ComponentDescriptor(
-            ArchetypeName, "camera_xyz",
-            Loggable<rerun::components::ViewCoordinates>::Descriptor.component_name
+            ArchetypeName, "camera_xyz", Loggable<rerun::components::ViewCoordinates>::ComponentName
         );
         /// `ComponentDescriptor` for the `image_plane_distance` field.
         static constexpr auto Descriptor_image_plane_distance = ComponentDescriptor(
             ArchetypeName, "image_plane_distance",
-            Loggable<rerun::components::ImagePlaneDistance>::Descriptor.component_name
+            Loggable<rerun::components::ImagePlaneDistance>::ComponentName
         );
 
       public: // START of extensions from pinhole_ext.cpp:

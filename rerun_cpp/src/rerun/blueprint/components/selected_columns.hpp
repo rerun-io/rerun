@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/selected_columns.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -46,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::SelectedColumns> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.components.SelectedColumns";
 
         /// Returns the arrow data type this type corresponds to.

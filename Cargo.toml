@@ -280,7 +280,7 @@ puffin_http = "0.16"
 pyo3 = "0.24.1"
 pyo3-build-config = "0.24.1"
 quote = "1.0"
-rand = { version = "0.8", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rexif = "0.7.5"
@@ -323,12 +323,12 @@ tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
-tonic = { version = "0.12.3", default-features = false }
-tonic-build = { version = "0.12.3", default-features = false }
-tonic-web = "0.12"
-tonic-web-wasm-client = "0.6"
+tonic = { version = "0.13.1", default-features = false }
+tonic-build = { version = "0.13.1", default-features = false }
+tonic-web = "0.13.1"
+tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
-tower-http = "0.5"
+tower-http = "0.6"
 tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
