@@ -462,7 +462,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
             if object.is_enum() && object.enum_integer_type() != Some(EnumIntegerType::U8) {
-                field_string.push_str(&format!(" = 0x{:X}", enum_or_union_variant_value));
+                field_string.push_str(&format!(" = 0x{enum_or_union_variant_value:X}"));
             } else {
                 field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
             }

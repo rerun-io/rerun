@@ -838,7 +838,7 @@ pub enum EnumIntegerType {
 }
 
 impl EnumIntegerType {
-    pub fn to_type(&self) -> Type {
+    pub fn to_type(self) -> Type {
         match self {
             Self::U8 => Type::UInt8,
             Self::U16 => Type::UInt16,
