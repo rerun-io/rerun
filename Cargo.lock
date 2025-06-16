@@ -2866,7 +2866,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.5",
 ]
 
 [[package]]
@@ -2902,7 +2902,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2919,7 +2919,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2959,7 +2959,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2979,7 +2979,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2998,7 +2998,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -3062,7 +3062,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "egui",
@@ -3079,7 +3079,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3096,7 +3096,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "dify",
  "eframe",
@@ -3167,7 +3167,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3284,7 +3284,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3303,7 +3303,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=lucas%2Fatoms-improvements#3cff65d26245a9ba75881450cd95ac6c8af654fa"
+source = "git+https://github.com/emilk/egui.git?branch=main#54fded362dfc82f0ea188a110fc950d9adbb2f13"
 
 [[package]]
 name = "equivalent"
@@ -7878,6 +7878,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_sorbet",
  "re_tracing",
  "re_types_builder",
  "re_types_core",
@@ -10152,9 +10153,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.44.2"
+version = "1.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
+checksum = "75ef51a33ef1da925cea3e4eb122833cb377c61439ca401b770f54902b806779"
 dependencies = [
  "backtrace",
  "bytes",

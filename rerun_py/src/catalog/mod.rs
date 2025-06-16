@@ -3,10 +3,10 @@
 mod catalog_client;
 mod connection_handle;
 mod dataframe_query;
-mod dataset;
+mod dataset_entry;
 mod entry;
 mod errors;
-mod table;
+mod table_entry;
 mod task;
 
 use std::sync::Arc;
@@ -21,10 +21,10 @@ use crate::catalog::dataframe_query::PyDataframeQueryView;
 
 pub(crate) use catalog_client::PyCatalogClientInternal;
 pub(crate) use connection_handle::ConnectionHandle;
-pub(crate) use dataset::PyDataset;
+pub(crate) use dataset_entry::PyDatasetEntry;
 pub(crate) use entry::{PyEntry, PyEntryId, PyEntryKind};
 pub(crate) use errors::to_py_err;
-pub(crate) use table::PyTable;
+pub(crate) use table_entry::PyTableEntry;
 pub(crate) use task::{PyTask, PyTasks};
 
 /// Register the `rerun.catalog` module.
@@ -34,8 +34,8 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntryId>()?;
     m.add_class::<PyEntryKind>()?;
     m.add_class::<PyEntry>()?;
-    m.add_class::<PyDataset>()?;
-    m.add_class::<PyTable>()?;
+    m.add_class::<PyDatasetEntry>()?;
+    m.add_class::<PyTableEntry>()?;
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;
 

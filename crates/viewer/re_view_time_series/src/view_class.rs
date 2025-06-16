@@ -907,9 +907,10 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D
-        Corner2D::RightBottom
+        // Explicitly pick RightCorner2D::LeftBottom, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D.
+        // We put it on the left side by default so that it does not cover the newest data coming n on the right side.
+        Corner2D::LeftBottom
     }
 }
 
