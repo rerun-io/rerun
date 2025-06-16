@@ -253,7 +253,7 @@ impl VideoPlayer {
             self.enqueue_gop(video_description, requested.gop_idx, video_buffers)?;
         }
 
-        let min_end_sample_idx =
+        let min_last_sample_idx =
             requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
         loop {
             let last_enqueued = self
@@ -261,8 +261,8 @@ impl VideoPlayer {
                 .expect("We ensured that at least one GOP was enqueued.");
 
             // Enqueued enough samples as described above?
-            if last_enqueued.gop_idx > requested_gop_idx
-                && last_enqueued.sample_idx >= min_end_sample_idx
+            if last_enqueued.gop_idx > requested_gop_idx // Stay one GOP ahead of the requested GOP
+                && last_enqueued.sample_idx >= min_last_sample_idx
             {
                 break;
             }
