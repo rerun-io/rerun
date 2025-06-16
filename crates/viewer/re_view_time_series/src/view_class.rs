@@ -471,18 +471,28 @@ impl ViewClass for TimeSeriesView {
 
         set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
 
+        let min_axis_thickness = ui.tokens().small_icon_size.y;
+
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
             .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
-            .x_axis_formatter(move |time, _| {
-                re_log_types::TimeCell::new(
-                    time_type,
-                    (time.value as i64).saturating_add(time_offset),
-                )
-                .format_compact(timestamp_format)
-            })
-            .y_axis_formatter(move |mark, _| format_y_axis(mark))
+            .custom_x_axes(vec![
+                egui_plot::AxisHints::new_x()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |time, _| {
+                        re_log_types::TimeCell::new(
+                            time_type,
+                            (time.value as i64).saturating_add(time_offset),
+                        )
+                        .format_compact(timestamp_format)
+                    }),
+            ])
+            .custom_y_axes(vec![
+                egui_plot::AxisHints::new_y()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |mark, _| format_y_axis(mark)),
+            ])
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
