@@ -106,7 +106,6 @@ jobs:
 
   cpp-deploy-docs:
     name: Cpp
-    needs: [rs-deploy-docs]
     runs-on: ubuntu-latest
     steps:
       - name: Show context
