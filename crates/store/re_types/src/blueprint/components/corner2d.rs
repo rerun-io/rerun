@@ -31,10 +31,10 @@ pub enum Corner2D {
     RightTop = 2,
 
     /// Left bottom corner.
+    #[default]
     LeftBottom = 3,
 
     /// Right bottom corner.
-    #[default]
     RightBottom = 4,
 }
 

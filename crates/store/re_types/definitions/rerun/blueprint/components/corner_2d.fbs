@@ -15,8 +15,8 @@ enum Corner2D: ubyte (
     RightTop,
 
     /// Left bottom corner.
-    LeftBottom,
+    LeftBottom (default), // We put it on the left side by default so that it does not cover the newest data coming n on the right side.
 
     /// Right bottom corner.
-    RightBottom (default),
+    RightBottom,
 }
