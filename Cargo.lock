@@ -3110,7 +3110,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.32.1"
-source = "git+https://github.com/emilk/egui_plot.git?branch=main#5322223afc270d6f86f6d3c0919ac581953ec254"
+source = "git+https://github.com/emilk/egui_plot.git?branch=main#364293fa6f0fe47b52d5f7904d120a580b13b7ff"
 dependencies = [
  "ahash",
  "egui",
