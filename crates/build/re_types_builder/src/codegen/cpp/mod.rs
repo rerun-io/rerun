@@ -16,7 +16,7 @@ use crate::{
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
-    objects::ObjectClass,
+    objects::{EnumIntegerType, ObjectClass},
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -428,7 +428,7 @@ impl QuotedObject {
                     unimplemented!();
                 }
             },
-            ObjectClass::Enum => {
+            ObjectClass::Enum(_) => {
                 if !hpp_type_extensions.is_empty() {
                     reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
                 }
@@ -1471,7 +1471,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let enum_value = obj_field.enum_value.unwrap();
+                let enum_value = obj_field.enum_or_union_variant_value.unwrap();
                 let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_ident(obj_field);
 
@@ -1495,6 +1495,13 @@ impl QuotedObject {
             &mut hpp_declarations,
         );
 
+        let enum_integer_type = match obj.enum_integer_type().unwrap() {
+            EnumIntegerType::U8 => quote!(uint8_t),
+            EnumIntegerType::U16 => quote!(uint16_t),
+            EnumIntegerType::U32 => quote!(uint32_t),
+            EnumIntegerType::U64 => quote!(uint64_t),
+        };
+
         let hpp = quote! {
             #hpp_includes
 
@@ -1502,7 +1509,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                enum class #deprecated_notice #type_ident : uint8_t {
+                enum class #deprecated_notice #type_ident : #enum_integer_type {
                     #(#field_declarations,)*
                 };
             }
@@ -1952,8 +1959,8 @@ fn quote_fill_arrow_array_builder(
                 }
             }
 
-            // C-style enum, encoded as a sparse arrow union
-            ObjectClass::Enum => {
+            // C-style enum, encoded as arrow integer array.
+            ObjectClass::Enum(_) => {
                 quote! {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -2681,10 +2688,9 @@ fn quote_arrow_datatype(
                     ObjectClass::Struct => {
                         quote!(arrow::struct_({ #(#quoted_fields,)* }))
                     }
-                    ObjectClass::Enum => {
-                        quote! {
-                            arrow::uint8()
-                        }
+                    ObjectClass::Enum(integer_type) => {
+                        let integer_type = integer_type.to_type();
+                        quote_arrow_datatype(&integer_type, objects, includes, false)
                     }
                     ObjectClass::Union => {
                         quote! {

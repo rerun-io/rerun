@@ -619,14 +619,20 @@ impl Object {
             State::Stable
         };
 
-        let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
+        let class = match enm.underlying_type().base_type() {
+            FbsBaseType::UByte => ObjectClass::Enum(EnumIntegerType::U8),
+            FbsBaseType::UShort => ObjectClass::Enum(EnumIntegerType::U16),
+            FbsBaseType::UInt => ObjectClass::Enum(EnumIntegerType::U32),
+            FbsBaseType::ULong => ObjectClass::Enum(EnumIntegerType::U64),
+            _ => ObjectClass::Union,
+        };
 
         let mut fields: Vec<_> = enm
             .values()
             .iter()
             .filter(|val| {
                 // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
-                is_enum
+                class.is_enum()
                     || val
                         .union_type()
                         .filter(|utype| utype.base_type() != FbsBaseType::None)
@@ -637,7 +643,7 @@ impl Object {
             })
             .collect();
 
-        if is_enum {
+        if class.is_enum() {
             // We want to reserve the value of 0 in all of our enums as an Invalid type variant.
             //
             // The reasoning behind this is twofold:
@@ -655,10 +661,10 @@ impl Object {
             );
 
             assert!(
-                fields[0].name == "Invalid" && fields[0].enum_value == Some(0),
+                fields[0].name == "Invalid" && fields[0].enum_or_union_variant_value == Some(0),
                 "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
                 fields[0].name,
-                fields[0].enum_value,
+                fields[0].enum_or_union_variant_value,
             );
 
             // Now remove the invalid variant so that it doesn't make it into our native enum definitions.
@@ -676,11 +682,7 @@ impl Object {
             state,
             attrs,
             fields,
-            class: if is_enum {
-                ObjectClass::Enum
-            } else {
-                ObjectClass::Union
-            },
+            class,
             datatype: None,
         }
     }
@@ -729,7 +731,7 @@ impl Object {
     }
 
     pub fn is_enum(&self) -> bool {
-        self.class == ObjectClass::Enum
+        self.class.is_enum()
     }
 
     pub fn is_union(&self) -> bool {
@@ -814,10 +816,36 @@ impl Object {
     pub fn is_archetype(&self) -> bool {
         self.kind == ObjectKind::Archetype
     }
+
+    pub fn enum_integer_type(&self) -> Option<EnumIntegerType> {
+        match self.class {
+            ObjectClass::Enum(enum_type) => Some(enum_type),
+            _ => None,
+        }
+    }
 }
 
 pub fn is_testing_fqname(fqname: &str) -> bool {
     fqname.contains("rerun.testing")
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EnumIntegerType {
+    U8,
+    U16,
+    U32,
+    U64,
+}
+
+impl EnumIntegerType {
+    pub fn to_type(&self) -> Type {
+        match self {
+            Self::U8 => Type::UInt8,
+            Self::U16 => Type::UInt16,
+            Self::U32 => Type::UInt32,
+            Self::U64 => Type::UInt64,
+        }
+    }
 }
 
 /// Is this a struct, enum, or union?
@@ -827,15 +855,10 @@ pub enum ObjectClass {
 
     /// Dumb C-style enum.
     ///
-    /// Encoded as a sparse arrow union.
+    /// Encoded as a primitive integer arrow array.
     ///
-    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
-    /// so there are 127 possible states.
     /// We reserve `0` for a special/implicit `__null_markers` variant,
-    /// which we use to encode null values.
-    /// This means we support at most 126 possible enum variants.
-    /// Therefore the enum can be backed by a simple `u8` in Rust and C++.
-    Enum,
+    Enum(EnumIntegerType),
 
     /// Proper sum-type union.
     ///
@@ -847,6 +870,12 @@ pub enum ObjectClass {
     /// which we use to encode null values.
     /// This means we support at most 126 possible union variants.
     Union,
+}
+
+impl ObjectClass {
+    pub fn is_enum(&self) -> bool {
+        matches!(self, Self::Enum(_))
+    }
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a
@@ -871,8 +900,8 @@ pub struct ObjectField {
     /// but for enums it is usually `PascalCase`.
     pub name: String,
 
-    /// The value of an enum type
-    pub enum_value: Option<u8>,
+    /// The value of the variant for enums & unions.
+    pub enum_or_union_variant_value: Option<u64>,
 
     /// The field's multiple layers of documentation.
     pub docs: Docs,
@@ -963,7 +992,7 @@ impl ObjectField {
             fqname,
             pkg_name,
             name,
-            enum_value,
+            enum_or_union_variant_value: enum_value,
             docs,
             state,
             typ,
@@ -1031,7 +1060,7 @@ impl ObjectField {
             );
         }
 
-        let enum_value = Some(val.value() as u8);
+        let enum_value = Some(val.value() as u64);
 
         Self {
             virtpath,
@@ -1039,7 +1068,7 @@ impl ObjectField {
             fqname,
             pkg_name,
             name,
-            enum_value,
+            enum_or_union_variant_value: enum_value,
             state,
             docs,
             typ,
@@ -1435,8 +1464,8 @@ fn try_get_enum_fqname(
         if enum_index < enums.len() {
             // It is an enum.
             assert!(
-                typ == FbsBaseType::UByte,
-                "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
+                is_uint(typ),
+                "{virtpath}: For consistency, enums must be unsigned integers, i.e. `ubyte`, `ushort`, `uint` or `ulong`"
             );
 
             let enum_ = &enums[field_type.index() as usize];
@@ -1457,6 +1486,13 @@ fn is_int(typ: FbsBaseType) -> bool {
             | FbsBaseType::UInt
             | FbsBaseType::Long
             | FbsBaseType::ULong
+    )
+}
+
+fn is_uint(typ: FbsBaseType) -> bool {
+    matches!(
+        typ,
+        FbsBaseType::UByte | FbsBaseType::UShort | FbsBaseType::UInt | FbsBaseType::ULong
     )
 }
 

@@ -11,7 +11,7 @@ use itertools::Itertools as _;
 use crate::{
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
     codegen::{Target, autogen_warning, common::ExampleInfo},
-    objects::{FieldKind, ViewReference},
+    objects::{EnumIntegerType, FieldKind, ViewReference},
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -460,8 +460,12 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
     for field in &object.fields {
         let mut field_string = format!("#### `{}`", field.name);
 
-        if let Some(enum_value) = field.enum_value {
-            field_string.push_str(&format!(" = {enum_value}"));
+        if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
+            if object.is_enum() && object.enum_integer_type() != Some(EnumIntegerType::U8) {
+                field_string.push_str(&format!(" = 0x{:X}", enum_or_union_variant_value));
+            } else {
+                field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
+            }
         }
         field_string.push('\n');
 
@@ -493,7 +497,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
     if !fields.is_empty() {
         let heading = match object.class {
             crate::ObjectClass::Struct => "## Fields",
-            crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
+            crate::ObjectClass::Enum(_) | crate::ObjectClass::Union => "## Variants",
         };
         putln!(o, "{heading}");
         for field in fields {
