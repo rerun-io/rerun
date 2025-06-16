@@ -51,20 +51,23 @@ table Capsules3D (
 
   // --- Optional ---
 
-  // TODO(#1361): Add fill_mode component, or whatever succeeds it in case a wireframe
-  // or other alternate rendering is wanted.
+  /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+  line_radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optionally choose whether the cylinders are drawn with lines or solid.
+  fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the capsules, which will be located at their centers.
-  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Whether the text labels should be shown.
   ///
   /// If not set, labels will automatically appear when there is exactly one label for this entity
   /// or the number of instances on this entity is under a certain threshold.
-  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3200);
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional class ID for the ellipsoids.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3400);
 }
