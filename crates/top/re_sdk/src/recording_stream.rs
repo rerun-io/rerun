@@ -1032,8 +1032,10 @@ impl RecordingStream {
             .flatten()
             .map_or(sink, |path| {
                 re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
-                // `unwrap` is ok since this force sinks are only used in tests.
-                Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
+                Box::new(
+                    crate::sink::FileSink::new(path)
+                        .expect("Failed to create FileSink for forced test path"),
+                ) as Box<dyn LogSink>
             });
 
         let stream =

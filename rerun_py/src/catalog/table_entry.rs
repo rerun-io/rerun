@@ -20,14 +20,14 @@ use crate::{
 /// A table entry in the catalog.
 ///
 /// Note: this object acts as a table provider for DataFusion.
-#[pyclass(name = "Table", extends=PyEntry)]
+#[pyclass(name = "TableEntry", extends=PyEntry)]
 #[derive(Default)]
-pub struct PyTable {
+pub struct PyTableEntry {
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
 }
 
 #[pymethods]
-impl PyTable {
+impl PyTableEntry {
     /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__(
         mut self_: PyRefMut<'_, Self>,
@@ -68,7 +68,8 @@ impl PyTable {
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
-    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+    // add `ctx=None, name=None`
+    pub fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let super_ = self_.as_super();

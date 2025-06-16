@@ -157,6 +157,9 @@ pub trait AsyncDecoder: Send + Sync {
 
     /// Resets the decoder.
     ///
+    /// Expected to be called for backward seeking and major jumps forward in the video.
+    /// Newly created decoder can assume to get reset at least once before any chunks are submitted.
+    ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     /// Previously missing [`VideoDataDescription::encoding_details`] may be present now.
     fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()>;
