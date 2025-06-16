@@ -4,7 +4,7 @@ namespace rerun.components;
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
-enum VideoCodec: ubyte ( // TODO(#7484): use fourcc values. Requires us to support non-ubyte enums.
+enum VideoCodec: uint (
     "attr.docs.unreleased",
     "attr.rerun.state": "unstable"
 ) {
@@ -19,7 +19,9 @@ enum VideoCodec: ubyte ( // TODO(#7484): use fourcc values. Requires us to suppo
     /// (Note that this is different from AVCC format found in MP4 files.
     /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
-    H264 = 1,
+    ///
+    /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
+    H264 = 0x61766331, // b'avc1'.hex()
 
     /// High Efficiency Video Coding (HEVC/H.265)
     ///
@@ -32,36 +34,24 @@ enum VideoCodec: ubyte ( // TODO(#7484): use fourcc values. Requires us to suppo
     // TODO(andreas): foxglove `CompressedVideo` mentions PPS (picture parameter set) and VPS (video parameter set) being required for IRAP as well.
     // need to confirm if we need those as well (they exist in h264 as well but we didn't need them so far?)
     // TODO(#10185): Add support for H265.
-    //H265,
+    ///
+    /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
+    //H265 = 0x68657631, // b'hev1'.hex()
 
     /// AOMedia Video 1 (AV1)
     ///
     /// See <https://en.wikipedia.org/wiki/AV1>
     // TODO(#10184): Add support for AV1.
-    //AV1,
+    ///
+    /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+    //AV1 = 0x61763031, // b'av01'.hex()
 
 
     /// VP9
     ///
     /// See <https://en.wikipedia.org/wiki/VP9>
     // TODO(#10186): Add support for VP8.
-    //VP9,
+    ///
+    /// Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
+    //VP9 = 0x76703039, // b'vp09'.hex()
 }
-
-
-// Rerun enums are `ubyte`, so we can't use fourcc values right now.
-// Suggested values & documentation if we could:
-//
-// enum VideoCodec: uint {
-//     /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to codec) in big endian.
-//     H264 = 0x61766331, // b'avc1'.hex()
-//     /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this) in big endian.
-//     H265 = 0x68657631, // b'hev1'.hex()
-//     /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this) in big endian.
-//     AV1 = 0x61763031, // b'av01'.hex()
-//     /// Enum value for 'vp80' which is the most common fourcc for VP8.
-//     /// Unlike with other codecs, WebCodec standard assigns only 3 letters ('vp8') to VP8.
-//     VP8 = 0x76703830, // b'vp80'.hex()
-//     /// Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this) in big endian.
-//     VP9 = 0x76703039, // b'vp09'.hex()
-// }

@@ -15,8 +15,8 @@ namespace arrow {
 
     class Array;
     class DataType;
-    class UInt8Type;
-    using UInt8Builder = NumericBuilder<UInt8Type>;
+    class UInt32Type;
+    using UInt32Builder = NumericBuilder<UInt32Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -27,7 +27,7 @@ namespace rerun::components {
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
-    enum class VideoCodec : uint8_t {
+    enum class VideoCodec : uint32_t {
 
         /// Advanced Video Coding (AVC/H.264)
         ///
@@ -37,7 +37,9 @@ namespace rerun::components {
         /// (Note that this is different from AVCC format found in MP4 files.
         /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
         /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
-        H264 = 1,
+        ///
+        /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
+        H264 = 1635148593,
     };
 } // namespace rerun::components
 
@@ -60,7 +62,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt8Builder* builder, const components::VideoCodec* elements,
+            arrow::UInt32Builder* builder, const components::VideoCodec* elements,
             size_t num_elements
         );
     };

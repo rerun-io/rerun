@@ -31,7 +31,7 @@ class VideoCodec(Enum):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    H264 = 1
+    H264 = 1635148593
     """
     Advanced Video Coding (AVC/H.264)
 
@@ -41,6 +41,8 @@ class VideoCodec(Enum):
     (Note that this is different from AVCC format found in MP4 files.
     To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
+
+    Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
     """
 
     @classmethod
@@ -69,7 +71,7 @@ VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
 
 
 class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):
-    _ARROW_DATATYPE = pa.uint8()
+    _ARROW_DATATYPE = pa.uint32()
     _COMPONENT_NAME: str = "rerun.components.VideoCodec"
 
     @staticmethod

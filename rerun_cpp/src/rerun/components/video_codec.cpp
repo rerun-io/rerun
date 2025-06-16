@@ -8,7 +8,7 @@
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::VideoCodec>::arrow_datatype() {
-        static const auto datatype = arrow::uint8();
+        static const auto datatype = arrow::uint32();
         return datatype;
     }
 
@@ -22,7 +22,7 @@ namespace rerun {
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(Loggable<components::VideoCodec>::fill_arrow_array_builder(
-                static_cast<arrow::UInt8Builder*>(builder.get()),
+                static_cast<arrow::UInt32Builder*>(builder.get()),
                 instances,
                 num_instances
             ));
@@ -33,7 +33,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<components::VideoCodec>::fill_arrow_array_builder(
-        arrow::UInt8Builder* builder, const components::VideoCodec* elements, size_t num_elements
+        arrow::UInt32Builder* builder, const components::VideoCodec* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
