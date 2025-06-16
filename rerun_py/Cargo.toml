@@ -85,6 +85,7 @@ pyo3 = { workspace = true, features = [
   "chrono",    #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
+rustls = { workspace = true, features = ["ring"] }
 strum.workspace = true
 strum_macros.workspace = true
 uuid.workspace = true
