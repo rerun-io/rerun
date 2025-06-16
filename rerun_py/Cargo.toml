@@ -90,7 +90,6 @@ strum_macros.workspace = true
 uuid.workspace = true
 
 # Deps for remote feature
-object_store = { workspace = true, features = ["aws"] }
 re_protos = { workspace = true, features = ["py"] }
 prost-types.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
