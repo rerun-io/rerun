@@ -2957,7 +2957,9 @@
 <a href="#2956" id="2956">2956</a>
 <a href="#2957" id="2957">2957</a>
 <a href="#2958" id="2958">2958</a>
-<a href="#2959" id="2959">2959</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt;
+<a href="#2959" id="2959">2959</a>
+<a href="#2960" id="2960">2960</a>
+<a href="#2961" id="2961">2961</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::io::IsTerminal <span class="kw">as _</span>;
 <span class="kw">use </span>std::sync::Weak;
 <span class="kw">use </span>std::sync::{Arc, atomic::AtomicI64};
@@ -3991,8 +3993,10 @@
             .flatten()
             .map_or(sink, |path| {
                 <span class="macro">re_log::info!</span>(<span class="string">"Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}"</span>);
-                <span class="comment">// `unwrap` is ok since this force sinks are only used in tests.
-                </span>Box::new(<span class="kw">crate</span>::sink::FileSink::new(path).unwrap()) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>LogSink&gt;
+                Box::new(
+                    <span class="kw">crate</span>::sink::FileSink::new(path)
+                        .expect(<span class="string">"Failed to create FileSink for forced test path"</span>),
+                ) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>LogSink&gt;
             });
 
         <span class="kw">let </span>stream =
