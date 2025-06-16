@@ -8717,6 +8717,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_web_viewer_server",
+ "rustls",
  "strum",
  "strum_macros",
  "thiserror 1.0.65",
