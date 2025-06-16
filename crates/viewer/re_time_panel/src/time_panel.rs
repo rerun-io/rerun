@@ -16,7 +16,7 @@ use re_log_types::{
 };
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
-use re_ui::{ContextExt as _, Help, UiExt as _, filter_widget, icon_text, icons, list_item};
+use re_ui::{ContextExt as _, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
@@ -1490,21 +1490,18 @@ fn help(os: egui::os::OperatingSystem) -> Help {
         .control("Play/Pause", "Space")
         .control(
             "Move time cursor",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+            (icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
         )
         .control(
             "Select time segment",
-            icon_text!(icons::SHIFT, "+", "drag time scale"),
+            (icons::SHIFT, "+", "drag time scale"),
         )
-        .control(
-            "Pan",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
-        )
+        .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Zoom",
             IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
-        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
 }
 
 fn help_button(ui: &mut egui::Ui) {

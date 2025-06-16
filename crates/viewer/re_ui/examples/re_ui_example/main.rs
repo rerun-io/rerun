@@ -9,7 +9,7 @@ use re_ui::{
     filter_widget::FilterState, list_item,
 };
 use re_ui::{IconText, filter_widget::format_matching_text};
-use re_ui::{icon_text, icons, notifications};
+use re_ui::{icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -494,7 +494,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.label("Help").on_hover_ui(|ui| {
                 Help::new("Help example")
                     .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+                    .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(
                         "Zoom",
                         IconText::from_modifiers_and(
@@ -503,7 +503,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                             icons::SCROLL,
                         ),
                     )
-                    .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+                    .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
                     .ui(ui);
             });
 

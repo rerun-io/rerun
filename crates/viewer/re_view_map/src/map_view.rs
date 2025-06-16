@@ -13,7 +13,7 @@ use re_types::{
         components::{MapProvider, ZoomLevel},
     },
 };
-use re_ui::{Help, IconText, icon_text, icons, list_item};
+use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -104,12 +104,12 @@ impl ViewClass for MapView {
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
                 IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
