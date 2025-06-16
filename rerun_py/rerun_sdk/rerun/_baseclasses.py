@@ -57,7 +57,7 @@ class ComponentDescriptor:
         component_type: str | None = None,
     ) -> None:
         assert component_type is None or not component_type.startswith("rerun.components.rerun.components."), (
-            f"Bad component name: {component_type}'"
+            f"Bad component type: {component_type}'"
         )
         if archetype_name is not None:
             assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (

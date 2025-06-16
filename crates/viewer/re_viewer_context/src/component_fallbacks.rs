@@ -62,7 +62,7 @@ pub trait ComponentFallbackProvider {
     ) -> ArrayRef {
         let Some(component_type) = component_descr.component_type else {
             re_log::warn!(
-                "Requested fallback for component descr {component_descr} without component name"
+                "Requested fallback for component descr {component_descr} without component type"
             );
             return std::sync::Arc::new(NullArray::new(0));
         };

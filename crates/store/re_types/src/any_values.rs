@@ -60,7 +60,7 @@ impl AnyValues {
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     ///
-    /// This method can be used to override the component name.
+    /// This method can be used to override the component type.
     #[inline]
     pub fn with_loggable<L: Loggable>(
         mut self,

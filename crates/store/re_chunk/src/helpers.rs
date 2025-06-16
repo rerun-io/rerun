@@ -281,7 +281,7 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized.
-    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
+    /// In debug builds, panics if the descriptor doesn't have the same type as the component type.
     #[inline]
     pub fn component_batch<C: Component>(
         &self,
@@ -318,7 +318,7 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component at the given instance index.
     ///
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
-    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
+    /// In debug builds, panics if the descriptor doesn't have the same type as the component type.
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
@@ -364,7 +364,7 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
-    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
+    /// In debug builds, panics if the descriptor doesn't have the same type as the component type.
     #[inline]
     pub fn component_mono<C: Component>(
         &self,

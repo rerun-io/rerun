@@ -70,7 +70,7 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 pub struct ChunkComponents(pub IntMap<ComponentDescriptor, ArrowListArray>);
 
 impl ChunkComponents {
-    /// Returns all list arrays for the given component name.
+    /// Returns all list arrays for the given component type.
     ///
     /// I.e semantically equivalent to `get("MyComponent:*.*")`
     #[inline]

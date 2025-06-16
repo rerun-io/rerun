@@ -206,7 +206,7 @@ impl ComponentColumnDescriptor {
         } = self;
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        // We use the long names for the archetype and component names so that they roundtrip properly!
+        // We use the long names for the archetype and component types so that they roundtrip properly!
         let mut metadata = std::collections::HashMap::from([
             ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
             (

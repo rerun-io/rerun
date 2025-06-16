@@ -33,7 +33,7 @@ pub enum PathParseError {
     #[error("Found an unexpected trailing component descriptor: {0:?}")]
     UnexpectedComponentDescriptor(ComponentDescriptor),
 
-    #[error("Found no component name")]
+    #[error("Found no component descriptor")]
     MissingComponentDescriptor,
 
     #[error("Found trailing colon (:)")]
@@ -186,7 +186,7 @@ impl std::str::FromStr for DataPath {
 /// When parsing a [`DataPath`], it is important that we can distinguish the
 /// component and index from the actual entity path. This requires
 /// us to forbid certain characters in an entity part name.
-/// For instance, in `foo/bar.baz`, is `baz` a component name, or part of the entity path?
+/// For instance, in `foo/bar.baz`, is `baz` a component type, or part of the entity path?
 /// So, when parsing a full [`DataPath`]s we are quite strict with what we allow.
 /// But when parsing [`EntityPath`]s we want to be a bit more forgiving, so we
 /// can accept things like `foo/bar.baz` and transform it into `foo/"bar.baz"`.

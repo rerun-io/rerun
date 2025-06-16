@@ -1413,7 +1413,7 @@ fn log_arrow_msg(
 /// timelines: `Dict[str, arrow::Int64Array]`
 ///     A dictionary mapping timeline names to their values.
 /// components: `Dict[str, arrow::ListArray]`
-///     A dictionary mapping component names to their values.
+///     A dictionary mapping component types to their values.
 #[pyfunction]
 #[pyo3(signature = (
     entity_path,

@@ -875,7 +875,7 @@ impl Chunk {
         debug_assert_eq!(
             component_descriptor.component_type,
             Some(C::name()),
-            "component name mismatch"
+            "component type mismatch"
         );
 
         let Some(list_array) = self.components.get(component_descriptor) else {

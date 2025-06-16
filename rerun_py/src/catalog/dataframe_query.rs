@@ -530,7 +530,7 @@ fn extract_contents_expr(
     let mut known_components = BTreeMap::<EntityPath, BTreeSet<ComponentDescriptor>>::new();
 
     for component in &component_descriptors {
-        // We need to resolve the component name to the best one in the schema
+        // We need to resolve the component type to the best one in the schema
         // (e.g. "color" -> "rerun.color")
         known_components
             .entry(component.entity_path.clone())

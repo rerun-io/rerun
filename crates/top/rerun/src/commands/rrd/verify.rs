@@ -108,7 +108,7 @@ impl Verifier {
 
         let Some(component_type) = component_type else {
             re_log::debug_once!(
-                "Encountered component descriptor without component name: {}",
+                "Encountered component descriptor without component type: {}",
                 column_descriptor.component_descriptor()
             );
             return Ok(());

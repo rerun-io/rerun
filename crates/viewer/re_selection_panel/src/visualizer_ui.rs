@@ -216,7 +216,7 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(component_descr);
         let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
-        // If we don't have a component name, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
+        // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
             .fallback_provider()
             .fallback_for(&query_ctx, component_descr);

@@ -280,9 +280,9 @@ impl ViewerContext<'_> {
     /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
     /// Note that automatically generated placeholders ignore any extension types.
     ///
-    /// This requires the component name to be known by either datastore or blueprint store and
+    /// This requires the component type to be known by either datastore or blueprint store and
     /// will return a placeholder for a nulltype otherwise, logging an error.
-    /// The rationale is that to get into this situation, we need to know of a component name for which
+    /// The rationale is that to get into this situation, we need to know of a component type for which
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
     pub fn placeholder_for(&self, component: re_chunk::ComponentType) -> ArrayRef {

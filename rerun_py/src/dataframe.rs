@@ -184,7 +184,7 @@ impl PyComponentColumnDescriptor {
         &self.0.archetype_field_name
     }
 
-    /// The component name, if any.
+    /// The component type, if any.
     ///
     /// This property is read-only.
     #[getter]
@@ -293,7 +293,7 @@ impl AnyColumn {
                     Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
                     let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                        PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                        PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                     })?;
 
                     Ok(ColumnSelector::Component(sel))
@@ -325,7 +325,7 @@ impl AnyComponentColumn {
         match self {
             Self::Name(name) => {
                 let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                    PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                    PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                 })?;
 
                 Ok(sel)
