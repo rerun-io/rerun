@@ -66,7 +66,8 @@ pub enum ProcMeshKey {
         /// flat faces.
         subdivisions: usize,
 
-        /// If true, then when a wireframe mesh is generated
+        /// If true, wireframe meshes are generated with reduced complexity,
+        /// showing a minimal set of lines that outline the shape.
         axes_only: bool,
     },
 
@@ -78,7 +79,8 @@ pub enum ProcMeshKey {
         /// The cylinder is approximated as a mesh with (N + 1) × 4 flat faces.
         subdivisions: usize,
 
-        /// If true, then when a wireframe mesh is generated
+        /// If true, wireframe meshes are generated with reduced complexity,
+        /// showing a minimal set of lines that outline the shape.
         axes_only: bool,
     },
 }
