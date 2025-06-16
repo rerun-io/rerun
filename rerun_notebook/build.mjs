@@ -1,37 +1,7 @@
 import esbuild from "esbuild";
-import { wasmLoader } from "esbuild-plugin-wasm";
-import { subscribe } from "@parcel/watcher";
-import { parseArgs } from "node:util";
-import path from "node:path";
+import fs from "node:fs";
 
-// parse `--watch` file argument using node.js utils
-const args = parseArgs({ options: { watch: { type: "boolean", short: "w" } } });
-
-if (args.values.watch) {
-  await watch();
-} else {
-  await build();
-}
-
-async function watch() {
-  const watcher = await subscribe(
-    path.join(process.cwd(), "src/js"),
-    async () => {
-      await build();
-    },
-  );
-
-  process.on("SIGINT", async () => {
-    await watcher.unsubscribe();
-    process.exit(0);
-  });
-
-  await build(); // initial build
-
-  log("Watching for changes…");
-}
-
-async function build() {
+async function main() {
   try {
     const start = Date.now();
     await esbuild.build({
@@ -43,12 +13,17 @@ async function build() {
       // because it ends up being a single 30 MB-long line.
       //
       // minify: true,
+      legalComments: "inline",
       keepNames: true,
       outdir: "src/rerun_notebook/static",
     });
+    fs.copyFileSync(
+      "node_modules/@rerun-io/web-viewer/re_viewer_bg.wasm",
+      "src/rerun_notebook/static/re_viewer_bg.wasm",
+    );
     log(`Built widget in ${Date.now() - start}ms`);
   } catch (e) {
-    throw new Error(`Failed to rebuild widget:\n${e.toString()}`);
+    throw new Error(`Failed to build widget:\n${e.toString()}`);
   }
 }
 
@@ -65,3 +40,5 @@ function log(message) {
 function error(message) {
   return console.error(`[${now()}] ${message}`);
 }
+
+await main();

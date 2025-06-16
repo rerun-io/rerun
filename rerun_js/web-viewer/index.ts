@@ -3,23 +3,27 @@ import type { WebHandle, wasm_bindgen } from "./re_viewer";
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
 
-/*<INLINE-MARKER>*/
-async function fetch_viewer_js() {
+async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
   return (await import("./re_viewer")).default;
 }
 
-async function fetch_viewer_wasm() {
-  return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
+  //!<INLINE-MARKER>
+  if (base_url) {
+    return fetch(new URL("./re_viewer_bg.wasm", base_url))
+  } else {
+    return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+  }
+  //!<INLINE-MARKER>
 }
-/*<INLINE-MARKER>*/
 
-async function load(): Promise<typeof wasm_bindgen.WebHandle> {
+async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
   // instantiate wbg globals+module for every invocation of `load`,
   // but don't load the JS/Wasm source every time
   if (!get_wasm_bindgen || !_wasm_module) {
     [get_wasm_bindgen, _wasm_module] = await Promise.all([
-      fetch_viewer_js(),
-      WebAssembly.compileStreaming(fetch_viewer_wasm()),
+      fetch_viewer_js(base_url),
+      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url)),
     ]);
   }
   let bindgen = get_wasm_bindgen();
@@ -267,6 +271,7 @@ export class WebViewer {
   ): Promise<void> {
     parent ??= document.body;
     options ??= {};
+    options = options ? { ...options } : options;
 
     this.#allow_fullscreen = options.allow_fullscreen || false;
 
@@ -283,7 +288,12 @@ export class WebViewer {
     // element with the given ID.
     await delay(0);
 
-    let WebHandle_class = await load();
+    let base_url: string | undefined = (options as any)?.base_url;
+    if (base_url) {
+      delete (options as any).base_url;
+    }
+
+    let WebHandle_class = await load(base_url);
     if (this.#state !== "starting") return;
 
     const fullscreen = this.#allow_fullscreen
