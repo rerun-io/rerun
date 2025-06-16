@@ -478,7 +478,7 @@ impl VideoDataDescription {
         Some(self.gops.iter().flat_map(move |seg| {
             self.samples
                 .iter_index_range_clamped(&seg.sample_range)
-                .map(|sample| sample.presentation_timestamp)
+                .map(|(_idx, sample)| sample.presentation_timestamp)
                 .sorted()
                 .map(move |pts| pts.into_nanos(timescale))
         }))
