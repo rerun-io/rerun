@@ -69,6 +69,10 @@ class VideoStream(Archetype):
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
 
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
+
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
@@ -134,6 +138,10 @@ class VideoStream(Archetype):
             The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
+
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
@@ -203,6 +211,10 @@ class VideoStream(Archetype):
             The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
+
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
@@ -286,6 +298,10 @@ class VideoStream(Archetype):
     # The samples are expected to be encoded using the `codec` field.
     # Each video sample must contain enough data for exactly one video frame
     # (this restriction may be relaxed in the future for some codecs).
+    #
+    # Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+    # never log this component as static data as this means that you loose all information of
+    # previous samples which may be required to decode an image.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
     #

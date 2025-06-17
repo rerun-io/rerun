@@ -40,6 +40,10 @@ table VideoStream (
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
     ///
+    /// Unless your stream consists entirely of key-frames (in which case you should consider [archetypes.EncodedImage])
+    /// never log this component as static data as this means that you loose all information of
+    /// previous samples which may be required to decode an image.
+    ///
     /// See [components.VideoCodec] for codec specific requirements.
     sample: rerun.components.VideoSample ("attr.rerun.component_recommended", nullable, order: 2000);
 
