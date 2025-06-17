@@ -98,7 +98,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     {
                         if existing_codec != *codec {
                             re_log::warn!(
-                                "Overwriting existing video codec for entity path {:?} from {:?} to {:?}. Video codec per entity is expected to never change.",
+                                "Changing video codec for entity path {:?} from {:?} to {:?}. This is unexpected, video codecs should remain constant per entity.",
                                 entity_path,
                                 existing_codec,
                                 codec,
