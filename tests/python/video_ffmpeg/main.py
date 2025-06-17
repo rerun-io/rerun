@@ -16,6 +16,9 @@ def capture_webcam_h264() -> None:
     rr.spawn()
     # rr.serve_web()
 
+    # Log the stream's codec once. It never changes to mark it as static.
+    rr.log("video_stream", rr.VideoStream(rr.components.VideoCodec.H264), static=True)
+
     # Target FPS for timing calculations
     target_fps = 30
     frame_duration = 1.0 / target_fps
@@ -135,9 +138,7 @@ def capture_webcam_h264() -> None:
                     # We have a complete frame, send it to Rerun
                     frame_time += frame_duration
                     rr.set_time("video_time", duration=frame_time)
-                    rr.log(
-                        "video_stream", rr.VideoStream(sample=current_frame_data, codec=rr.components.VideoCodec.H264)
-                    )
+                    rr.log("video_stream", rr.VideoStream.from_fields(sample=current_frame_data))
 
                     # Start new frame
                     current_frame_data = nal_data
