@@ -171,4 +171,5 @@ jobs:
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      CHECK: false # we don't build wheels for all platforms on push-to-main
     secrets: inherit
