@@ -516,6 +516,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let field_name = field_name(obj_field);
+                let component = format!("{}:{field_name}", obj.name);
                 let comment = quote_doc_comment(&format!(
                     "`ComponentDescriptor` for the `{field_name}` field."
                 ));
@@ -536,7 +537,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #comment
                     static constexpr auto #constant_name = ComponentDescriptor(
-                        ArchetypeName, #field_name, Loggable<#field_type>::ComponentType
+                        ArchetypeName, #component, Loggable<#field_type>::ComponentType
                     );
                 }
             })

@@ -82,19 +82,22 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::ComponentType
+            ArchetypeName, "EncodedImage:blob", Loggable<rerun::components::Blob>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentType
+            ArchetypeName, "EncodedImage:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity", Loggable<rerun::components::Opacity>::ComponentType
+            ArchetypeName, "EncodedImage:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
+            ArchetypeName, "EncodedImage:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from encoded_image_ext.cpp:

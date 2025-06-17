@@ -38,11 +38,13 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `start_time` field.
         static constexpr auto Descriptor_start_time = ComponentDescriptor(
-            ArchetypeName, "start_time", Loggable<rerun::components::Timestamp>::ComponentType
+            ArchetypeName, "RecordingProperties:start_time",
+            Loggable<rerun::components::Timestamp>::ComponentType
         );
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
-            ArchetypeName, "name", Loggable<rerun::components::Name>::ComponentType
+            ArchetypeName, "RecordingProperties:name",
+            Loggable<rerun::components::Name>::ComponentType
         );
 
       public:

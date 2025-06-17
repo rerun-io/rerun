@@ -45,16 +45,18 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled", Loggable<rerun::blueprint::components::Enabled>::ComponentType
+            ArchetypeName, "ForcePosition:enabled",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
         /// `ComponentDescriptor` for the `strength` field.
         static constexpr auto Descriptor_strength = ComponentDescriptor(
-            ArchetypeName, "strength",
+            ArchetypeName, "ForcePosition:strength",
             Loggable<rerun::blueprint::components::ForceStrength>::ComponentType
         );
         /// `ComponentDescriptor` for the `position` field.
         static constexpr auto Descriptor_position = ComponentDescriptor(
-            ArchetypeName, "position", Loggable<rerun::components::Position2D>::ComponentType
+            ArchetypeName, "ForcePosition:position",
+            Loggable<rerun::components::Position2D>::ComponentType
         );
 
       public:

@@ -115,24 +115,26 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "SeriesPoints:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `markers` field.
         static constexpr auto Descriptor_markers = ComponentDescriptor(
-            ArchetypeName, "markers", Loggable<rerun::components::MarkerShape>::ComponentType
+            ArchetypeName, "SeriesPoints:markers",
+            Loggable<rerun::components::MarkerShape>::ComponentType
         );
         /// `ComponentDescriptor` for the `names` field.
         static constexpr auto Descriptor_names = ComponentDescriptor(
-            ArchetypeName, "names", Loggable<rerun::components::Name>::ComponentType
+            ArchetypeName, "SeriesPoints:names", Loggable<rerun::components::Name>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
-            ArchetypeName, "visible_series",
+            ArchetypeName, "SeriesPoints:visible_series",
             Loggable<rerun::components::SeriesVisible>::ComponentType
         );
         /// `ComponentDescriptor` for the `marker_sizes` field.
         static constexpr auto Descriptor_marker_sizes = ComponentDescriptor(
-            ArchetypeName, "marker_sizes", Loggable<rerun::components::MarkerSize>::ComponentType
+            ArchetypeName, "SeriesPoints:marker_sizes",
+            Loggable<rerun::components::MarkerSize>::ComponentType
         );
 
       public: // START of extensions from series_points_ext.cpp:

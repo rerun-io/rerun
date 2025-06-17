@@ -98,11 +98,12 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `text` field.
         static constexpr auto Descriptor_text = ComponentDescriptor(
-            ArchetypeName, "text", Loggable<rerun::components::Text>::ComponentType
+            ArchetypeName, "TextDocument:text", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentType
+            ArchetypeName, "TextDocument:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
 
       public:

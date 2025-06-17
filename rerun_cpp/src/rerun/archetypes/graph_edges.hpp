@@ -64,11 +64,12 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `edges` field.
         static constexpr auto Descriptor_edges = ComponentDescriptor(
-            ArchetypeName, "edges", Loggable<rerun::components::GraphEdge>::ComponentType
+            ArchetypeName, "GraphEdges:edges", Loggable<rerun::components::GraphEdge>::ComponentType
         );
         /// `ComponentDescriptor` for the `graph_type` field.
         static constexpr auto Descriptor_graph_type = ComponentDescriptor(
-            ArchetypeName, "graph_type", Loggable<rerun::components::GraphType>::ComponentType
+            ArchetypeName, "GraphEdges:graph_type",
+            Loggable<rerun::components::GraphType>::ComponentType
         );
 
       public:

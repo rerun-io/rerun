@@ -79,11 +79,12 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `data` field.
         static constexpr auto Descriptor_data = ComponentDescriptor(
-            ArchetypeName, "data", Loggable<rerun::components::TensorData>::ComponentType
+            ArchetypeName, "Tensor:data", Loggable<rerun::components::TensorData>::ComponentType
         );
         /// `ComponentDescriptor` for the `value_range` field.
         static constexpr auto Descriptor_value_range = ComponentDescriptor(
-            ArchetypeName, "value_range", Loggable<rerun::components::ValueRange>::ComponentType
+            ArchetypeName, "Tensor:value_range",
+            Loggable<rerun::components::ValueRange>::ComponentType
         );
 
       public: // START of extensions from tensor_ext.cpp:

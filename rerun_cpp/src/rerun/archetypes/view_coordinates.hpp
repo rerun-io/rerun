@@ -68,7 +68,8 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `xyz` field.
         static constexpr auto Descriptor_xyz = ComponentDescriptor(
-            ArchetypeName, "xyz", Loggable<rerun::components::ViewCoordinates>::ComponentType
+            ArchetypeName, "ViewCoordinates:xyz",
+            Loggable<rerun::components::ViewCoordinates>::ComponentType
         );
 
       public: // START of extensions from view_coordinates_ext.cpp:

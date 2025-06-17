@@ -35,7 +35,8 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `link` field.
         static constexpr auto Descriptor_link = ComponentDescriptor(
-            ArchetypeName, "link", Loggable<rerun::blueprint::components::LinkAxis>::ComponentType
+            ArchetypeName, "TimeAxis:link",
+            Loggable<rerun::blueprint::components::LinkAxis>::ComponentType
         );
 
       public:

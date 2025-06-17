@@ -103,26 +103,28 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `translations` field.
         static constexpr auto Descriptor_translations = ComponentDescriptor(
-            ArchetypeName, "translations",
+            ArchetypeName, "InstancePoses3D:translations",
             Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angles",
+            ArchetypeName, "InstancePoses3D:rotation_axis_angles",
             Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
-            ArchetypeName, "quaternions",
+            ArchetypeName, "InstancePoses3D:quaternions",
             Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `scales` field.
         static constexpr auto Descriptor_scales = ComponentDescriptor(
-            ArchetypeName, "scales", Loggable<rerun::components::PoseScale3D>::ComponentType
+            ArchetypeName, "InstancePoses3D:scales",
+            Loggable<rerun::components::PoseScale3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `mat3x3` field.
         static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
-            ArchetypeName, "mat3x3", Loggable<rerun::components::PoseTransformMat3x3>::ComponentType
+            ArchetypeName, "InstancePoses3D:mat3x3",
+            Loggable<rerun::components::PoseTransformMat3x3>::ComponentType
         );
 
       public:

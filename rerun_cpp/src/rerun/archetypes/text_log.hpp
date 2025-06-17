@@ -100,15 +100,15 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `text` field.
         static constexpr auto Descriptor_text = ComponentDescriptor(
-            ArchetypeName, "text", Loggable<rerun::components::Text>::ComponentType
+            ArchetypeName, "TextLog:text", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `level` field.
         static constexpr auto Descriptor_level = ComponentDescriptor(
-            ArchetypeName, "level", Loggable<rerun::components::TextLogLevel>::ComponentType
+            ArchetypeName, "TextLog:level", Loggable<rerun::components::TextLogLevel>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "TextLog:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

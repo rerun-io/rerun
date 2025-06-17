@@ -336,32 +336,37 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `translation` field.
         static constexpr auto Descriptor_translation = ComponentDescriptor(
-            ArchetypeName, "translation", Loggable<rerun::components::Translation3D>::ComponentType
+            ArchetypeName, "Transform3D:translation",
+            Loggable<rerun::components::Translation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angle` field.
         static constexpr auto Descriptor_rotation_axis_angle = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angle",
+            ArchetypeName, "Transform3D:rotation_axis_angle",
             Loggable<rerun::components::RotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternion` field.
         static constexpr auto Descriptor_quaternion = ComponentDescriptor(
-            ArchetypeName, "quaternion", Loggable<rerun::components::RotationQuat>::ComponentType
+            ArchetypeName, "Transform3D:quaternion",
+            Loggable<rerun::components::RotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `scale` field.
         static constexpr auto Descriptor_scale = ComponentDescriptor(
-            ArchetypeName, "scale", Loggable<rerun::components::Scale3D>::ComponentType
+            ArchetypeName, "Transform3D:scale", Loggable<rerun::components::Scale3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `mat3x3` field.
         static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
-            ArchetypeName, "mat3x3", Loggable<rerun::components::TransformMat3x3>::ComponentType
+            ArchetypeName, "Transform3D:mat3x3",
+            Loggable<rerun::components::TransformMat3x3>::ComponentType
         );
         /// `ComponentDescriptor` for the `relation` field.
         static constexpr auto Descriptor_relation = ComponentDescriptor(
-            ArchetypeName, "relation", Loggable<rerun::components::TransformRelation>::ComponentType
+            ArchetypeName, "Transform3D:relation",
+            Loggable<rerun::components::TransformRelation>::ComponentType
         );
         /// `ComponentDescriptor` for the `axis_length` field.
         static constexpr auto Descriptor_axis_length = ComponentDescriptor(
-            ArchetypeName, "axis_length", Loggable<rerun::components::AxisLength>::ComponentType
+            ArchetypeName, "Transform3D:axis_length",
+            Loggable<rerun::components::AxisLength>::ComponentType
         );
 
       public: // START of extensions from transform3d_ext.cpp:

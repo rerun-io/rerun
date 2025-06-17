@@ -154,44 +154,46 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `vertex_positions` field.
         static constexpr auto Descriptor_vertex_positions = ComponentDescriptor(
-            ArchetypeName, "vertex_positions",
+            ArchetypeName, "Mesh3D:vertex_positions",
             Loggable<rerun::components::Position3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `triangle_indices` field.
         static constexpr auto Descriptor_triangle_indices = ComponentDescriptor(
-            ArchetypeName, "triangle_indices",
+            ArchetypeName, "Mesh3D:triangle_indices",
             Loggable<rerun::components::TriangleIndices>::ComponentType
         );
         /// `ComponentDescriptor` for the `vertex_normals` field.
         static constexpr auto Descriptor_vertex_normals = ComponentDescriptor(
-            ArchetypeName, "vertex_normals", Loggable<rerun::components::Vector3D>::ComponentType
+            ArchetypeName, "Mesh3D:vertex_normals",
+            Loggable<rerun::components::Vector3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `vertex_colors` field.
         static constexpr auto Descriptor_vertex_colors = ComponentDescriptor(
-            ArchetypeName, "vertex_colors", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "Mesh3D:vertex_colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `vertex_texcoords` field.
         static constexpr auto Descriptor_vertex_texcoords = ComponentDescriptor(
-            ArchetypeName, "vertex_texcoords",
+            ArchetypeName, "Mesh3D:vertex_texcoords",
             Loggable<rerun::components::Texcoord2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_factor` field.
         static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
-            ArchetypeName, "albedo_factor", Loggable<rerun::components::AlbedoFactor>::ComponentType
+            ArchetypeName, "Mesh3D:albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
         static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
-            ArchetypeName, "albedo_texture_buffer",
+            ArchetypeName, "Mesh3D:albedo_texture_buffer",
             Loggable<rerun::components::ImageBuffer>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_texture_format` field.
         static constexpr auto Descriptor_albedo_texture_format = ComponentDescriptor(
-            ArchetypeName, "albedo_texture_format",
+            ArchetypeName, "Mesh3D:albedo_texture_format",
             Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentType
+            ArchetypeName, "Mesh3D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public:

@@ -73,15 +73,18 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `codec` field.
         static constexpr auto Descriptor_codec = ComponentDescriptor(
-            ArchetypeName, "codec", Loggable<rerun::components::VideoCodec>::ComponentType
+            ArchetypeName, "VideoStream:codec",
+            Loggable<rerun::components::VideoCodec>::ComponentType
         );
         /// `ComponentDescriptor` for the `sample` field.
         static constexpr auto Descriptor_sample = ComponentDescriptor(
-            ArchetypeName, "sample", Loggable<rerun::components::VideoSample>::ComponentType
+            ArchetypeName, "VideoStream:sample",
+            Loggable<rerun::components::VideoSample>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
+            ArchetypeName, "VideoStream:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public:

@@ -169,19 +169,19 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `buffer` field.
         static constexpr auto Descriptor_buffer = ComponentDescriptor(
-            ArchetypeName, "buffer", Loggable<rerun::components::ImageBuffer>::ComponentType
+            ArchetypeName, "Image:buffer", Loggable<rerun::components::ImageBuffer>::ComponentType
         );
         /// `ComponentDescriptor` for the `format` field.
         static constexpr auto Descriptor_format = ComponentDescriptor(
-            ArchetypeName, "format", Loggable<rerun::components::ImageFormat>::ComponentType
+            ArchetypeName, "Image:format", Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity", Loggable<rerun::components::Opacity>::ComponentType
+            ArchetypeName, "Image:opacity", Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
+            ArchetypeName, "Image:draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from image_ext.cpp:

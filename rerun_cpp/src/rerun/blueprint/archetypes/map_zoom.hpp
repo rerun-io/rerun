@@ -37,7 +37,8 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `zoom` field.
         static constexpr auto Descriptor_zoom = ComponentDescriptor(
-            ArchetypeName, "zoom", Loggable<rerun::blueprint::components::ZoomLevel>::ComponentType
+            ArchetypeName, "MapZoom:zoom",
+            Loggable<rerun::blueprint::components::ZoomLevel>::ComponentType
         );
 
       public:

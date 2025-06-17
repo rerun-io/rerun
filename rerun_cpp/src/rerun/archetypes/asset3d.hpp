@@ -83,15 +83,17 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::ComponentType
+            ArchetypeName, "Asset3D:blob", Loggable<rerun::components::Blob>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentType
+            ArchetypeName, "Asset3D:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_factor` field.
         static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
-            ArchetypeName, "albedo_factor", Loggable<rerun::components::AlbedoFactor>::ComponentType
+            ArchetypeName, "Asset3D:albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::ComponentType
         );
 
       public: // START of extensions from asset3d_ext.cpp:

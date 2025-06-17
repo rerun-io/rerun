@@ -82,7 +82,8 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `context` field.
         static constexpr auto Descriptor_context = ComponentDescriptor(
-            ArchetypeName, "context", Loggable<rerun::components::AnnotationContext>::ComponentType
+            ArchetypeName, "AnnotationContext:context",
+            Loggable<rerun::components::AnnotationContext>::ComponentType
         );
 
       public:

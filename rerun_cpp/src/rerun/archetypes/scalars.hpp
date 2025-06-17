@@ -92,7 +92,7 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `scalars` field.
         static constexpr auto Descriptor_scalars = ComponentDescriptor(
-            ArchetypeName, "scalars", Loggable<rerun::components::Scalar>::ComponentType
+            ArchetypeName, "Scalars:scalars", Loggable<rerun::components::Scalar>::ComponentType
         );
 
       public:

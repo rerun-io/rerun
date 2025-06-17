@@ -107,31 +107,33 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `vectors` field.
         static constexpr auto Descriptor_vectors = ComponentDescriptor(
-            ArchetypeName, "vectors", Loggable<rerun::components::Vector3D>::ComponentType
+            ArchetypeName, "Arrows3D:vectors", Loggable<rerun::components::Vector3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `origins` field.
         static constexpr auto Descriptor_origins = ComponentDescriptor(
-            ArchetypeName, "origins", Loggable<rerun::components::Position3D>::ComponentType
+            ArchetypeName, "Arrows3D:origins",
+            Loggable<rerun::components::Position3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
+            ArchetypeName, "Arrows3D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "Arrows3D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentType
+            ArchetypeName, "Arrows3D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentType
+            ArchetypeName, "Arrows3D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentType
+            ArchetypeName, "Arrows3D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from arrows3d_ext.cpp:

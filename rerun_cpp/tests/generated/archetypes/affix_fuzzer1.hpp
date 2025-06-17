@@ -93,91 +93,113 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `fuzz1001` field.
         static constexpr auto Descriptor_fuzz1001 = ComponentDescriptor(
-            ArchetypeName, "fuzz1001", Loggable<rerun::components::AffixFuzzer1>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1001",
+            Loggable<rerun::components::AffixFuzzer1>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1002` field.
         static constexpr auto Descriptor_fuzz1002 = ComponentDescriptor(
-            ArchetypeName, "fuzz1002", Loggable<rerun::components::AffixFuzzer2>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1002",
+            Loggable<rerun::components::AffixFuzzer2>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1003` field.
         static constexpr auto Descriptor_fuzz1003 = ComponentDescriptor(
-            ArchetypeName, "fuzz1003", Loggable<rerun::components::AffixFuzzer3>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1003",
+            Loggable<rerun::components::AffixFuzzer3>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1004` field.
         static constexpr auto Descriptor_fuzz1004 = ComponentDescriptor(
-            ArchetypeName, "fuzz1004", Loggable<rerun::components::AffixFuzzer4>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1004",
+            Loggable<rerun::components::AffixFuzzer4>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1005` field.
         static constexpr auto Descriptor_fuzz1005 = ComponentDescriptor(
-            ArchetypeName, "fuzz1005", Loggable<rerun::components::AffixFuzzer5>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1005",
+            Loggable<rerun::components::AffixFuzzer5>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1006` field.
         static constexpr auto Descriptor_fuzz1006 = ComponentDescriptor(
-            ArchetypeName, "fuzz1006", Loggable<rerun::components::AffixFuzzer6>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1006",
+            Loggable<rerun::components::AffixFuzzer6>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1007` field.
         static constexpr auto Descriptor_fuzz1007 = ComponentDescriptor(
-            ArchetypeName, "fuzz1007", Loggable<rerun::components::AffixFuzzer7>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1007",
+            Loggable<rerun::components::AffixFuzzer7>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1008` field.
         static constexpr auto Descriptor_fuzz1008 = ComponentDescriptor(
-            ArchetypeName, "fuzz1008", Loggable<rerun::components::AffixFuzzer8>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1008",
+            Loggable<rerun::components::AffixFuzzer8>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1009` field.
         static constexpr auto Descriptor_fuzz1009 = ComponentDescriptor(
-            ArchetypeName, "fuzz1009", Loggable<rerun::components::AffixFuzzer9>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1009",
+            Loggable<rerun::components::AffixFuzzer9>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1010` field.
         static constexpr auto Descriptor_fuzz1010 = ComponentDescriptor(
-            ArchetypeName, "fuzz1010", Loggable<rerun::components::AffixFuzzer10>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1010",
+            Loggable<rerun::components::AffixFuzzer10>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1011` field.
         static constexpr auto Descriptor_fuzz1011 = ComponentDescriptor(
-            ArchetypeName, "fuzz1011", Loggable<rerun::components::AffixFuzzer11>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1011",
+            Loggable<rerun::components::AffixFuzzer11>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1012` field.
         static constexpr auto Descriptor_fuzz1012 = ComponentDescriptor(
-            ArchetypeName, "fuzz1012", Loggable<rerun::components::AffixFuzzer12>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1012",
+            Loggable<rerun::components::AffixFuzzer12>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1013` field.
         static constexpr auto Descriptor_fuzz1013 = ComponentDescriptor(
-            ArchetypeName, "fuzz1013", Loggable<rerun::components::AffixFuzzer13>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1013",
+            Loggable<rerun::components::AffixFuzzer13>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1014` field.
         static constexpr auto Descriptor_fuzz1014 = ComponentDescriptor(
-            ArchetypeName, "fuzz1014", Loggable<rerun::components::AffixFuzzer14>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1014",
+            Loggable<rerun::components::AffixFuzzer14>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1015` field.
         static constexpr auto Descriptor_fuzz1015 = ComponentDescriptor(
-            ArchetypeName, "fuzz1015", Loggable<rerun::components::AffixFuzzer15>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1015",
+            Loggable<rerun::components::AffixFuzzer15>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1016` field.
         static constexpr auto Descriptor_fuzz1016 = ComponentDescriptor(
-            ArchetypeName, "fuzz1016", Loggable<rerun::components::AffixFuzzer16>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1016",
+            Loggable<rerun::components::AffixFuzzer16>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1017` field.
         static constexpr auto Descriptor_fuzz1017 = ComponentDescriptor(
-            ArchetypeName, "fuzz1017", Loggable<rerun::components::AffixFuzzer17>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1017",
+            Loggable<rerun::components::AffixFuzzer17>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1018` field.
         static constexpr auto Descriptor_fuzz1018 = ComponentDescriptor(
-            ArchetypeName, "fuzz1018", Loggable<rerun::components::AffixFuzzer18>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1018",
+            Loggable<rerun::components::AffixFuzzer18>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1019` field.
         static constexpr auto Descriptor_fuzz1019 = ComponentDescriptor(
-            ArchetypeName, "fuzz1019", Loggable<rerun::components::AffixFuzzer19>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1019",
+            Loggable<rerun::components::AffixFuzzer19>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1020` field.
         static constexpr auto Descriptor_fuzz1020 = ComponentDescriptor(
-            ArchetypeName, "fuzz1020", Loggable<rerun::components::AffixFuzzer20>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1020",
+            Loggable<rerun::components::AffixFuzzer20>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1021` field.
         static constexpr auto Descriptor_fuzz1021 = ComponentDescriptor(
-            ArchetypeName, "fuzz1021", Loggable<rerun::components::AffixFuzzer21>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1021",
+            Loggable<rerun::components::AffixFuzzer21>::ComponentType
         );
         /// `ComponentDescriptor` for the `fuzz1022` field.
         static constexpr auto Descriptor_fuzz1022 = ComponentDescriptor(
-            ArchetypeName, "fuzz1022", Loggable<rerun::components::AffixFuzzer22>::ComponentType
+            ArchetypeName, "AffixFuzzer1:fuzz1022",
+            Loggable<rerun::components::AffixFuzzer22>::ComponentType
         );
 
       public:

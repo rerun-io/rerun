@@ -96,7 +96,7 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `is_recursive` field.
         static constexpr auto Descriptor_is_recursive = ComponentDescriptor(
-            ArchetypeName, "is_recursive",
+            ArchetypeName, "Clear:is_recursive",
             Loggable<rerun::components::ClearIsRecursive>::ComponentType
         );
 

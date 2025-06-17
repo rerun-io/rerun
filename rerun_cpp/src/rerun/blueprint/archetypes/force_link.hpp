@@ -47,16 +47,17 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled", Loggable<rerun::blueprint::components::Enabled>::ComponentType
+            ArchetypeName, "ForceLink:enabled",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
         /// `ComponentDescriptor` for the `distance` field.
         static constexpr auto Descriptor_distance = ComponentDescriptor(
-            ArchetypeName, "distance",
+            ArchetypeName, "ForceLink:distance",
             Loggable<rerun::blueprint::components::ForceDistance>::ComponentType
         );
         /// `ComponentDescriptor` for the `iterations` field.
         static constexpr auto Descriptor_iterations = ComponentDescriptor(
-            ArchetypeName, "iterations",
+            ArchetypeName, "ForceLink:iterations",
             Loggable<rerun::blueprint::components::ForceIterations>::ComponentType
         );
 

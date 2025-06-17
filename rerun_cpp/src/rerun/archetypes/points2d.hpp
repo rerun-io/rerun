@@ -157,35 +157,39 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions", Loggable<rerun::components::Position2D>::ComponentType
+            ArchetypeName, "Points2D:positions",
+            Loggable<rerun::components::Position2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
+            ArchetypeName, "Points2D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "Points2D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentType
+            ArchetypeName, "Points2D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentType
+            ArchetypeName, "Points2D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
+            ArchetypeName, "Points2D:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentType
+            ArchetypeName, "Points2D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
         /// `ComponentDescriptor` for the `keypoint_ids` field.
         static constexpr auto Descriptor_keypoint_ids = ComponentDescriptor(
-            ArchetypeName, "keypoint_ids", Loggable<rerun::components::KeypointId>::ComponentType
+            ArchetypeName, "Points2D:keypoint_ids",
+            Loggable<rerun::components::KeypointId>::ComponentType
         );
 
       public:

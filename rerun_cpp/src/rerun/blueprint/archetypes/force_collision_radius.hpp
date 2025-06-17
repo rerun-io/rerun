@@ -48,16 +48,17 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled", Loggable<rerun::blueprint::components::Enabled>::ComponentType
+            ArchetypeName, "ForceCollisionRadius:enabled",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
         /// `ComponentDescriptor` for the `strength` field.
         static constexpr auto Descriptor_strength = ComponentDescriptor(
-            ArchetypeName, "strength",
+            ArchetypeName, "ForceCollisionRadius:strength",
             Loggable<rerun::blueprint::components::ForceStrength>::ComponentType
         );
         /// `ComponentDescriptor` for the `iterations` field.
         static constexpr auto Descriptor_iterations = ComponentDescriptor(
-            ArchetypeName, "iterations",
+            ArchetypeName, "ForceCollisionRadius:iterations",
             Loggable<rerun::blueprint::components::ForceIterations>::ComponentType
         );
 

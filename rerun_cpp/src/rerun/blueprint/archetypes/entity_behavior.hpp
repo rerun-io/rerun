@@ -48,11 +48,13 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `interactive` field.
         static constexpr auto Descriptor_interactive = ComponentDescriptor(
-            ArchetypeName, "interactive", Loggable<rerun::components::Interactive>::ComponentType
+            ArchetypeName, "EntityBehavior:interactive",
+            Loggable<rerun::components::Interactive>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentType
+            ArchetypeName, "EntityBehavior:visible",
+            Loggable<rerun::components::Visible>::ComponentType
         );
 
       public:

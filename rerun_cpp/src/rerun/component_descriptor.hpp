@@ -42,26 +42,22 @@ namespace rerun {
               component_type(component_type_) {}
 
         constexpr ComponentDescriptor(
-            const char* archetype_name_, const char* component_,
-            const char* component_type_
+            const char* archetype_name_, const char* component_, const char* component_type_
         )
             : archetype_name(archetype_name_),
               component(component_),
               component_type(component_type_) {}
 
-        constexpr ComponentDescriptor(std::string_view component_)
-            : component(component_) {}
+        constexpr ComponentDescriptor(std::string_view component_) : component(component_) {}
 
-        constexpr ComponentDescriptor(const char* component_)
-            : component(component_) {}
+        constexpr ComponentDescriptor(const char* component_) : component(component_) {}
 
         ComponentDescriptorHash hashed() const {
             std::size_t archetype_name_h =
                 std::hash<std::optional<std::string_view>>{}(this->archetype_name);
             std::size_t component_type_h =
                 std::hash<std::optional<std::string_view>>{}(this->component_type);
-            std::size_t component_h =
-                std::hash<std::string_view>{}(this->component);
+            std::size_t component_h = std::hash<std::string_view>{}(this->component);
             return archetype_name_h ^ component_type_h ^ component_h;
         }
 

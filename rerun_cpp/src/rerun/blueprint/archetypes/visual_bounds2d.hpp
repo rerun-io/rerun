@@ -43,7 +43,7 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `range` field.
         static constexpr auto Descriptor_range = ComponentDescriptor(
-            ArchetypeName, "range",
+            ArchetypeName, "VisualBounds2D:range",
             Loggable<rerun::blueprint::components::VisualBounds2D>::ComponentType
         );
 

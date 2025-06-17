@@ -130,49 +130,54 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `lengths` field.
         static constexpr auto Descriptor_lengths = ComponentDescriptor(
-            ArchetypeName, "lengths", Loggable<rerun::components::Length>::ComponentType
+            ArchetypeName, "Cylinders3D:lengths", Loggable<rerun::components::Length>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentType
+            ArchetypeName, "Cylinders3D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `centers` field.
         static constexpr auto Descriptor_centers = ComponentDescriptor(
-            ArchetypeName, "centers", Loggable<rerun::components::PoseTranslation3D>::ComponentType
+            ArchetypeName, "Cylinders3D:centers",
+            Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angles",
+            ArchetypeName, "Cylinders3D:rotation_axis_angles",
             Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
-            ArchetypeName, "quaternions",
+            ArchetypeName, "Cylinders3D:quaternions",
             Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentType
+            ArchetypeName, "Cylinders3D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `line_radii` field.
         static constexpr auto Descriptor_line_radii = ComponentDescriptor(
-            ArchetypeName, "line_radii", Loggable<rerun::components::Radius>::ComponentType
+            ArchetypeName, "Cylinders3D:line_radii",
+            Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
-            ArchetypeName, "fill_mode", Loggable<rerun::components::FillMode>::ComponentType
+            ArchetypeName, "Cylinders3D:fill_mode",
+            Loggable<rerun::components::FillMode>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentType
+            ArchetypeName, "Cylinders3D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentType
+            ArchetypeName, "Cylinders3D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentType
+            ArchetypeName, "Cylinders3D:class_ids",
+            Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from cylinders3d_ext.cpp:

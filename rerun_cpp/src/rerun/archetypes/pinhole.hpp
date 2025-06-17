@@ -137,20 +137,22 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `image_from_camera` field.
         static constexpr auto Descriptor_image_from_camera = ComponentDescriptor(
-            ArchetypeName, "image_from_camera",
+            ArchetypeName, "Pinhole:image_from_camera",
             Loggable<rerun::components::PinholeProjection>::ComponentType
         );
         /// `ComponentDescriptor` for the `resolution` field.
         static constexpr auto Descriptor_resolution = ComponentDescriptor(
-            ArchetypeName, "resolution", Loggable<rerun::components::Resolution>::ComponentType
+            ArchetypeName, "Pinhole:resolution",
+            Loggable<rerun::components::Resolution>::ComponentType
         );
         /// `ComponentDescriptor` for the `camera_xyz` field.
         static constexpr auto Descriptor_camera_xyz = ComponentDescriptor(
-            ArchetypeName, "camera_xyz", Loggable<rerun::components::ViewCoordinates>::ComponentType
+            ArchetypeName, "Pinhole:camera_xyz",
+            Loggable<rerun::components::ViewCoordinates>::ComponentType
         );
         /// `ComponentDescriptor` for the `image_plane_distance` field.
         static constexpr auto Descriptor_image_plane_distance = ComponentDescriptor(
-            ArchetypeName, "image_plane_distance",
+            ArchetypeName, "Pinhole:image_plane_distance",
             Loggable<rerun::components::ImagePlaneDistance>::ComponentType
         );
 
