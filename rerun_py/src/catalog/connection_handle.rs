@@ -461,6 +461,7 @@ impl ConnectionHandle {
         Ok(stores)
     }
 
+    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn get_chunk_ids_for_dataframe_query(
         &self,
         py: Python<'_>,
