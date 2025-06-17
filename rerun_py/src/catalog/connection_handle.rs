@@ -3,8 +3,8 @@ use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
-    Python,
+    PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
+    exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::common::v1alpha1::ext::ScanParameters;
@@ -18,14 +18,14 @@ use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
 use re_grpc_client::{
-    get_chunks_response_to_chunk_and_partition_id, ConnectionClient, ConnectionRegistryHandle,
+    ConnectionClient, ConnectionRegistryHandle, get_chunks_response_to_chunk_and_partition_id,
 };
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::{
     catalog::v1alpha1::{
-        ext::{DatasetEntry, EntryDetails, TableEntry},
         EntryFilter, ReadTableEntryRequest,
+        ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     frontend::v1alpha1::{
