@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Literal, Union, List
 
 import numpy as np
 import numpy.typing as npt
@@ -80,7 +80,7 @@ VectorDistanceMetricLike: TypeAlias = Union["VectorDistanceMetric", Literal["L2"
 A type alias for vector distance metrics.
 """
 
-VectorLike = Union[npt.NDArray[np.float64], list[float]]
+VectorLike = Union[npt.NDArray[np.float64], List[float]]
 """
 A type alias for vector-like objects.
 """
