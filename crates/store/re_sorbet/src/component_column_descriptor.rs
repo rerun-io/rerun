@@ -175,18 +175,9 @@ impl ComponentColumnDescriptor {
 
     #[inline]
     /// Checks if the current column descriptor matches a given [`ComponentColumnSelector`].
-    ///
-    /// The matching accepts selectors with full _and_ short versions of their [`ArchetypeName`].
-    pub fn matches_weak(&self, selector: &ComponentColumnSelector) -> bool {
-        let matches_archetype_name_weak = || match (self.archetype_name, selector.archetype_name) {
-            (Some(this), Some(sel)) if this != sel => this.short_name() == sel,
-            (lhs, rhs) => lhs == rhs,
-        };
-
+    pub fn matches(&self, selector: &ComponentColumnSelector) -> bool {
         // We convert down to `str` for comparison to avoid interning new fields.
-        self.entity_path == selector.entity_path
-            && matches_archetype_name_weak()
-            && self.component.as_str() == selector.component
+        self.entity_path == selector.entity_path && self.component.as_str() == selector.component
     }
 
     fn metadata(&self, batch_type: BatchType) -> ArrowFieldMetadata {

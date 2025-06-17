@@ -11,7 +11,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
@@ -19,7 +19,7 @@ use re_sorbet::{
 };
 use tap::Tap as _;
 
-use crate::{ChunkStore, ColumnMetadata, store::ColumnIdentifier};
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Queries v2 ---
 
@@ -57,16 +57,16 @@ impl std::fmt::Display for SparseFillStrategy {
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[positions, radius] --with /cam:[pinhole]`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>);
+pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>>);
 
 impl ViewContentsSelector {
-    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>> {
+    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>> {
         self.0
     }
 }
 
 impl Deref for ViewContentsSelector {
-    type Target = BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>;
+    type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -81,8 +81,8 @@ impl DerefMut for ViewContentsSelector {
     }
 }
 
-impl FromIterator<(EntityPath, Option<BTreeSet<ColumnIdentifier>>)> for ViewContentsSelector {
-    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ColumnIdentifier>>)>>(
+impl FromIterator<(EntityPath, Option<BTreeSet<ComponentIdentifier>>)> for ViewContentsSelector {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ComponentIdentifier>>)>>(
         iter: T,
     ) -> Self {
         Self(iter.into_iter().collect())
@@ -405,7 +405,7 @@ impl ChunkStore {
             store_datatype: ArrowDatatype::Null,
             component_type: None,
             entity_path: selector.entity_path.clone(),
-            archetype_name: selector.archetype_name,
+            archetype_name: None,
             component: selector.component.as_str().into(),
             is_static: false,
             is_indicator: false,
@@ -418,13 +418,14 @@ impl ChunkStore {
         };
 
         // We perform a scan over all component descriptors in the queried entity path.
-        let Some((component_descr, _, datatype)) = per_identifier.get(&ColumnIdentifier {
-            archetype_name: selector.archetype_name,
-            component: selector.component.as_str().into(),
-        }) else {
+        let Some((component_descr, _, datatype)) =
+            per_identifier.get(&selector.component.as_str().into())
+        else {
             return result;
         };
         result.store_datatype = datatype.clone();
+        result.archetype_name = component_descr.archetype_name;
+        result.component_type = component_descr.component_type;
 
         if let Some(ColumnMetadata {
             is_static,
@@ -470,17 +471,9 @@ impl ChunkStore {
                     view_contents
                         .get(&column.entity_path)
                         .is_some_and(|components| {
-                            components.as_ref().is_none_or(|components| {
-                                components.contains(&ColumnIdentifier {
-                                    archetype_name: column.archetype_name,
-                                    component: column.component,
-                                }) || components.contains(&ColumnIdentifier {
-                                    archetype_name: column
-                                        .archetype_name
-                                        .map(|a| a.short_name().into()),
-                                    component: column.component,
-                                })
-                            })
+                            components
+                                .as_ref()
+                                .is_none_or(|components| components.contains(&column.component))
                         })
                 })
             };

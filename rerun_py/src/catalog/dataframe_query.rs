@@ -12,7 +12,8 @@ use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
-use re_chunk_store::{ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk::ComponentIdentifier;
+use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
@@ -576,7 +577,7 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
+            let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
                 value.extract::<ComponentLike>()
             {
                 std::iter::once(component.into()).collect()

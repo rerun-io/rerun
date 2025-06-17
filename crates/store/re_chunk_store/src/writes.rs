@@ -370,7 +370,7 @@ impl ChunkStore {
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.clone().into())
+                .entry(component_descr.component)
                 .or_insert((
                     component_descr.clone(),
                     ColumnMetadataState {

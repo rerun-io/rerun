@@ -17,18 +17,10 @@ impl super::ComponentColumnSelector {
     /// The parsed omponent column selector.
     pub fn column_selector(&self) -> re_sorbet::ComponentColumnSelector {
         let entity_path = EntityPath::from(self.entity_path.as_str());
-        let component = self.component.as_str();
-        match component.rfind(':') {
-            Some(i) => re_sorbet::ComponentColumnSelector {
-                entity_path,
-                archetype_name: Some(component[..i].into()),
-                component: component[(i + 1)..].into(),
-            },
-            None => re_sorbet::ComponentColumnSelector {
-                entity_path,
-                component: component.to_owned(),
-                archetype_name: None,
-            },
+        let component = self.component.to_string();
+        re_sorbet::ComponentColumnSelector {
+            entity_path,
+            component,
         }
     }
 }

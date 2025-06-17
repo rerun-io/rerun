@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnIdentifier, QueryExpression, TimeInt, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, QueryExpression, TimeInt, ViewContentsSelector,
 };
 use re_log_types::{
     EntityPath, build_frame_nr,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
 use re_sorbet::ChunkColumnDescriptors;
-use re_types::Archetype as _;
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.
@@ -99,14 +98,8 @@ fn schema_for_query() -> anyhow::Result<()> {
             entity_path,
             Some(
                 [
-                    ColumnIdentifier {
-                        archetype_name: Some(MyPoints::name()),
-                        component: MyPoints::descriptor_colors().component,
-                    },
-                    ColumnIdentifier {
-                        archetype_name: Some(MyPoints::name()),
-                        component: MyPoints::descriptor_labels().component,
-                    },
+                    MyPoints::descriptor_colors().component,
+                    MyPoints::descriptor_labels().component,
                 ]
                 .into(),
             ),

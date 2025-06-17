@@ -301,6 +301,7 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
 /// Move indicator component to component identifier.
 // TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
+// TODO: naming!
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
@@ -322,6 +323,7 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
         .fields()
         .into_iter()
         .map(|field| {
+            // TODO: Avoid clones here!
             let mut field = field.as_ref().clone();
             let mut metadata = field.metadata().clone();
 

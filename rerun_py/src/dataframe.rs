@@ -24,14 +24,14 @@ use pyo3::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnIdentifier,
-    ComponentColumnDescriptor, IndexColumnDescriptor, QueryExpression, SparseFillStrategy,
-    ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
+    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_sdk::{EntityPath, StoreId, StoreKind};
+use re_sdk::{ArchetypeName, EntityPath, StoreId, StoreKind};
 use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
@@ -238,8 +238,8 @@ impl PyComponentColumnSelector {
     fn new(entity_path: &str, component: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            archetype_name: component.archetype_name.map(Into::into),
-            component: component.component,
+            // TODO: clean this up if `ComponentLike` sticks around
+            component: ComponentIdentifier::from(component).to_string(),
         })
     }
 
@@ -440,18 +440,19 @@ impl IndexValuesLike<'_> {
     }
 }
 
+// TODO(#9978): Remove!
 pub struct ComponentLike {
     pub archetype_name: Option<String>,
     pub component: String,
 }
 
 // TODO(#7699): Avoid interning strings from requests here.
-impl From<ComponentLike> for ColumnIdentifier {
+impl From<ComponentLike> for ComponentIdentifier {
     fn from(value: ComponentLike) -> Self {
-        Self {
-            archetype_name: value.archetype_name.map(Into::into),
-            component: value.component.into(),
-        }
+        value
+            .archetype_name
+            .map(|archetype_name| ArchetypeName::from(archetype_name).with_field(&value.component))
+            .unwrap_or_else(|| value.component.into())
     }
 }
 
@@ -565,12 +566,11 @@ impl PySchema {
 
         let selector = ComponentColumnSelector {
             entity_path,
-            archetype_name: component.archetype_name.map(Into::into),
             component: component.component,
         };
 
         self.schema.component_columns().find_map(|col| {
-            if col.matches_weak(&selector) {
+            if col.matches(&selector) {
                 Some(col.clone().into())
             } else {
                 None
@@ -1256,7 +1256,7 @@ impl PyRecording {
                     ))
                 })?;
 
-                let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
+                let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
                     value.extract::<ComponentLike>()
                 {
                     std::iter::once(component.into()).collect()

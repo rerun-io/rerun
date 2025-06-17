@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicU64;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{ArchetypeName, Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
@@ -391,40 +391,6 @@ impl ChunkStoreHandle {
     }
 }
 
-/// A column in a given [`EntityPath`] is uniquely identified by its [`ComponentIdentifier`].
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ColumnIdentifier {
-    pub archetype_name: Option<ArchetypeName>,
-    pub component: ComponentIdentifier,
-}
-
-impl From<ComponentDescriptor> for ColumnIdentifier {
-    fn from(value: ComponentDescriptor) -> Self {
-        Self {
-            archetype_name: value.archetype_name,
-            component: value.component,
-        }
-    }
-}
-
-impl nohash_hasher::IsEnabled for ColumnIdentifier {}
-
-impl std::hash::Hash for ColumnIdentifier {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let Self {
-            archetype_name,
-            component,
-        } = self;
-
-        let archetype_name = archetype_name.map_or(0, |v| v.hash());
-        let component = component.hash();
-
-        // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
-        // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
-        state.write_u64(archetype_name ^ component);
-    }
-}
-
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -456,7 +422,7 @@ pub struct ChunkStore {
     // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
     pub(crate) per_column_metadata: IntMap<
         EntityPath,
-        IntMap<ColumnIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
+        IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
@@ -719,7 +685,7 @@ impl ChunkStore {
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component_descr.clone().into()))
+            .and_then(|per_identifier| per_identifier.get(&component_descr.component))
             .map(|(_, metadata_state, _)| metadata_state)?;
 
         let is_static = self
