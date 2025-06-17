@@ -164,3 +164,14 @@ jobs:
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
+
+  generate-pip-index:
+    name: "Generate Pip Index"
+    needs:
+      [
+        build-wheel-linux-x64,
+      ]
+    uses: ./.github/workflows/reusable_pip_index.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+    secrets: inherit
