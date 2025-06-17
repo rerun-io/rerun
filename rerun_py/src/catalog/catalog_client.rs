@@ -14,7 +14,6 @@ use crate::catalog::{
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")]
 pub struct PyCatalogClientInternal {
-    #[expect(dead_code)]
     origin: re_uri::Origin,
 
     connection: ConnectionHandle,
@@ -270,6 +269,10 @@ impl PyCatalogClientInternal {
                 "DataFusion context not available (the `datafusion` package may need to be installed)".to_owned(),
             ))
         }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("CatalogClient({})", self.origin)
     }
 
     // ---
