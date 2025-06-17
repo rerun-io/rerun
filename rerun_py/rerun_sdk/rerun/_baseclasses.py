@@ -226,6 +226,10 @@ class Archetype(AsComponents):
         return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
 
     @classmethod
+    def archetype_short_name(cls) -> str:
+        return cls.archetype_name().rsplit('.', 1)[-1]
+
+    @classmethod
     def indicator(cls) -> DescribedComponentBatch:
         """
         Creates a `DescribedComponentBatch` out of the associated indicator component.
@@ -253,7 +257,7 @@ class Archetype(AsComponents):
                 comp = getattr(self, fld.name)
                 if comp is not None:
                     descr = ComponentDescriptor(
-                        fld.name,
+                        self.archetype_short_name() + ":" + fld.name,
                         component_type=comp._COMPONENT_TYPE,
                         archetype_name=self.archetype_name(),
                     )
