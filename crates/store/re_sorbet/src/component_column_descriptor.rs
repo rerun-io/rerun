@@ -17,8 +17,7 @@ pub struct ComponentColumnDescriptor {
 
     /// Optional semantic name associated with this data.
     ///
-    /// This is fully implied by `archetype_name` and `archetype_field`, but
-    /// included for semantic convenience.
+    /// This is fully implied by the `component`, but included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
     pub component_type: Option<ComponentType>,

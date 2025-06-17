@@ -561,7 +561,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(ui, "Type", "component");
             header_property_ui(
                 ui,
-                "Component",
+                "Component type",
                 component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
             header_property_ui(ui, "Entity path", entity_path.to_string());
@@ -571,8 +571,8 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
-            //TODO(#9978): update this if we rename this descriptor field.
-            header_property_ui(ui, "Archetype field", component);
+            // TODO(#9978): Extract this from the descriptor.
+            header_property_ui(ui, "Component", component);
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

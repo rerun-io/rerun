@@ -211,7 +211,8 @@ impl SelectionPanel {
                 }
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Archetype field")
+                    PropertyContent::new("Component")
+                        // TODO(#9978): Extract this from the descriptor.
                         .value_text(component.to_string()),
                 );
 

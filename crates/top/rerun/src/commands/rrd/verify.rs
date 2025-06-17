@@ -169,6 +169,7 @@ impl Verifier {
                 // Verify archetype field.
                 // We may want to have a flag to allow some of this?
                 let archetype_field_reflection = archetype_reflection
+                        // TODO(#9978): Use archetype_field from `component_descriptor` instead of `component`.
                         .get_field(&component)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
@@ -180,7 +181,7 @@ impl Verifier {
                 let expected_component_type = &archetype_field_reflection.component_type;
                 if &component_type != expected_component_type {
                     return Err(anyhow::anyhow!(
-                        "Archetype field {component:?} of {archetype_name:?} has component {expected_component_type:?} in this version of Rerun, but the data column has component {component_type:?}"
+                        "Component {component:?} of {archetype_name:?} has type {expected_component_type:?} in this version of Rerun, but the data column has type {component_type:?}"
                     ));
                 }
             } else {

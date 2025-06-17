@@ -26,8 +26,7 @@ namespace rerun {
 
         /// Optional semantic name associated with this data.
         ///
-        /// This is fully implied by `archetype_name` and `archetype_field`, but
-        /// included for semantic convenience.
+        /// This is fully implied by the `component`, but included for semantic convenience.
         //
         /// `None` if the data wasn't logged through an archetype.
         ///
