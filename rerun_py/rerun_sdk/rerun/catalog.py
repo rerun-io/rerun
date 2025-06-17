@@ -37,6 +37,9 @@ class CatalogClient:
 
         self._raw_client = CatalogClientInternal(address, token)
 
+    def __repr__(self) -> str:
+        return self._raw_client.__repr__()
+
     def all_entries(self) -> list[Entry]:
         """Returns a list of all entries in the catalog."""
         return self._raw_client.all_entries()

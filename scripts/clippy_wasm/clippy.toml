@@ -124,6 +124,7 @@ doc-valid-idents = [
   "PyPI",
   "sRGB",
   "sRGBA",
+  "WebCodec",
   "WebGL",
   "WebGPU",
   "WebSocket",

@@ -790,7 +790,7 @@ mod tests {
             chunk_builder = chunk_builder.with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
         }
         store
@@ -826,7 +826,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -872,7 +872,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, 0)]),
-                &VideoStream::new(frame_iter.next().unwrap(), VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_iter.next().unwrap()),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -893,7 +893,7 @@ mod tests {
                 let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                     RowId::new(),
                     timepoint,
-                    &VideoStream::new(frame_bytes, VideoCodec::H264),
+                    &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
                 );
                 let store_events = store
                     .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -933,7 +933,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))

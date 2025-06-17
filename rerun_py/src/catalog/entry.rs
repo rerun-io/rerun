@@ -168,6 +168,10 @@ impl PyEntry {
 
         connection.delete_entry(py, entry_id)
     }
+
+    fn __repr__(&self) -> String {
+        format!("Entry({:?}, '{}')", self.details.kind, self.details.name)
+    }
 }
 
 #[cfg(test)]
