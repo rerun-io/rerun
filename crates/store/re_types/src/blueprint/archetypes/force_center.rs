@@ -42,7 +42,7 @@ impl ForceCenter {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
             component_type: Some("rerun.blueprint.components.Enabled".into()),
-            component: "enabled".into(),
+            component: "ForceCenter:enabled".into(),
         }
     }
 
@@ -54,7 +54,7 @@ impl ForceCenter {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
             component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-            component: "strength".into(),
+            component: "ForceCenter:strength".into(),
         }
     }
 

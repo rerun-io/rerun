@@ -74,7 +74,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ContainerKind".into()),
-            component: "container_kind".into(),
+            component: "ContainerBlueprint:container_kind".into(),
         }
     }
 
@@ -86,7 +86,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.components.Name".into()),
-            component: "display_name".into(),
+            component: "ContainerBlueprint:display_name".into(),
         }
     }
 
@@ -98,7 +98,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.IncludedContent".into()),
-            component: "contents".into(),
+            component: "ContainerBlueprint:contents".into(),
         }
     }
 
@@ -110,7 +110,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ColumnShare".into()),
-            component: "col_shares".into(),
+            component: "ContainerBlueprint:col_shares".into(),
         }
     }
 
@@ -122,7 +122,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.RowShare".into()),
-            component: "row_shares".into(),
+            component: "ContainerBlueprint:row_shares".into(),
         }
     }
 
@@ -134,7 +134,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ActiveTab".into()),
-            component: "active_tab".into(),
+            component: "ContainerBlueprint:active_tab".into(),
         }
     }
 
@@ -146,7 +146,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.components.Visible".into()),
-            component: "visible".into(),
+            component: "ContainerBlueprint:visible".into(),
         }
     }
 
@@ -158,7 +158,7 @@ impl ContainerBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_type: Some("rerun.blueprint.components.GridColumns".into()),
-            component: "grid_columns".into(),
+            component: "ContainerBlueprint:grid_columns".into(),
         }
     }
 

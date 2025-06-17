@@ -40,7 +40,7 @@ impl RecordingProperties {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
             component_type: Some("rerun.components.Timestamp".into()),
-            component: "start_time".into(),
+            component: "RecordingProperties:start_time".into(),
         }
     }
 
@@ -52,7 +52,7 @@ impl RecordingProperties {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
             component_type: Some("rerun.components.Name".into()),
-            component: "name".into(),
+            component: "RecordingProperties:name".into(),
         }
     }
 

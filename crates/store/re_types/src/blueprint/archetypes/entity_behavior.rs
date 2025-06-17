@@ -50,7 +50,7 @@ impl EntityBehavior {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
             component_type: Some("rerun.components.Interactive".into()),
-            component: "interactive".into(),
+            component: "EntityBehavior:interactive".into(),
         }
     }
 
@@ -62,7 +62,7 @@ impl EntityBehavior {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
             component_type: Some("rerun.components.Visible".into()),
-            component: "visible".into(),
+            component: "EntityBehavior:visible".into(),
         }
     }
 

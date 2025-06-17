@@ -83,7 +83,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.GraphNode".into()),
-            component: "node_ids".into(),
+            component: "GraphNodes:node_ids".into(),
         }
     }
 
@@ -95,7 +95,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            component: "positions".into(),
+            component: "GraphNodes:positions".into(),
         }
     }
 
@@ -107,7 +107,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "GraphNodes:colors".into(),
         }
     }
 
@@ -119,7 +119,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "GraphNodes:labels".into(),
         }
     }
 
@@ -131,7 +131,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "GraphNodes:show_labels".into(),
         }
     }
 
@@ -143,7 +143,7 @@ impl GraphNodes {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "GraphNodes:radii".into(),
         }
     }
 

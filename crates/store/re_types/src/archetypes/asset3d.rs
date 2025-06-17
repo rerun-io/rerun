@@ -88,7 +88,7 @@ impl Asset3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
             component_type: Some("rerun.components.Blob".into()),
-            component: "blob".into(),
+            component: "Asset3D:blob".into(),
         }
     }
 
@@ -100,7 +100,7 @@ impl Asset3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
             component_type: Some("rerun.components.MediaType".into()),
-            component: "media_type".into(),
+            component: "Asset3D:media_type".into(),
         }
     }
 
@@ -112,7 +112,7 @@ impl Asset3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
             component_type: Some("rerun.components.AlbedoFactor".into()),
-            component: "albedo_factor".into(),
+            component: "Asset3D:albedo_factor".into(),
         }
     }
 

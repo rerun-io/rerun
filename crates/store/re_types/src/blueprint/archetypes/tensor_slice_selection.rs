@@ -56,7 +56,7 @@ impl TensorSliceSelection {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
             component_type: Some("rerun.components.TensorWidthDimension".into()),
-            component: "width".into(),
+            component: "TensorSliceSelection:width".into(),
         }
     }
 
@@ -68,7 +68,7 @@ impl TensorSliceSelection {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
             component_type: Some("rerun.components.TensorHeightDimension".into()),
-            component: "height".into(),
+            component: "TensorSliceSelection:height".into(),
         }
     }
 
@@ -80,7 +80,7 @@ impl TensorSliceSelection {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
             component_type: Some("rerun.components.TensorDimensionIndexSelection".into()),
-            component: "indices".into(),
+            component: "TensorSliceSelection:indices".into(),
         }
     }
 
@@ -92,7 +92,7 @@ impl TensorSliceSelection {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
             component_type: Some("rerun.blueprint.components.TensorDimensionIndexSlider".into()),
-            component: "slider".into(),
+            component: "TensorSliceSelection:slider".into(),
         }
     }
 

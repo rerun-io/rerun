@@ -65,7 +65,7 @@ impl BarChart {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
             component_type: Some("rerun.components.TensorData".into()),
-            component: "values".into(),
+            component: "BarChart:values".into(),
         }
     }
 
@@ -77,7 +77,7 @@ impl BarChart {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "color".into(),
+            component: "BarChart:color".into(),
         }
     }
 

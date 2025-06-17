@@ -61,7 +61,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.RootContainer".into()),
-            component: "root_container".into(),
+            component: "ViewportBlueprint:root_container".into(),
         }
     }
 
@@ -73,7 +73,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
-            component: "maximized".into(),
+            component: "ViewportBlueprint:maximized".into(),
         }
     }
 
@@ -85,7 +85,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.AutoLayout".into()),
-            component: "auto_layout".into(),
+            component: "ViewportBlueprint:auto_layout".into(),
         }
     }
 
@@ -97,7 +97,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.AutoViews".into()),
-            component: "auto_views".into(),
+            component: "ViewportBlueprint:auto_views".into(),
         }
     }
 
@@ -109,7 +109,7 @@ impl ViewportBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
-            component: "past_viewer_recommendations".into(),
+            component: "ViewportBlueprint:past_viewer_recommendations".into(),
         }
     }
 

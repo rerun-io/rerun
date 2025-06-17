@@ -116,7 +116,7 @@ impl SeriesPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "SeriesPoints:colors".into(),
         }
     }
 
@@ -128,7 +128,7 @@ impl SeriesPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
             component_type: Some("rerun.components.MarkerShape".into()),
-            component: "markers".into(),
+            component: "SeriesPoints:markers".into(),
         }
     }
 
@@ -140,7 +140,7 @@ impl SeriesPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
             component_type: Some("rerun.components.Name".into()),
-            component: "names".into(),
+            component: "SeriesPoints:names".into(),
         }
     }
 
@@ -152,7 +152,7 @@ impl SeriesPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
             component_type: Some("rerun.components.SeriesVisible".into()),
-            component: "visible_series".into(),
+            component: "SeriesPoints:visible_series".into(),
         }
     }
 
@@ -164,7 +164,7 @@ impl SeriesPoints {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
             component_type: Some("rerun.components.MarkerSize".into()),
-            component: "marker_sizes".into(),
+            component: "SeriesPoints:marker_sizes".into(),
         }
     }
 

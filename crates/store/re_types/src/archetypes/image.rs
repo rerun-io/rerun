@@ -160,7 +160,7 @@ impl Image {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
             component_type: Some("rerun.components.ImageBuffer".into()),
-            component: "buffer".into(),
+            component: "Image:buffer".into(),
         }
     }
 
@@ -172,7 +172,7 @@ impl Image {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
             component_type: Some("rerun.components.ImageFormat".into()),
-            component: "format".into(),
+            component: "Image:format".into(),
         }
     }
 
@@ -184,7 +184,7 @@ impl Image {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
             component_type: Some("rerun.components.Opacity".into()),
-            component: "opacity".into(),
+            component: "Image:opacity".into(),
         }
     }
 
@@ -196,7 +196,7 @@ impl Image {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "Image:draw_order".into(),
         }
     }
 

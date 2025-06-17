@@ -39,7 +39,7 @@ impl MapZoom {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
             component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
-            component: "zoom".into(),
+            component: "MapZoom:zoom".into(),
         }
     }
 

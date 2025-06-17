@@ -100,7 +100,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Vector2D".into()),
-            component: "vectors".into(),
+            component: "Arrows2D:vectors".into(),
         }
     }
 
@@ -112,7 +112,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            component: "origins".into(),
+            component: "Arrows2D:origins".into(),
         }
     }
 
@@ -124,7 +124,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Arrows2D:radii".into(),
         }
     }
 
@@ -136,7 +136,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Arrows2D:colors".into(),
         }
     }
 
@@ -148,7 +148,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Arrows2D:labels".into(),
         }
     }
 
@@ -160,7 +160,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Arrows2D:show_labels".into(),
         }
     }
 
@@ -172,7 +172,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "Arrows2D:draw_order".into(),
         }
     }
 
@@ -184,7 +184,7 @@ impl Arrows2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Arrows2D:class_ids".into(),
         }
     }
 

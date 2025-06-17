@@ -37,7 +37,7 @@ impl TensorViewFit {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
             component_type: Some("rerun.blueprint.components.ViewFit".into()),
-            component: "scaling".into(),
+            component: "TensorViewFit:scaling".into(),
         }
     }
 

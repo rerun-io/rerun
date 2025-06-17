@@ -119,7 +119,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.HalfSize3D".into()),
-            component: "half_sizes".into(),
+            component: "Boxes3D:half_sizes".into(),
         }
     }
 
@@ -131,7 +131,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            component: "centers".into(),
+            component: "Boxes3D:centers".into(),
         }
     }
 
@@ -143,7 +143,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            component: "rotation_axis_angles".into(),
+            component: "Boxes3D:rotation_axis_angles".into(),
         }
     }
 
@@ -155,7 +155,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            component: "quaternions".into(),
+            component: "Boxes3D:quaternions".into(),
         }
     }
 
@@ -167,7 +167,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Boxes3D:colors".into(),
         }
     }
 
@@ -179,7 +179,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Boxes3D:radii".into(),
         }
     }
 
@@ -191,7 +191,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.FillMode".into()),
-            component: "fill_mode".into(),
+            component: "Boxes3D:fill_mode".into(),
         }
     }
 
@@ -203,7 +203,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Boxes3D:labels".into(),
         }
     }
 
@@ -215,7 +215,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Boxes3D:show_labels".into(),
         }
     }
 
@@ -227,7 +227,7 @@ impl Boxes3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Boxes3D:class_ids".into(),
         }
     }
 

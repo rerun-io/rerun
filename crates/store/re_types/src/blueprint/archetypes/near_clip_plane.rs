@@ -39,7 +39,7 @@ impl NearClipPlane {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
             component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
-            component: "near_clip_plane".into(),
+            component: "NearClipPlane:near_clip_plane".into(),
         }
     }
 

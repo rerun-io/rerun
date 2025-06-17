@@ -161,7 +161,7 @@ impl VideoFrameReference {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
             component_type: Some("rerun.components.VideoTimestamp".into()),
-            component: "timestamp".into(),
+            component: "VideoFrameReference:timestamp".into(),
         }
     }
 
@@ -173,7 +173,7 @@ impl VideoFrameReference {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
             component_type: Some("rerun.components.EntityPath".into()),
-            component: "video_reference".into(),
+            component: "VideoFrameReference:video_reference".into(),
         }
     }
 
@@ -185,7 +185,7 @@ impl VideoFrameReference {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "VideoFrameReference:draw_order".into(),
         }
     }
 

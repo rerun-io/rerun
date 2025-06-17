@@ -72,7 +72,7 @@ impl GraphEdges {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphEdges".into()),
             component_type: Some("rerun.components.GraphEdge".into()),
-            component: "edges".into(),
+            component: "GraphEdges:edges".into(),
         }
     }
 
@@ -84,7 +84,7 @@ impl GraphEdges {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphEdges".into()),
             component_type: Some("rerun.components.GraphType".into()),
-            component: "graph_type".into(),
+            component: "GraphEdges:graph_type".into(),
         }
     }
 

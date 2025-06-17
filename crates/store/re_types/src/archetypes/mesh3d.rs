@@ -155,7 +155,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.Position3D".into()),
-            component: "vertex_positions".into(),
+            component: "Mesh3D:vertex_positions".into(),
         }
     }
 
@@ -167,7 +167,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.TriangleIndices".into()),
-            component: "triangle_indices".into(),
+            component: "Mesh3D:triangle_indices".into(),
         }
     }
 
@@ -179,7 +179,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.Vector3D".into()),
-            component: "vertex_normals".into(),
+            component: "Mesh3D:vertex_normals".into(),
         }
     }
 
@@ -191,7 +191,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "vertex_colors".into(),
+            component: "Mesh3D:vertex_colors".into(),
         }
     }
 
@@ -203,7 +203,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.Texcoord2D".into()),
-            component: "vertex_texcoords".into(),
+            component: "Mesh3D:vertex_texcoords".into(),
         }
     }
 
@@ -215,7 +215,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.AlbedoFactor".into()),
-            component: "albedo_factor".into(),
+            component: "Mesh3D:albedo_factor".into(),
         }
     }
 
@@ -227,7 +227,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.ImageBuffer".into()),
-            component: "albedo_texture_buffer".into(),
+            component: "Mesh3D:albedo_texture_buffer".into(),
         }
     }
 
@@ -239,7 +239,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.ImageFormat".into()),
-            component: "albedo_texture_format".into(),
+            component: "Mesh3D:albedo_texture_format".into(),
         }
     }
 
@@ -251,7 +251,7 @@ impl Mesh3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Mesh3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Mesh3D:class_ids".into(),
         }
     }
 

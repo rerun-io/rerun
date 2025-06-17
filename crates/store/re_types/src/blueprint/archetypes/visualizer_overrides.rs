@@ -46,7 +46,7 @@ impl VisualizerOverrides {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualizerOverrides".into()),
             component_type: Some("rerun.blueprint.components.VisualizerOverride".into()),
-            component: "ranges".into(),
+            component: "VisualizerOverrides:ranges".into(),
         }
     }
 

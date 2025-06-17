@@ -45,7 +45,7 @@ impl ForcePosition {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
             component_type: Some("rerun.blueprint.components.Enabled".into()),
-            component: "enabled".into(),
+            component: "ForcePosition:enabled".into(),
         }
     }
 
@@ -57,7 +57,7 @@ impl ForcePosition {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
             component_type: Some("rerun.blueprint.components.ForceStrength".into()),
-            component: "strength".into(),
+            component: "ForcePosition:strength".into(),
         }
     }
 
@@ -69,7 +69,7 @@ impl ForcePosition {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            component: "position".into(),
+            component: "ForcePosition:position".into(),
         }
     }
 

@@ -53,7 +53,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.TimelineName".into()),
-            component: "timeline".into(),
+            component: "DataframeQuery:timeline".into(),
         }
     }
 
@@ -65,7 +65,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.FilterByRange".into()),
-            component: "filter_by_range".into(),
+            component: "DataframeQuery:filter_by_range".into(),
         }
     }
 
@@ -77,7 +77,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
-            component: "filter_is_not_null".into(),
+            component: "DataframeQuery:filter_is_not_null".into(),
         }
     }
 
@@ -89,7 +89,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
-            component: "apply_latest_at".into(),
+            component: "DataframeQuery:apply_latest_at".into(),
         }
     }
 
@@ -101,7 +101,7 @@ impl DataframeQuery {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
             component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
-            component: "select".into(),
+            component: "DataframeQuery:select".into(),
         }
     }
 

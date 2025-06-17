@@ -118,7 +118,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            component: "translations".into(),
+            component: "InstancePoses3D:translations".into(),
         }
     }
 
@@ -130,7 +130,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            component: "rotation_axis_angles".into(),
+            component: "InstancePoses3D:rotation_axis_angles".into(),
         }
     }
 
@@ -142,7 +142,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            component: "quaternions".into(),
+            component: "InstancePoses3D:quaternions".into(),
         }
     }
 
@@ -154,7 +154,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseScale3D".into()),
-            component: "scales".into(),
+            component: "InstancePoses3D:scales".into(),
         }
     }
 
@@ -166,7 +166,7 @@ impl InstancePoses3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
             component_type: Some("rerun.components.PoseTransformMat3x3".into()),
-            component: "mat3x3".into(),
+            component: "InstancePoses3D:mat3x3".into(),
         }
     }
 

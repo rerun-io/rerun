@@ -137,7 +137,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.LineStrip3D".into()),
-            component: "strips".into(),
+            component: "LineStrips3D:strips".into(),
         }
     }
 
@@ -149,7 +149,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "LineStrips3D:radii".into(),
         }
     }
 
@@ -161,7 +161,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "LineStrips3D:colors".into(),
         }
     }
 
@@ -173,7 +173,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "LineStrips3D:labels".into(),
         }
     }
 
@@ -185,7 +185,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "LineStrips3D:show_labels".into(),
         }
     }
 
@@ -197,7 +197,7 @@ impl LineStrips3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "LineStrips3D:class_ids".into(),
         }
     }
 

@@ -79,7 +79,7 @@ impl Tensor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Tensor".into()),
             component_type: Some("rerun.components.TensorData".into()),
-            component: "data".into(),
+            component: "Tensor:data".into(),
         }
     }
 
@@ -91,7 +91,7 @@ impl Tensor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Tensor".into()),
             component_type: Some("rerun.components.ValueRange".into()),
-            component: "value_range".into(),
+            component: "Tensor:value_range".into(),
         }
     }
 

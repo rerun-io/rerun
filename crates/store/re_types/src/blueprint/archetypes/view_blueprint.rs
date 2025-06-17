@@ -54,7 +54,7 @@ impl ViewBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewClass".into()),
-            component: "class_identifier".into(),
+            component: "ViewBlueprint:class_identifier".into(),
         }
     }
 
@@ -66,7 +66,7 @@ impl ViewBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_type: Some("rerun.components.Name".into()),
-            component: "display_name".into(),
+            component: "ViewBlueprint:display_name".into(),
         }
     }
 
@@ -78,7 +78,7 @@ impl ViewBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
-            component: "space_origin".into(),
+            component: "ViewBlueprint:space_origin".into(),
         }
     }
 
@@ -90,7 +90,7 @@ impl ViewBlueprint {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_type: Some("rerun.components.Visible".into()),
-            component: "visible".into(),
+            component: "ViewBlueprint:visible".into(),
         }
     }
 

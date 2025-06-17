@@ -234,7 +234,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.Position3D".into()),
-            component: "positions".into(),
+            component: "Points3D:positions".into(),
         }
     }
 
@@ -246,7 +246,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Points3D:radii".into(),
         }
     }
 
@@ -258,7 +258,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Points3D:colors".into(),
         }
     }
 
@@ -270,7 +270,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Points3D:labels".into(),
         }
     }
 
@@ -282,7 +282,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Points3D:show_labels".into(),
         }
     }
 
@@ -294,7 +294,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Points3D:class_ids".into(),
         }
     }
 
@@ -306,7 +306,7 @@ impl Points3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points3D".into()),
             component_type: Some("rerun.components.KeypointId".into()),
-            component: "keypoint_ids".into(),
+            component: "Points3D:keypoint_ids".into(),
         }
     }
 

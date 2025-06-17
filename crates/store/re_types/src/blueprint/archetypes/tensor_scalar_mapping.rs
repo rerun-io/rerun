@@ -51,7 +51,7 @@ impl TensorScalarMapping {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component_type: Some("rerun.components.MagnificationFilter".into()),
-            component: "mag_filter".into(),
+            component: "TensorScalarMapping:mag_filter".into(),
         }
     }
 
@@ -63,7 +63,7 @@ impl TensorScalarMapping {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component_type: Some("rerun.components.Colormap".into()),
-            component: "colormap".into(),
+            component: "TensorScalarMapping:colormap".into(),
         }
     }
 
@@ -75,7 +75,7 @@ impl TensorScalarMapping {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component_type: Some("rerun.components.GammaCorrection".into()),
-            component: "gamma".into(),
+            component: "TensorScalarMapping:gamma".into(),
         }
     }
 

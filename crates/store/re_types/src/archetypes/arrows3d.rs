@@ -108,7 +108,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.Vector3D".into()),
-            component: "vectors".into(),
+            component: "Arrows3D:vectors".into(),
         }
     }
 
@@ -120,7 +120,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.Position3D".into()),
-            component: "origins".into(),
+            component: "Arrows3D:origins".into(),
         }
     }
 
@@ -132,7 +132,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Arrows3D:radii".into(),
         }
     }
 
@@ -144,7 +144,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Arrows3D:colors".into(),
         }
     }
 
@@ -156,7 +156,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Arrows3D:labels".into(),
         }
     }
 
@@ -168,7 +168,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Arrows3D:show_labels".into(),
         }
     }
 
@@ -180,7 +180,7 @@ impl Arrows3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Arrows3D:class_ids".into(),
         }
     }
 

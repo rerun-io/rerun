@@ -134,7 +134,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.HalfSize3D".into()),
-            component: "half_sizes".into(),
+            component: "Ellipsoids3D:half_sizes".into(),
         }
     }
 
@@ -146,7 +146,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            component: "centers".into(),
+            component: "Ellipsoids3D:centers".into(),
         }
     }
 
@@ -158,7 +158,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            component: "rotation_axis_angles".into(),
+            component: "Ellipsoids3D:rotation_axis_angles".into(),
         }
     }
 
@@ -170,7 +170,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            component: "quaternions".into(),
+            component: "Ellipsoids3D:quaternions".into(),
         }
     }
 
@@ -182,7 +182,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Ellipsoids3D:colors".into(),
         }
     }
 
@@ -194,7 +194,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "line_radii".into(),
+            component: "Ellipsoids3D:line_radii".into(),
         }
     }
 
@@ -206,7 +206,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.FillMode".into()),
-            component: "fill_mode".into(),
+            component: "Ellipsoids3D:fill_mode".into(),
         }
     }
 
@@ -218,7 +218,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Ellipsoids3D:labels".into(),
         }
     }
 
@@ -230,7 +230,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Ellipsoids3D:show_labels".into(),
         }
     }
 
@@ -242,7 +242,7 @@ impl Ellipsoids3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Ellipsoids3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Ellipsoids3D:class_ids".into(),
         }
     }
 

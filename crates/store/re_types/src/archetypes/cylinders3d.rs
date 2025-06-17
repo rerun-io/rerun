@@ -131,7 +131,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.Length".into()),
-            component: "lengths".into(),
+            component: "Cylinders3D:lengths".into(),
         }
     }
 
@@ -143,7 +143,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Cylinders3D:radii".into(),
         }
     }
 
@@ -155,7 +155,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            component: "centers".into(),
+            component: "Cylinders3D:centers".into(),
         }
     }
 
@@ -167,7 +167,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            component: "rotation_axis_angles".into(),
+            component: "Cylinders3D:rotation_axis_angles".into(),
         }
     }
 
@@ -179,7 +179,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            component: "quaternions".into(),
+            component: "Cylinders3D:quaternions".into(),
         }
     }
 
@@ -191,7 +191,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Cylinders3D:colors".into(),
         }
     }
 
@@ -203,7 +203,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "line_radii".into(),
+            component: "Cylinders3D:line_radii".into(),
         }
     }
 
@@ -215,7 +215,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.FillMode".into()),
-            component: "fill_mode".into(),
+            component: "Cylinders3D:fill_mode".into(),
         }
     }
 
@@ -227,7 +227,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Cylinders3D:labels".into(),
         }
     }
 
@@ -239,7 +239,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Cylinders3D:show_labels".into(),
         }
     }
 
@@ -251,7 +251,7 @@ impl Cylinders3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Cylinders3D:class_ids".into(),
         }
     }
 

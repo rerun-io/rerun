@@ -134,7 +134,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.Length".into()),
-            component: "lengths".into(),
+            component: "Capsules3D:lengths".into(),
         }
     }
 
@@ -146,7 +146,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Capsules3D:radii".into(),
         }
     }
 
@@ -158,7 +158,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.PoseTranslation3D".into()),
-            component: "translations".into(),
+            component: "Capsules3D:translations".into(),
         }
     }
 
@@ -170,7 +170,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
-            component: "rotation_axis_angles".into(),
+            component: "Capsules3D:rotation_axis_angles".into(),
         }
     }
 
@@ -182,7 +182,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.PoseRotationQuat".into()),
-            component: "quaternions".into(),
+            component: "Capsules3D:quaternions".into(),
         }
     }
 
@@ -194,7 +194,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Capsules3D:colors".into(),
         }
     }
 
@@ -206,7 +206,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "line_radii".into(),
+            component: "Capsules3D:line_radii".into(),
         }
     }
 
@@ -218,7 +218,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.FillMode".into()),
-            component: "fill_mode".into(),
+            component: "Capsules3D:fill_mode".into(),
         }
     }
 
@@ -230,7 +230,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Capsules3D:labels".into(),
         }
     }
 
@@ -242,7 +242,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Capsules3D:show_labels".into(),
         }
     }
 
@@ -254,7 +254,7 @@ impl Capsules3D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Capsules3D:class_ids".into(),
         }
     }
 

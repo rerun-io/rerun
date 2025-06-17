@@ -37,7 +37,7 @@ impl TimeAxis {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TimeAxis".into()),
             component_type: Some("rerun.blueprint.components.LinkAxis".into()),
-            component: "link".into(),
+            component: "TimeAxis:link".into(),
         }
     }
 

@@ -101,7 +101,7 @@ impl Scalars {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalars".into()),
             component_type: Some("rerun.components.Scalar".into()),
-            component: "scalars".into(),
+            component: "Scalars:scalars".into(),
         }
     }
 

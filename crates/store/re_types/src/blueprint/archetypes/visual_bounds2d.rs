@@ -45,7 +45,7 @@ impl VisualBounds2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
-            component: "range".into(),
+            component: "VisualBounds2D:range".into(),
         }
     }
 

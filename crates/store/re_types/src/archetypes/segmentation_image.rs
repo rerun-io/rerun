@@ -94,7 +94,7 @@ impl SegmentationImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
             component_type: Some("rerun.components.ImageBuffer".into()),
-            component: "buffer".into(),
+            component: "SegmentationImage:buffer".into(),
         }
     }
 
@@ -106,7 +106,7 @@ impl SegmentationImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
             component_type: Some("rerun.components.ImageFormat".into()),
-            component: "format".into(),
+            component: "SegmentationImage:format".into(),
         }
     }
 
@@ -118,7 +118,7 @@ impl SegmentationImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
             component_type: Some("rerun.components.Opacity".into()),
-            component: "opacity".into(),
+            component: "SegmentationImage:opacity".into(),
         }
     }
 
@@ -130,7 +130,7 @@ impl SegmentationImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "SegmentationImage:draw_order".into(),
         }
     }
 

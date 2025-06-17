@@ -47,7 +47,7 @@ impl ForceLink {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component_type: Some("rerun.blueprint.components.Enabled".into()),
-            component: "enabled".into(),
+            component: "ForceLink:enabled".into(),
         }
     }
 
@@ -59,7 +59,7 @@ impl ForceLink {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component_type: Some("rerun.blueprint.components.ForceDistance".into()),
-            component: "distance".into(),
+            component: "ForceLink:distance".into(),
         }
     }
 
@@ -71,7 +71,7 @@ impl ForceLink {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component_type: Some("rerun.blueprint.components.ForceIterations".into()),
-            component: "iterations".into(),
+            component: "ForceLink:iterations".into(),
         }
     }
 

@@ -76,7 +76,7 @@ impl ViewContents {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
             component_type: Some("rerun.blueprint.components.QueryExpression".into()),
-            component: "query".into(),
+            component: "ViewContents:query".into(),
         }
     }
 

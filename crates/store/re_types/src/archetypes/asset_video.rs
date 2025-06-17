@@ -148,7 +148,7 @@ impl AssetVideo {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AssetVideo".into()),
             component_type: Some("rerun.components.Blob".into()),
-            component: "blob".into(),
+            component: "AssetVideo:blob".into(),
         }
     }
 
@@ -160,7 +160,7 @@ impl AssetVideo {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AssetVideo".into()),
             component_type: Some("rerun.components.MediaType".into()),
-            component: "media_type".into(),
+            component: "AssetVideo:media_type".into(),
         }
     }
 

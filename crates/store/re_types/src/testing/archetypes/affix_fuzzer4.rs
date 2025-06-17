@@ -50,7 +50,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer1".into()),
-            component: "fuzz2101".into(),
+            component: "AffixFuzzer4:fuzz2101".into(),
         }
     }
 
@@ -62,7 +62,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer2".into()),
-            component: "fuzz2102".into(),
+            component: "AffixFuzzer4:fuzz2102".into(),
         }
     }
 
@@ -74,7 +74,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer3".into()),
-            component: "fuzz2103".into(),
+            component: "AffixFuzzer4:fuzz2103".into(),
         }
     }
 
@@ -86,7 +86,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer4".into()),
-            component: "fuzz2104".into(),
+            component: "AffixFuzzer4:fuzz2104".into(),
         }
     }
 
@@ -98,7 +98,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer5".into()),
-            component: "fuzz2105".into(),
+            component: "AffixFuzzer4:fuzz2105".into(),
         }
     }
 
@@ -110,7 +110,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer6".into()),
-            component: "fuzz2106".into(),
+            component: "AffixFuzzer4:fuzz2106".into(),
         }
     }
 
@@ -122,7 +122,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer7".into()),
-            component: "fuzz2107".into(),
+            component: "AffixFuzzer4:fuzz2107".into(),
         }
     }
 
@@ -134,7 +134,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer8".into()),
-            component: "fuzz2108".into(),
+            component: "AffixFuzzer4:fuzz2108".into(),
         }
     }
 
@@ -146,7 +146,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer9".into()),
-            component: "fuzz2109".into(),
+            component: "AffixFuzzer4:fuzz2109".into(),
         }
     }
 
@@ -158,7 +158,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer10".into()),
-            component: "fuzz2110".into(),
+            component: "AffixFuzzer4:fuzz2110".into(),
         }
     }
 
@@ -170,7 +170,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer11".into()),
-            component: "fuzz2111".into(),
+            component: "AffixFuzzer4:fuzz2111".into(),
         }
     }
 
@@ -182,7 +182,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer12".into()),
-            component: "fuzz2112".into(),
+            component: "AffixFuzzer4:fuzz2112".into(),
         }
     }
 
@@ -194,7 +194,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer13".into()),
-            component: "fuzz2113".into(),
+            component: "AffixFuzzer4:fuzz2113".into(),
         }
     }
 
@@ -206,7 +206,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer14".into()),
-            component: "fuzz2114".into(),
+            component: "AffixFuzzer4:fuzz2114".into(),
         }
     }
 
@@ -218,7 +218,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer15".into()),
-            component: "fuzz2115".into(),
+            component: "AffixFuzzer4:fuzz2115".into(),
         }
     }
 
@@ -230,7 +230,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer16".into()),
-            component: "fuzz2116".into(),
+            component: "AffixFuzzer4:fuzz2116".into(),
         }
     }
 
@@ -242,7 +242,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer17".into()),
-            component: "fuzz2117".into(),
+            component: "AffixFuzzer4:fuzz2117".into(),
         }
     }
 
@@ -254,7 +254,7 @@ impl AffixFuzzer4 {
         ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
             component_type: Some("rerun.testing.components.AffixFuzzer18".into()),
-            component: "fuzz2118".into(),
+            component: "AffixFuzzer4:fuzz2118".into(),
         }
     }
 

@@ -76,7 +76,7 @@ impl EncodedImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.EncodedImage".into()),
             component_type: Some("rerun.components.Blob".into()),
-            component: "blob".into(),
+            component: "EncodedImage:blob".into(),
         }
     }
 
@@ -88,7 +88,7 @@ impl EncodedImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.EncodedImage".into()),
             component_type: Some("rerun.components.MediaType".into()),
-            component: "media_type".into(),
+            component: "EncodedImage:media_type".into(),
         }
     }
 
@@ -100,7 +100,7 @@ impl EncodedImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.EncodedImage".into()),
             component_type: Some("rerun.components.Opacity".into()),
-            component: "opacity".into(),
+            component: "EncodedImage:opacity".into(),
         }
     }
 
@@ -112,7 +112,7 @@ impl EncodedImage {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.EncodedImage".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "EncodedImage:draw_order".into(),
         }
     }
 

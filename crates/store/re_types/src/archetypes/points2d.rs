@@ -153,7 +153,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.Position2D".into()),
-            component: "positions".into(),
+            component: "Points2D:positions".into(),
         }
     }
 
@@ -165,7 +165,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.Radius".into()),
-            component: "radii".into(),
+            component: "Points2D:radii".into(),
         }
     }
 
@@ -177,7 +177,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.Color".into()),
-            component: "colors".into(),
+            component: "Points2D:colors".into(),
         }
     }
 
@@ -189,7 +189,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.Text".into()),
-            component: "labels".into(),
+            component: "Points2D:labels".into(),
         }
     }
 
@@ -201,7 +201,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.ShowLabels".into()),
-            component: "show_labels".into(),
+            component: "Points2D:show_labels".into(),
         }
     }
 
@@ -213,7 +213,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.DrawOrder".into()),
-            component: "draw_order".into(),
+            component: "Points2D:draw_order".into(),
         }
     }
 
@@ -225,7 +225,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.ClassId".into()),
-            component: "class_ids".into(),
+            component: "Points2D:class_ids".into(),
         }
     }
 
@@ -237,7 +237,7 @@ impl Points2D {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Points2D".into()),
             component_type: Some("rerun.components.KeypointId".into()),
-            component: "keypoint_ids".into(),
+            component: "Points2D:keypoint_ids".into(),
         }
     }
 
