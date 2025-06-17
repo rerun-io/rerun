@@ -11,11 +11,16 @@ use re_types::{
 };
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{
-    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
-    gpu_bridge::image_data_range_heuristic,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
+    VideoStreamCache, ViewerContext, gpu_bridge::image_data_range_heuristic,
+    video_stream_time_from_query,
 };
 
-use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
+use crate::{
+    blob::blob_preview_and_save_ui,
+    image::image_preview_ui,
+    video::{show_decoded_frame_info, video_stream_result_ui},
+};
 
 use super::DataUi;
 
@@ -152,8 +157,10 @@ impl DataUi for InstancePath {
                 .flatten()
                 .cloned()
                 .collect::<Vec<_>>();
+
             preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &components);
             preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
+            preview_if_video_stream_ui(ctx, ui, ui_layout, query, entity_path, &components);
         }
     }
 }
@@ -579,6 +586,38 @@ fn preview_single_blob(
     );
 
     Some(())
+}
+
+fn preview_if_video_stream_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+) {
+    if components
+        .iter()
+        .all(|(descr, _chunk)| descr != &archetypes::VideoStream::descriptor_sample())
+    {
+        return;
+    }
+
+    let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
+        c.entry(
+            ctx.recording(),
+            entity_path,
+            query.timeline(),
+            ctx.app_options().video_decoder_settings(),
+        )
+    });
+    video_stream_result_ui(ui, ui_layout, &video_stream_result);
+    if let Ok(video) = video_stream_result {
+        let video = video.read();
+        let time = video_stream_time_from_query(query);
+        let buffers = video.sample_buffers();
+        show_decoded_frame_info(ctx, ui, ui_layout, &video.video_renderer, time, &buffers);
+    }
 }
 
 /// Finds and deserializes the given component type if its descriptor matches the given archetype name.

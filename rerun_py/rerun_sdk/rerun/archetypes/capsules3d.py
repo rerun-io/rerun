@@ -93,6 +93,8 @@ class Capsules3D(Capsules3DExt, Archetype):
             rotation_axis_angles=None,
             quaternions=None,
             colors=None,
+            line_radii=None,
+            fill_mode=None,
             labels=None,
             show_labels=None,
             class_ids=None,
@@ -116,6 +118,8 @@ class Capsules3D(Capsules3DExt, Archetype):
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -145,6 +149,10 @@ class Capsules3D(Capsules3DExt, Archetype):
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         colors:
             Optional colors for the capsules.
+        line_radii:
+            Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the cylinders are drawn with lines or solid.
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
@@ -168,6 +176,8 @@ class Capsules3D(Capsules3DExt, Archetype):
                 "rotation_axis_angles": rotation_axis_angles,
                 "quaternions": quaternions,
                 "colors": colors,
+                "line_radii": line_radii,
+                "fill_mode": fill_mode,
                 "labels": labels,
                 "show_labels": show_labels,
                 "class_ids": class_ids,
@@ -197,6 +207,8 @@ class Capsules3D(Capsules3DExt, Archetype):
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -229,6 +241,10 @@ class Capsules3D(Capsules3DExt, Archetype):
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         colors:
             Optional colors for the capsules.
+        line_radii:
+            Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the cylinders are drawn with lines or solid.
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
@@ -252,6 +268,8 @@ class Capsules3D(Capsules3DExt, Archetype):
                 rotation_axis_angles=rotation_axis_angles,
                 quaternions=quaternions,
                 colors=colors,
+                line_radii=line_radii,
+                fill_mode=fill_mode,
                 labels=labels,
                 show_labels=show_labels,
                 class_ids=class_ids,
@@ -268,6 +286,8 @@ class Capsules3D(Capsules3DExt, Archetype):
             "rotation_axis_angles": rotation_axis_angles,
             "quaternions": quaternions,
             "colors": colors,
+            "line_radii": line_radii,
+            "fill_mode": fill_mode,
             "labels": labels,
             "show_labels": show_labels,
             "class_ids": class_ids,
@@ -359,6 +379,24 @@ class Capsules3D(Capsules3DExt, Archetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the capsules.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    line_radii: components.RadiusBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
+    )
+    # Optional radii for the lines used when the cylinder is rendered as a wireframe.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fill_mode: components.FillModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.FillModeBatch._converter,  # type: ignore[misc]
+    )
+    # Optionally choose whether the cylinders are drawn with lines or solid.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

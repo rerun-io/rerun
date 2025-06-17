@@ -42,13 +42,17 @@ pub struct PlayableVideoStream {
 }
 
 impl PlayableVideoStream {
-    pub fn sample_buffer_slices(&self) -> StableIndexDeque<&[u8]> {
+    pub fn sample_buffers(&self) -> StableIndexDeque<&[u8]> {
         StableIndexDeque::from_iter_with_offset(
             self.video_sample_buffers.min_index(),
             self.video_sample_buffers
                 .iter()
                 .map(|b| b.buffer.as_slice()),
         )
+    }
+
+    pub fn video_descr(&self) -> &re_video::VideoDataDescription {
+        self.video_renderer.data_descr()
     }
 }
 
