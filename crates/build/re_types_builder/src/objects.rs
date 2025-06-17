@@ -846,6 +846,15 @@ impl EnumIntegerType {
             Self::U64 => Type::UInt64,
         }
     }
+
+    pub fn format_value(&self, value: u64) -> String {
+        match self {
+            EnumIntegerType::U8 => format!("{}", value),
+            EnumIntegerType::U16 => format!("0x{:0X}", value as u16),
+            EnumIntegerType::U32 => format!("0x{:0X}", value as u32),
+            EnumIntegerType::U64 => format!("0x{:0X}", value),
+        }
+    }
 }
 
 /// Is this a struct, enum, or union?

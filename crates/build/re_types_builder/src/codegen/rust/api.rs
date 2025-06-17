@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    str::FromStr as _,
+};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -539,7 +542,12 @@ fn quote_enum(
         let name = format_ident!("{}", field.name);
 
         if let Some(enum_value) = field.enum_or_union_variant_value {
-            let quoted_enum = proc_macro2::Literal::u64_unsuffixed(enum_value);
+            let quoted_enum = proc_macro2::Literal::from_str(
+                &obj.enum_integer_type()
+                    .expect("enums must have an integer type")
+                    .format_value(enum_value),
+            )
+            .unwrap();
             let quoted_doc = quote_field_docs(reporter, objects, field);
 
             let default_attr = if field.attrs.has(ATTR_DEFAULT) {

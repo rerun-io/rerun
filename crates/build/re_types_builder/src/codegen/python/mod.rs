@@ -882,7 +882,14 @@ fn code_for_enum(
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for variant in &obj.fields {
-        let enum_value = variant.enum_or_union_variant_value.unwrap();
+        let enum_value = obj
+            .enum_integer_type()
+            .expect("enums must have an integer type")
+            .format_value(
+                variant
+                    .enum_or_union_variant_value
+                    .expect("enums fields must have values"),
+            );
 
         // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
         // or else `RGBA` would become `Rgba` and so on.

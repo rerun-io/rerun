@@ -3,7 +3,7 @@ mod forward_decl;
 mod includes;
 mod method;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr as _};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
@@ -1471,17 +1471,23 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let enum_value = obj_field.enum_or_union_variant_value.unwrap();
                 let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_ident(obj_field);
-
-                // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-                let arrow_type_index = Literal::usize_unsuffixed(enum_value as _);
+                let enum_value = proc_macro2::Literal::from_str(
+                    &obj.enum_integer_type()
+                        .expect("enums must have an integer type")
+                        .format_value(
+                            obj_field
+                                .enum_or_union_variant_value
+                                .expect("enums fields must have values"),
+                        ),
+                )
+                .unwrap();
 
                 quote! {
                     #NEWLINE_TOKEN
                     #docstring
-                    #field_name = #arrow_type_index
+                    #field_name = #enum_value
                 }
             })
             .collect_vec();

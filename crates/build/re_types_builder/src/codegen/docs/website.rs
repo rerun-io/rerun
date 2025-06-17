@@ -11,7 +11,7 @@ use itertools::Itertools as _;
 use crate::{
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
     codegen::{Target, autogen_warning, common::ExampleInfo},
-    objects::{EnumIntegerType, FieldKind, ViewReference},
+    objects::{FieldKind, ViewReference},
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -461,8 +461,11 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         let mut field_string = format!("#### `{}`", field.name);
 
         if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
-            if object.is_enum() && object.enum_integer_type() != Some(EnumIntegerType::U8) {
-                field_string.push_str(&format!(" = 0x{enum_or_union_variant_value:X}"));
+            if let Some(enum_integer_type) = object.enum_integer_type() {
+                field_string.push_str(&format!(
+                    " = {}",
+                    enum_integer_type.format_value(enum_or_union_variant_value)
+                ));
             } else {
                 field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
             }

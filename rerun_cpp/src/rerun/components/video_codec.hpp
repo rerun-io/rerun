@@ -39,7 +39,7 @@ namespace rerun::components {
         /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
         ///
         /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
-        H264 = 1635148593,
+        H264 = 0x61766331,
     };
 } // namespace rerun::components
 

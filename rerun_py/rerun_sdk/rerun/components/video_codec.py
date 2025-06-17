@@ -31,7 +31,7 @@ class VideoCodec(Enum):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    H264 = 1635148593
+    H264 = 0x61766331
     """
     Advanced Video Coding (AVC/H.264)
 
