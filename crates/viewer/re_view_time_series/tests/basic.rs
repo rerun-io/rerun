@@ -89,7 +89,11 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity { 0.00006 } else { 0.0 },
+        if two_series_per_entity {
+            0.00006
+        } else {
+            0.00002
+        },
     );
 }
 

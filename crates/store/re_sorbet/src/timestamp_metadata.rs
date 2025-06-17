@@ -4,13 +4,11 @@
 
 use crate::ArrowBatchMetadata;
 
-/// When was this batch last encoded into IPC bytes?
-/// Usually this is when the batch was last sent over gRPC.
-pub const KEY_TIMESTAMP_IPC_ENCODED: &str = "sorbet.timestamp_ipc_encoded";
+/// When was this batch sent by the SDK gRPC log sink?
+pub const KEY_TIMESTAMP_SDK_IPC_ENCODE: &str = "sorbet.timestamp_sdk_ipc_encoded";
 
-/// When was this batch last decoded from IPC bytes?
-/// Usually this is when the batch was last received over gRPC.
-pub const KEY_TIMESTAMP_IPC_DECODED: &str = "sorbet.timestamp_ipc_decoded";
+/// When was this batch last decoded from IPC bytes by the gRPC server (presumably in the viewer)?
+pub const KEY_TIMESTAMP_VIEWER_IPC_DECODED: &str = "sorbet.timestamp_viewer_ipc_decoded";
 
 /// We encode time as seconds since the Unix epoch,
 /// with nanosecond precision, e.g. `1700000000.012345678`.
@@ -53,46 +51,46 @@ fn test_timestamp_encoding() {
 /// Timestamps about this batch; used for latency measurements.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TimestampMetadata {
-    /// When was this batch last encoded into IPC bytes?
-    pub last_encoded_at: Option<web_time::SystemTime>,
+    /// When was this batch send by the SDK gRPC log sink?
+    pub grpc_encoded_at: Option<web_time::SystemTime>,
 
-    /// When was this batch last decoded from IPC bytes?
-    pub last_decoded_at: Option<web_time::SystemTime>,
+    /// When was this batch received and decoded by the viewer?
+    pub grpc_decoded_at: Option<web_time::SystemTime>,
 }
 
 impl TimestampMetadata {
     pub fn parse_record_batch_metadata(metadata: &ArrowBatchMetadata) -> Self {
-        let last_encoded_at = metadata
-            .get(KEY_TIMESTAMP_IPC_ENCODED)
+        let grpc_encoded_at = metadata
+            .get(KEY_TIMESTAMP_SDK_IPC_ENCODE)
             .and_then(|s| parse_timestamp(s.as_str()));
-        let last_decoded_at = metadata
-            .get(KEY_TIMESTAMP_IPC_DECODED)
+        let grpc_decoded_at = metadata
+            .get(KEY_TIMESTAMP_VIEWER_IPC_DECODED)
             .and_then(|s| parse_timestamp(s.as_str()));
 
         Self {
-            last_encoded_at,
-            last_decoded_at,
+            grpc_encoded_at,
+            grpc_decoded_at,
         }
     }
 
     pub fn to_metadata(&self) -> impl Iterator<Item = (String, String)> {
         let Self {
-            last_encoded_at,
-            last_decoded_at,
+            grpc_encoded_at,
+            grpc_decoded_at,
         } = self;
 
         let mut metadata = Vec::new();
 
-        if let Some(last_encoded_at) = last_encoded_at {
+        if let Some(last_encoded_at) = grpc_encoded_at {
             metadata.push((
-                KEY_TIMESTAMP_IPC_ENCODED.to_owned(),
+                KEY_TIMESTAMP_SDK_IPC_ENCODE.to_owned(),
                 encode_timestamp(*last_encoded_at),
             ));
         }
 
-        if let Some(last_decoded_at) = last_decoded_at {
+        if let Some(last_decoded_at) = grpc_decoded_at {
             metadata.push((
-                KEY_TIMESTAMP_IPC_DECODED.to_owned(),
+                KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
                 encode_timestamp(*last_decoded_at),
             ));
         }
