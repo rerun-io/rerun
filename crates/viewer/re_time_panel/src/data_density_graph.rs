@@ -422,7 +422,7 @@ pub fn data_density_graph_ui(
             if ui.ctx().dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
                 //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                Tooltip::new(
+                Tooltip::always_open(
                     ui.ctx().clone(),
                     ui.layer_id(),
                     egui::Id::new("data_tooltip"),
