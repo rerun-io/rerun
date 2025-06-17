@@ -23697,6 +23697,38 @@ packages:
   - numpy>=1.17.3 ; python_full_version >= '3.8'
   - numpy>=1.19.3 ; python_full_version >= '3.9'
   requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/a7/9e/7110d2c5d543ab03b9581dbb1f8e2429863e44e0c9b4960b766f230c1279/opencv_contrib_python-4.10.0.84-cp37-abi3-win_amd64.whl
+  name: opencv-contrib-python
+  version: 4.10.0.84
+  sha256: 47ec3160dae75f70e099b286d1a2e086d20dac8b06e759f60eaf867e6bdecba7
+  requires_dist:
+  - numpy>=1.13.3 ; python_full_version < '3.7'
+  - numpy>=1.21.0 ; python_full_version < '3.10' and platform_machine == 'arm64' and sys_platform == 'darwin'
+  - numpy>=1.21.2 ; python_full_version >= '3.10'
+  - numpy>=1.21.4 ; python_full_version >= '3.10' and sys_platform == 'darwin'
+  - numpy>=1.23.5 ; python_full_version >= '3.11'
+  - numpy>=1.26.0 ; python_full_version >= '3.12'
+  - numpy>=1.19.3 ; python_full_version >= '3.6' and platform_machine == 'aarch64' and sys_platform == 'linux'
+  - numpy>=1.17.0 ; python_full_version >= '3.7'
+  - numpy>=1.17.3 ; python_full_version >= '3.8'
+  - numpy>=1.19.3 ; python_full_version >= '3.9'
+  requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/b0/e0/8f5d065ebb2e5941d289c5f653f944318f9e418bc5167bc6a346ab5e0f6a/opencv_contrib_python-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: opencv-contrib-python
+  version: 4.10.0.84
+  sha256: a261223db41f6e512d76deaf21c8fcfb4fbbcbc2de62ca7f74a05f2c9ee489ef
+  requires_dist:
+  - numpy>=1.13.3 ; python_full_version < '3.7'
+  - numpy>=1.21.0 ; python_full_version < '3.10' and platform_machine == 'arm64' and sys_platform == 'darwin'
+  - numpy>=1.21.2 ; python_full_version >= '3.10'
+  - numpy>=1.21.4 ; python_full_version >= '3.10' and sys_platform == 'darwin'
+  - numpy>=1.23.5 ; python_full_version >= '3.11'
+  - numpy>=1.26.0 ; python_full_version >= '3.12'
+  - numpy>=1.19.3 ; python_full_version >= '3.6' and platform_machine == 'aarch64' and sys_platform == 'linux'
+  - numpy>=1.17.0 ; python_full_version >= '3.7'
+  - numpy>=1.17.3 ; python_full_version >= '3.8'
+  - numpy>=1.19.3 ; python_full_version >= '3.9'
+  requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/b0/e0/8f5d065ebb2e5941d289c5f653f944318f9e418bc5167bc6a346ab5e0f6a/opencv_contrib_python-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: opencv-contrib-python
   version: 4.10.0.84
@@ -24753,6 +24785,76 @@ packages:
   name: polars
   version: 1.15.0
   sha256: e4602b715dc58b84e38102c9ffcc7738f078373415f55acf0760204443d62371
+  requires_dist:
+  - numpy>=1.16.0 ; extra == 'numpy'
+  - pandas ; extra == 'pandas'
+  - polars[pyarrow] ; extra == 'pandas'
+  - pyarrow>=7.0.0 ; extra == 'pyarrow'
+  - pydantic ; extra == 'pydantic'
+  - fastexcel>=0.9 ; extra == 'calamine'
+  - openpyxl>=3.0.0 ; extra == 'openpyxl'
+  - xlsx2csv>=0.8.0 ; extra == 'xlsx2csv'
+  - xlsxwriter ; extra == 'xlsxwriter'
+  - polars[calamine,openpyxl,xlsx2csv,xlsxwriter] ; extra == 'excel'
+  - adbc-driver-manager[dbapi] ; extra == 'adbc'
+  - adbc-driver-sqlite[dbapi] ; extra == 'adbc'
+  - connectorx>=0.3.2 ; extra == 'connectorx'
+  - sqlalchemy ; extra == 'sqlalchemy'
+  - polars[pandas] ; extra == 'sqlalchemy'
+  - polars[adbc,connectorx,sqlalchemy] ; extra == 'database'
+  - nest-asyncio ; extra == 'database'
+  - fsspec ; extra == 'fsspec'
+  - deltalake>=0.15.0 ; extra == 'deltalake'
+  - pyiceberg>=0.5.0 ; extra == 'iceberg'
+  - gevent ; extra == 'async'
+  - cloudpickle ; extra == 'cloudpickle'
+  - matplotlib ; extra == 'graph'
+  - altair>=5.4.0 ; extra == 'plot'
+  - great-tables>=0.8.0 ; extra == 'style'
+  - backports-zoneinfo ; python_full_version < '3.9' and extra == 'timezone'
+  - tzdata ; sys_platform == 'win32' and extra == 'timezone'
+  - cudf-polars-cu12 ; extra == 'gpu'
+  - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/b9/c5/873558da23dafedda97e248238d93efae72041e09dfa134110277de4aa66/polars-1.15.0-cp39-abi3-win_amd64.whl
+  name: polars
+  version: 1.15.0
+  sha256: e4602b715dc58b84e38102c9ffcc7738f078373415f55acf0760204443d62371
+  requires_dist:
+  - numpy>=1.16.0 ; extra == 'numpy'
+  - pandas ; extra == 'pandas'
+  - polars[pyarrow] ; extra == 'pandas'
+  - pyarrow>=7.0.0 ; extra == 'pyarrow'
+  - pydantic ; extra == 'pydantic'
+  - fastexcel>=0.9 ; extra == 'calamine'
+  - openpyxl>=3.0.0 ; extra == 'openpyxl'
+  - xlsx2csv>=0.8.0 ; extra == 'xlsx2csv'
+  - xlsxwriter ; extra == 'xlsxwriter'
+  - polars[calamine,openpyxl,xlsx2csv,xlsxwriter] ; extra == 'excel'
+  - adbc-driver-manager[dbapi] ; extra == 'adbc'
+  - adbc-driver-sqlite[dbapi] ; extra == 'adbc'
+  - connectorx>=0.3.2 ; extra == 'connectorx'
+  - sqlalchemy ; extra == 'sqlalchemy'
+  - polars[pandas] ; extra == 'sqlalchemy'
+  - polars[adbc,connectorx,sqlalchemy] ; extra == 'database'
+  - nest-asyncio ; extra == 'database'
+  - fsspec ; extra == 'fsspec'
+  - deltalake>=0.15.0 ; extra == 'deltalake'
+  - pyiceberg>=0.5.0 ; extra == 'iceberg'
+  - gevent ; extra == 'async'
+  - cloudpickle ; extra == 'cloudpickle'
+  - matplotlib ; extra == 'graph'
+  - altair>=5.4.0 ; extra == 'plot'
+  - great-tables>=0.8.0 ; extra == 'style'
+  - backports-zoneinfo ; python_full_version < '3.9' and extra == 'timezone'
+  - tzdata ; sys_platform == 'win32' and extra == 'timezone'
+  - cudf-polars-cu12 ; extra == 'gpu'
+  - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/e3/70/67acead083a0aa6d2717fb35637ba7967d37f4a002527f3d29dc96fb445a/polars-1.15.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: polars
+  version: 1.15.0
+  sha256: c6686bc8acaaed24f337ae1623536210370ab4d3099c1dbb79ccfc9ec083914a
   requires_dist:
   - numpy>=1.16.0 ; extra == 'numpy'
   - pandas ; extra == 'pandas'
@@ -26633,7 +26735,7 @@ packages:
 - pypi: ./rerun_notebook
   name: rerun-notebook
   version: 0.24.0a1+dev
-  sha256: 49b71001ac9a2e8ea7a9b19e0a8c369317faf2adc3b866f05887752211e2e668
+  sha256: 6f36c1848bb89622aa53fd747da3b12721c9b387f75bc38ec6acd7aee75c6e1d
   requires_dist:
   - anywidget
   - jupyter-ui-poll

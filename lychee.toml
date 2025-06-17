@@ -116,6 +116,7 @@ exclude = [
   'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
+  'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
   'http://foo.zip',
