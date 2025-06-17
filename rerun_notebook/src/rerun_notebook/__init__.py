@@ -82,9 +82,10 @@ def _inline_widget() -> str:
     return new Response(buffer, {{ "headers": {{ "Content-Type": "application/wasm" }} }});
     """
 
-    inline_marker = "//!<INLINE-MARKER>"
-    inline_start = js.find(inline_marker) + len(inline_marker)
-    inline_end = js.find(inline_marker, inline_start)
+    inline_marker_open = "//!<INLINE-MARKER-OPEN>"
+    inline_marker_close = "//!<INLINE-MARKER-CLOSE>"
+    inline_start = js.find(inline_marker_open) + len(inline_marker_open)
+    inline_end = js.find(inline_marker_close, inline_start)
     js = js[:inline_start] + fetch_viewer_wasm + js[inline_end:]
 
     return js

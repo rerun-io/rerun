@@ -8,13 +8,13 @@ async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bi
 }
 
 async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
-  //!<INLINE-MARKER>
+  //!<INLINE-MARKER-OPEN>
   if (base_url) {
     return fetch(new URL("./re_viewer_bg.wasm", base_url))
   } else {
     return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
   }
-  //!<INLINE-MARKER>
+  //!<INLINE-MARKER-CLOSE>
 }
 
 async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
