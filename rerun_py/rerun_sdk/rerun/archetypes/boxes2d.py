@@ -218,14 +218,14 @@ class Boxes2D(Boxes2DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "colors": colors,
-            "radii": radii,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
+            "Boxes2D:half_sizes": half_sizes,
+            "Boxes2D:centers": centers,
+            "Boxes2D:colors": colors,
+            "Boxes2D:radii": radii,
+            "Boxes2D:labels": labels,
+            "Boxes2D:show_labels": show_labels,
+            "Boxes2D:draw_order": draw_order,
+            "Boxes2D:class_ids": class_ids,
         }
         columns = []
 

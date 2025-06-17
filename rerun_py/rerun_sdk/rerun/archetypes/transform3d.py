@@ -432,13 +432,13 @@ class Transform3D(Transform3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "translation": translation,
-            "rotation_axis_angle": rotation_axis_angle,
-            "quaternion": quaternion,
-            "scale": scale,
-            "mat3x3": mat3x3,
-            "relation": relation,
-            "axis_length": axis_length,
+            "Transform3D:translation": translation,
+            "Transform3D:rotation_axis_angle": rotation_axis_angle,
+            "Transform3D:quaternion": quaternion,
+            "Transform3D:scale": scale,
+            "Transform3D:mat3x3": mat3x3,
+            "Transform3D:relation": relation,
+            "Transform3D:axis_length": axis_length,
         }
         columns = []
 

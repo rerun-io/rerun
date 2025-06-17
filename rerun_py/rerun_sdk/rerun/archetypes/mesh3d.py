@@ -277,15 +277,15 @@ class Mesh3D(Mesh3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "vertex_positions": vertex_positions,
-            "triangle_indices": triangle_indices,
-            "vertex_normals": vertex_normals,
-            "vertex_colors": vertex_colors,
-            "vertex_texcoords": vertex_texcoords,
-            "albedo_factor": albedo_factor,
-            "albedo_texture_buffer": albedo_texture_buffer,
-            "albedo_texture_format": albedo_texture_format,
-            "class_ids": class_ids,
+            "Mesh3D:vertex_positions": vertex_positions,
+            "Mesh3D:triangle_indices": triangle_indices,
+            "Mesh3D:vertex_normals": vertex_normals,
+            "Mesh3D:vertex_colors": vertex_colors,
+            "Mesh3D:vertex_texcoords": vertex_texcoords,
+            "Mesh3D:albedo_factor": albedo_factor,
+            "Mesh3D:albedo_texture_buffer": albedo_texture_buffer,
+            "Mesh3D:albedo_texture_format": albedo_texture_format,
+            "Mesh3D:class_ids": class_ids,
         }
         columns = []
 

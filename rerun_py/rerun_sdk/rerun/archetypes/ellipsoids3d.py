@@ -260,16 +260,16 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "line_radii": line_radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Ellipsoids3D:half_sizes": half_sizes,
+            "Ellipsoids3D:centers": centers,
+            "Ellipsoids3D:rotation_axis_angles": rotation_axis_angles,
+            "Ellipsoids3D:quaternions": quaternions,
+            "Ellipsoids3D:colors": colors,
+            "Ellipsoids3D:line_radii": line_radii,
+            "Ellipsoids3D:fill_mode": fill_mode,
+            "Ellipsoids3D:labels": labels,
+            "Ellipsoids3D:show_labels": show_labels,
+            "Ellipsoids3D:class_ids": class_ids,
         }
         columns = []
 

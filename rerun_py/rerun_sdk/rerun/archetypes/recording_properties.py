@@ -144,7 +144,7 @@ class RecordingProperties(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"start_time": start_time, "name": name}
+        kwargs = {"RecordingProperties:start_time": start_time, "RecordingProperties:name": name}
         columns = []
 
         for batch in batches:

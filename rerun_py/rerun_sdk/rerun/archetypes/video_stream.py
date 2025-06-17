@@ -308,7 +308,7 @@ class VideoStream(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"codec": codec, "sample": sample, "draw_order": draw_order}
+        kwargs = {"VideoStream:codec": codec, "VideoStream:sample": sample, "VideoStream:draw_order": draw_order}
         columns = []
 
         for batch in batches:

@@ -161,7 +161,7 @@ class BarChart(BarChartExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"values": values, "color": color}
+        kwargs = {"BarChart:values": values, "BarChart:color": color}
         columns = []
 
         for batch in batches:

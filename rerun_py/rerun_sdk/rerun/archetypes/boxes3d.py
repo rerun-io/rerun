@@ -259,16 +259,16 @@ class Boxes3D(Boxes3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "radii": radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Boxes3D:half_sizes": half_sizes,
+            "Boxes3D:centers": centers,
+            "Boxes3D:rotation_axis_angles": rotation_axis_angles,
+            "Boxes3D:quaternions": quaternions,
+            "Boxes3D:colors": colors,
+            "Boxes3D:radii": radii,
+            "Boxes3D:fill_mode": fill_mode,
+            "Boxes3D:labels": labels,
+            "Boxes3D:show_labels": show_labels,
+            "Boxes3D:class_ids": class_ids,
         }
         columns = []
 

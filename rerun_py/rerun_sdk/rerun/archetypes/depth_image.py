@@ -259,13 +259,13 @@ class DepthImage(DepthImageExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "buffer": buffer,
-            "format": format,
-            "meter": meter,
-            "colormap": colormap,
-            "depth_range": depth_range,
-            "point_fill_ratio": point_fill_ratio,
-            "draw_order": draw_order,
+            "DepthImage:buffer": buffer,
+            "DepthImage:format": format,
+            "DepthImage:meter": meter,
+            "DepthImage:colormap": colormap,
+            "DepthImage:depth_range": depth_range,
+            "DepthImage:point_fill_ratio": point_fill_ratio,
+            "DepthImage:draw_order": draw_order,
         }
         columns = []
 

@@ -235,14 +235,14 @@ class Arrows2D(Arrows2DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "vectors": vectors,
-            "origins": origins,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
+            "Arrows2D:vectors": vectors,
+            "Arrows2D:origins": origins,
+            "Arrows2D:radii": radii,
+            "Arrows2D:colors": colors,
+            "Arrows2D:labels": labels,
+            "Arrows2D:show_labels": show_labels,
+            "Arrows2D:draw_order": draw_order,
+            "Arrows2D:class_ids": class_ids,
         }
         columns = []
 

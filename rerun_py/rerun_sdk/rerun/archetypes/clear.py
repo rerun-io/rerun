@@ -136,7 +136,7 @@ class Clear(ClearExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"is_recursive": is_recursive}
+        kwargs = {"Clear:is_recursive": is_recursive}
         columns = []
 
         for batch in batches:

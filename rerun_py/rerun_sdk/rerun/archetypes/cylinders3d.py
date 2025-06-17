@@ -277,17 +277,17 @@ class Cylinders3D(Cylinders3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "lengths": lengths,
-            "radii": radii,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "line_radii": line_radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Cylinders3D:lengths": lengths,
+            "Cylinders3D:radii": radii,
+            "Cylinders3D:centers": centers,
+            "Cylinders3D:rotation_axis_angles": rotation_axis_angles,
+            "Cylinders3D:quaternions": quaternions,
+            "Cylinders3D:colors": colors,
+            "Cylinders3D:line_radii": line_radii,
+            "Cylinders3D:fill_mode": fill_mode,
+            "Cylinders3D:labels": labels,
+            "Cylinders3D:show_labels": show_labels,
+            "Cylinders3D:class_ids": class_ids,
         }
         columns = []
 

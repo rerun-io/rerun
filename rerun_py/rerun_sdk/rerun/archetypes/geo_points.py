@@ -180,7 +180,12 @@ class GeoPoints(GeoPointsExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"positions": positions, "radii": radii, "colors": colors, "class_ids": class_ids}
+        kwargs = {
+            "GeoPoints:positions": positions,
+            "GeoPoints:radii": radii,
+            "GeoPoints:colors": colors,
+            "GeoPoints:class_ids": class_ids,
+        }
         columns = []
 
         for batch in batches:

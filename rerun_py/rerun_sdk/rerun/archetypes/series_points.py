@@ -284,11 +284,11 @@ class SeriesPoints(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "colors": colors,
-            "markers": markers,
-            "names": names,
-            "visible_series": visible_series,
-            "marker_sizes": marker_sizes,
+            "SeriesPoints:colors": colors,
+            "SeriesPoints:markers": markers,
+            "SeriesPoints:names": names,
+            "SeriesPoints:visible_series": visible_series,
+            "SeriesPoints:marker_sizes": marker_sizes,
         }
         columns = []
 

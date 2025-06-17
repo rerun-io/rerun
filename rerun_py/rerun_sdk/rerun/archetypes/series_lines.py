@@ -281,11 +281,11 @@ class SeriesLines(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "colors": colors,
-            "widths": widths,
-            "names": names,
-            "visible_series": visible_series,
-            "aggregation_policy": aggregation_policy,
+            "SeriesLines:colors": colors,
+            "SeriesLines:widths": widths,
+            "SeriesLines:names": names,
+            "SeriesLines:visible_series": visible_series,
+            "SeriesLines:aggregation_policy": aggregation_policy,
         }
         columns = []
 

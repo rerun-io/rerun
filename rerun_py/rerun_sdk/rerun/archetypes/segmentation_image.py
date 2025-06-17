@@ -185,7 +185,12 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"buffer": buffer, "format": format, "opacity": opacity, "draw_order": draw_order}
+        kwargs = {
+            "SegmentationImage:buffer": buffer,
+            "SegmentationImage:format": format,
+            "SegmentationImage:opacity": opacity,
+            "SegmentationImage:draw_order": draw_order,
+        }
         columns = []
 
         for batch in batches:

@@ -259,10 +259,10 @@ class Pinhole(PinholeExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "image_from_camera": image_from_camera,
-            "resolution": resolution,
-            "camera_xyz": camera_xyz,
-            "image_plane_distance": image_plane_distance,
+            "Pinhole:image_from_camera": image_from_camera,
+            "Pinhole:resolution": resolution,
+            "Pinhole:camera_xyz": camera_xyz,
+            "Pinhole:image_plane_distance": image_plane_distance,
         }
         columns = []
 

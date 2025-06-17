@@ -167,7 +167,7 @@ class AnnotationContext(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"context": context}
+        kwargs = {"AnnotationContext:context": context}
         columns = []
 
         for batch in batches:

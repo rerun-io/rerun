@@ -2535,6 +2535,17 @@ fn quote_kwargs(obj: &Object) -> String {
         .join(",\n")
 }
 
+fn quote_component_field_mapping(obj: &Object) -> String {
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{}:{field_name}': {field_name}", obj.name)
+        })
+        .collect_vec()
+        .join(",\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -2652,7 +2663,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    let kwargs = quote_kwargs(obj);
+    let kwargs = quote_component_field_mapping(obj);
     let kwargs = indent::indent_by(12, kwargs);
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass

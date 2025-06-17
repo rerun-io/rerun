@@ -237,12 +237,12 @@ class GraphNodes(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "node_ids": node_ids,
-            "positions": positions,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "radii": radii,
+            "GraphNodes:node_ids": node_ids,
+            "GraphNodes:positions": positions,
+            "GraphNodes:colors": colors,
+            "GraphNodes:labels": labels,
+            "GraphNodes:show_labels": show_labels,
+            "GraphNodes:radii": radii,
         }
         columns = []
 

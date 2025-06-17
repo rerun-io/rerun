@@ -181,7 +181,12 @@ class EncodedImage(EncodedImageExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"blob": blob, "media_type": media_type, "opacity": opacity, "draw_order": draw_order}
+        kwargs = {
+            "EncodedImage:blob": blob,
+            "EncodedImage:media_type": media_type,
+            "EncodedImage:opacity": opacity,
+            "EncodedImage:draw_order": draw_order,
+        }
         columns = []
 
         for batch in batches:

@@ -249,7 +249,11 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"timestamp": timestamp, "video_reference": video_reference, "draw_order": draw_order}
+        kwargs = {
+            "VideoFrameReference:timestamp": timestamp,
+            "VideoFrameReference:video_reference": video_reference,
+            "VideoFrameReference:draw_order": draw_order,
+        }
         columns = []
 
         for batch in batches:

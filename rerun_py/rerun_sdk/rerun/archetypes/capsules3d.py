@@ -280,17 +280,17 @@ class Capsules3D(Capsules3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "lengths": lengths,
-            "radii": radii,
-            "translations": translations,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "line_radii": line_radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Capsules3D:lengths": lengths,
+            "Capsules3D:radii": radii,
+            "Capsules3D:translations": translations,
+            "Capsules3D:rotation_axis_angles": rotation_axis_angles,
+            "Capsules3D:quaternions": quaternions,
+            "Capsules3D:colors": colors,
+            "Capsules3D:line_radii": line_radii,
+            "Capsules3D:fill_mode": fill_mode,
+            "Capsules3D:labels": labels,
+            "Capsules3D:show_labels": show_labels,
+            "Capsules3D:class_ids": class_ids,
         }
         columns = []
 

@@ -337,13 +337,13 @@ class Points3D(Points3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "positions": positions,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
-            "keypoint_ids": keypoint_ids,
+            "Points3D:positions": positions,
+            "Points3D:radii": radii,
+            "Points3D:colors": colors,
+            "Points3D:labels": labels,
+            "Points3D:show_labels": show_labels,
+            "Points3D:class_ids": class_ids,
+            "Points3D:keypoint_ids": keypoint_ids,
         }
         columns = []
 

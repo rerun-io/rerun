@@ -221,7 +221,7 @@ class TextDocument(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"text": text, "media_type": media_type}
+        kwargs = {"TextDocument:text": text, "TextDocument:media_type": media_type}
         columns = []
 
         for batch in batches:

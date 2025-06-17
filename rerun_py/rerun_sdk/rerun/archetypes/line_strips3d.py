@@ -306,12 +306,12 @@ class LineStrips3D(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "strips": strips,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "LineStrips3D:strips": strips,
+            "LineStrips3D:radii": radii,
+            "LineStrips3D:colors": colors,
+            "LineStrips3D:labels": labels,
+            "LineStrips3D:show_labels": show_labels,
+            "LineStrips3D:class_ids": class_ids,
         }
         columns = []
 

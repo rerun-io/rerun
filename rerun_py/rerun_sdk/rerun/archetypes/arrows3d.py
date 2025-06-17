@@ -222,13 +222,13 @@ class Arrows3D(Arrows3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "vectors": vectors,
-            "origins": origins,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Arrows3D:vectors": vectors,
+            "Arrows3D:origins": origins,
+            "Arrows3D:radii": radii,
+            "Arrows3D:colors": colors,
+            "Arrows3D:labels": labels,
+            "Arrows3D:show_labels": show_labels,
+            "Arrows3D:class_ids": class_ids,
         }
         columns = []
 

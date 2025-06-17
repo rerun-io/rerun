@@ -318,13 +318,13 @@ class LineStrips2D(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "strips": strips,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
+            "LineStrips2D:strips": strips,
+            "LineStrips2D:radii": radii,
+            "LineStrips2D:colors": colors,
+            "LineStrips2D:labels": labels,
+            "LineStrips2D:show_labels": show_labels,
+            "LineStrips2D:draw_order": draw_order,
+            "LineStrips2D:class_ids": class_ids,
         }
         columns = []
 

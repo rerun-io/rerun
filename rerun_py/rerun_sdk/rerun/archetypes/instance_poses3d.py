@@ -237,11 +237,11 @@ class InstancePoses3D(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "translations": translations,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "scales": scales,
-            "mat3x3": mat3x3,
+            "InstancePoses3D:translations": translations,
+            "InstancePoses3D:rotation_axis_angles": rotation_axis_angles,
+            "InstancePoses3D:quaternions": quaternions,
+            "InstancePoses3D:scales": scales,
+            "InstancePoses3D:mat3x3": mat3x3,
         }
         columns = []
 

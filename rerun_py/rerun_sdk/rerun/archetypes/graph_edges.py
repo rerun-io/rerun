@@ -177,7 +177,7 @@ class GraphEdges(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"edges": edges, "graph_type": graph_type}
+        kwargs = {"GraphEdges:edges": edges, "GraphEdges:graph_type": graph_type}
         columns = []
 
         for batch in batches:

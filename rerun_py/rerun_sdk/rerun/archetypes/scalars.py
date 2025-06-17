@@ -191,7 +191,7 @@ class Scalars(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"scalars": scalars}
+        kwargs = {"Scalars:scalars": scalars}
         columns = []
 
         for batch in batches:

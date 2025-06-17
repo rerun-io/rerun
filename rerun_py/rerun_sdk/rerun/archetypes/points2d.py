@@ -292,14 +292,14 @@ class Points2D(Points2DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "positions": positions,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
-            "keypoint_ids": keypoint_ids,
+            "Points2D:positions": positions,
+            "Points2D:radii": radii,
+            "Points2D:colors": colors,
+            "Points2D:labels": labels,
+            "Points2D:show_labels": show_labels,
+            "Points2D:draw_order": draw_order,
+            "Points2D:class_ids": class_ids,
+            "Points2D:keypoint_ids": keypoint_ids,
         }
         columns = []
 
