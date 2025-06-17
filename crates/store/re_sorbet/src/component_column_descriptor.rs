@@ -265,7 +265,12 @@ impl ComponentColumnDescriptor {
         self.component_descriptor().display_name()
     }
 
-    fn column_name_impl(&self, batch_type: BatchType, short_archetype: bool) -> String {
+    fn column_name_impl(
+        &self,
+        batch_type: BatchType,
+        short_archetype: bool,
+        skip_recording_properties_prefix: bool,
+    ) -> String {
         self.sanity_check();
 
         match batch_type {
@@ -276,16 +281,25 @@ impl ComponentColumnDescriptor {
             BatchType::Dataframe => {
                 // Each column can be of a different entity
                 match self.archetype_name {
-                    Some(archetype_name) => format!(
-                        "{}:{}:{}",
-                        self.entity_path,
-                        if short_archetype {
-                            archetype_name.short_name()
+                    Some(archetype_name) => {
+                        if skip_recording_properties_prefix
+                            && archetype_name.full_name() == "rerun.archetypes.RecordingProperties"
+                            && self.entity_path == EntityPath::recording_properties()
+                        {
+                            self.archetype_field_name.to_string()
                         } else {
-                            archetype_name.full_name()
-                        },
-                        self.archetype_field_name
-                    ),
+                            format!(
+                                "{}:{}:{}",
+                                self.entity_path,
+                                if short_archetype {
+                                    archetype_name.short_name()
+                                } else {
+                                    archetype_name.full_name()
+                                },
+                                self.archetype_field_name
+                            )
+                        }
+                    }
                     None => format!("{}:{}", self.entity_path, self.archetype_field_name),
                 }
             }
@@ -294,12 +308,16 @@ impl ComponentColumnDescriptor {
 
     /// Uses short [`ArchetypeName`]s, if present.
     pub fn column_name(&self, batch_type: BatchType) -> String {
-        self.column_name_impl(batch_type, true)
+        self.column_name_impl(batch_type, true, false)
     }
 
     /// Uses fully-qualified [`ArchetypeName`]s, if present.
     pub fn column_name_qualified(&self, batch_type: BatchType) -> String {
-        self.column_name_impl(batch_type, false)
+        self.column_name_impl(batch_type, false, false)
+    }
+
+    pub fn column_name_without_recording_properties_prefix(&self, batch_type: BatchType) -> String {
+        self.column_name_impl(batch_type, true, true)
     }
 
     #[inline]

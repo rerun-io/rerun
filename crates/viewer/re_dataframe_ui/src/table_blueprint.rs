@@ -142,17 +142,13 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
         ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
 
         ColumnDescriptorRef::Component(desc) => {
-            let name = if desc.entity_path == EntityPath::root() {
+            if desc.entity_path == EntityPath::root() {
                 // In most case, user tables don't have any entities, so we filter out the root entity
                 // noise in column names.
-                desc.column_name(BatchType::Chunk)
+                desc.column_name_without_recording_properties_prefix(BatchType::Chunk)
             } else {
-                desc.column_name(BatchType::Dataframe)
-            };
-
-            name.strip_prefix("/__properties/recording:RecordingProperties:")
-                .map(|s| s.to_owned())
-                .unwrap_or(name)
+                desc.column_name_without_recording_properties_prefix(BatchType::Dataframe)
+            }
         }
     }
 }
