@@ -257,8 +257,8 @@ impl ComponentColumnDescriptor {
     }
 
     /// What we show in the UI
-    pub fn display_name(&self) -> String {
-        self.component_descriptor().display_name()
+    pub fn display_name(&self) -> &str {
+        self.component.as_str()
     }
 
     fn column_name_impl(&self, batch_type: BatchType, short_archetype: bool) -> String {
@@ -267,7 +267,7 @@ impl ComponentColumnDescriptor {
         match batch_type {
             BatchType::Chunk => {
                 // All columns are of the same entity
-                self.component_descriptor().display_name()
+                self.component_descriptor().display_name().to_owned()
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
@@ -280,7 +280,7 @@ impl ComponentColumnDescriptor {
                         } else {
                             archetype_name.full_name()
                         },
-                        self.component
+                        self.component_descriptor().archetype_field_name()
                     ),
                     None => format!("{}:{}", self.entity_path, self.component),
                 }

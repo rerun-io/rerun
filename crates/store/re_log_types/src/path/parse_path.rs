@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
+use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentType};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
@@ -103,6 +103,7 @@ impl std::str::FromStr for DataPath {
                 if let Some(&archetype_name) =
                     component_descriptor_tokens.get(archetype_name_delimiter - 1)
                 {
+                    // TODO: This won't fly with the new colon format!
                     if archetype_name.contains('.') {
                         Some(archetype_name.to_owned())
                     } else {
@@ -141,11 +142,17 @@ impl std::str::FromStr for DataPath {
                 );
             }
 
-            let component =
+            let field =
                 join(&component_descriptor_tokens[component_tokens_start..component_tokens_end]);
+
+            let archetype_name = archetype_name.map(ArchetypeName::from);
+
             component_descriptor = Some(ComponentDescriptor {
-                component: ComponentIdentifier::from(component),
-                archetype_name: archetype_name.map(ArchetypeName::from),
+                component: archetype_name
+                    .as_ref()
+                    .map(|archetype_name| archetype_name.with_field(&field))
+                    .unwrap_or_else(|| field.into()),
+                archetype_name,
                 component_type: component_type.map(ComponentType::from),
             });
 

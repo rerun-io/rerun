@@ -80,7 +80,7 @@ impl ColumnDescriptor {
         match self {
             Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.display_name(),
+            Self::Component(descr) => descr.display_name().to_owned(),
         }
     }
 

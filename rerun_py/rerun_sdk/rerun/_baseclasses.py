@@ -227,7 +227,7 @@ class Archetype(AsComponents):
 
     @classmethod
     def archetype_short_name(cls) -> str:
-        return cls.archetype_name().rsplit('.', 1)[-1]
+        return cls.archetype_name().rsplit(".", 1)[-1]
 
     @classmethod
     def indicator(cls) -> DescribedComponentBatch:

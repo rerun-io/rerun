@@ -320,7 +320,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 let header_content = |ui: &mut egui::Ui| {
                     let text = egui::RichText::new(
                         if let ColumnDescriptor::Component(component) = column {
-                            component.component.to_string()
+                            component
+                                .component_descriptor()
+                                .archetype_field_name()
+                                .to_string()
                         } else {
                             column.display_name()
                         },

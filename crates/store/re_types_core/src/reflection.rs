@@ -280,8 +280,7 @@ impl ArchetypeFieldReflection {
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
             component_type: Some(self.component_type),
-            // TODO(#9978): Combine archetype and field name here.
-            component: self.name.into(),
+            component: format!("{}:{}", archetype_name.short_name(), self.name).into(),
             archetype_name: Some(archetype_name),
         }
     }

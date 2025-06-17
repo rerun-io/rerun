@@ -31,32 +31,35 @@ impl MyPoints {
     }
 
     pub fn descriptor_points() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            component: "points".into(),
+            archetype_name: Some(archetype_name),
+            component: archetype_name.with_field("points"),
             component_type: Some(MyPoint::name()),
         }
     }
 
     pub fn descriptor_colors() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            component: "colors".into(),
+            archetype_name: Some(archetype_name),
+            component: archetype_name.with_field("colors"),
             component_type: Some(MyColor::name()),
         }
     }
 
     pub fn descriptor_labels() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            component: "labels".into(),
+            archetype_name: Some(archetype_name),
+            component: archetype_name.with_field("labels"),
             component_type: Some(MyLabel::name()),
         }
     }
 
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
+            archetype_name: None,
             component: "rerun.components.MyPointsIndicator".into(),
             component_type: None,
         }

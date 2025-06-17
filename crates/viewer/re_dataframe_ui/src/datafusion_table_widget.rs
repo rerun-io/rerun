@@ -571,8 +571,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
-            // TODO(#9978): Extract this from the descriptor.
-            header_property_ui(ui, "Component", component);
+            header_property_ui(
+                ui,
+                "Archetype field",
+                desc.component_descriptor().archetype_field_name(),
+            );
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

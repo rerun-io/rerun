@@ -52,10 +52,10 @@ fn schema() -> anyhow::Result<()> {
             .collect::<Vec<_>>(),
         // The following should be in lexicographical order!
         vec![
+            MyPoints::descriptor_indicator(),
             MyPoints::descriptor_colors(),
             MyPoints::descriptor_labels(),
             MyPoints::descriptor_points(),
-            MyPoints::descriptor_indicator(),
         ]
     );
 

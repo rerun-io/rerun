@@ -139,6 +139,12 @@ re_string_interner::declare_new_type!(
 );
 
 impl ArchetypeName {
+    /// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
+    #[inline]
+    pub fn with_field(&self, field_name: impl AsRef<str>) -> ComponentIdentifier {
+        format!("{}:{}", self.short_name(), field_name.as_ref()).into()
+    }
+
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
     #[track_caller]
