@@ -849,10 +849,10 @@ impl EnumIntegerType {
 
     pub fn format_value(&self, value: u64) -> String {
         match self {
-            EnumIntegerType::U8 => format!("{}", value),
-            EnumIntegerType::U16 => format!("0x{:0X}", value as u16),
-            EnumIntegerType::U32 => format!("0x{:0X}", value as u32),
-            EnumIntegerType::U64 => format!("0x{:0X}", value),
+            Self::U8 => format!("{value}"),
+            Self::U16 => format!("0x{:0X}", value as u16),
+            Self::U32 => format!("0x{:0X}", value as u32),
+            Self::U64 => format!("0x{value:0X}"),
         }
     }
 }
