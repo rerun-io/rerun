@@ -8,10 +8,10 @@
 namespace rerun::archetypes {
     VideoStream VideoStream::clear_fields() {
         auto archetype = VideoStream();
-        archetype.sample = ComponentBatch::empty<rerun::components::VideoSample>(Descriptor_sample)
-                               .value_or_throw();
         archetype.codec =
             ComponentBatch::empty<rerun::components::VideoCodec>(Descriptor_codec).value_or_throw();
+        archetype.sample = ComponentBatch::empty<rerun::components::VideoSample>(Descriptor_sample)
+                               .value_or_throw();
         archetype.draw_order =
             ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
                 .value_or_throw();
@@ -21,11 +21,11 @@ namespace rerun::archetypes {
     Collection<ComponentColumn> VideoStream::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(4);
-        if (sample.has_value()) {
-            columns.push_back(sample.value().partitioned(lengths_).value_or_throw());
-        }
         if (codec.has_value()) {
             columns.push_back(codec.value().partitioned(lengths_).value_or_throw());
+        }
+        if (sample.has_value()) {
+            columns.push_back(sample.value().partitioned(lengths_).value_or_throw());
         }
         if (draw_order.has_value()) {
             columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
@@ -38,11 +38,11 @@ namespace rerun::archetypes {
     }
 
     Collection<ComponentColumn> VideoStream::columns() {
-        if (sample.has_value()) {
-            return columns(std::vector<uint32_t>(sample.value().length(), 1));
-        }
         if (codec.has_value()) {
             return columns(std::vector<uint32_t>(codec.value().length(), 1));
+        }
+        if (sample.has_value()) {
+            return columns(std::vector<uint32_t>(sample.value().length(), 1));
         }
         if (draw_order.has_value()) {
             return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
@@ -60,11 +60,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(4);
 
-        if (archetype.sample.has_value()) {
-            cells.push_back(archetype.sample.value());
-        }
         if (archetype.codec.has_value()) {
             cells.push_back(archetype.codec.value());
+        }
+        if (archetype.sample.has_value()) {
+            cells.push_back(archetype.sample.value());
         }
         if (archetype.draw_order.has_value()) {
             cells.push_back(archetype.draw_order.value());
