@@ -121,6 +121,7 @@ from .components import (
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
     TransformRelation as TransformRelation,
+    VideoCodec as VideoCodec,
 )
 from .datatypes import (
     Angle as Angle,
