@@ -1,29 +1,31 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
+snapshot_kind: text
 ---
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
-│ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:example.MyPoints: ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AArchetypeNameTha │
-│ points                       ┆ points                       ┆ .MyPoints:points             ┆ AFieldThatDoesntExist        ┆ xist                         ┆ tDoesNotExist:points         │
+│ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AFieldThatDoesntE ┆ /this/that:example.MyPoints: │
+│ points                       ┆ points                       ┆ .MyPoints:points             ┆ xist                         ┆ xist                         ┆ points                       │
 │ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          │
-│ type: List[Struct[2]]        ┆ type: List[Struct[2]]        ┆ type: null                   ┆ type: null                   ┆ type: null                   ┆ type: null                   │
-│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype_field:             ┆ archetype: AArchetypeNameTha │
-│ archetype_field: points      ┆ archetype_field: points      ┆ archetype_field: points      ┆ archetype_field:             ┆ AFieldThatDoesntExist        ┆ tDoesNotExist                │
-│ component: example.MyPoint   ┆ component: example.MyPoint   ┆ entity_path:                 ┆ AFieldThatDoesntExist        ┆ entity_path: /this/that      ┆ archetype_field: points      │
-│ entity_path: /this/that      ┆ entity_path: /this/that      ┆ /non_existing_entity         ┆ entity_path: /this/that      ┆ kind: data                   ┆ entity_path: /this/that      │
-│ kind: data                   ┆ kind: data                   ┆ kind: data                   ┆ kind: data                   ┆                              ┆ kind: data                   │
+│ type: List[Struct[2]]        ┆ type: List[Struct[2]]        ┆ type: null                   ┆ type: null                   ┆ type: null                   ┆ type: List[Struct[2]]        │
+│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype_field:             ┆ archetype_field:             ┆ archetype_field:             ┆ archetype: example.MyPoints  │
+│ archetype_field:             ┆ archetype_field:             ┆ example.MyPoints:points      ┆ AFieldThatDoesntExist        ┆ AFieldThatDoesntExist        ┆ archetype_field:             │
+│ example.MyPoints:points      ┆ example.MyPoints:points      ┆ entity_path:                 ┆ entity_path: /this/that      ┆ entity_path: /this/that      ┆ example.MyPoints:points      │
+│ component: example.MyPoint   ┆ component: example.MyPoint   ┆ /non_existing_entity         ┆ kind: data                   ┆ kind: data                   ┆ component: example.MyPoint   │
+│ entity_path: /this/that      ┆ entity_path: /this/that      ┆ kind: data                   ┆                              ┆                              ┆ entity_path: /this/that      │
+│ kind: data                   ┆ kind: data                   ┆                              ┆                              ┆                              ┆ kind: data                   │
 ╞══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡
-│ [{x: 0.0, y: 0.0}]           ┆ [{x: 0.0, y: 0.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 0.0, y: 0.0}]           ┆ [{x: 0.0, y: 0.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 0.0, y: 0.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 1.0, y: 1.0}]           ┆ [{x: 1.0, y: 1.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 1.0, y: 1.0}]           ┆ [{x: 1.0, y: 1.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 1.0, y: 1.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 2.0, y: 2.0}]           ┆ [{x: 2.0, y: 2.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 2.0, y: 2.0}]           ┆ [{x: 2.0, y: 2.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 2.0, y: 2.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 3.0, y: 3.0}]           ┆ [{x: 3.0, y: 3.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 3.0, y: 3.0}]           ┆ [{x: 3.0, y: 3.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 3.0, y: 3.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 4.0, y: 4.0}]           ┆ [{x: 4.0, y: 4.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 4.0, y: 4.0}]           ┆ [{x: 4.0, y: 4.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 4.0, y: 4.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 5.0, y: 5.0}]           ┆ [{x: 5.0, y: 5.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 5.0, y: 5.0}]           ┆ [{x: 5.0, y: 5.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 5.0, y: 5.0}]           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ [{x: 8.0, y: 8.0}]           ┆ [{x: 8.0, y: 8.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ null                         │
+│ [{x: 8.0, y: 8.0}]           ┆ [{x: 8.0, y: 8.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 8.0, y: 8.0}]           │
 └──────────────────────────────┴──────────────────────────────┴──────────────────────────────┴──────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
