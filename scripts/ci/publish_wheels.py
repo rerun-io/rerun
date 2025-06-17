@@ -54,9 +54,15 @@ def publish_notebook_asset() -> None:
             with zipfile.ZipFile(whl, "r") as archive:
                 # Extract the specified file to the target directory
                 archive.extract("rerun_notebook/static/widget.js", "extracted")
-                bucket.blob(f"version/{wheel_version}/widget.js").upload_from_filename(
-                    "extracted/rerun_notebook/static/widget.js",
-                )
+                archive.extract("rerun_notebook/static/re_viewer_bg.wasm", "extracted")
+                blob_base = f"version/{wheel_version}"
+                file_base = "extracted/rerun_notebook/static"
+                blobs = [
+                    (bucket.blob(f"{blob_base}/widget.js"), f"{file_base}/widget.js"),
+                    (bucket.blob(f"{blob_base}/re_viewer_bg.wasm", f"{file_base}/re_viewer_bg.wasm")),
+                ]
+                for blob, filename in blobs:
+                    blob.upload_from_filename(filename)
 
 
 def main() -> None:
