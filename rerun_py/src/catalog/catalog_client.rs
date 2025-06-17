@@ -57,7 +57,13 @@ impl PyCatalogClientInternal {
 
         let datafusion_ctx = py
             .import("datafusion")
-            .and_then(|datafusion| Ok(datafusion.getattr("SessionContext")?.call0()?.unbind()))
+            .and_then(|datafusion| {
+                Ok(datafusion
+                    .getattr("SessionContext")?
+                    .getattr("global_ctx")?
+                    .call0()?
+                    .unbind())
+            })
             .ok();
 
         Ok(Self {
