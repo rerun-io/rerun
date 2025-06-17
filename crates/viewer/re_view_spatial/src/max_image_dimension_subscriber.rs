@@ -125,6 +125,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     (archetypes::DepthImage::name(), ImageTypes::DEPTH_IMAGE),
                     (archetypes::AssetVideo::name(), ImageTypes::VIDEO_ASSET),
                     (archetypes::VideoStream::name(), ImageTypes::VIDEO_STREAM),
+                    // TODO(#9046): handle encoded depth images.
                 ]
                 .iter()
                 .find_map(|(image_archetype_name, image_type)| {
@@ -220,6 +221,7 @@ fn try_size_from_blob(
 ) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
+    // TODO(#9046): handle encoded depth images.
     if archetype_name == archetypes::EncodedImage::name() {
         re_tracing::profile_scope!("image");
 
