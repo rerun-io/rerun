@@ -115,7 +115,13 @@ impl Server {
                 }
             }
 
-            // TODO: Properly sort columns
+            let column_sort_key = match desc.display_name().as_str() {
+                "name" => 0,
+                ENTRY_LINK_COLUMN_NAME => 1,
+                _ => 2,
+            };
+
+            blueprint = blueprint.sort_key(column_sort_key);
 
             if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
                 blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
