@@ -1,5 +1,6 @@
 use re_log_types::{EntityPath, EntryId};
 use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_types::archetypes::RecordingProperties;
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
@@ -150,9 +151,24 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
                 desc.column_name(BatchType::Dataframe)
             };
 
-            name.strip_prefix("/__properties/recording:RecordingProperties:")
-                .map(|s| s.to_owned())
+            strip_recording_properties_prefix(&name)
+                .map(ToOwned::to_owned)
                 .unwrap_or(name)
         }
     }
+}
+
+/// Strip the `/__properties/recording:RecordingProperties:` prefix from a column name.
+fn strip_recording_properties_prefix(name: &str) -> Option<&str> {
+    let name = name
+        .strip_prefix(&EntityPath::recording_properties().to_string())?
+        .strip_prefix(":")?;
+    let archetype_name = RecordingProperties::descriptor_name()
+        .archetype_name
+        .expect("Should have an archetype name");
+    Option::or(
+        name.strip_prefix(archetype_name.short_name()),
+        name.strip_prefix(archetype_name.full_name()),
+    )?
+    .strip_prefix(":")
 }
