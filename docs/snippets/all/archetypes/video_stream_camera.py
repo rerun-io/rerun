@@ -47,14 +47,12 @@ output_container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 
 output_stream = output_container.add_stream("libx264", rate=fps)
 output_stream.width = input_container.streams.video[0].width
 output_stream.height = input_container.streams.video[0].height
-# Tune for low latency.
-output_stream.options = {
-    "preset": "veryfast",
+# Configure for low latency.
+output_stream.codec_context.options = {
     "tune": "zerolatency",
-    # "keyint_min": "30", #???
+    "preset": "veryfast",
 }
-output_stream.max_b_frames = 0
-
+output_stream.max_b_frames = 0  # Avoid b-frames for lower latency.
 
 # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
 rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
@@ -64,6 +62,12 @@ try:
     while True:
         try:
             for frame in input_container.decode(video=0):
+                # By default all the frames that come from the camera are marked as I-frames.
+                # If we pass this just on as-is, then we get an encoded video stream that
+                # just consists entirely of I-frames, thus having very poor compression!
+                # Instead, we want the encoder to decide when to use P & I frames.
+                frame.pict_type = av.video.frame.PictureType.NONE
+
                 for packet in output_stream.encode(frame):
                     if packet.pts is None:
                         continue
