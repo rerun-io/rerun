@@ -15,7 +15,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::add_server_modal::AddServerModal;
+use crate::add_server_modal::{ServerModal, ServerModalMode};
 use crate::context::Context;
 use crate::entries::{Dataset, Entries};
 use crate::tables_session_context::TablesSessionContext;
@@ -226,8 +226,9 @@ impl Server {
         let item = Item::RedapServer(self.origin.clone());
         let is_selected = viewer_ctx.selection().contains_item(&item);
 
-        let content =
-            list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
+        let content = list_item::LabelContent::header(self.origin.host.to_string())
+            .always_show_buttons(true)
+            .with_buttons(|ui| {
                 Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
                     if icons::RESET
                         .as_button_with_label(ui.tokens(), "Refresh server")
@@ -239,12 +240,12 @@ impl Server {
                             .ok();
                     }
                     if icons::EDIT
-                        .as_button_with_label(ui.tokens(), "Add server")
+                        .as_button_with_label(ui.tokens(), "Edit server")
                         .ui(ui)
                         .clicked()
                     {
                         ctx.command_sender
-                            .send(Command::OpenAddServerModal) // TODO
+                            .send(Command::OpenEditServerModal(self.origin.clone()))
                             .ok();
                     }
                     if icons::REMOVE
@@ -300,7 +301,7 @@ pub struct RedapServers {
     command_sender: Sender<Command>,
     command_receiver: Receiver<Command>,
 
-    add_server_modal_ui: AddServerModal,
+    server_modal_ui: ServerModal,
 }
 
 impl serde::Serialize for RedapServers {
@@ -343,14 +344,19 @@ impl Default for RedapServers {
             pending_servers: Default::default(),
             command_sender,
             command_receiver,
-            add_server_modal_ui: Default::default(),
+            server_modal_ui: Default::default(),
         }
     }
 }
 
 pub enum Command {
     OpenAddServerModal,
+    OpenEditServerModal(re_uri::Origin),
     AddServer(re_uri::Origin),
+    UpdateServer {
+        previous_origin: re_uri::Origin,
+        new_origin: re_uri::Origin,
+    },
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
@@ -401,7 +407,29 @@ impl RedapServers {
     ) {
         match command {
             Command::OpenAddServerModal => {
-                self.add_server_modal_ui.open();
+                self.server_modal_ui
+                    .open(ServerModalMode::Add, connection_registry);
+            }
+
+            Command::OpenEditServerModal(origin) => {
+                self.server_modal_ui
+                    .open(ServerModalMode::Edit(origin), connection_registry);
+            }
+
+            Command::UpdateServer {
+                previous_origin,
+                new_origin,
+            } => {
+                self.servers.remove(&previous_origin);
+                self.servers.insert(
+                    new_origin.clone(),
+                    Server::new(
+                        connection_registry.clone(),
+                        runtime.clone(),
+                        egui_ctx,
+                        new_origin,
+                    ),
+                );
             }
 
             Command::AddServer(origin) => {
@@ -497,7 +525,7 @@ impl RedapServers {
             command_sender: &self.command_sender,
         };
 
-        self.add_server_modal_ui.ui(&ctx, connection_registry, ui);
+        self.server_modal_ui.ui(&ctx, connection_registry, ui);
     }
 
     #[inline]
