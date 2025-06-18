@@ -117,8 +117,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
     m.add_class::<PyBinarySinkStorage>()?;
-    m.add_class::<PyFileSink>()?;
-    m.add_class::<PyGrpcSink>()?;
+    m.add_class::<FileSink>()?;
+    m.add_class::<GrpcSink>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -621,16 +621,28 @@ fn spawn(
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-#[pyclass(frozen)]
-struct PyGrpcSink {
+#[pyclass(frozen, eq, hash)]
+struct GrpcSink {
     uri: re_uri::ProxyUri,
     flush_timeout_sec: Option<f32>,
 }
 
+impl PartialEq for GrpcSink {
+    fn eq(&self, other: &Self) -> bool {
+        self.uri == other.uri
+    }
+}
+
+impl std::hash::Hash for GrpcSink {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.uri.hash(state);
+    }
+}
+
 #[pymethods]
-impl PyGrpcSink {
+impl GrpcSink {
     #[new]
-    #[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32()))]
+    #[pyo3(signature = (url=None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32()))]
     fn new(url: Option<String>, flush_timeout_sec: Option<f32>) -> PyResult<Self> {
         let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
         let uri = url
@@ -644,13 +656,14 @@ impl PyGrpcSink {
     }
 }
 
-#[pyclass(frozen)]
-struct PyFileSink {
+#[pyclass(frozen, eq, hash)]
+#[derive(PartialEq, Hash)]
+struct FileSink {
     path: String,
 }
 
 #[pymethods]
-impl PyFileSink {
+impl FileSink {
     #[new]
     #[pyo3(signature = (path))]
     fn new(path: String) -> Self {
@@ -678,7 +691,7 @@ fn tee(
 
     let mut resolved_sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::new();
     for sink in sinks {
-        if let Ok(sink) = sink.downcast_bound::<PyGrpcSink>(py) {
+        if let Ok(sink) = sink.downcast_bound::<GrpcSink>(py) {
             let sink = sink.get();
             let sink = re_sdk::sink::GrpcSink::new(
                 sink.uri.clone(),
@@ -686,7 +699,7 @@ fn tee(
                     .map(std::time::Duration::from_secs_f32),
             );
             resolved_sinks.push(Box::new(sink));
-        } else if let Ok(sink) = sink.downcast_bound::<PyFileSink>(py) {
+        } else if let Ok(sink) = sink.downcast_bound::<FileSink>(py) {
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::new(sink.path.clone())
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

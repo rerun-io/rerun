@@ -750,12 +750,12 @@ def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
 def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
     """Create a new binary stream sink, and return the associated binary stream."""
 
-class PyGrpcSink:
-    def __new__(cls, url: str | None, flush_timeout_sec: float | None) -> PyGrpcSink:
+class GrpcSink:
+    def __new__(cls, url: str | None, flush_timeout_sec: float | None) -> GrpcSink:
         pass
 
-class PyFileSink:
-    def __new__(cls, path: str) -> PyFileSink:
+class FileSink:
+    def __new__(cls, path: str) -> FileSink:
         pass
 
 def tee(

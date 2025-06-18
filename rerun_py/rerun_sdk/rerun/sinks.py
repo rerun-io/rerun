@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
-
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
 from rerun.recording_stream import RecordingStream, get_application_id
+from rerun_bindings import (
+    FileSink as FileSink,
+    GrpcSink as GrpcSink,
+)
 
 from ._spawn import _spawn_viewer
 
@@ -26,39 +28,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-@dataclass(frozen=True)
-class GrpcSink:
-    url: str | None = None
-    flush_timeout_sec: float | None = field(default=None, compare=False)
-
-    def _to_native(self) -> bindings.PyGrpcSink:
-        return bindings.PyGrpcSink(
-            url=self.url,
-            flush_timeout_sec=self.flush_timeout_sec,
-        )
-
-
-@dataclass(frozen=True)
-class FileSink:
-    path: str
-
-    def _to_native(self) -> bindings.PyFileSink:
-        return bindings.PyFileSink(path=self.path)
-
-
 LogSinkLike = Union[GrpcSink, FileSink]
-
-
-def _check_duplicate_sinks(*sinks: LogSinkLike) -> None:
-    seen = set()
-    duplicates = set()
-    for sink in sinks:
-        if sink in seen:
-            duplicates.add(sink)
-        else:
-            seen.add(sink)
-    if duplicates:
-        raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
 
 
 def tee(
@@ -103,7 +73,7 @@ def tee(
         ).storage
 
     bindings.tee(
-        [sink._to_native() for sink in sinks],
+        sinks,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
