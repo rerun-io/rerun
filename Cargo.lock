@@ -6855,6 +6855,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "re_urange",
  "similar-asserts",
  "thiserror 1.0.65",
 ]
@@ -7928,6 +7929,13 @@ dependencies = [
  "sublime_fuzzy",
  "time",
  "url",
+]
+
+[[package]]
+name = "re_urange"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
