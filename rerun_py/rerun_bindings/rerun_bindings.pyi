@@ -757,7 +757,7 @@ class GrpcSink:
     Connect the recording stream to a remote Rerun Viewer on the given URL.
     """
 
-    def __new__(cls, url: str | None = None, flush_timeout_sec: float | None = None) -> GrpcSink:
+    def __init__(self, url: str | None = None, flush_timeout_sec: float | None = None) -> None:
         """
         Initialize a gRPC sink.
 
@@ -784,7 +784,7 @@ class FileSink:
     Save the recording stream to a file.
     """
 
-    def __new__(cls, path: str) -> FileSink:
+    def __init__(self, path: str) -> None:
         """
         Initialize a file sink.
 
