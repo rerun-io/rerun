@@ -184,7 +184,6 @@ from .sinks import (
     serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
-    tee as tee,
 )
 from .time import (
     disable_timeline as disable_timeline,

@@ -5,13 +5,14 @@ import pathlib
 from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
-from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.dataframe import Recording
-from rerun.recording_stream import RecordingStream, get_application_id
 from rerun_bindings import (
     FileSink as FileSink,
     GrpcSink as GrpcSink,
 )
+
+from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
+from rerun.dataframe import Recording
+from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
 
@@ -31,7 +32,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 LogSinkLike = Union[GrpcSink, FileSink]
 
 
-def tee(
+def _tee(
     *sinks: LogSinkLike,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,

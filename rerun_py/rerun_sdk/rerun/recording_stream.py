@@ -498,9 +498,9 @@ class RecordingStream:
         use the same `url`.
         """
 
-        from .sinks import tee
+        from .sinks import _tee
 
-        tee(*sinks, default_blueprint=default_blueprint, recording=self)
+        _tee(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,
