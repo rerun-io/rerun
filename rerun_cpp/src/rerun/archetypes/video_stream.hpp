@@ -31,6 +31,11 @@ namespace rerun::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct VideoStream {
+        /// The codec used to encode the video chunks.
+        ///
+        /// This property is expected to be constant over time and is ideally logged statically once per stream.
+        std::optional<ComponentBatch> codec;
+
         /// Video sample data (also known as "video chunk").
         ///
         /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
@@ -49,11 +54,6 @@ namespace rerun::archetypes {
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
 
-        /// The codec used to encode the video chunks.
-        ///
-        /// This property is expected to be constant over time and is ideally logged statically once per stream.
-        std::optional<ComponentBatch> codec;
-
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
@@ -69,20 +69,17 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoStream";
 
-        /// `ComponentDescriptor` for the `sample` field.
-        static constexpr auto Descriptor_sample = ComponentDescriptor(
-            ArchetypeName, "sample",
-            Loggable<rerun::components::VideoSample>::Descriptor.component_name
-        );
         /// `ComponentDescriptor` for the `codec` field.
         static constexpr auto Descriptor_codec = ComponentDescriptor(
-            ArchetypeName, "codec",
-            Loggable<rerun::components::VideoCodec>::Descriptor.component_name
+            ArchetypeName, "codec", Loggable<rerun::components::VideoCodec>::ComponentName
+        );
+        /// `ComponentDescriptor` for the `sample` field.
+        static constexpr auto Descriptor_sample = ComponentDescriptor(
+            ArchetypeName, "sample", Loggable<rerun::components::VideoSample>::ComponentName
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
         );
 
       public:
@@ -92,12 +89,8 @@ namespace rerun::archetypes {
         VideoStream& operator=(const VideoStream& other) = default;
         VideoStream& operator=(VideoStream&& other) = default;
 
-        explicit VideoStream(
-            rerun::components::VideoSample _sample, rerun::components::VideoCodec _codec
-        )
-            : sample(ComponentBatch::from_loggable(std::move(_sample), Descriptor_sample)
-                         .value_or_throw()),
-              codec(ComponentBatch::from_loggable(std::move(_codec), Descriptor_codec)
+        explicit VideoStream(rerun::components::VideoCodec _codec)
+            : codec(ComponentBatch::from_loggable(std::move(_codec), Descriptor_codec)
                         .value_or_throw()) {}
 
         /// Update only some specific fields of a `VideoStream`.
@@ -107,6 +100,23 @@ namespace rerun::archetypes {
 
         /// Clear all the fields of a `VideoStream`.
         static VideoStream clear_fields();
+
+        /// The codec used to encode the video chunks.
+        ///
+        /// This property is expected to be constant over time and is ideally logged statically once per stream.
+        VideoStream with_codec(const rerun::components::VideoCodec& _codec) && {
+            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `codec` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_codec` should
+        /// be used when logging a single row's worth of data.
+        VideoStream with_many_codec(const Collection<rerun::components::VideoCodec>& _codec) && {
+            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
+            return std::move(*this);
+        }
 
         /// Video sample data (also known as "video chunk").
         ///
@@ -135,23 +145,6 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         VideoStream with_many_sample(const Collection<rerun::components::VideoSample>& _sample) && {
             sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// The codec used to encode the video chunks.
-        ///
-        /// This property is expected to be constant over time and is ideally logged statically once per stream.
-        VideoStream with_codec(const rerun::components::VideoCodec& _codec) && {
-            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `codec` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_codec` should
-        /// be used when logging a single row's worth of data.
-        VideoStream with_many_codec(const Collection<rerun::components::VideoCodec>& _codec) && {
-            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
             return std::move(*this);
         }
 

@@ -19,7 +19,7 @@ use re_log_types::{
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
-    SerializationError,
+    SerializationError, SerializedComponentColumn,
 };
 
 use crate::{ChunkId, RowId};
@@ -79,7 +79,7 @@ impl ChunkComponents {
         component_name: ComponentName,
     ) -> impl Iterator<Item = &ArrowListArray> {
         self.0.iter().filter_map(move |(desc, array)| {
-            (desc.component_name == component_name).then_some(array)
+            (desc.component_name == Some(component_name)).then_some(array)
         })
     }
 
@@ -144,17 +144,16 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
     }
 }
 
-// TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-// in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
+impl FromIterator<SerializedComponentColumn> for ChunkComponents {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
-        iter.into_iter()
-            .map(|(component_name, list_array)| {
-                let component_desc = ComponentDescriptor::new(component_name);
-                (component_desc, list_array)
-            })
-            .collect()
+    fn from_iter<T: IntoIterator<Item = SerializedComponentColumn>>(iter: T) -> Self {
+        let mut this = Self::default();
+        {
+            for serialized in iter {
+                this.insert(serialized.descriptor, serialized.list_array);
+            }
+        }
+        this
     }
 }
 
@@ -285,8 +284,8 @@ impl Chunk {
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-                archetype_field_name: Some("start_time".into()),
-                component_name: "rerun.components.Timestamp".into(),
+                archetype_field_name: "start_time".into(),
+                component_name: Some("rerun.components.Timestamp".into()),
             };
 
             // Filter out the recording time component from both lhs and rhs.
@@ -649,7 +648,7 @@ impl Chunk {
 
 // ---
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 
@@ -1224,14 +1223,6 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn component_names(&self) -> impl Iterator<Item = ComponentName> + '_ {
-        self.components
-            .keys()
-            .map(|desc| desc.component_name)
-            .unique()
-    }
-
-    #[inline]
     pub fn component_descriptors(&self) -> impl Iterator<Item = ComponentDescriptor> + '_ {
         self.components.keys().cloned()
     }
@@ -1495,7 +1486,9 @@ impl Chunk {
         // Components
 
         for (component_desc, list_array) in components.iter() {
-            component_desc.component_name.sanity_check();
+            if let Some(c) = component_desc.component_name {
+                c.sanity_check();
+            }
             // Ensure that each cell is a list (we don't support mono-components yet).
             if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
                 // We don't check `field.is_nullable()` here because we support both.

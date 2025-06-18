@@ -1,4 +1,4 @@
-use egui::{Image, ImageSource};
+use egui::{Atom, Image, ImageSource};
 
 use crate::DesignTokens;
 
@@ -73,6 +73,20 @@ impl From<&'static Icon> for Image<'static> {
     }
 }
 
+impl From<&Icon> for Atom<'static> {
+    #[inline]
+    fn from(icon: &Icon) -> Self {
+        Atom::from(icon.as_image())
+    }
+}
+
+impl From<Icon> for Atom<'static> {
+    #[inline]
+    fn from(icon: Icon) -> Self {
+        Atom::from(icon.as_image())
+    }
+}
+
 /// Macro to create an [`Icon`], using the file path as the id.
 ///
 /// This avoids specifying the id manually, which is error-prone (duplicate IDs lead to silent
@@ -86,6 +100,8 @@ macro_rules! icon_from_path {
 pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.png"); // TODO(gavrelina): convert to SVG
 
 pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.svg");
+
+pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");

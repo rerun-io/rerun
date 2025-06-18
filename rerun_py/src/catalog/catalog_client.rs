@@ -1,21 +1,19 @@
-use std::str::FromStr as _;
-
 use pyo3::{
-    FromPyObject, Py, PyAny, PyResult, Python,
+    Py, PyAny, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
 
-use re_log_types::EntryId;
-use re_protos::catalog::v1alpha1::EntryFilter;
+use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 
-use crate::catalog::{ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable, to_py_err};
+use crate::catalog::{
+    ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyTableEntry, to_py_err,
+};
 
 /// Client for a remote Rerun catalog server.
-#[pyclass(name = "CatalogClient")]
-pub struct PyCatalogClient {
-    #[expect(dead_code)]
+#[pyclass(name = "CatalogClientInternal")]
+pub struct PyCatalogClientInternal {
     origin: re_uri::Origin,
 
     connection: ConnectionHandle,
@@ -24,18 +22,25 @@ pub struct PyCatalogClient {
     datafusion_ctx: Option<Py<PyAny>>,
 }
 
-impl PyCatalogClient {
+impl PyCatalogClientInternal {
     pub fn connection(&self) -> &ConnectionHandle {
         &self.connection
     }
 }
 
 #[pymethods]
-impl PyCatalogClient {
+impl PyCatalogClientInternal {
     /// Create a new catalog client object.
     #[new]
-    #[pyo3(signature = (addr, token=None))]
+    #[pyo3(text_signature = "(self, addr, token=None)")]
     fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
+        // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
+        // what we set it to. But we have to set it, or we will crash at runtime, as soon as
+        // anything tries to do anything TLS-related.
+        // This used to be implicitly done by `object_store`, just by virtue of depending on it,
+        // but we removed that unused dependency, so now we must do it ourselves.
+        _ = rustls::crypto::ring::default_provider().install_default();
+
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection_registry = re_grpc_client::ConnectionRegistry::new();
@@ -63,17 +68,10 @@ impl PyCatalogClient {
     }
 
     /// Get a list of all entries in the catalog.
-    fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
+    fn all_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let connection = self_.borrow(py).connection.clone();
 
-        let entry_details = connection.find_entries(
-            py,
-            EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: None,
-            },
-        )?;
+        let entry_details = connection.find_entries(py, EntryFilter::new())?;
 
         // Generate entry objects.
         entry_details
@@ -92,21 +90,110 @@ impl PyCatalogClient {
             .collect()
     }
 
-    /// Get a dataset by name or id.
-    fn get_dataset(
-        self_: Py<Self>,
-        name_or_id: EntryIdLike,
-        py: Python<'_>,
-    ) -> PyResult<Py<PyDataset>> {
+    /// Get a list of all dataset entries in the catalog.
+    fn dataset_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyDatasetEntry>>> {
         let connection = self_.borrow(py).connection.clone();
 
-        let id = name_or_id.resolve(&connection, py)?;
+        let entry_details =
+            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
 
-        let entry_id = id.borrow(py).id;
+        entry_details
+            .into_iter()
+            .map(|details| {
+                let id = Py::new(py, PyEntryId::from(details.id))?;
+                let dataset_entry = connection.read_dataset(py, details.id)?;
+
+                let entry = PyEntry {
+                    client: self_.clone_ref(py),
+                    id,
+                    details,
+                };
+
+                let dataset = PyDatasetEntry {
+                    dataset_details: dataset_entry.dataset_details,
+                    dataset_handle: dataset_entry.handle,
+                };
+
+                Py::new(py, (dataset, entry))
+            })
+            .collect()
+    }
+
+    /// Get a list of all table entries in the catalog.
+    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntry>>> {
+        let connection = self_.borrow(py).connection.clone();
+
+        let entry_details =
+            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
+
+        entry_details
+            .into_iter()
+            .map(|details| {
+                let id = Py::new(py, PyEntryId::from(details.id))?;
+
+                let entry = PyEntry {
+                    client: self_.clone_ref(py),
+                    id,
+                    details,
+                };
+
+                let table = PyTableEntry::default();
+
+                Py::new(py, (table, entry))
+            })
+            .collect()
+    }
+
+    // ---
+
+    fn entry_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
+        let connection = self_.borrow(py).connection.clone();
+
+        let entry_details = connection.find_entries(py, EntryFilter::new())?;
+
+        Ok(entry_details
+            .into_iter()
+            .map(|details| details.name)
+            .collect())
+    }
+
+    fn dataset_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
+        let connection = self_.borrow(py).connection.clone();
+
+        let entry_details =
+            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
+
+        Ok(entry_details
+            .into_iter()
+            .map(|details| details.name)
+            .collect())
+    }
+
+    fn table_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
+        let connection = self_.borrow(py).connection.clone();
+
+        let entry_details =
+            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
+
+        Ok(entry_details
+            .into_iter()
+            .map(|details| details.name)
+            .collect())
+    }
+
+    // ---
+
+    /// Get a dataset by name or id.
+    fn get_dataset_entry(
+        self_: Py<Self>,
+        id: Py<PyEntryId>,
+        py: Python<'_>,
+    ) -> PyResult<Py<PyDatasetEntry>> {
+        let connection = self_.borrow(py).connection.clone();
 
         let client = self_.clone_ref(py);
 
-        let dataset_entry = connection.read_dataset(py, entry_id)?;
+        let dataset_entry = connection.read_dataset(py, id.borrow(py).id)?;
 
         let entry = PyEntry {
             client,
@@ -114,31 +201,7 @@ impl PyCatalogClient {
             details: dataset_entry.details,
         };
 
-        let dataset = PyDataset {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
-
-        Py::new(py, (dataset, entry))
-    }
-
-    //TODO(#9369): `datasets()` (needs FindDatasetsEntries rpc)
-
-    /// Create a new dataset with the provided name.
-    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
-        let connection = self_.borrow_mut(py).connection.clone();
-
-        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
-
-        let entry_id = Py::new(py, PyEntryId::from(dataset_entry.details.id))?;
-
-        let entry = PyEntry {
-            client: self_.clone_ref(py),
-            id: entry_id,
-            details: dataset_entry.details,
-        };
-
-        let dataset = PyDataset {
+        let dataset = PyDatasetEntry {
             dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
         };
@@ -151,39 +214,53 @@ impl PyCatalogClient {
     /// Get a table by name or id.
     ///
     /// Note: the entry table is named `__entries`.
-    fn get_table(
+    fn get_table_entry(
         self_: Py<Self>,
-        name_or_id: EntryIdLike,
         py: Python<'_>,
-    ) -> PyResult<Py<PyTable>> {
+        id: Py<PyEntryId>,
+    ) -> PyResult<Py<PyTableEntry>> {
         let connection = self_.borrow(py).connection.clone();
-
-        let id = name_or_id.resolve(&connection, py)?;
-
-        let entry_id = id.borrow(py).id;
 
         let client = self_.clone_ref(py);
 
-        let dataset_entry = connection.read_table(py, entry_id)?;
+        let table_entry = connection.read_table(py, id.borrow(py).id)?;
 
         let entry = PyEntry {
             client,
             id,
-            details: dataset_entry.details,
+            details: table_entry.details,
         };
 
-        let table = PyTable::default();
+        let table = PyTableEntry::default();
 
         Py::new(py, (table, entry))
     }
 
-    /// Get the entries table.
-    fn entries_table(self_: Py<Self>, py: Python<'_>) -> PyResult<Py<PyTable>> {
-        Self::get_table(self_, EntryIdLike::Str("__entries".to_owned()), py)
+    // ---
+
+    /// Create a new dataset with the provided name.
+    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDatasetEntry>> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
+
+        let entry_id = Py::new(py, PyEntryId::from(dataset_entry.details.id))?;
+
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: dataset_entry.details,
+        };
+
+        let dataset = PyDatasetEntry {
+            dataset_details: dataset_entry.dataset_details,
+            dataset_handle: dataset_entry.handle,
+        };
+
+        Py::new(py, (dataset, entry))
     }
 
     /// The DataFusion context (if available).
-    #[getter]
     pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if let Some(datafusion_ctx) = &self.datafusion_ctx {
             Ok(datafusion_ctx.clone_ref(py))
@@ -193,60 +270,28 @@ impl PyCatalogClient {
             ))
         }
     }
-}
 
-/// A type alias for a vector (vector search input data).
-#[derive(FromPyObject)]
-enum EntryIdLike {
-    /// Name or id of the entry.
-    Str(String),
+    fn __repr__(&self) -> String {
+        format!("CatalogClient({})", self.origin)
+    }
 
-    /// Id of the entry.
-    Id(Py<PyEntryId>),
-}
+    // ---
 
-impl EntryIdLike {
-    fn resolve(self, connection: &ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
-        match self {
-            Self::Str(name_or_id) => {
-                // First try to find by name
-                let mut entry_details = connection.find_entries(
-                    py,
-                    EntryFilter {
-                        id: None,
-                        name: Some(name_or_id.clone()),
-                        entry_kind: None,
-                    },
-                )?;
+    fn _entry_id_from_entry_name(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+    ) -> PyResult<Py<PyEntryId>> {
+        let connection = self_.borrow(py).connection.clone();
 
-                // If that fails, try to find by id
-                if entry_details.is_empty() {
-                    if let Ok(entry_id) = EntryId::from_str(name_or_id.as_str()) {
-                        entry_details = connection.find_entries(
-                            py,
-                            EntryFilter {
-                                id: Some(entry_id.into()),
-                                name: None,
-                                entry_kind: None,
-                            },
-                        )?;
-                    }
-                }
+        let entry_details = connection.find_entries(py, EntryFilter::new().with_name(&name))?;
 
-                if entry_details.is_empty() {
-                    return Err(PyLookupError::new_err(format!(
-                        "No entry found with name or id {name_or_id:?}"
-                    )));
-                }
-
-                Py::new(
-                    py,
-                    PyEntryId {
-                        id: entry_details[0].id,
-                    },
-                )
-            }
-            Self::Id(id) => Ok(id),
+        if entry_details.is_empty() {
+            return Err(PyLookupError::new_err(format!(
+                "No entry found with name {name:?}"
+            )));
         }
+
+        Py::new(py, PyEntryId::from(entry_details[0].id))
     }
 }

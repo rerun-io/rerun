@@ -261,7 +261,7 @@ pub fn dataset_and_its_recordings_ui(
         dataset_list_item_content = dataset_list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
                 .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
             if resp.clicked() {
                 kind.close(ctx, &entity_dbs);
@@ -309,6 +309,7 @@ async fn fetch_dataset_entries(
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let resp = client
+        .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
                 id: None,
@@ -325,6 +326,7 @@ async fn fetch_dataset_entries(
         let entry_details = EntryDetails::try_from(entry_details)?;
 
         let dataset_entry: DatasetEntry = client
+            .inner()
             .read_dataset_entry(ReadDatasetEntryRequest {
                 id: Some(entry_details.id.into()),
             })

@@ -34,14 +34,14 @@ use crate::dataframe::{
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "Dataset", extends=PyEntry)]
-pub struct PyDataset {
+#[pyclass(name = "DatasetEntry", extends=PyEntry)]
+pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
 }
 
 #[pymethods]
-impl PyDataset {
+impl PyDatasetEntry {
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]
@@ -136,7 +136,7 @@ impl PyDataset {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.get_partition_ids(self_.py(), dataset_id)
+        connection.get_dataset_partition_ids(self_.py(), dataset_id)
     }
 
     /// Return the partition table as a Datafusion table provider.
@@ -236,6 +236,7 @@ impl PyDataset {
             let catalog_chunk_stream = connection
                 .client()
                 .await?
+                .inner()
                 .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: vec![partition_id.clone().into()],
@@ -359,6 +360,7 @@ impl PyDataset {
             connection
                 .client()
                 .await?
+                .inner()
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -420,6 +422,7 @@ impl PyDataset {
             connection
                 .client()
                 .await?
+                .inner()
                 .create_index(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -539,7 +542,7 @@ impl PyDataset {
     }
 }
 
-impl PyDataset {
+impl PyDatasetEntry {
     fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow_mut(self_.py()).connection().clone();

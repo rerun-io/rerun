@@ -23,6 +23,8 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 pub fn log_msg_from_proto(
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
+    re_tracing::profile_function!();
+
     use crate::codec::{CodecError, arrow::decode_arrow};
     use crate::decoder::DecodeError;
     use re_protos::{
@@ -51,12 +53,15 @@ pub fn log_msg_from_proto(
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_record_batch(&batch)?;
+            let sorbet_schema = re_sorbet::ChunkSchema::try_from(batch.schema_ref().as_ref())?;
 
-            Ok(re_log_types::LogMsg::ArrowMsg(
-                store_id,
-                chunk.to_arrow_msg()?,
-            ))
+            let arrow_msg = re_log_types::ArrowMsg {
+                chunk_id: sorbet_schema.chunk_id().as_tuid(),
+                batch,
+                on_release: None,
+            };
+
+            Ok(re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg))
         }
 
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
@@ -74,6 +79,8 @@ pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
     compression: crate::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::LogMsg, crate::encoder::EncodeError> {
+    re_tracing::profile_function!();
+
     use crate::codec::arrow::encode_arrow;
     use re_protos::log_msg::v1alpha1::{
         ArrowMsg, BlueprintActivationCommand, LogMsg as ProtoLogMsg, SetStoreInfo,

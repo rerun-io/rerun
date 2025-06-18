@@ -226,7 +226,7 @@ impl ComponentUiRegistry {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
                 // if we end up being called with a mismatching component, its likely a bug.
-                debug_assert_eq!(_component_descriptor.component_name, C::name());
+                debug_assert_eq!(_component_descriptor.component_name, Some(C::name()));
 
                 try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
                     EditOrView::View => {
@@ -404,9 +404,9 @@ impl ComponentUiRegistry {
         }
 
         // Prefer the versatile UI callback if there is one.
-        if let Some(ui_callback) = self
-            .legacy_display_component_uis
-            .get(&component_descr.component_name)
+        if let Some(ui_callback) = component_descr
+            .component_name
+            .and_then(|cn| self.legacy_display_component_uis.get(&cn))
         {
             (*ui_callback)(
                 ctx,
@@ -422,29 +422,31 @@ impl ComponentUiRegistry {
             return;
         }
 
-        // Fallback to the more specialized UI callbacks.
-        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
-            self.component_multiline_edit_or_view
-                .get(&component_descr.component_name.into())
-                .or_else(|| {
-                    self.component_singleline_edit_or_view
-                        .get(&component_descr.component_name.into())
-                })
-        } else {
-            self.component_singleline_edit_or_view
-                .get(&component_descr.component_name.into())
-        };
-        if let Some(edit_or_view_ui) = edit_or_view_ui {
-            // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(
-                ctx,
-                ui,
-                component_descr,
-                row_id,
-                component_raw,
-                EditOrView::View,
-            );
-            return;
+        // Fallback to the more specialized UI callbacks (which are only available for known components).
+        if let Some(component_name) = component_descr.component_name {
+            let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
+                self.component_multiline_edit_or_view
+                    .get(&component_name.into())
+                    .or_else(|| {
+                        self.component_singleline_edit_or_view
+                            .get(&component_name.into())
+                    })
+            } else {
+                self.component_singleline_edit_or_view
+                    .get(&component_name.into())
+            };
+            if let Some(edit_or_view_ui) = edit_or_view_ui {
+                // Use it in view mode (no mutation).
+                (*edit_or_view_ui)(
+                    ctx,
+                    ui,
+                    component_descr,
+                    row_id,
+                    component_raw,
+                    EditOrView::View,
+                );
+                return;
+            }
         }
 
         fallback_ui(ui, ui_layout, component_raw);
@@ -576,8 +578,6 @@ impl ComponentUiRegistry {
     ) {
         re_tracing::profile_function!(component_descr.display_name());
 
-        let component_name_for_fallback = component_descr.component_name;
-
         let run_with = |array| {
             self.edit_ui_raw(
                 ctx,
@@ -595,7 +595,7 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = fallback_provider.fallback_for(ctx, component_name_for_fallback);
+            let fallback = fallback_provider.fallback_for(ctx, component_descr);
             run_with(fallback.as_ref());
         }
     }
@@ -662,7 +662,12 @@ impl ComponentUiRegistry {
 
         // We use the component name to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
-        let ui_identifier = component_descr.component_name;
+        let Some(ui_identifier) = component_descr.component_name else {
+            re_log::warn_once!(
+                "Cannot show edit ui for descriptors without component name: {component_descr}"
+            );
+            return false;
+        };
 
         if raw_current_value.len() != 1 {
             return false;

@@ -16,10 +16,7 @@ use re_log_types::{
 };
 use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
-use re_ui::{
-    ContextExt as _, Help, SyntaxHighlighting as _, UiExt as _, filter_widget, icon_text, icons,
-    list_item,
-};
+use re_ui::{ContextExt as _, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
@@ -872,15 +869,13 @@ impl TimePanel {
                     )
                     .show_hierarchical(
                         ui,
-                        list_item::LabelContent::new(
-                            component_descr.syntax_highlighted(ui.style()),
-                        )
-                        .with_icon(if is_static {
-                            &re_ui::icons::COMPONENT_STATIC
-                        } else {
-                            &re_ui::icons::COMPONENT_TEMPORAL
-                        })
-                        .truncate(false),
+                        list_item::LabelContent::new(component_descr.archetype_field_name.as_str())
+                            .with_icon(if is_static {
+                                &re_ui::icons::COMPONENT_STATIC
+                            } else {
+                                &re_ui::icons::COMPONENT_TEMPORAL
+                            })
+                            .truncate(false),
                     );
 
                 self.handle_interactions_for_item(
@@ -933,8 +928,7 @@ impl TimePanel {
                                 .show_flat(
                                     ui,
                                     list_item::LabelContent::new(format!(
-                                        "{kind} {} component, logged {num_messages}",
-                                        component_descr.component_name.short_name()
+                                        "{kind} {component_descr} component, logged {num_messages}",
                                     ))
                                     .truncate(false)
                                     .with_icon(if is_static {
@@ -1496,25 +1490,22 @@ fn help(os: egui::os::OperatingSystem) -> Help {
         .control("Play/Pause", "Space")
         .control(
             "Move time cursor",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+            (icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
         )
         .control(
             "Select time segment",
-            icon_text!(icons::SHIFT, "+", "drag time scale"),
+            (icons::SHIFT, "+", "drag time scale"),
         )
-        .control(
-            "Pan",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
-        )
+        .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Zoom",
             IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
-        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    ui.help_hover_button().on_hover_ui(|ui| {
+    ui.help_button(|ui| {
         help(ui.ctx().os()).ui(ui);
     });
 }

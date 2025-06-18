@@ -91,7 +91,9 @@ impl Chunk {
                         component_name,
                     } = *component_desc;
 
-                    component_name.sanity_check();
+                    if let Some(c) = component_name {
+                        c.sanity_check();
+                    }
 
                     let schema = re_sorbet::ComponentColumnDescriptor {
                         store_datatype: list_array.data_type().clone(),
@@ -124,6 +126,7 @@ impl Chunk {
             row_id_schema,
             index_schemas,
             data_schemas,
+            Default::default(),
         )
         .with_heap_size_bytes(heap_size_bytes);
 

@@ -91,8 +91,8 @@ impl Boxes2D {
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.HalfSize2D".into(),
-            archetype_field_name: Some("half_sizes".into()),
+            component_name: Some("rerun.components.HalfSize2D".into()),
+            archetype_field_name: "half_sizes".into(),
         }
     }
 
@@ -103,8 +103,8 @@ impl Boxes2D {
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.Position2D".into(),
-            archetype_field_name: Some("centers".into()),
+            component_name: Some("rerun.components.Position2D".into()),
+            archetype_field_name: "centers".into(),
         }
     }
 
@@ -115,8 +115,8 @@ impl Boxes2D {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
         }
     }
 
@@ -127,8 +127,8 @@ impl Boxes2D {
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "radii".into(),
         }
     }
 
@@ -139,8 +139,8 @@ impl Boxes2D {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            component_name: Some("rerun.components.Text".into()),
+            archetype_field_name: "labels".into(),
         }
     }
 
@@ -151,8 +151,8 @@ impl Boxes2D {
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            component_name: Some("rerun.components.ShowLabels".into()),
+            archetype_field_name: "show_labels".into(),
         }
     }
 
@@ -163,8 +163,8 @@ impl Boxes2D {
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
+            component_name: Some("rerun.components.DrawOrder".into()),
+            archetype_field_name: "draw_order".into(),
         }
     }
 
@@ -175,8 +175,8 @@ impl Boxes2D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -185,8 +185,8 @@ impl Boxes2D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Boxes2DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Boxes2DIndicator".into(),
         }
     }
 }

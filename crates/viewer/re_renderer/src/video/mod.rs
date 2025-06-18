@@ -6,11 +6,13 @@ use std::collections::hash_map::Entry;
 use ahash::HashMap;
 use parking_lot::Mutex;
 
+use re_log::ResultExt as _;
+use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
+
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{StableIndexDeque, VideoDataDescription, decode::DecodeSettings};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -31,10 +33,13 @@ pub enum VideoPlayerError {
 
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
-    Decoding(#[from] re_video::decode::Error),
+    Decoding(#[from] re_video::DecodeError),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
+
+    #[error("The requested frame data is not, or no longer, available.")]
+    MissingSample,
 
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
@@ -63,7 +68,7 @@ pub struct VideoFrameTexture {
     pub source_pixel_format: SourceImageDataFormat,
 
     /// Meta information about the decoded frame.
-    pub frame_info: Option<re_video::decode::FrameInfo>,
+    pub frame_info: Option<re_video::FrameInfo>,
 }
 
 /// Identifier for an independent video decoding stream.
@@ -127,10 +132,26 @@ impl Video {
         &mut self.video_description
     }
 
+    /// Resets all decoders and purges any cached frames.
+    ///
+    /// This is useful when the video description has changed since the decoders were created.
+    pub fn reset_all_decoders(&self) {
+        let mut players = self.players.lock();
+        for player in players.values_mut() {
+            player
+                .player
+                .reset(&self.video_description)
+                .ok_or_log_error_once();
+        }
+    }
+
     /// Natural dimensions of the video if known.
     #[inline]
     pub fn dimensions(&self) -> Option<[u16; 2]> {
-        self.video_description.coded_dimensions
+        self.video_description
+            .encoding_details
+            .as_ref()
+            .map(|details| details.coded_dimensions)
     }
 
     /// Returns a texture with the latest frame at the given time since video start.

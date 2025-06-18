@@ -27,14 +27,20 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let video =
-        re_video::VideoDataDescription::load_mp4(&video_blob).expect("failed to load video");
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
+        .expect("failed to load video");
 
     println!(
         "{} {}x{}",
         video.gops.num_elements(),
-        video.coded_dimensions.as_ref().map_or(0, |c| c[0]),
-        video.coded_dimensions.as_ref().map_or(0, |c| c[1])
+        video
+            .encoding_details
+            .as_ref()
+            .map_or(0, |c| c.coded_dimensions[0]),
+        video
+            .encoding_details
+            .as_ref()
+            .map_or(0, |c| c.coded_dimensions[1])
     );
 
     let progress =
@@ -51,10 +57,10 @@ fn main() {
         }
     };
 
-    let mut decoder = re_video::decode::new_decoder(
+    let mut decoder = re_video::new_decoder(
         &video_path.to_string(),
         &video,
-        &re_video::decode::DecodeSettings::default(),
+        &re_video::DecodeSettings::default(),
         on_output,
     )
     .expect("Failed to create decoder");

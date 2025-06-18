@@ -13,6 +13,7 @@ mcap_path = sys.argv[1]
 rr.init("rerun_example_mcap_video", spawn=True)
 rr.set_time("time", timestamp=0)
 
+rr.log("video_stream", rr.VideoStream(rr.components.VideoCodec.H264), static=True)
 
 with open(mcap_path, "rb") as f:
     reader = make_reader(f)
@@ -28,7 +29,7 @@ with open(mcap_path, "rb") as f:
             print(f"First 16 bytes: {' '.join(f'{b:02x}' for b in video_msg.data[:16])}")
 
             rr.set_time("time", timestamp=video_msg.timestamp.seconds + video_msg.timestamp.nanos / 1_000_000_000.0)
-            rr.log("video_stream", rr.VideoStream(sample=video_msg.data, codec=rr.components.VideoCodec.H264))
+            rr.log("video_stream", rr.VideoStream.from_fields(sample=video_msg.data))
 
             # Slowing down for debugging in-viewer chunk compaction.
             time.sleep(0.005)

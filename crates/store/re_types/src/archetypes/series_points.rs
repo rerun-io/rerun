@@ -115,8 +115,8 @@ impl SeriesPoints {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
         }
     }
 
@@ -127,8 +127,8 @@ impl SeriesPoints {
     pub fn descriptor_markers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
-            component_name: "rerun.components.MarkerShape".into(),
-            archetype_field_name: Some("markers".into()),
+            component_name: Some("rerun.components.MarkerShape".into()),
+            archetype_field_name: "markers".into(),
         }
     }
 
@@ -139,8 +139,8 @@ impl SeriesPoints {
     pub fn descriptor_names() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
-            component_name: "rerun.components.Name".into(),
-            archetype_field_name: Some("names".into()),
+            component_name: Some("rerun.components.Name".into()),
+            archetype_field_name: "names".into(),
         }
     }
 
@@ -151,8 +151,8 @@ impl SeriesPoints {
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
-            component_name: "rerun.components.SeriesVisible".into(),
-            archetype_field_name: Some("visible_series".into()),
+            component_name: Some("rerun.components.SeriesVisible".into()),
+            archetype_field_name: "visible_series".into(),
         }
     }
 
@@ -163,8 +163,8 @@ impl SeriesPoints {
     pub fn descriptor_marker_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
-            component_name: "rerun.components.MarkerSize".into(),
-            archetype_field_name: Some("marker_sizes".into()),
+            component_name: Some("rerun.components.MarkerSize".into()),
+            archetype_field_name: "marker_sizes".into(),
         }
     }
 
@@ -173,8 +173,8 @@ impl SeriesPoints {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.SeriesPointsIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.SeriesPointsIndicator".into(),
         }
     }
 }

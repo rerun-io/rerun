@@ -858,6 +858,40 @@ impl ::prost::Name for FetchChunkManifestResponse {
         "/rerun.manifest_registry.v1alpha1.FetchChunkManifestResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DoMaintenanceRequest {
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    #[prost(bool, tag = "2")]
+    pub build_scalar_indexes: bool,
+    #[prost(bool, tag = "3")]
+    pub compact_fragments: bool,
+}
+impl ::prost::Name for DoMaintenanceRequest {
+    const NAME: &'static str = "DoMaintenanceRequest";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.DoMaintenanceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.DoMaintenanceRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DoMaintenanceResponse {
+    #[prost(string, tag = "1")]
+    pub report: ::prost::alloc::string::String,
+}
+impl ::prost::Name for DoMaintenanceResponse {
+    const NAME: &'static str = "DoMaintenanceResponse";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.DoMaintenanceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.DoMaintenanceResponse".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Error {
@@ -996,7 +1030,7 @@ pub mod manifest_registry_service_client {
     }
     impl<T> ManifestRegistryServiceClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -1017,12 +1051,12 @@ pub mod manifest_registry_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                    http::Request<tonic::body::BoxBody>,
+                    http::Request<tonic::body::Body>,
                     Response = http::Response<
-                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
                     >,
                 >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             ManifestRegistryServiceClient::new(InterceptedService::new(inner, interceptor))
@@ -1409,6 +1443,26 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+        pub async fn do_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
+                "DoMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1587,6 +1641,11 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::FetchPartitionManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchPartitionManifestStream>, tonic::Status>;
+        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+        async fn do_maintenance(
+            &self,
+            request: tonic::Request<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct ManifestRegistryServiceServer<T> {
@@ -1650,7 +1709,7 @@ pub mod manifest_registry_service_server {
         B: Body + std::marker::Send + 'static,
         B::Error: Into<StdError> + std::marker::Send + 'static,
     {
-        type Response = http::Response<tonic::body::BoxBody>;
+        type Response = http::Response<tonic::body::Body>;
         type Error = std::convert::Infallible;
         type Future = BoxFuture<Self::Response, Self::Error>;
         fn poll_ready(
@@ -2287,8 +2346,51 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoMaintenanceSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::DoMaintenanceRequest>
+                        for DoMaintenanceSvc<T>
+                    {
+                        type Response = super::DoMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ManifestRegistryService>::do_maintenance(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 _ => Box::pin(async move {
-                    let mut response = http::Response::new(empty_body());
+                    let mut response = http::Response::new(tonic::body::Body::default());
                     let headers = response.headers_mut();
                     headers.insert(
                         tonic::Status::GRPC_STATUS,

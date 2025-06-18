@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/filter_is_not_null.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -47,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::FilterIsNotNull> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.components.FilterIsNotNull";
 
         /// Returns the arrow data type this type corresponds to.

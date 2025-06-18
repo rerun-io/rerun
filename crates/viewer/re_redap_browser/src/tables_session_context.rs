@@ -86,6 +86,7 @@ async fn register_all_table_entries(
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
+        .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
                 id: None,

@@ -104,6 +104,12 @@ pub struct Capsules3D {
     /// Optional colors for the capsules.
     pub colors: Option<SerializedComponentBatch>,
 
+    /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+    pub line_radii: Option<SerializedComponentBatch>,
+
+    /// Optionally choose whether the cylinders are drawn with lines or solid.
+    pub fill_mode: Option<SerializedComponentBatch>,
+
     /// Optional text labels for the capsules, which will be located at their centers.
     pub labels: Option<SerializedComponentBatch>,
 
@@ -127,8 +133,8 @@ impl Capsules3D {
     pub fn descriptor_lengths() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.Length".into(),
-            archetype_field_name: Some("lengths".into()),
+            component_name: Some("rerun.components.Length".into()),
+            archetype_field_name: "lengths".into(),
         }
     }
 
@@ -139,8 +145,8 @@ impl Capsules3D {
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "radii".into(),
         }
     }
 
@@ -151,8 +157,8 @@ impl Capsules3D {
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.PoseTranslation3D".into(),
-            archetype_field_name: Some("translations".into()),
+            component_name: Some("rerun.components.PoseTranslation3D".into()),
+            archetype_field_name: "translations".into(),
         }
     }
 
@@ -163,8 +169,8 @@ impl Capsules3D {
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.PoseRotationAxisAngle".into(),
-            archetype_field_name: Some("rotation_axis_angles".into()),
+            component_name: Some("rerun.components.PoseRotationAxisAngle".into()),
+            archetype_field_name: "rotation_axis_angles".into(),
         }
     }
 
@@ -175,8 +181,8 @@ impl Capsules3D {
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.PoseRotationQuat".into(),
-            archetype_field_name: Some("quaternions".into()),
+            component_name: Some("rerun.components.PoseRotationQuat".into()),
+            archetype_field_name: "quaternions".into(),
         }
     }
 
@@ -187,8 +193,32 @@ impl Capsules3D {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
+    #[inline]
+    pub fn descriptor_line_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "line_radii".into(),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
+    ///
+    /// The corresponding component is [`crate::components::FillMode`].
+    #[inline]
+    pub fn descriptor_fill_mode() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: Some("rerun.components.FillMode".into()),
+            archetype_field_name: "fill_mode".into(),
         }
     }
 
@@ -199,8 +229,8 @@ impl Capsules3D {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            component_name: Some("rerun.components.Text".into()),
+            archetype_field_name: "labels".into(),
         }
     }
 
@@ -211,8 +241,8 @@ impl Capsules3D {
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            component_name: Some("rerun.components.ShowLabels".into()),
+            archetype_field_name: "show_labels".into(),
         }
     }
 
@@ -223,8 +253,8 @@ impl Capsules3D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -233,8 +263,8 @@ impl Capsules3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Capsules3DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Capsules3DIndicator".into(),
         }
     }
 }
@@ -256,18 +286,20 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Capsules3D::descriptor_rotation_axis_angles(),
             Capsules3D::descriptor_quaternions(),
+            Capsules3D::descriptor_line_radii(),
+            Capsules3D::descriptor_fill_mode(),
             Capsules3D::descriptor_labels(),
             Capsules3D::descriptor_show_labels(),
             Capsules3D::descriptor_class_ids(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 12usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Capsules3D::descriptor_lengths(),
@@ -277,6 +309,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
             Capsules3D::descriptor_indicator(),
             Capsules3D::descriptor_rotation_axis_angles(),
             Capsules3D::descriptor_quaternions(),
+            Capsules3D::descriptor_line_radii(),
+            Capsules3D::descriptor_fill_mode(),
             Capsules3D::descriptor_labels(),
             Capsules3D::descriptor_show_labels(),
             Capsules3D::descriptor_class_ids(),
@@ -284,8 +318,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
     });
 
 impl Capsules3D {
-    /// The total number of components in the archetype: 2 required, 3 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 10usize;
+    /// The total number of components in the archetype: 2 required, 3 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 12usize;
 }
 
 /// Indicator component for the [`Capsules3D`] [`::re_types_core::Archetype`]
@@ -366,6 +400,16 @@ impl ::re_types_core::Archetype for Capsules3D {
         let colors = arrays_by_descr
             .get(&Self::descriptor_colors())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let line_radii = arrays_by_descr
+            .get(&Self::descriptor_line_radii())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_line_radii())
+            });
+        let fill_mode = arrays_by_descr
+            .get(&Self::descriptor_fill_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
+            });
         let labels = arrays_by_descr
             .get(&Self::descriptor_labels())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
@@ -386,6 +430,8 @@ impl ::re_types_core::Archetype for Capsules3D {
             rotation_axis_angles,
             quaternions,
             colors,
+            line_radii,
+            fill_mode,
             labels,
             show_labels,
             class_ids,
@@ -405,6 +451,8 @@ impl ::re_types_core::AsComponents for Capsules3D {
             self.rotation_axis_angles.clone(),
             self.quaternions.clone(),
             self.colors.clone(),
+            self.line_radii.clone(),
+            self.fill_mode.clone(),
             self.labels.clone(),
             self.show_labels.clone(),
             self.class_ids.clone(),
@@ -431,6 +479,8 @@ impl Capsules3D {
             rotation_axis_angles: None,
             quaternions: None,
             colors: None,
+            line_radii: None,
+            fill_mode: None,
             labels: None,
             show_labels: None,
             class_ids: None,
@@ -471,6 +521,14 @@ impl Capsules3D {
             colors: Some(SerializedComponentBatch::new(
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_colors(),
+            )),
+            line_radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_line_radii(),
+            )),
+            fill_mode: Some(SerializedComponentBatch::new(
+                crate::components::FillMode::arrow_empty(),
+                Self::descriptor_fill_mode(),
             )),
             labels: Some(SerializedComponentBatch::new(
                 crate::components::Text::arrow_empty(),
@@ -524,6 +582,12 @@ impl Capsules3D {
             self.colors
                 .map(|colors| colors.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.line_radii
+                .map(|line_radii| line_radii.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fill_mode
+                .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
+                .transpose()?,
             self.labels
                 .map(|labels| labels.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -556,6 +620,8 @@ impl Capsules3D {
         let len_rotation_axis_angles = self.rotation_axis_angles.as_ref().map(|b| b.array.len());
         let len_quaternions = self.quaternions.as_ref().map(|b| b.array.len());
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
+        let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
+        let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
         let len_labels = self.labels.as_ref().map(|b| b.array.len());
         let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
@@ -566,6 +632,8 @@ impl Capsules3D {
             .or(len_rotation_axis_angles)
             .or(len_quaternions)
             .or(len_colors)
+            .or(len_line_radii)
+            .or(len_fill_mode)
             .or(len_labels)
             .or(len_show_labels)
             .or(len_class_ids)
@@ -644,6 +712,36 @@ impl Capsules3D {
         self
     }
 
+    /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+    #[inline]
+    pub fn with_line_radii(
+        mut self,
+        line_radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
+    ) -> Self {
+        self.line_radii = try_serialize_field(Self::descriptor_line_radii(), line_radii);
+        self
+    }
+
+    /// Optionally choose whether the cylinders are drawn with lines or solid.
+    #[inline]
+    pub fn with_fill_mode(mut self, fill_mode: impl Into<crate::components::FillMode>) -> Self {
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), [fill_mode]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::FillMode`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_fill_mode`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_fill_mode(
+        mut self,
+        fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
+    ) -> Self {
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
+        self
+    }
+
     /// Optional text labels for the capsules, which will be located at their centers.
     #[inline]
     pub fn with_labels(
@@ -702,6 +800,8 @@ impl ::re_byte_size::SizeBytes for Capsules3D {
             + self.rotation_axis_angles.heap_size_bytes()
             + self.quaternions.heap_size_bytes()
             + self.colors.heap_size_bytes()
+            + self.line_radii.heap_size_bytes()
+            + self.fill_mode.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()

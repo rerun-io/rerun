@@ -5,7 +5,7 @@ use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymeth
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::{EntryKind, ext::EntryDetails};
 
-use crate::catalog::PyCatalogClient;
+use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(name = "EntryId")]
@@ -18,6 +18,7 @@ pub struct PyEntryId {
 impl PyEntryId {
     /// Create a new `EntryId` from a string.
     #[new]
+    #[pyo3(text_signature = "(self, id)")]
     pub fn new(id: String) -> PyResult<Self> {
         Ok(Self {
             id: re_tuid::Tuid::from_str(id.as_str())
@@ -105,7 +106,7 @@ impl From<PyEntryKind> for EntryKind {
 /// An entry in the catalog.
 #[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 
     pub id: Py<PyEntryId>,
 
@@ -128,7 +129,7 @@ impl PyEntry {
 
     /// The catalog client that this entry belongs to.
     #[getter]
-    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClient> {
+    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
         self.client.clone_ref(py)
     }
 
@@ -166,6 +167,10 @@ impl PyEntry {
         let connection = self.client.borrow_mut(py).connection().clone();
 
         connection.delete_entry(py, entry_id)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Entry({:?}, '{}')", self.details.kind, self.details.name)
     }
 }
 

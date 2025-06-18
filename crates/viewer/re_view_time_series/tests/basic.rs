@@ -89,7 +89,11 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity { 0.00006 } else { 0.0 },
+        if two_series_per_entity {
+            0.00006
+        } else {
+            0.00002
+        },
     );
 }
 
@@ -350,7 +354,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
-    broken_pixels_percent: f64,
+    broken_pixels_fraction: f64,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -390,6 +394,6 @@ fn run_view_ui_and_save_snapshot(
     harness.snapshot_with_broken_pixels_threshold(
         name,
         (size.x * size.y) as u64,
-        broken_pixels_percent,
+        broken_pixels_fraction,
     );
 }

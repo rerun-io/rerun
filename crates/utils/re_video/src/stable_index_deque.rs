@@ -285,7 +285,7 @@ impl<T> StableIndexDeque<T> {
         self.vec.len()
     }
 
-    /// Returns the index of the latest element in the deque that is less than or equal to the given key.
+    /// Returns the index of the latest element in a deque that is less than or equal to the given sorted key.
     ///
     /// Returns the index of:
     /// - The index of `needle` in `v`, if it exists
@@ -314,18 +314,18 @@ impl<T> StableIndexDeque<T> {
     /// # use re_video::StableIndexDeque;
     /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
     /// v.pop_front();
-    /// assert_eq!(v.iter_index_range_clamped(&(0..5)).cloned().collect::<Vec<_>>(), vec![1, 2, 3, 4]);
-    /// assert_eq!(v.iter_index_range_clamped(&(2..4)).cloned().collect::<Vec<_>>(), vec![2, 3]);
-    /// assert_eq!(v.iter_index_range_clamped(&(3..5)).cloned().collect::<Vec<_>>(), vec![3, 4]);
+    /// assert_eq!(v.iter_index_range_clamped(&(0..5)).collect::<Vec<_>>(), vec![(1, &1), (2, &2), (3, &3), (4, &4)]);
+    /// assert_eq!(v.iter_index_range_clamped(&(2..4)).collect::<Vec<_>>(), vec![(2, &2), (3, &3)]);
+    /// assert_eq!(v.iter_index_range_clamped(&(3..5)).collect::<Vec<_>>(), vec![(3, &3), (4, &4)]);
     /// ```
     #[inline]
     pub fn iter_index_range_clamped(
         &self,
         range: &std::ops::Range<usize>,
-    ) -> impl Iterator<Item = &T> {
+    ) -> impl Iterator<Item = (usize, &T)> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
-        self.vec.iter().skip(range_start).take(num_elements)
+        self.iter_indexed().skip(range_start).take(num_elements)
     }
 }
 

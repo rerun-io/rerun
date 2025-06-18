@@ -19,26 +19,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::archetypes::Points3D::new([[1.0, 0.1, 1.0]]),
     )?;
 
-    let confidences = rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::Float64Array::from(vec![0.3, 0.4, 0.5, 0.6])),
-        rerun::ComponentDescriptor::new("confidences"),
-    );
-
-    let traffic = rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::StringArray::from(vec!["low"])),
-        rerun::ComponentDescriptor::new("traffic"),
-    );
-
-    let weather = rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::StringArray::from(vec!["sunny"])),
-        rerun::ComponentDescriptor::new("weather"),
-    );
+    let other = rerun::AnyValues::default()
+        .with_field(
+            "confidences",
+            Arc::new(arrow::array::Float64Array::from(vec![0.3, 0.4, 0.5, 0.6])),
+        )
+        .with_field(
+            "traffic",
+            Arc::new(arrow::array::StringArray::from(vec!["low"])),
+        )
+        .with_field(
+            "weather",
+            Arc::new(arrow::array::StringArray::from(vec!["sunny"])),
+        );
 
     // Adds another property, this time with user-defined data.
-    rec.send_property(
-        "situation",
-        &[&confidences as &dyn rerun::AsComponents, &traffic, &weather],
-    )?;
+    rec.send_property("situation", &other)?;
 
     // Properties, including the name, can be overwritten at any time.
     rec.send_recording_name("My episode")?;

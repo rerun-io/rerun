@@ -8,7 +8,10 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
 ) -> Result<(), CodecError> {
-    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
+    re_tracing::profile_function!();
+
+    let schema = batch.schema_ref().as_ref();
+    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, schema)
         .map_err(CodecError::ArrowSerialization)?;
     sw.write(batch).map_err(CodecError::ArrowSerialization)?;
     sw.finish().map_err(CodecError::ArrowSerialization)?;
@@ -23,6 +26,8 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
+    re_tracing::profile_function!();
+
     let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
         .map_err(CodecError::ArrowDeserialization)?;
 
@@ -39,17 +44,23 @@ pub(crate) struct Payload {
 }
 
 #[cfg(feature = "encoder")]
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
 ) -> Result<Payload, crate::encoder::EncodeError> {
+    re_tracing::profile_function!();
+
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
     let data = match compression {
         crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+        crate::Compression::LZ4 => {
+            re_tracing::profile_scope!("lz4::compress");
+            lz4_flex::block::compress(&uncompressed)
+        }
     };
 
     Ok(Payload {
@@ -59,6 +70,7 @@ pub(crate) fn encode_arrow(
 }
 
 #[cfg(feature = "decoder")]
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
@@ -68,6 +80,7 @@ pub(crate) fn decode_arrow(
     let data = match compression {
         crate::Compression::Off => data,
         crate::Compression::LZ4 => {
+            re_tracing::profile_scope!("LZ4-decompress");
             uncompressed.resize(uncompressed_size, 0);
             lz4_flex::block::decompress_into(data, &mut uncompressed)?;
             uncompressed.as_slice()

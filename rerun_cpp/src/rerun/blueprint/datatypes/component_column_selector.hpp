@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/entity_path.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
@@ -27,6 +26,11 @@ namespace rerun::blueprint::datatypes {
         rerun::datatypes::EntityPath entity_path;
 
         /// The name of the component.
+        ///
+        /// This acts as the column name in the context of a given `entity_path`
+        /// By convention, for all Rerun typtes this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`.
+        /// (if there's no `ArchetypeName` it is just the field name).
+        /// An example for this would be `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
         rerun::datatypes::Utf8 component;
 
       public:
@@ -41,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::ComponentColumnSelector> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.datatypes.ComponentColumnSelector";
 
         /// Returns the arrow data type this type corresponds to.

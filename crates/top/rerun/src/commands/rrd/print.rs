@@ -92,7 +92,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             if verbose == 0 {
                 let column_names = chunk
                     .component_columns()
-                    .map(|(descr, _)| descr.component_name.short_name())
+                    .map(|(descr, _)| descr.column_name(re_sorbet::BatchType::Dataframe))
                     .join(" ");
                 println!("columns: [{column_names}]");
             } else if verbose == 1 {

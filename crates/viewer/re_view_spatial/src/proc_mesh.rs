@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use glam::{Vec3, Vec3A, uvec3, vec3};
-use hexasphere::BaseShape;
+use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
 use ordered_float::NotNan;
 use smallvec::smallvec;
@@ -65,6 +65,10 @@ pub enum ProcMeshKey {
         /// The cylinder part of the capsule is approximated as a mesh with (N + 1) × 4
         /// flat faces.
         subdivisions: usize,
+
+        /// If true, wireframe meshes are generated with reduced complexity,
+        /// showing a minimal set of lines that outline the shape.
+        axes_only: bool,
     },
 
     /// The cylinder always has radius 1. It should be scaled to obtain the desired radius.
@@ -74,6 +78,9 @@ pub enum ProcMeshKey {
         ///
         /// The cylinder is approximated as a mesh with (N + 1) × 4 flat faces.
         subdivisions: usize,
+
+        /// If true, wireframe meshes are generated with reduced complexity,
+        /// showing a minimal set of lines that outline the shape.
         axes_only: bool,
     },
 }
@@ -93,6 +100,7 @@ impl ProcMeshKey {
             Self::Cube => macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0)),
             Self::Capsule {
                 subdivisions: _,
+                axes_only: _,
                 length,
             } => macaw::BoundingBox::from_min_max(
                 Vec3::new(-1.0, -1.0, -1.0),
@@ -147,11 +155,6 @@ pub struct SolidMesh {
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
 enum GenError {
-    /// The requested drawing primitive type (solid or wireframe) is not supported
-    /// for the given [`ProcMeshKey`],
-    #[error("creating a wireframe mesh is not supported")]
-    UnimplementedWireframe,
-
     /// Either the GPU mesh could not be allocated,
     /// or the generated mesh was not well-formed.
     #[error(transparent)]
@@ -181,16 +184,7 @@ impl WireframeCache {
 
                 re_log::trace!("Generating wireframe mesh {key:?}…");
 
-                match generate_wireframe(&key, render_ctx) {
-                    Ok(mesh) => Some(Arc::new(mesh)),
-                    Err(err) => {
-                        re_log::warn!(
-                            "Failed to generate mesh {key:?}: {}",
-                            re_error::format_ref(&err)
-                        );
-                        None
-                    }
-                }
+                Some(Arc::new(generate_wireframe(&key, render_ctx)))
             })
             .clone()
     }
@@ -209,10 +203,7 @@ impl Cache for WireframeCache {
 /// Generate a wireframe mesh without caching.
 ///
 /// Note: The unstructured error type here is used only for logging.
-fn generate_wireframe(
-    key: &ProcMeshKey,
-    render_ctx: &RenderContext,
-) -> Result<WireframeMesh, GenError> {
+fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> WireframeMesh {
     re_tracing::profile_function!();
 
     // In the future, render_ctx will be used to allocate GPU memory for the mesh.
@@ -297,13 +288,17 @@ fn generate_wireframe(
             }
         }
         ProcMeshKey::Capsule {
-            length: _,
-            subdivisions: _,
+            length,
+            subdivisions,
+            axes_only,
         } => {
-            // No visualizer asks for these yet, because they are unimplemented.
-            // Implementing them will require writing a new capsule wireframe algorithm
-            // that agrees with the solid algorithm.
-            return Err(GenError::UnimplementedWireframe);
+            let line_strips = capsule_wireframe_lines(length.into_inner(), subdivisions, axes_only);
+
+            WireframeMesh {
+                bbox: key.simple_bounding_box(),
+                vertex_count: line_strips.iter().map(|s| s.len()).sum(),
+                line_strips,
+            }
         }
         ProcMeshKey::Cylinder {
             subdivisions,
@@ -374,7 +369,84 @@ fn generate_wireframe(
         }
     };
 
-    Ok(mesh)
+    mesh
+}
+
+fn capsule_wireframe_lines(length: f32, subdiv: usize, axes_only: bool) -> Vec<Vec<Vec3>> {
+    let mut line_strips = Vec::new();
+
+    let n = ((subdiv + 1) * 4).max(3);
+    let delta = std::f32::consts::TAU / n as f32;
+
+    let z_top = length;
+    let z_bot = 0.0;
+
+    let mut top_loop = Vec::with_capacity(n + 1);
+    let mut bottom_loop = Vec::with_capacity(n + 1);
+    for i in 0..=n {
+        let theta = i as f32 * delta;
+
+        // add top/bottom rim points
+        top_loop.push(Vec3::new(theta.cos(), theta.sin(), z_top));
+        bottom_loop.push(Vec3::new(theta.cos(), theta.sin(), z_bot));
+    }
+
+    line_strips.push(top_loop);
+    line_strips.push(bottom_loop);
+
+    // side spokes
+    let num_spokes = if axes_only { 4 } else { n };
+    let delta_spoke = std::f32::consts::TAU / num_spokes as f32;
+    for i in 0..num_spokes {
+        let theta = i as f32 * delta_spoke;
+        let rim = Vec3::new(theta.cos(), theta.sin(), 0.0);
+        line_strips.push(vec![rim.with_z(z_bot), rim.with_z(z_top)]);
+    }
+
+    // add the hemispherical caps, by taking a sphere and chopping it in two
+    let sphere: Subdivided<(), OctahedronBase> = Subdivided::new(subdiv, |_| ());
+
+    // choose which edges to emit
+    let mut tmp = Vec::new();
+    let indices: Vec<u32> = if axes_only {
+        sphere.get_major_edges_line_indices(&mut tmp, 1, |v| v.push(0));
+        tmp
+    } else {
+        sphere.get_all_line_indices(1, |v| v.push(0))
+    };
+
+    // we split the sphere up into strips, each strip ends in point at index 0
+    // so we split the indices on index 0.
+    let pts = sphere.raw_points();
+    for strip in indices.split(|&i| i == 0) {
+        let mut prev_top: Option<Vec3> = None;
+        let mut prev_bottom: Option<Vec3> = None;
+
+        for &idx in strip {
+            let p = pts[idx as usize - 1];
+            let v_top = Vec3::new(p.x, p.y, p.z + z_top);
+            let v_bottom = Vec3::new(p.x, p.y, p.z);
+
+            if let Some(p0) = prev_top {
+                // connect previous top to this top
+                if p0.z >= z_top && v_top.z >= z_top {
+                    line_strips.push(vec![p0, v_top]);
+                }
+            }
+
+            if let Some(p0) = prev_bottom {
+                // connect previous bottom to this bottom
+                if p0.z <= z_bot && v_bottom.z <= z_bot {
+                    line_strips.push(vec![p0, v_bottom]);
+                }
+            }
+
+            prev_top = Some(v_top);
+            prev_bottom = Some(v_bottom);
+        }
+    }
+
+    line_strips
 }
 
 // ----------------------------------------------------------------------------
@@ -470,6 +542,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         ProcMeshKey::Capsule {
             length,
             subdivisions,
+            axes_only: _, // no effect on solid mesh
         } => {
             // Design note: there are two reasons why this uses `macaw` instead of `hexasphere`.
             //

@@ -104,11 +104,15 @@ impl BlueprintTree {
                             );
                         }
                     })
-                    .menu_button(&re_ui::icons::MORE, |ui| {
-                        add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
-                        set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, ui);
-                    }),
+                    .menu_button(
+                        &re_ui::icons::MORE,
+                        "Open menu with more options",
+                        |ui| {
+                            add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
+                            set_blueprint_to_default_menu_buttons(ctx, ui);
+                            set_blueprint_to_auto_menu_button(ctx, ui);
+                        },
+                    ),
                 );
             });
 
@@ -1361,9 +1365,9 @@ fn list_views_with_entity(
     view_ids
 }
 
-fn remove_button_ui(ui: &mut Ui, tooltip: &str) -> Response {
-    ui.small_icon_button(&re_ui::icons::REMOVE)
-        .on_hover_text(tooltip)
+fn remove_button_ui(ui: &mut Ui, alt_text_and_tooltip: &str) -> Response {
+    ui.small_icon_button(&re_ui::icons::REMOVE, alt_text_and_tooltip)
+        .on_hover_text(alt_text_and_tooltip)
 }
 
 fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {

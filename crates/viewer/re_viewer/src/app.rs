@@ -105,7 +105,7 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_queue_interest: web_time::Instant,
+    pub(crate) latest_latency_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -220,13 +220,11 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        let mut view_class_registry = ViewClassRegistry::default();
-        if let Err(err) = populate_view_class_registry_with_builtin(&mut view_class_registry) {
-            re_log::error!(
-                "Failed to populate the view type registry with built-in views: {}",
-                err
-            );
-        }
+        let view_class_registry = crate::default_views::create_view_class_registry()
+            .unwrap_or_else(|err| {
+                re_log::error!("Failed to create view class registry: {err}");
+                Default::default()
+            });
 
         #[allow(unused_mut, clippy::needless_update)] // false positive on web
         let mut screenshotter = crate::screenshotter::Screenshotter::default();
@@ -320,7 +318,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_queue_interest: long_time_ago,
+            latest_latency_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -812,7 +810,7 @@ impl App {
             UICommand::SaveRecording => {
                 #[cfg(target_arch = "wasm32")] // Web
                 {
-                    if let Err(err) = save_recording(self, store_context, None) {
+                    if let Err(err) = save_active_recording(self, store_context, None) {
                         re_log::error!("Failed to save recording: {err}");
                     }
                 }
@@ -836,8 +834,19 @@ impl App {
                         }
                     }
 
+                    let selected_stores = selected_stores
+                        .iter()
+                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .collect_vec();
+
                     if selected_stores.is_empty() {
-                        if let Err(err) = save_recording(self, store_context, None) {
+                        if let Err(err) = save_active_recording(self, store_context, None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else if selected_stores.len() == 1 {
+                        // Common case: saving a single recording.
+                        // In this case we want the user to be able to pick a file name (not just a folder):
+                        if let Err(err) = save_recording(self, selected_stores[0], None) {
                             re_log::error!("Failed to save recording: {err}");
                         }
                     } else {
@@ -846,15 +855,15 @@ impl App {
                             .set_title("Save recordings to folder")
                             .pick_folder()
                         {
-                            self.save_all_recordings(_storage_context, &selected_stores, &folder);
+                            self.save_many_recordings(&selected_stores, &folder);
                         } else {
-                            re_log::warn!("No folder selected");
+                            re_log::info!("No folder selected - recordings not saved.");
                         }
                     }
                 }
             }
             UICommand::SaveRecordingSelection => {
-                if let Err(err) = save_recording(
+                if let Err(err) = save_active_recording(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
@@ -1166,23 +1175,13 @@ impl App {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_all_recordings(
-        &mut self,
-        storage_context: &StorageContext<'_>,
-        stores: &[StoreId],
-        folder: &std::path::Path,
-    ) {
+    fn save_many_recordings(&mut self, stores: &[&EntityDb], folder: &std::path::Path) {
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         use re_log::ResultExt as _;
         use tap::Pipe as _;
 
         re_tracing::profile_function!();
-
-        let stores = stores
-            .iter()
-            .filter_map(|store_id| storage_context.bundle.get(store_id))
-            .collect_vec();
 
         let num_stores = stores.len();
         let any_error = Arc::new(AtomicBool::new(false));
@@ -1752,14 +1751,9 @@ impl App {
 
         for event in store_events {
             let chunk = &event.diff.chunk;
-            for component in chunk.component_names() {
-                if let Some(short_archetype_name) =
-                    component.indicator_component_archetype_short_name()
-                {
-                    if let Some(archetype) = self
-                        .reflection
-                        .archetype_reflection_from_short_name(&short_archetype_name)
-                    {
+            for component_descr in chunk.components().keys() {
+                if let Some(archetype_name) = component_descr.archetype_name {
+                    if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
                                 re_log::warn_once!(
@@ -1768,7 +1762,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {short_archetype_name}");
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }
@@ -2461,26 +2455,6 @@ impl eframe::App for App {
     }
 }
 
-/// Add built-in views to the registry.
-fn populate_view_class_registry_with_builtin(
-    view_class_registry: &mut ViewClassRegistry,
-) -> Result<(), ViewClassRegistryError> {
-    re_tracing::profile_function!();
-    view_class_registry.add_class::<re_view_bar_chart::BarChartView>()?;
-    view_class_registry.add_class::<re_view_dataframe::DataframeView>()?;
-    view_class_registry.add_class::<re_view_graph::GraphView>()?;
-    #[cfg(feature = "map_view")]
-    view_class_registry.add_class::<re_view_map::MapView>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView2D>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView3D>()?;
-    view_class_registry.add_class::<re_view_tensor::TensorView>()?;
-    view_class_registry.add_class::<re_view_text_document::TextDocumentView>()?;
-    view_class_registry.add_class::<re_view_text_log::TextView>()?;
-    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>()?;
-
-    Ok(())
-}
-
 fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
@@ -2639,7 +2613,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     file_contents
 }
 
-fn save_recording(
+fn save_active_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
@@ -2649,6 +2623,14 @@ fn save_recording(
         anyhow::bail!("No recording data to save");
     };
 
+    save_recording(app, entity_db, loop_selection)
+}
+
+fn save_recording(
+    app: &mut App,
+    entity_db: &EntityDb,
+    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+) -> anyhow::Result<()> {
     let rrd_version = entity_db
         .store_info()
         .and_then(|info| info.store_version)

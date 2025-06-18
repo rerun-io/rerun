@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_video::{Chunk, Frame, Time, decode::FrameContent};
+use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
 use parking_lot::Mutex;
 
@@ -27,7 +27,7 @@ struct DecoderOutput {
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
 // TODO(andreas): Meld this into `super::player::VideoPlayer`.
 pub struct VideoSampleDecoder {
-    decoder: Box<dyn re_video::decode::AsyncDecoder>,
+    decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
@@ -35,9 +35,8 @@ impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
-            Box<dyn Fn(re_video::decode::Result<Frame>) + Send + Sync>,
-        )
-            -> re_video::decode::Result<Box<dyn re_video::decode::AsyncDecoder>>,
+            Box<dyn Fn(re_video::DecodeResult<Frame>) + Send + Sync>,
+        ) -> re_video::DecodeResult<Box<dyn re_video::AsyncDecoder>>,
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
@@ -45,7 +44,7 @@ impl VideoSampleDecoder {
 
         let on_output = {
             let decoder_output = decoder_output.clone();
-            move |frame: re_video::decode::Result<Frame>| match frame {
+            move |frame: re_video::DecodeResult<Frame>| match frame {
                 Ok(frame) => {
                     re_log::trace!(
                         "Decoded frame at PTS {:?}",
@@ -108,7 +107,7 @@ impl VideoSampleDecoder {
     /// Get the latest decoded frame at the given time
     /// and copy it to the given texture.
     ///
-    /// Drop all earlier frames to save memory.
+    /// Drops all earlier frames to save memory.
     ///
     /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
     /// which it is just after startup or after a call to [`Self::reset`].
@@ -173,8 +172,8 @@ impl VideoSampleDecoder {
     }
 
     /// Reset the video decoder and discard all frames.
-    pub fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.decoder.reset()?;
+    pub fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<(), VideoPlayerError> {
+        self.decoder.reset(video_descr)?;
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;
@@ -306,21 +305,19 @@ fn copy_native_video_frame_to_texture(
             coefficients,
         } => SourceImageDataFormat::Yuv {
             layout: match layout {
-                re_video::decode::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
-                re_video::decode::YuvPixelLayout::Y_U_V422 => YuvPixelLayout::Y_U_V422,
-                re_video::decode::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
-                re_video::decode::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
+                re_video::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
+                re_video::YuvPixelLayout::Y_U_V422 => YuvPixelLayout::Y_U_V422,
+                re_video::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
+                re_video::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
             },
             coefficients: match coefficients {
-                re_video::decode::YuvMatrixCoefficients::Identity => {
-                    YuvMatrixCoefficients::Identity
-                }
-                re_video::decode::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
-                re_video::decode::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+                re_video::YuvMatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
+                re_video::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+                re_video::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
             },
             range: match range {
-                re_video::decode::YuvRange::Limited => YuvRange::Limited,
-                re_video::decode::YuvRange::Full => YuvRange::Full,
+                re_video::YuvRange::Limited => YuvRange::Limited,
+                re_video::YuvRange::Full => YuvRange::Full,
             },
         },
     };

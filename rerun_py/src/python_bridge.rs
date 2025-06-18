@@ -14,6 +14,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use super::utils;
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
@@ -24,7 +25,6 @@ use re_sdk::{
     time::TimePoint,
 };
 use re_sdk::{TimeCell, external::re_log_encoding::encoder::encode_ref_as_bytes_local};
-
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -240,6 +240,17 @@ fn new_recording(
     } else {
         default_store_id(py, StoreKind::Recording, &application_id)
     };
+
+    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
+    // Check if recording already exists first.
+    // NOTE: This is scoped in order to release the Mutex locked by `all_recordings` as soon as possible
+    if let Some(existing_recording) = all_recordings().get(&recording_id) {
+        utils::py_rerun_warn(
+            format!("Recording with id: {} already exists, will ignore creation and return existing recording.",
+            &recording_id).as_str()
+        )?;
+        return Ok(PyRecordingStream(existing_recording.clone()));
+    }
 
     let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {

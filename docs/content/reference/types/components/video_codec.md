@@ -10,7 +10,7 @@ Support of these codecs by the Rerun Viewer is platform dependent.
 For more details see check the [video reference](https://rerun.io/docs/reference/video).
 
 ## Variants
-#### `H264` = 1
+#### `H264` = 0x61766331
 Advanced Video Coding (AVC/H.264)
 
 See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
@@ -20,10 +20,12 @@ See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
 To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
 Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
 
+Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
+
 
 ## Arrow datatype
 ```
-uint8
+uint32
 ```
 
 ## API reference links

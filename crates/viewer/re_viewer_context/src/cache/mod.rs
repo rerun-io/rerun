@@ -20,7 +20,9 @@ pub use image_decode_cache::ImageDecodeCache;
 pub use image_stats_cache::ImageStatsCache;
 pub use tensor_stats_cache::TensorStatsCache;
 pub use video_asset_cache::VideoAssetCache;
-pub use video_stream_cache::VideoStreamCache;
+pub use video_stream_cache::{
+    SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+};
 
 // ----
 
@@ -37,7 +39,9 @@ fn filter_blob_removed_events(
                     event
                         .chunk
                         .component_descriptors()
-                        .filter(|descr| descr.component_name == re_types::components::Blob::name())
+                        .filter(|descr| {
+                            descr.component_name == Some(re_types::components::Blob::name())
+                        })
                         .flat_map(|descr| {
                             event
                                 .chunk

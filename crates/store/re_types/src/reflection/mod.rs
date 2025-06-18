@@ -217,6 +217,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LinkAxis as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How should the horizontal/X/time axis be linked across multiple plots",
+                deprecation_summary: None,
+                custom_placeholder: Some(LinkAxis::default().to_arrow()?),
+                datatype: LinkAxis::arrow_datatype(),
+                verify_arrow_array: LinkAxis::verify_arrow_array,
+            },
+        ),
+        (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -1460,9 +1470,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     .into(), display_name : "Colors", component_name :
                     "rerun.components.Color".into(), docstring_md :
                     "Optional colors for the capsules.", is_required : false, },
-                    ArchetypeFieldReflection { name : "labels".into(), display_name :
-                    "Labels", component_name : "rerun.components.Text".into(),
+                    ArchetypeFieldReflection { name : "line_radii".into(), display_name :
+                    "Line radii", component_name : "rerun.components.Radius".into(),
                     docstring_md :
+                    "Optional radii for the lines used when the cylinder is rendered as a wireframe.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "fill_mode"
+                    .into(), display_name : "Fill mode", component_name :
+                    "rerun.components.FillMode".into(), docstring_md :
+                    "Optionally choose whether the cylinders are drawn with lines or solid.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "labels"
+                    .into(), display_name : "Labels", component_name :
+                    "rerun.components.Text".into(), docstring_md :
                     "Optional text labels for the capsules, which will be located at their centers.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "show_labels".into(), display_name : "Show labels", component_name :
@@ -2314,16 +2332,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "sample".into(), display_name :
-                    "Sample", component_name : "rerun.components.VideoSample".into(),
+                    ArchetypeFieldReflection { name : "codec".into(), display_name :
+                    "Codec", component_name : "rerun.components.VideoCodec".into(),
                     docstring_md :
-                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link) for codec specific requirements.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "codec"
-                    .into(), display_name : "Codec", component_name :
-                    "rerun.components.VideoCodec".into(), docstring_md :
                     "The codec used to encode the video chunks.\n\nThis property is expected to be constant over time and is ideally logged statically once per stream.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "draw_order"
-                    .into(), display_name : "Draw order", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "sample"
+                    .into(), display_name : "Sample", component_name :
+                    "rerun.components.VideoSample".into(), docstring_md :
+                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link) for codec specific requirements.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-15.0`.",
                     is_required : false, },
@@ -2772,6 +2790,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "scaling".into(), display_name :
                     "Scaling", component_name : "rerun.blueprint.components.ViewFit"
                     .into(), docstring_md : "How the image is scaled to fit the view.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimeAxis"),
+            ArchetypeReflection {
+                display_name: "Time axis",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "link".into(), display_name :
+                    "Link", component_name : "rerun.blueprint.components.LinkAxis"
+                    .into(), docstring_md :
+                    "How should the horizontal/X/time axis be linked across multiple plots?",
                     is_required : false, },
                 ],
             },

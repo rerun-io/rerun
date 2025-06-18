@@ -38,8 +38,8 @@ impl MapBackground {
     pub fn descriptor_provider() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component_name: "rerun.blueprint.components.MapProvider".into(),
-            archetype_field_name: Some("provider".into()),
+            component_name: Some("rerun.blueprint.components.MapProvider".into()),
+            archetype_field_name: "provider".into(),
         }
     }
 
@@ -48,8 +48,8 @@ impl MapBackground {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
         }
     }
 }

@@ -25,18 +25,20 @@ use pyo3::{
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
-    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnIdentifier,
+    ComponentColumnDescriptor, IndexColumnDescriptor, QueryExpression, SparseFillStrategy,
+    ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
+use re_sdk::{EntityPath, StoreId, StoreKind};
 use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
+use super::utils::py_rerun_warn_cstr;
 use crate::catalog::to_py_err;
-use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
+use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -55,16 +57,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
 
     Ok(())
-}
-
-fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
-    Python::with_gil(|py| {
-        let warning_type = PyModule::import(py, "rerun")?
-            .getattr("error_utils")?
-            .getattr("RerunWarning")?;
-        PyErr::warn(py, &warning_type, msg, 0)?;
-        Ok(())
-    })
 }
 
 /// The descriptor of an index column.
@@ -169,11 +161,7 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!(
-            "Component({}:{})",
-            self.0.entity_path,
-            self.0.component_name.short_name()
-        )
+        self.0.column_name(re_sorbet::BatchType::Dataframe)
     }
 
     fn __eq__(&self, other: &Self) -> bool {
@@ -188,12 +176,28 @@ impl PyComponentColumnDescriptor {
         self.0.entity_path.to_string()
     }
 
-    /// The component name.
+    /// The archetype field name.
     ///
     /// This property is read-only.
     #[getter]
-    fn component_name(&self) -> &str {
-        self.0.component_name.full_name()
+    fn archetype_field_name(&self) -> &str {
+        &self.0.archetype_field_name
+    }
+
+    /// The component name, if any.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn component_name(&self) -> Option<&str> {
+        self.0.component_name.map(|c| c.as_str())
+    }
+
+    /// The archetype name, if any.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn archetype_name(&self) -> Option<&str> {
+        self.0.archetype_name.map(|c| c.as_str())
     }
 
     /// Whether the column is static.
@@ -231,18 +235,16 @@ impl PyComponentColumnSelector {
     // Note: the `Parameters` section goes into the class docstring.
     #[new]
     #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
-    fn new(entity_path: &str, component_name: ComponentLike) -> Self {
+    fn new(entity_path: &str, component: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            component_name: component_name.0,
+            archetype_name: component.archetype_name.map(Into::into),
+            archetype_field_name: component.archetype_field_name,
         })
     }
 
     fn __repr__(&self) -> String {
-        format!(
-            "Component({}:{})",
-            self.0.entity_path, self.0.component_name
-        )
+        format!("{}", self.0)
     }
 
     /// The entity path.
@@ -253,12 +255,12 @@ impl PyComponentColumnSelector {
         self.0.entity_path.to_string()
     }
 
-    /// The component name.
+    /// The archetype field name.
     ///
     /// This property is read-only.
     #[getter]
-    fn component_name(&self) -> &str {
-        &self.0.component_name
+    fn archetype_field_name(&self) -> &str {
+        &self.0.archetype_field_name
     }
 }
 
@@ -290,20 +292,17 @@ impl AnyColumn {
                 if !name.contains(':') && !name.contains('/') {
                     Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
-                    let component_path =
-                        re_log_types::ComponentPath::from_str(&name).map_err(|err| {
-                            PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
-                        })?;
+                    let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
+                        PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                    })?;
 
-                    Ok(ColumnSelector::Component(ComponentColumnSelector::from(
-                        component_path,
-                    )))
+                    Ok(ColumnSelector::Component(sel))
                 }
             }
             Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
             Self::IndexSelector(selector) => Ok(selector.0.into()),
             Self::ComponentDescriptor(desc) => Ok(ColumnDescriptor::Component(desc.0).into()),
-            Self::ComponentSelector(selector) => Ok(selector.0.into()),
+            Self::ComponentSelector(selector) => Ok(ColumnSelector::Component(selector.0)),
         }
     }
 }
@@ -325,12 +324,11 @@ impl AnyComponentColumn {
     pub fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
-                let component_path =
-                    re_log_types::ComponentPath::from_str(&name).map_err(|err| {
-                        PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
-                    })?;
+                let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
+                    PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                })?;
 
-                Ok(ComponentColumnSelector::from(component_path))
+                Ok(sel)
             }
             Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
             Self::ComponentSelector(selector) => Ok(selector.0),
@@ -442,22 +440,38 @@ impl IndexValuesLike<'_> {
     }
 }
 
-pub struct ComponentLike(pub String);
+pub struct ComponentLike {
+    pub archetype_name: Option<String>,
+    pub archetype_field_name: String,
+}
+
+// TODO(#7699): Avoid interning strings from requests here.
+impl From<ComponentLike> for ColumnIdentifier {
+    fn from(value: ComponentLike) -> Self {
+        Self {
+            archetype_name: value.archetype_name.map(Into::into),
+            archetype_field_name: value.archetype_field_name.into(),
+        }
+    }
+}
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(component_str) = component.extract::<String>() {
-            Ok(Self(component_str))
-        } else if let Ok(component_str) = component
-            .getattr("_BATCH_TYPE")
-            .and_then(|batch_type| batch_type.getattr("_COMPONENT_NAME"))?
-            .extract::<String>()
-        {
-            Ok(Self(component_str))
+        if let Ok(column_name) = component.extract::<String>() {
+            match column_name.rfind(':') {
+                Some(i) => Ok(Self {
+                    archetype_name: Some(column_name[..i].into()),
+                    archetype_field_name: column_name[(i + 1)..].into(),
+                }),
+                None => Ok(Self {
+                    archetype_field_name: column_name,
+                    archetype_name: None,
+                }),
+            }
         } else {
-            return Err(PyTypeError::new_err(
-                "ComponentLike input must be a string or Component class.",
-            ));
+            Err(PyTypeError::new_err(
+                "ComponentLike input must be a string of format [<archetype_name>:]archetype_field_name",
+            ))
         }
     }
 }
@@ -549,8 +563,14 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
+        let selector = ComponentColumnSelector {
+            entity_path,
+            archetype_name: component.archetype_name.map(Into::into),
+            archetype_field_name: component.archetype_field_name,
+        };
+
         self.schema.component_columns().find_map(|col| {
-            if col.matches(&entity_path, &component.0) {
+            if col.matches_weak(&selector) {
                 Some(col.clone().into())
             } else {
                 None
@@ -600,7 +620,9 @@ impl PySchema {
         let desc = self
             .schema
             .resolve_component_column_selector(column_selector)
-            .map_err(to_py_err)?;
+            .ok_or(PyValueError::new_err(format!(
+                "Could not find column for selector {column_selector}"
+            )))?;
 
         Ok(PyComponentColumnDescriptor(desc.clone()))
     }
@@ -706,10 +728,8 @@ impl PyRecordingView {
                 let mut query_expression = self.query_expression.clone();
                 query_expression.selection = None;
 
-                let query_handle = engine.query(query_expression);
-
                 PySchema {
-                    schema: query_handle.view_contents().clone().into(),
+                    schema: engine.schema_for_query(&query_expression).into(),
                 }
             }
         }
@@ -787,7 +807,7 @@ impl PyRecordingView {
                     && all_contents_are_static
                     && any_selected_data_is_static
                 {
-                    py_rerun_warn(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                    py_rerun_warn_cstr(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
                 let schema = query_handle.schema().clone();
@@ -1187,18 +1207,6 @@ impl PyRecording {
         QueryEngine { engine }
     }
 
-    fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
-        let selector = ComponentColumnSelector {
-            entity_path: entity_path.clone(),
-            component_name: component_name.into(),
-        };
-
-        self.store
-            .read()
-            .resolve_component_selector(&selector)
-            .component_name
-    }
-
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```python
@@ -1248,12 +1256,12 @@ impl PyRecording {
                     ))
                 })?;
 
-                let component_strs: BTreeSet<String> = if let Ok(component) =
+                let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
                     value.extract::<ComponentLike>()
                 {
-                    std::iter::once(component.0).collect()
+                    std::iter::once(component.into()).collect()
                 } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
-                    components.into_iter().map(|c| c.0).collect()
+                    components.into_iter().map(Into::into).collect()
                 } else {
                     return Err(PyTypeError::new_err(format!(
                         "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
@@ -1263,15 +1271,7 @@ impl PyRecording {
                 contents.append(
                     &mut engine
                         .iter_entity_paths_sorted(&path_filter)
-                        .map(|entity_path| {
-                            let components = component_strs
-                                .iter()
-                                .map(|component_name| {
-                                    self.find_best_component(&entity_path, component_name)
-                                })
-                                .collect();
-                            (entity_path, Some(components))
-                        })
+                        .map(|entity_path| (entity_path, Some(component_strs.clone())))
                         .collect(),
                 );
             }
@@ -1516,7 +1516,7 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 }
 
 #[pymethods]

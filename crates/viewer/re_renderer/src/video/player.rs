@@ -2,10 +2,7 @@ use std::time::Duration;
 
 use web_time::Instant;
 
-use re_video::{
-    GopIndex, SampleIndex, StableIndexDeque, Time,
-    decode::{DecodeSettings, FrameInfo},
-};
+use re_video::{DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time};
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
@@ -46,17 +43,24 @@ pub struct VideoTexture {
     pub source_pixel_format: SourceImageDataFormat,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct SampleAndGopIndex {
+    sample_idx: SampleIndex,
+
+    /// Index of the group of pictures, that contains the sample.
+    gop_idx: GopIndex,
+}
+
 /// Decode video to a texture, optimized for extracting successive frames over time.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
-    chunk_decoder: VideoSampleDecoder,
+    sample_decoder: VideoSampleDecoder,
 
     video_texture: VideoTexture,
 
-    last_requested_sample_idx: SampleIndex,
-    last_requested_gop_idx: GopIndex,
-    last_enqueued_gop_idx: Option<GopIndex>,
+    last_requested: Option<SampleAndGopIndex>,
+    last_enqueued: Option<SampleAndGopIndex>,
 
     /// Last error that was encountered during decoding.
     ///
@@ -79,8 +83,8 @@ impl VideoPlayer {
             description.human_readable_codec_string()
         );
 
-        if let Some(stsd) = description.stsd.as_ref() {
-            if let Some(bit_depth) = stsd.contents.bit_depth() {
+        if let Some(details) = description.encoding_details.as_ref() {
+            if let Some(bit_depth) = details.bit_depth {
                 #[allow(clippy::comparison_chain)]
                 if bit_depth < 8 {
                     re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
@@ -92,12 +96,12 @@ impl VideoPlayer {
             }
         }
 
-        let chunk_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
+        let sample_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
+            re_video::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
         Ok(Self {
-            chunk_decoder,
+            sample_decoder,
 
             video_texture: VideoTexture {
                 texture: None,
@@ -107,9 +111,8 @@ impl VideoPlayer {
                 ),
             },
 
-            last_requested_sample_idx: SampleIndex::MAX,
-            last_requested_gop_idx: GopIndex::MAX,
-            last_enqueued_gop_idx: None,
+            last_requested: None,
+            last_enqueued: None,
 
             last_error: None,
         })
@@ -122,6 +125,7 @@ impl VideoPlayer {
     ///
     /// The video data description may change over time by adding and removing samples and GOPs,
     /// but other properties are expected to be stable.
+    // TODO(andreas): have to detect when decoder is playing catch-up and don't show images that we're not interested in.
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
@@ -142,7 +146,7 @@ impl VideoPlayer {
 
         update_video_texture(
             render_ctx,
-            &self.chunk_decoder,
+            &self.sample_decoder,
             &mut self.last_error,
             &mut self.video_texture,
             presentation_timestamp,
@@ -194,11 +198,11 @@ impl VideoPlayer {
         })
     }
 
-    // TODO(#7484): Need to revisit this for gops that expand over time due to newly arrived samples.
+    /// Makes sure enough samples have been enqueued to cover the requested presentation timestamp.
     fn enqueue_samples(
         &mut self,
         video_description: &re_video::VideoDataDescription,
-        presentation_timestamp: Time,
+        requested_pts: Time,
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
@@ -214,9 +218,9 @@ impl VideoPlayer {
         // We must enqueue samples in decode order, but show them in composition order.
         // In the presence of b-frames this order may be different!
 
-        // Find sample which when decoded will be presented at the timestamp the user requested.
+        // Find sample which, when decoded, will be presented at the timestamp the user requested.
         let requested_sample_idx = video_description
-            .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+            .latest_sample_index_at_presentation_timestamp(requested_pts)
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
         // Find the GOP that contains the sample.
@@ -226,51 +230,125 @@ impl VideoPlayer {
             )
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
-        // Enqueue GOPs as needed.
+        let requested = SampleAndGopIndex {
+            sample_idx: requested_sample_idx,
+            gop_idx: requested_gop_idx,
+        };
 
-        // First, check for decoding errors that may have been set asynchronously and reset.
-        if let Some(error) = self.chunk_decoder.take_error() {
-            // For each new (!) error after entering the error state, we reset the decoder.
-            // This way, it might later recover from the error as we progress in the video.
-            //
-            // By resetting the current GOP/sample indices, the frame enqueued code below
-            // is forced to reset the decoder.
-            self.last_requested_gop_idx = GopIndex::MAX;
+        self.reset_decoder_if_needed(video_description, requested)?;
 
-            // If we already have an error set, preserve its occurrence time.
+        // Ensure that we have as many GOPs enqueued currently as needed in order to…
+        // * cover the GOP of the requested sample _plus one_ so we can always smoothly transition to the next GOP
+        // * cover at least `min_num_samples_to_enqueue_ahead` samples to work around issues with some decoders
+        //   (note that for large GOPs this is usually irrelevant)
+        //
+        // Furthermore, we have to take into account whether the current GOP got expanded since we last enqueued samples.
+        // This happens regularly in live video streams.
+        //
+        // (potentially related to:) TODO(#7327, #7595): We don't necessarily have to enqueue full GOPs always.
+        // In particularly beyond `requested_gop_idx` this can be overkill.
+
+        if self.last_enqueued.is_none() {
+            // We haven't enqueued anything so far. Enqueue the requested GOP.
+            self.enqueue_gop(video_description, requested.gop_idx, video_buffers)?;
+        }
+
+        let min_last_sample_idx =
+            requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
+        loop {
+            let last_enqueued = self
+                .last_enqueued
+                .expect("We ensured that at least one GOP was enqueued.");
+
+            // Enqueued enough samples as described above?
+            if last_enqueued.gop_idx > requested_gop_idx // Stay one GOP ahead of the requested GOP
+                && last_enqueued.sample_idx >= min_last_sample_idx
+            {
+                break;
+            }
+
+            // Nothing more to enqueue / reached end of video?
+            if last_enqueued.sample_idx + 1 == video_description.samples.next_index() {
+                break;
+            }
+
+            // Retrieve the last enqueued GOP.
+            let Some(last_enqueued_gop) = video_description.gops.get(last_enqueued.gop_idx) else {
+                // If it no longer exist, attempt to move to the next GOP.
+                self.enqueue_gop(video_description, last_enqueued.gop_idx + 1, video_buffers)?;
+                continue;
+            };
+
+            // Check if the last enqueued gop is actually fully enqueued. If not, enqueue its remaining samples.
+            // This happens regularly in live video streams.
+            if last_enqueued.sample_idx + 1 < last_enqueued_gop.sample_range.end {
+                // Enqueue all remaining samples of the current GOP.
+                self.enqueue_samples_of_gop(
+                    video_description,
+                    last_enqueued.gop_idx,
+                    &((last_enqueued.sample_idx + 1)..last_enqueued_gop.sample_range.end),
+                    video_buffers,
+                )?;
+            } else {
+                self.enqueue_gop(video_description, last_enqueued.gop_idx + 1, video_buffers)?;
+            }
+        }
+
+        self.last_requested = Some(requested);
+
+        Ok(())
+    }
+
+    #[expect(clippy::if_same_then_else)]
+    fn reset_decoder_if_needed(
+        &mut self,
+        video_description: &re_video::VideoDataDescription,
+        requested: SampleAndGopIndex,
+    ) -> Result<(), VideoPlayerError> {
+        // If we haven't decoded anything at all yet, reset the decoder.
+        let Some(last_requested) = self.last_requested else {
+            return self.reset(video_description);
+        };
+
+        // Decoding errors
+        if let Some(error) = self.sample_decoder.take_error() {
+            // If we already have an error set on this player, preserve its wallclock time.
             // Otherwise, set the error using the time at which it was registered.
             if let Some(last_error) = &mut self.last_error {
                 last_error.latest_error = error.latest_error;
             } else {
                 self.last_error = Some(error);
             }
-        }
 
-        // Check all cases in which we have to reset the decoder.
-        // This is everything that goes backwards or jumps a GOP.
-        if requested_gop_idx != self.last_requested_gop_idx {
-            // Backward seeks or seeks across many GOPs trigger a reset of the decoder,
-            // because decoding all the samples between the previous sample and the requested
-            // one would mean decoding and immediately discarding more frames than we need.
-            if self.last_requested_gop_idx.saturating_add(1) != requested_gop_idx {
-                self.reset()?;
-            }
-        } else if requested_sample_idx != self.last_requested_sample_idx {
-            let requested_sample = video_description
-                .samples
-                .get(self.last_requested_sample_idx); // If it is not available, it got GC'ed by now.
+            // For each new (!) error after entering the error state, we reset the decoder.
+            // This way, it might later recover from the error as we progress in the video.
+            self.reset(video_description)?;
+        }
+        // Seeking forward by more than one GOP
+        // (starting over is more efficient than trying to have the decoder catch up)
+        else if requested.gop_idx > last_requested.gop_idx.saturating_add(1) {
+            self.reset(video_description)?;
+        }
+        // Backwards seeking across GOPs
+        else if requested.gop_idx < last_requested.gop_idx {
+            self.reset(video_description)?;
+        }
+        // Backwards seeking within the current GOP
+        else if requested.sample_idx != last_requested.sample_idx {
+            let requested_sample = video_description.samples.get(last_requested.sample_idx); // If it is not available, it got GC'ed by now.
             let current_pts = requested_sample
                 .map(|s| s.presentation_timestamp)
                 .unwrap_or(Time::MIN);
 
-            let requested_sample = video_description.samples.get(requested_sample_idx);
+            let requested_sample = video_description.samples.get(requested.sample_idx);
             let requested_sample_pts = requested_sample
                 .map(|s| s.presentation_timestamp)
                 .unwrap_or(Time::MIN);
 
             if requested_sample_pts < current_pts {
                 re_log::trace!(
-                    "Seeking backwards to sample {requested_sample_idx} (frame_nr {})",
+                    "Seeking backwards to sample {} (frame_nr {})",
+                    requested.sample_idx,
                     requested_sample
                         .map(|s| s.frame_nr.to_string())
                         .unwrap_or("<unknown>".to_owned())
@@ -285,53 +363,14 @@ impl VideoPlayer {
                 // seeking backwards!
                 // Therefore, it's important to compare presentation timestamps instead of sample indices.
                 // (comparing decode timestamps should be equivalent to comparing sample indices)
-                self.reset()?;
+                self.reset(video_description)?;
             }
         }
-
-        // Ensure that we have as many GOPs enqueued currently as needed in order to…
-        // * cover the GOP of the requested sample _plus one_ so we can always smoothly transition to the next GOP
-        // * cover at least `min_num_samples_to_enqueue_ahead` samples to work around issues with some decoders
-        //   (note that for large GOPs this is usually irrelevant)
-        //
-        // (potentially related to:) TODO(#7327, #7595): We don't necessarily have to enqueue full GOPs always.
-        // In particularly beyond `requested_gop_idx` this can be overkill.
-        let min_end_sample_idx =
-            requested_sample_idx + self.chunk_decoder.min_num_samples_to_enqueue_ahead();
-        loop {
-            let next_gop_idx = if let Some(last_enqueued_gop_idx) = self.last_enqueued_gop_idx {
-                let last_enqueued_gop = video_description.gops.get(last_enqueued_gop_idx);
-                let last_enqueued_sample_idx = last_enqueued_gop
-                    .map(|gop| gop.sample_range.end)
-                    .unwrap_or(0);
-
-                if last_enqueued_gop_idx > requested_gop_idx // Enqueue the next GOP after requested as well.
-                    && last_enqueued_sample_idx >= min_end_sample_idx
-                {
-                    break;
-                }
-                last_enqueued_gop_idx + 1
-            } else {
-                requested_gop_idx
-            };
-
-            if next_gop_idx >= video_description.gops.next_index() {
-                // Reached end of video with a previously enqueued GOP already.
-                break;
-            }
-
-            self.enqueue_gop(video_description, next_gop_idx, video_buffers)?;
-        }
-
-        self.last_requested_sample_idx = requested_sample_idx;
-        self.last_requested_gop_idx = requested_gop_idx;
 
         Ok(())
     }
 
     /// Enqueue all samples in the given GOP.
-    ///
-    /// Does nothing if the index is out of bounds.
     fn enqueue_gop(
         &mut self,
         video_description: &re_video::VideoDataDescription,
@@ -339,45 +378,62 @@ impl VideoPlayer {
         video_buffers: &StableIndexDeque<&[u8]>,
     ) -> Result<(), VideoPlayerError> {
         let Some(gop) = video_description.gops.get(gop_idx) else {
-            return Ok(());
+            return Err(VideoPlayerError::MissingSample);
         };
 
-        self.last_enqueued_gop_idx = Some(gop_idx);
+        self.enqueue_samples_of_gop(video_description, gop_idx, &gop.sample_range, video_buffers)
+    }
 
-        re_log::trace!(
-            "Enqueueing GOP {gop_idx} ({} samples)",
-            gop.sample_range.len()
-        );
+    /// Enqueues sample range *within* a GOP.
+    ///
+    /// All samples have to belong to the same GOP.
+    fn enqueue_samples_of_gop(
+        &mut self,
+        video_description: &re_video::VideoDataDescription,
+        gop_idx: GopIndex,
+        sample_range: &std::ops::Range<SampleIndex>,
+        video_buffers: &StableIndexDeque<&[u8]>,
+    ) -> Result<(), VideoPlayerError> {
+        debug_assert!(video_description.gops.get(gop_idx).is_some_and(|gop| {
+            gop.sample_range.start <= sample_range.start && gop.sample_range.end >= sample_range.end
+        }));
 
-        let samples = video_description
+        for (sample_idx, sample) in video_description
             .samples
-            .iter_index_range_clamped(&gop.sample_range);
-
-        for (sample_offset, sample) in samples.enumerate() {
-            let sample_idx = gop.sample_range.start + sample_offset;
+            .iter_index_range_clamped(sample_range)
+        {
             let chunk = sample
                 .get(video_buffers, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
-            self.chunk_decoder.decode(chunk)?;
+            self.sample_decoder.decode(chunk)?;
+
+            // Update continuously, since we want to keep track of our last state in case of errors.
+            self.last_enqueued = Some(SampleAndGopIndex {
+                sample_idx,
+                gop_idx,
+            });
         }
 
-        // TODO(#7484): For streaming we need to mark gops as open and do more here.
-        if gop_idx + 1 == video_description.gops.next_index() {
+        if gop_idx + 1 == video_description.gops.next_index()
+            && video_description.duration.is_some()
+        {
             // Last GOP - there is nothing more to decode,
             // so flush out any pending frames:
             // See https://github.com/rerun-io/rerun/issues/8073
-            self.chunk_decoder.end_of_video()?;
+            self.sample_decoder.end_of_video()?;
         }
 
         Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.chunk_decoder.reset()?;
-        self.last_requested_gop_idx = GopIndex::MAX;
-        self.last_requested_sample_idx = SampleIndex::MAX;
-        self.last_enqueued_gop_idx = None;
+    pub fn reset(
+        &mut self,
+        video_descr: &re_video::VideoDataDescription,
+    ) -> Result<(), VideoPlayerError> {
+        self.sample_decoder.reset(video_descr)?;
+        self.last_requested = None;
+        self.last_enqueued = None;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }

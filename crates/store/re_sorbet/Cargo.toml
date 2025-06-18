@@ -32,5 +32,6 @@ arrow.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 # Keep this crate simple, with few dependencies.

@@ -11,14 +11,13 @@ from rerun_bindings.rerun_bindings import Schema
 from rerun_bindings.types import AnyColumn, ComponentLike, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
-RECORDING_ID = uuid.uuid4()
 
 
 def test_load_recording() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rrd = tmpdir + "/tmp.rrd"
 
-        with rr.RecordingStream("rerun_example_test_recording") as rec:
+        with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
             rec.save(rrd)
             rec.set_time("my_index", sequence=1)
             rec.log("log", rr.TextLog("Hello"))
@@ -51,7 +50,8 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.RecordingStream(APP_ID, recording_id=RECORDING_ID) as rec:
+            self.expected_recording_id = uuid.uuid4()
+            with rr.RecordingStream(APP_ID, recording_id=self.expected_recording_id) as rec:
                 rec.save(rrd)
                 rec.set_time("my_index", sequence=1)
                 rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
@@ -94,7 +94,7 @@ class TestDataframe:
 
     def test_recording_info(self) -> None:
         assert self.recording.application_id() == APP_ID
-        assert self.recording.recording_id() == str(RECORDING_ID)
+        assert self.recording.recording_id() == str(self.expected_recording_id)
 
     def test_schema_recording(self) -> None:
         schema: Schema = self.recording.schema()
@@ -113,42 +113,58 @@ class TestDataframe:
 
         # Content columns
         assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].component_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[col].archetype_name is None
+        assert schema.component_columns()[col].archetype_field_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[col].component_name is None
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
+        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].archetype_field_name == "colors"
         assert schema.component_columns()[col].component_name == "rerun.components.Color"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
+        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].archetype_field_name == "positions"
         assert schema.component_columns()[col].component_name == "rerun.components.Position3D"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
+        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].archetype_field_name == "radii"
         assert schema.component_columns()[col].component_name == "rerun.components.Radius"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
-        assert schema.component_columns()[col].component_name == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[col].archetype_name is None
+        assert schema.component_columns()[col].archetype_field_name == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[col].component_name is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
+        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.TextLog"
+        assert schema.component_columns()[col].archetype_field_name == "text"
         assert schema.component_columns()[col].component_name == "rerun.components.Text"
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         # Default property columns
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
-        assert schema.component_columns()[col].component_name == "rerun.components.RecordingPropertiesIndicator"
+        assert schema.component_columns()[col].archetype_name is None
+        assert schema.component_columns()[col].archetype_field_name == "rerun.components.RecordingPropertiesIndicator"
+        assert schema.component_columns()[col].component_name is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
+        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.RecordingProperties"
+        assert schema.component_columns()[col].archetype_field_name == "start_time"
         assert schema.component_columns()[col].component_name == "rerun.components.Timestamp"
         assert schema.component_columns()[col].is_static is True
 
@@ -163,8 +179,12 @@ class TestDataframe:
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
+        assert schema.component_columns()[0].archetype_name == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[0].archetype_field_name == "colors"
         assert schema.component_columns()[0].component_name == "rerun.components.Color"
         assert schema.component_columns()[1].entity_path == "/points"
+        assert schema.component_columns()[1].archetype_name == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[1].archetype_field_name == "positions"
         assert schema.component_columns()[1].component_name == "rerun.components.Position3D"
 
         # Force radius to be included
@@ -209,7 +229,7 @@ class TestDataframe:
             +/**
             -/static_text
             """,
-            {"/** -/static_text": ["Position3D", "Color"]},
+            {"/** -/static_text": ["Points3D:positions", "Points3D:colors"]},
         ]
 
         for expr in filter_expressions:
@@ -225,18 +245,11 @@ class TestDataframe:
         view = self.recording.view(index="my_index", contents="points")
         index_col_selectors: list[AnyColumn] = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
-        selectors: list[ComponentLike] = [
-            rr.components.Position3D,
-            "rerun.components.Position3D",
-            "Position3D",
-            "position3D",
-        ]
+        selectors: list[ComponentLike] = ["Points3D:positions"]
 
         all_selectors: list[AnyColumn] = [
             *[rr.dataframe.ComponentColumnSelector("points", selector) for selector in selectors],
-            "/points:rerun.components.Position3D",
-            "/points:Position3D",
-            "/points:position3d",
+            "/points:Points3D:positions",
         ]
 
         for index_selector in index_col_selectors:
@@ -254,10 +267,10 @@ class TestDataframe:
                 print(f"table.schema: {table.schema}")
                 assert table.column("my_index")[0].equals(self.expected_index0[0]), f"col_selector: {col_selector}"
                 assert table.column("my_index")[1].equals(self.expected_index1[0]), f"col_selector: {col_selector}"
-                assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos0), (
+                assert table.column("/points:Points3D:positions")[0].values.equals(self.expected_pos0), (
                     f"col_selector: {col_selector}"
                 )
-                assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos1), (
+                assert table.column("/points:Points3D:positions")[1].values.equals(self.expected_pos1), (
                     f"col_selector: {col_selector}"
                 )
 
@@ -350,9 +363,9 @@ class TestDataframe:
         ])
 
         assert table.column("my_index").equals(expected_index)
-        assert not table.column("/points:Points3D.positions")[0].is_valid
-        assert not table.column("/points:Points3D.positions")[1].is_valid
-        assert not table.column("/points:Points3D.positions")[2].is_valid
+        assert not table.column("/points:Points3D:positions")[0].is_valid
+        assert not table.column("/points:Points3D:positions")[1].is_valid
+        assert not table.column("/points:Points3D:positions")[2].is_valid
 
         table = view.fill_latest_at().select().read_all().combine_chunks()
 
@@ -360,14 +373,14 @@ class TestDataframe:
         assert table.num_rows == 3
 
         assert table.column("my_index").equals(expected_index)
-        assert not table.column("/points:Points3D.positions")[0].is_valid
-        assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos0)
-        assert table.column("/points:Points3D.positions")[2].values.equals(self.expected_pos1)
+        assert not table.column("/points:Points3D:positions")[0].is_valid
+        assert table.column("/points:Points3D:positions")[1].values.equals(self.expected_pos0)
+        assert table.column("/points:Points3D:positions")[2].values.equals(self.expected_pos1)
 
     def test_filter_is_not_null(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
 
-        color = rr.dataframe.ComponentColumnSelector("points", rr.components.Color)
+        color = rr.dataframe.ComponentColumnSelector("points", "rerun.archetypes.Points3D:colors")
 
         view = view.filter_is_not_null(color)
 
@@ -379,16 +392,14 @@ class TestDataframe:
 
         assert table.column("my_index")[0].equals(self.expected_index1[0])
 
-        assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos1)
+        assert table.column("/points:Points3D:positions")[0].values.equals(self.expected_pos1)
 
     def test_view_syntax(self) -> None:
         good_content_expressions: list[ViewContentsLike] = [
-            {"points": rr.components.Position3D},
-            {"points": [rr.components.Position3D]},
-            {"points": "rerun.components.Position3D"},
-            {"points/**": "rerun.components.Position3D"},
-            {"points/**": "Position3D"},
-            {"points/**": "position3D"},
+            {"points": "Points3D:positions"},
+            {"points": "rerun.archetypes.Points3D:positions"},
+            {"points/**": "Points3D:positions"},
+            {"points/**": "rerun.archetypes.Points3D:positions"},
         ]
 
         for expr in good_content_expressions:
@@ -401,8 +412,9 @@ class TestDataframe:
             assert table.num_rows == 2
 
         bad_content_expressions: list[ViewContentsLike] = [
-            {"points": rr.components.Position2D},
-            {"point": [rr.components.Position3D]},
+            # We don't support selecting by components anymore.
+            {"points": "rerun.components.Position3D"},
+            {"points/**": "rerun.components.Position3D"},
         ]
 
         for expr in bad_content_expressions:
@@ -420,7 +432,7 @@ class TestDataframe:
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
 
-            with rr.RecordingStream("rerun_example_test_recording") as rec:
+            with rr.RecordingStream("rerun_example_test_recording", recording_id=uuid.uuid4()) as rec:
                 rec.save(rrd)
                 rr.dataframe.send_dataframe(df, rec=rec)
 

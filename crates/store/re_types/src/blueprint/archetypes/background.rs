@@ -39,8 +39,8 @@ impl Background {
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "rerun.blueprint.components.BackgroundKind".into(),
-            archetype_field_name: Some("kind".into()),
+            component_name: Some("rerun.blueprint.components.BackgroundKind".into()),
+            archetype_field_name: "kind".into(),
         }
     }
 
@@ -51,8 +51,8 @@ impl Background {
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "color".into(),
         }
     }
 
@@ -61,8 +61,8 @@ impl Background {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.BackgroundIndicator".into(),
         }
     }
 }

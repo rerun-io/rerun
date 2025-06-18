@@ -8,6 +8,7 @@
 #include "../component_column.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/fill_mode.hpp"
 #include "../components/length.hpp"
 #include "../components/pose_rotation_axis_angle.hpp"
 #include "../components/pose_rotation_quat.hpp"
@@ -101,6 +102,12 @@ namespace rerun::archetypes {
         /// Optional colors for the capsules.
         std::optional<ComponentBatch> colors;
 
+        /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        std::optional<ComponentBatch> line_radii;
+
+        /// Optionally choose whether the cylinders are drawn with lines or solid.
+        std::optional<ComponentBatch> fill_mode;
+
         /// Optional text labels for the capsules, which will be located at their centers.
         std::optional<ComponentBatch> labels;
 
@@ -126,44 +133,50 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `lengths` field.
         static constexpr auto Descriptor_lengths = ComponentDescriptor(
-            ArchetypeName, "lengths", Loggable<rerun::components::Length>::Descriptor.component_name
+            ArchetypeName, "lengths", Loggable<rerun::components::Length>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
         /// `ComponentDescriptor` for the `translations` field.
         static constexpr auto Descriptor_translations = ComponentDescriptor(
             ArchetypeName, "translations",
-            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+            Loggable<rerun::components::PoseTranslation3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
             ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentName
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
             ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+            Loggable<rerun::components::PoseRotationQuat>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
+        );
+        /// `ComponentDescriptor` for the `line_radii` field.
+        static constexpr auto Descriptor_line_radii = ComponentDescriptor(
+            ArchetypeName, "line_radii", Loggable<rerun::components::Radius>::ComponentName
+        );
+        /// `ComponentDescriptor` for the `fill_mode` field.
+        static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
+            ArchetypeName, "fill_mode", Loggable<rerun::components::FillMode>::ComponentName
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
         );
 
       public: // START of extensions from capsules3d_ext.cpp:
@@ -262,6 +275,31 @@ namespace rerun::archetypes {
         /// Optional colors for the capsules.
         Capsules3D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        Capsules3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii) && {
+            line_radii =
+                ComponentBatch::from_loggable(_line_radii, Descriptor_line_radii).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optionally choose whether the cylinders are drawn with lines or solid.
+        Capsules3D with_fill_mode(const rerun::components::FillMode& _fill_mode) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fill_mode` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fill_mode` should
+        /// be used when logging a single row's worth of data.
+        Capsules3D with_many_fill_mode(const Collection<rerun::components::FillMode>& _fill_mode
+        ) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
             return std::move(*this);
         }
 

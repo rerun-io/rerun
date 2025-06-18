@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    str::FromStr as _,
+};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -25,7 +28,7 @@ use crate::{
         },
     },
     format_path,
-    objects::ObjectClass,
+    objects::{EnumIntegerType, ObjectClass},
 };
 
 use super::{
@@ -194,7 +197,7 @@ fn generate_object_file(
     let quoted_obj = match obj.class {
         crate::objects::ObjectClass::Struct => quote_struct(reporter, type_registry, objects, obj),
         crate::objects::ObjectClass::Union => quote_union(reporter, type_registry, objects, obj),
-        crate::objects::ObjectClass::Enum => quote_enum(reporter, type_registry, objects, obj),
+        crate::objects::ObjectClass::Enum(_) => quote_enum(reporter, type_registry, objects, obj),
     };
 
     append_tokens(reporter, code, &quoted_obj, target_file)
@@ -495,7 +498,7 @@ fn quote_enum(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert_eq!(obj.class, ObjectClass::Enum);
+    assert!(obj.class.is_enum());
 
     let Object { name, fields, .. } = obj;
 
@@ -538,8 +541,13 @@ fn quote_enum(
     let quoted_fields = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
 
-        if let Some(enum_value) = field.enum_value {
-            let quoted_enum = proc_macro2::Literal::u8_unsuffixed(enum_value);
+        if let Some(enum_value) = field.enum_or_union_variant_value {
+            let quoted_enum = proc_macro2::Literal::from_str(
+                &obj.enum_integer_type()
+                    .expect("enums must have an integer type")
+                    .format_value(enum_value),
+            )
+            .unwrap();
             let quoted_doc = quote_field_docs(reporter, objects, field);
 
             let default_attr = if field.attrs.has(ATTR_DEFAULT) {
@@ -604,11 +612,19 @@ fn quote_enum(
         quote!(Self::#quoted_name => #docstring_md)
     });
 
+    let repr_type = match obj.enum_integer_type() {
+        Some(EnumIntegerType::U8) => quote!(u8),
+        Some(EnumIntegerType::U16) => quote!(u16),
+        Some(EnumIntegerType::U32) => quote!(u32),
+        Some(EnumIntegerType::U64) => quote!(u64),
+        None => unreachable!("enums must have an integer type"),
+    };
+
     let tokens = quote! {
         #quoted_doc
         #[derive( #(#derives,)* )]
         #quoted_custom_clause
-        #[repr(u8)]
+        #[repr(#repr_type)]
         pub enum #name {
             #(#quoted_fields,)*
         }
@@ -1124,8 +1140,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: Some(#archetype_name.into()),
-                        component_name: #component_name.into(),
-                        archetype_field_name: Some(#archetype_field_name.into()),
+                        component_name: Some(#component_name.into()),
+                        archetype_field_name: #archetype_field_name.into(),
                     }
                 }
             }
@@ -1144,8 +1160,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 pub fn descriptor_indicator() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: None,
-                        component_name: #indicator_component_name.into(),
-                        archetype_field_name: None,
+                        component_name: None,
+                        archetype_field_name: #indicator_component_name.into(),
                     }
                 }
             }

@@ -12,7 +12,12 @@ def capture_webcam_h264() -> None:
     """Capture webcam and stream H.264 encoded video to Rerun with proper timing."""
 
     # Initialize Rerun
-    rr.init("rerun_example_webcam_h264_stream", spawn=True)
+    rr.init("rerun_example_webcam_h264_stream")
+    rr.spawn()
+    # rr.serve_web()
+
+    # Log the stream's codec once. It never changes, so mark it as static.
+    rr.log("video_stream", rr.VideoStream(rr.components.VideoCodec.H264), static=True)
 
     # Target FPS for timing calculations
     target_fps = 30
@@ -65,11 +70,6 @@ def capture_webcam_h264() -> None:
         "-pix_fmt", "yuv420p",  # Ensure pixel format compatible with baseline profile.
         "-preset", "veryfast",  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
         "-tune", "zerolatency",  # Low latency
-        #'-refs', '1',  # Force single reference frame
-        #'-bf', '0',  # No B-frames (alternative way to forcing baseline profile)
-        # GOP (Group of Pictures) size - smaller value for lower latency.
-        # TODO(#7484): This is too aggressive, but needed until we handle gop extending in the viewer better.
-        "-g", "4",
 
         # Setup output.
         "-f", "h264",  # Output format
@@ -138,9 +138,7 @@ def capture_webcam_h264() -> None:
                     # We have a complete frame, send it to Rerun
                     frame_time += frame_duration
                     rr.set_time("video_time", duration=frame_time)
-                    rr.log(
-                        "video_stream", rr.VideoStream(sample=current_frame_data, codec=rr.components.VideoCodec.H264)
-                    )
+                    rr.log("video_stream", rr.VideoStream.from_fields(sample=current_frame_data))
 
                     # Start new frame
                     current_frame_data = nal_data

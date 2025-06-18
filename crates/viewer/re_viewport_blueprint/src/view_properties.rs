@@ -177,7 +177,8 @@ impl ViewProperty {
                 return value;
             }
         }
-        fallback_provider.fallback_for(&self.query_context(ctx), component_descr.component_name)
+
+        fallback_provider.fallback_for(&self.query_context(ctx), component_descr)
     }
 
     /// Save change to a blueprint component.

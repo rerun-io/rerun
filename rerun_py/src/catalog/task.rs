@@ -8,13 +8,13 @@ use pyo3::{Py, PyRef, PyResult, Python, pyclass, pymethods};
 use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 
-use crate::catalog::{PyCatalogClient, to_py_err};
+use crate::catalog::{PyCatalogClientInternal, to_py_err};
 use crate::dataframe::PyDataFusionTable;
 
 /// A handle on a remote task.
 #[pyclass(name = "Task")]
 pub struct PyTask {
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 
     pub id: TaskId,
 }
@@ -51,7 +51,7 @@ impl PyTask {
 #[allow(rustdoc::broken_intra_doc_links)]
 #[pyclass(name = "Tasks")]
 pub struct PyTasks {
-    client: Py<PyCatalogClient>,
+    client: Py<PyCatalogClientInternal>,
 
     ids: Vec<TaskId>,
 }
@@ -60,7 +60,7 @@ impl PyTasks {
     /// Create a new [`PyTasks`] instance.
     ///
     /// NOTE: Task ids will be deduplicated.
-    pub fn new(client: Py<PyCatalogClient>, ids: impl IntoIterator<Item = TaskId>) -> Self {
+    pub fn new(client: Py<PyCatalogClientInternal>, ids: impl IntoIterator<Item = TaskId>) -> Self {
         Self {
             client,
             ids: ids.into_iter().unique().collect(),

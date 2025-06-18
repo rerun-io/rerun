@@ -1,10 +1,6 @@
-use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
+use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
-use crate::{
-    UiExt as _,
-    icon_text::{IconText, IconTextItem},
-    icons,
-};
+use crate::{UiExt as _, icons};
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
@@ -25,13 +21,13 @@ enum HelpSection {
 #[derive(Debug, Clone)]
 pub struct ControlRow {
     text: String,
-    items: IconText,
+    items: Atoms<'static>,
 }
 
 impl ControlRow {
     /// Create a new control row.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(text: impl ToString, items: IconText) -> Self {
+    pub fn new(text: impl ToString, items: Atoms<'static>) -> Self {
         Self {
             text: text.to_string(),
             items,
@@ -92,18 +88,18 @@ impl Help {
     ///
     /// Split any + or / into an extra `IconTextItem`, like this:
     /// ```rust
-    /// re_ui::Help::new("Example").control("Pan", re_ui::icon_text!("click", "+", "drag"));
+    /// re_ui::Help::new("Example").control("Pan", ("click", "+", "drag"));
     /// ```
     #[allow(clippy::needless_pass_by_value)]
     #[inline]
-    pub fn control(mut self, label: impl ToString, items: impl Into<IconText>) -> Self {
+    pub fn control(mut self, label: impl ToString, items: impl IntoAtoms<'static>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {
-            controls.push(ControlRow::new(label, items.into()));
+            controls.push(ControlRow::new(label, items.into_atoms()));
         } else {
             self.sections
                 .push(HelpSection::Controls(vec![ControlRow::new(
                     label,
-                    items.into(),
+                    items.into_atoms(),
                 )]));
         }
         self
@@ -193,7 +189,7 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
             ui.markdown_ui(&md);
         }
         HelpSection::Controls(controls) => {
-            for row in controls {
+            for mut row in controls {
                 egui::Sides::new().spacing(12.0).show(
                     ui,
                     |ui| {
@@ -202,19 +198,10 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
                     |ui| {
                         let color = ui.visuals().widgets.inactive.text_color();
                         ui.set_height(tokens.small_icon_size.y);
-                        ui.spacing_mut().item_spacing.x = 2.0;
                         ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                         ui.visuals_mut().override_text_color = Some(color);
-                        for item in row.items.0.into_iter().rev() {
-                            match item {
-                                IconTextItem::Icon(icon) => {
-                                    ui.small_icon(&icon, Some(color));
-                                }
-                                IconTextItem::Text(text) => {
-                                    ui.label(text);
-                                }
-                            }
-                        }
+                        row.items.map_images(|i| i.tint(color));
+                        AtomLayout::new(row.items).gap(2.0).show(ui);
                     },
                 );
             }

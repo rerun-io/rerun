@@ -14,7 +14,7 @@ use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
 use crate::{
     EntityDataUi,
     image::image_preview_ui,
-    video::{show_decoded_frame_info, video_result_ui},
+    video::{show_decoded_frame_info, video_asset_result_ui},
 };
 
 impl EntityDataUi for Blob {
@@ -163,7 +163,7 @@ pub fn blob_preview_and_save_ui(
                             ctx.app_options().video_decoder_settings(),
                         )
                     });
-            video_result_ui(ui, ui_layout, &video_result);
+            video_asset_result_ui(ui, ui_layout, &video_result);
             video_result_for_frame_preview = Some(video_result);
         }
     }
@@ -219,7 +219,28 @@ pub fn blob_preview_and_save_ui(
             if let Ok(video) = video_result.as_ref() {
                 ui.separator();
 
-                show_decoded_frame_info(ctx, ui, ui_layout, video, video_timestamp, blob);
+                let video_timestamp = video_timestamp.unwrap_or_else(|| {
+                    // TODO(emilk): Some time controls would be nice,
+                    // but the point here is not to have a nice viewer,
+                    // but to show the user what they have selected
+                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                    let time = ui.input(|i| i.time);
+
+                    if let Some(duration) = video.data_descr().duration() {
+                        VideoTimestamp::from_secs(time % duration.as_secs_f64())
+                    } else {
+                        // TODO(#7484): show something more useful here
+                        VideoTimestamp::from_nanos(i64::MAX)
+                    }
+                });
+                let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                    ctx,
+                    video_timestamp,
+                    video.data_descr().timescale,
+                );
+                let video_buffers = std::iter::once(blob.as_ref()).collect();
+
+                show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
             }
         }
     }

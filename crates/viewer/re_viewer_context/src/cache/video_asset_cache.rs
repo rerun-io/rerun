@@ -10,7 +10,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{ComponentDescriptor, components::MediaType};
-use re_video::decode::DecodeSettings;
+use re_video::DecodeSettings;
 
 use crate::{Cache, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
 
@@ -66,9 +66,12 @@ impl VideoAssetCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video =
-                    re_video::VideoDataDescription::load_from_bytes(video_buffer, &media_type)
-                        .map(|data| Video::load(debug_name, data, decode_settings));
+                let video = re_video::VideoDataDescription::load_from_bytes(
+                    video_buffer,
+                    &media_type,
+                    &debug_name,
+                )
+                .map(|data| Video::load(debug_name, data, decode_settings));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),

@@ -79,6 +79,9 @@ pub enum DecodeError {
     #[error("Could not convert type from protobuf: {0}")]
     TypeConversion(#[from] re_protos::TypeConversionError),
 
+    #[error("Sorbet error: {0}")]
+    SorbetError(#[from] re_sorbet::SorbetError),
+
     #[error("Failed to read chunk: {0}")]
     Chunk(#[from] re_chunk::ChunkError),
 

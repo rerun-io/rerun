@@ -39,9 +39,9 @@ class VideoStream(Archetype):
 
     def __init__(
         self: Any,
-        sample: datatypes.BlobLike,
         codec: components.VideoCodecLike,
         *,
+        sample: datatypes.BlobLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> None:
         """
@@ -49,6 +49,10 @@ class VideoStream(Archetype):
 
         Parameters
         ----------
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         sample:
             Video sample data (also known as "video chunk").
 
@@ -66,10 +70,6 @@ class VideoStream(Archetype):
             (this restriction may be relaxed in the future for some codecs).
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
-        codec:
-            The codec used to encode the video chunks.
-
-            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -80,15 +80,15 @@ class VideoStream(Archetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(sample=sample, codec=codec, draw_order=draw_order)
+            self.__attrs_init__(codec=codec, sample=sample, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            sample=None,
             codec=None,
+            sample=None,
             draw_order=None,
         )
 
@@ -104,8 +104,8 @@ class VideoStream(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        sample: datatypes.BlobLike | None = None,
         codec: components.VideoCodecLike | None = None,
+        sample: datatypes.BlobLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
         """
@@ -115,6 +115,10 @@ class VideoStream(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         sample:
             Video sample data (also known as "video chunk").
 
@@ -132,10 +136,6 @@ class VideoStream(Archetype):
             (this restriction may be relaxed in the future for some codecs).
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
-        codec:
-            The codec used to encode the video chunks.
-
-            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -147,8 +147,8 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "sample": sample,
                 "codec": codec,
+                "sample": sample,
                 "draw_order": draw_order,
             }
 
@@ -170,8 +170,8 @@ class VideoStream(Archetype):
     def columns(
         cls,
         *,
-        sample: datatypes.BlobArrayLike | None = None,
         codec: components.VideoCodecArrayLike | None = None,
+        sample: datatypes.BlobArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -184,6 +184,10 @@ class VideoStream(Archetype):
 
         Parameters
         ----------
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         sample:
             Video sample data (also known as "video chunk").
 
@@ -201,10 +205,6 @@ class VideoStream(Archetype):
             (this restriction may be relaxed in the future for some codecs).
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
-        codec:
-            The codec used to encode the video chunks.
-
-            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -216,8 +216,8 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                sample=sample,
                 codec=codec,
+                sample=sample,
                 draw_order=draw_order,
             )
 
@@ -225,7 +225,7 @@ class VideoStream(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"sample": sample, "codec": codec, "draw_order": draw_order}
+        kwargs = {"codec": codec, "sample": sample, "draw_order": draw_order}
         columns = []
 
         for batch in batches:
@@ -256,6 +256,17 @@ class VideoStream(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
+    codec: components.VideoCodecBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.VideoCodecBatch._converter,  # type: ignore[misc]
+    )
+    # The codec used to encode the video chunks.
+    #
+    # This property is expected to be constant over time and is ideally logged statically once per stream.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     sample: components.VideoSampleBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -277,17 +288,6 @@ class VideoStream(Archetype):
     # (this restriction may be relaxed in the future for some codecs).
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    codec: components.VideoCodecBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.VideoCodecBatch._converter,  # type: ignore[misc]
-    )
-    # The codec used to encode the video chunks.
-    #
-    # This property is expected to be constant over time and is ideally logged statically once per stream.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

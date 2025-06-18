@@ -10,6 +10,10 @@ on:
         required: false
         type: string
         default: ""
+      CHECK:
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-pip-index
@@ -61,4 +65,4 @@ jobs:
             --title "Commit: $commit" \
             --dir "commit/$commit/wheels" \
             --upload \
-            --check
+            ${{ inputs.CHECK == 'true' && '--check' || '' }}

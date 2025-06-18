@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
+from rerun.catalog import CatalogClient
 
 from .types import (
     AnyColumn,
@@ -87,9 +88,25 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str:
+    def component_name(self) -> str | None:
         """
-        The component name.
+        The component name, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def archetype_name(self) -> str:
+        """
+        The archetype name, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def archetype_field_name(self) -> str:
+        """
+        The archetype field name.
 
         This property is read-only.
         """
@@ -130,9 +147,9 @@ class ComponentColumnSelector:
         """
 
     @property
-    def component_name(self) -> str:
+    def archetype_field_name(self) -> str:
         """
-        The component name.
+        The archetype field name.
 
         This property is read-only.
         """
@@ -997,6 +1014,9 @@ def asset_video_read_frame_timestamps_nanos(
 class EntryId:
     """A unique identifier for an entry in the catalog."""
 
+    def __init__(self, id: str) -> None:
+        """Create a new `EntryId` from a string."""
+
     def __str__(self) -> str:
         """Return str(self)."""
 
@@ -1010,6 +1030,9 @@ class EntryKind:
 
     def __str__(self, /) -> str:
         """Return str(self)."""
+
+    def __int__(self) -> int:
+        """int(self)"""  # noqa: D400
 
 class Entry:
     """An entry in the catalog."""
@@ -1041,7 +1064,7 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
-class Dataset(Entry):
+class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
@@ -1052,7 +1075,7 @@ class Dataset(Entry):
     def blueprint_dataset_id(self) -> EntryId | None:
         """The ID of the associated blueprint dataset, if any."""
 
-    def blueprint_dataset(self) -> Dataset | None:
+    def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
 
     def default_blueprint_partition_id(self) -> str | None:
@@ -1155,7 +1178,7 @@ class Dataset(Entry):
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
 
-class Table(Entry):
+class TableEntry(Entry):
     """
     A table entry in the catalog.
 
@@ -1332,31 +1355,35 @@ class DataframeQueryView:
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
-class CatalogClient:
-    """Client for a remote Rerun catalog server."""
+# TODO(ab): internal object, we need auto-gen stubs for these.
+class CatalogClientInternal:
+    def __init__(self, addr: str, token: str | None = None) -> None: ...
 
-    def entries(self) -> list[Entry]:
-        """Get a list of all entries in the catalog."""
+    # ---
 
-    def get_dataset(self, name_or_id: str | EntryId) -> Dataset:
-        """Get a dataset by name or id."""
+    def all_entries(self) -> list[Entry]: ...
+    def dataset_entries(self) -> list[DatasetEntry]: ...
+    def table_entries(self) -> list[TableEntry]: ...
 
-    def create_dataset(self, name: str) -> Dataset:
-        """Create a new dataset with the provided name."""
+    # ---
 
-    def get_table(self, name_or_id: str | EntryId) -> Table:
-        """
-        Get a table by name or id.
+    def entry_names(self) -> list[str]: ...
+    def dataset_names(self) -> list[str]: ...
+    def table_names(self) -> list[str]: ...
 
-        Note: the entry table is named `__entries`.
-        """
+    # ---
 
-    def entries_table(self) -> Table:
-        """Get the entries table."""
+    def get_dataset_entry(self, id: EntryId) -> DatasetEntry: ...
+    def get_table_entry(self, id: EntryId) -> TableEntry: ...
 
-    @property
-    def ctx(self) -> Any:
-        """The DataFusion context (if available)."""
+    # ---
+
+    def create_dataset(self, name: str) -> DatasetEntry: ...
+    def ctx(self) -> Any: ...
+
+    # ---
+
+    def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class DataFusionTable:
     def __datafusion_table_provider__(self) -> Any:

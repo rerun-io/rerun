@@ -287,7 +287,7 @@ impl UnitChunkShared {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<ChunkResult<Vec<C>>> {
-        debug_assert_eq!(C::name(), component_descr.component_name);
+        debug_assert_eq!(Some(C::name()), component_descr.component_name);
         let data = C::from_arrow(&*self.component_batch_raw(component_descr)?);
         Some(data.map_err(Into::into))
     }
@@ -325,7 +325,7 @@ impl UnitChunkShared {
         component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        debug_assert_eq!(C::name(), component_descr.component_name);
+        debug_assert_eq!(Some(C::name()), component_descr.component_name);
         let res = self.component_instance_raw(component_descr, instance_index)?;
 
         let array = match res {
@@ -370,7 +370,7 @@ impl UnitChunkShared {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<ChunkResult<C>> {
-        debug_assert_eq!(C::name(), component_descr.component_name);
+        debug_assert_eq!(Some(C::name()), component_descr.component_name);
         let res = self.component_mono_raw(component_descr)?;
 
         let array = match res {

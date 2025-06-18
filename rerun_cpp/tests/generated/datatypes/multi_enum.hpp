@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <rerun/component_descriptor.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
@@ -38,7 +37,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::MultiEnum> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.testing.datatypes.MultiEnum";
+        static constexpr std::string_view ComponentName = "rerun.testing.datatypes.MultiEnum";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
