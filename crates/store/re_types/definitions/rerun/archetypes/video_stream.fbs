@@ -8,7 +8,7 @@ namespace rerun.archetypes;
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.
 ///
-/// TODO(#7484): Add snippet.
+/// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
 table VideoStream (
   "attr.docs.unreleased",
   "attr.rerun.state": "unstable",
@@ -39,6 +39,10 @@ table VideoStream (
     /// The samples are expected to be encoded using the `codec` field.
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
+    ///
+    /// Unless your stream consists entirely of key-frames (in which case you should consider [archetypes.EncodedImage])
+    /// never log this component as static data as this means that you loose all information of
+    /// previous samples which may be required to decode an image.
     ///
     /// See [components.VideoCodec] for codec specific requirements.
     sample: rerun.components.VideoSample ("attr.rerun.component_recommended", nullable, order: 2000);

@@ -183,7 +183,7 @@ fn find_and_recommend_doclinks(
                 && !matches!(content, "ViewContents" | "VisibleTimeRanges" | "QueryExpression")
 
                 // In some blueprint code we refer to stuff in Rerun.
-                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "ViewId" | "View")
+                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "ViewId" | "View" | "ArchetypeName")
 
                 // Doc links to OpenStreetMap may show up
                 && !matches!(content, "OpenStreetMap");
