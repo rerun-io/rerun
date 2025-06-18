@@ -706,31 +706,31 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 [patch.crates-io]
 # https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
- datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
- datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/df48-with-metadata" }
+# datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
+# datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "rerun" }
 
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
