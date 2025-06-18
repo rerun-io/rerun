@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use egui::{Frame, Margin, RichText};
+use egui::{Frame, Margin, RichText, Widget};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::BatchType;
-use re_ui::list_item::ItemActionButton;
+use re_ui::list_item::{ItemActionButton, ItemButton, ItemMenuButton};
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
@@ -228,17 +228,36 @@ impl Server {
 
         let content =
             list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
-                let response = ui
-                    .small_icon_button(&re_ui::icons::REMOVE, "Remove server")
-                    .on_hover_text("Remove server");
-
-                if response.clicked() {
-                    ctx.command_sender
-                        .send(Command::RemoveServer(self.origin.clone()))
-                        .ok();
-                }
-
-                response
+                Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
+                    if icons::RESET
+                        .as_button_with_label(ui.tokens(), "Refresh server")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::RefreshCollection(self.origin.clone()))
+                            .ok();
+                    }
+                    if icons::EDIT
+                        .as_button_with_label(ui.tokens(), "Add server")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::OpenAddServerModal) // TODO
+                            .ok();
+                    }
+                    if icons::REMOVE
+                        .as_button_with_label(ui.tokens(), "Remove")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::RemoveServer(self.origin.clone()))
+                            .ok();
+                    }
+                }))
+                .ui(ui)
             });
 
         let item_response = ui
