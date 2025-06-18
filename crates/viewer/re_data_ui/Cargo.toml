@@ -47,3 +47,4 @@ egui.workspace = true
 itertools.workspace = true
 rexif.workspace = true
 unindent.workspace = true
+jiff.workspace = true
