@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Compressed Camera Video Stream"
+title = "Compressed camera video stream"
 tags = ["2D", "Image encoding", "Video", "Streaming"]
 thumbnail = "https://static.rerun.io/camera_video_stream/e3cd0bba4929b766d9fc65b4c6fc70081f6b8cbc/480w.png"
 thumbnail_dimensions = [480, 269]
@@ -34,7 +34,7 @@ optimized for low latency video transmission as used for teleoperations.
 If you need lower latency you should consider tweaking the encoding settings further and
 configure Rerun's [Micro Batching](https://rerun.io/docs/reference/sdk/micro-batching).
 
-Video frames are logged subsequently using 
+Video frames are logged subsequently using:
 ```py
 rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
 ```
