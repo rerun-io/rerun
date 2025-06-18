@@ -36,6 +36,19 @@ class CatalogClient:
             )
 
         self._raw_client = CatalogClientInternal(address, token)
+        self._prepare_datafusion_catalog()
+
+    def _prepare_datafusion_catalog(self) -> None:
+        """Prepare the rerun catalog."""
+        # catalog = self.ctx.catalog("rerun") if "rerun" in self.ctx.catalog_names() else self.ctx.new_in_memory_catalog("rerun")
+        catalog = self.ctx.catalog()
+        _schema = (
+            catalog.schema("rerun") if "rerun" in catalog.schema_names() else catalog.new_in_memory_schema("rerun")
+        )
+
+        self.ctx.register_view("rerun.entries", self.entries())
+        self.ctx.register_view("rerun.tables", self.tables())
+        self.ctx.register_view("rerun.datasets", self.datasets())
 
     def __repr__(self) -> str:
         return self._raw_client.__repr__()
