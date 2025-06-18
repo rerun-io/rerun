@@ -217,7 +217,7 @@ pub struct QueryExpression {
     ///
     /// Only rows where this column contains non-null data be kept in the final dataset.
     ///
-    /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
+    /// Example: `ComponentColumnSelector("Points3D:positions")`.
     //
     // TODO(cmc): multi-pov support
     pub filtered_is_not_null: Option<ComponentColumnSelector>,
@@ -233,7 +233,7 @@ pub struct QueryExpression {
     ///
     /// Defaults to `None`, which means: everything.
     ///
-    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("rerun.components.Position3D"))]`.
+    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("Points3D:position"))]`.
     //
     // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
     pub selection: Option<Vec<ColumnSelector>>,
