@@ -494,8 +494,32 @@ class RecordingStream:
         """
         Stream data to multiple different sinks.
 
-        Duplicate sinks are not allowed. For example, two [`GrpcSink`]s that
+        Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
         use the same `url`.
+
+        Parameters
+        ----------
+        sinks:
+            A list of sinks to wrap.
+
+            See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        Example
+        -------
+        ```py
+        rec = rr.RecordingStream("rerun_example_tee")
+        rec.tee(
+            rr.GrpcSink(),
+            rr.FileSink("data.rrd")
+        )
+        rec.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+        ```
+
         """
 
         from .sinks import _tee
