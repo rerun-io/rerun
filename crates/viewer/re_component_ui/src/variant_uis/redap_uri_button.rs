@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::str::FromStr as _;
 
+use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentDescriptor, RowId};
 use re_uri::RedapUri;
 use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -44,8 +45,18 @@ pub fn redap_uri_button(
         }
     });
 
+    let put_left_aligned = |ui: &mut Ui, link| {
+        ui.scope_builder(
+            UiBuilder::new()
+                .max_rect(ui.max_rect())
+                .layout(Layout::top_down_justified(Align::Min)),
+            |ui| ui.add(link),
+        )
+        .inner
+    };
+
     if let Some(loaded_recording_id) = loaded_recording_id {
-        let response = ui.button("Switch to").on_hover_ui(|ui| {
+        let response = put_left_aligned(ui, Link::new("Switch to")).on_hover_ui(|ui| {
             ui.label("This recording is already loaded. Click to switch to it.");
         });
 
@@ -57,7 +68,7 @@ pub fn redap_uri_button(
                 ));
         }
     } else {
-        let response = ui.button("Open").on_hover_ui(|ui| {
+        let response = put_left_aligned(ui, Link::new("Open")).on_hover_ui(|ui| {
             ui.label(uri.to_string());
         });
 

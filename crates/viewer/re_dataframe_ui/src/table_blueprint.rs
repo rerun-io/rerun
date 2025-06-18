@@ -1,5 +1,6 @@
 use re_log_types::{EntityPath, EntryId};
 use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_types::archetypes::RecordingProperties;
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
@@ -80,6 +81,7 @@ pub struct ColumnBlueprint {
     pub display_name: Option<String>,
     pub default_visibility: bool,
     pub variant_ui: Option<VariantName>,
+    pub sort_key: i64,
 }
 
 impl Default for ColumnBlueprint {
@@ -88,6 +90,7 @@ impl Default for ColumnBlueprint {
             display_name: None,
             default_visibility: true,
             variant_ui: None,
+            sort_key: 0,
         }
     }
 }
@@ -123,6 +126,16 @@ impl ColumnBlueprint {
             ..self
         }
     }
+
+    /// Customize the order of the columns in the UI.
+    ///
+    /// Default is `0`. The lower the number, the earlier the column will be shown.
+    ///
+    /// Order of columns with identical sort keys will depend on the order of columns in the
+    /// datafusion query.
+    pub fn sort_key(self, sort_key: i64) -> Self {
+        Self { sort_key, ..self }
+    }
 }
 
 pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String {
@@ -130,13 +143,32 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
         ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
 
         ColumnDescriptorRef::Component(desc) => {
-            if desc.entity_path == EntityPath::root() {
+            let name = if desc.entity_path == EntityPath::root() {
                 // In most case, user tables don't have any entities, so we filter out the root entity
                 // noise in column names.
                 desc.column_name(BatchType::Chunk)
             } else {
                 desc.column_name(BatchType::Dataframe)
-            }
+            };
+
+            strip_recording_properties_prefix(&name)
+                .map(ToOwned::to_owned)
+                .unwrap_or(name)
         }
     }
+}
+
+/// Strip the `/__properties/recording:RecordingProperties:` prefix from a column name.
+fn strip_recording_properties_prefix(name: &str) -> Option<&str> {
+    let name = name
+        .strip_prefix(&EntityPath::recording_properties().to_string())?
+        .strip_prefix(":")?;
+    let archetype_name = RecordingProperties::descriptor_name()
+        .archetype_name
+        .expect("Should have an archetype name");
+    Option::or(
+        name.strip_prefix(archetype_name.short_name()),
+        name.strip_prefix(archetype_name.full_name()),
+    )?
+    .strip_prefix(":")
 }

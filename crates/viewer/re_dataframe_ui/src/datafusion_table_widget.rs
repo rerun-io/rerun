@@ -202,14 +202,16 @@ impl<'a> DataFusionTableWidget<'a> {
             return;
         }
 
-        let id = id_from_session_context_and_table(&session_ctx, &table_ref);
+        // The TableConfig should be persisted across sessions, so we also need a static id.
+        let static_id = Id::new(&table_ref);
+        let session_id = id_from_session_context_and_table(&session_ctx, &table_ref);
 
         let table_state = DataFusionAdapter::get(
             runtime,
             ui,
             &session_ctx,
             table_ref.clone(),
-            id,
+            session_id,
             initial_blueprint,
         );
 
@@ -289,10 +291,12 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        let mut sorted_columns = columns.iter().collect::<Vec<_>>();
+        sorted_columns.sort_by_key(|c| c.blueprint.sort_key);
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
-            id,
-            columns.iter().map(|column| {
+            static_id,
+            sorted_columns.iter().map(|column| {
                 ColumnConfig::new_with_visible(
                     column.id,
                     column.display_name(),
@@ -320,7 +324,7 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         egui_table::Table::new()
-            .id_salt(id)
+            .id_salt(session_id)
             .columns(
                 table_delegate
                     .table_config
@@ -407,6 +411,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     .show(
                         ui,
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             let response = ui.label(
                                 egui::RichText::new(column_display_name)
                                     .strong()
@@ -422,6 +427,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             response
                         },
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             egui::containers::menu::MenuButton::from_button(
                                 ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
