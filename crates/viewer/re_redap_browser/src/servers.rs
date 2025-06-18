@@ -87,6 +87,8 @@ impl Server {
 
     /// Central panel UI for when a server is selected.
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        const ENTRY_LINK_COLUMN_NAME: &str = "link";
+
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             "__entries",
@@ -110,8 +112,11 @@ impl Server {
                 }
             }
 
+            // TODO: Properly sort columns
+
             blueprint
         })
+        .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
         .show(viewer_ctx, &self.runtime, ui);
     }
 

@@ -15,7 +15,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
-    ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+    ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
 use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::{DisplayRecordBatch, default_display_name_for_column};
@@ -167,6 +167,21 @@ impl<'a> DataFusionTableWidget<'a> {
             partition_id_column_name: partition_id_column_name.into(),
             origin,
             dataset_id,
+        });
+
+        self
+    }
+
+    pub fn generate_entry_links(
+        mut self,
+        column_name: impl Into<String>,
+        entry_id_column_name: impl Into<String>,
+        origin: re_uri::Origin,
+    ) -> Self {
+        self.initial_blueprint.entry_links = Some(EntryLinksSpec {
+            column_name: column_name.into(),
+            entry_id_column_name: entry_id_column_name.into(),
+            origin,
         });
 
         self

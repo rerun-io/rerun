@@ -63,11 +63,25 @@ pub struct PartitionLinksSpec {
     pub dataset_id: EntryId,
 }
 
+/// Information required to generate a partition link column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EntryLinksSpec {
+    /// Name of the column to generate.
+    pub column_name: String,
+
+    /// Name of the existing column containing the partition id.
+    pub entry_id_column_name: String,
+
+    /// Origin to use for the links.
+    pub origin: re_uri::Origin,
+}
+
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
+    pub entry_links: Option<EntryLinksSpec>,
 }
 
 /// The blueprint for a specific column.
