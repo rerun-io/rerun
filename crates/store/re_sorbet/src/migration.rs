@@ -260,7 +260,7 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
                 {
                     // If we don't find the above keys, we likely encountered data that was logged via `AnyValues`.
                     // We do our best effort to convert that.
-                    re_log::debug!("Moving stray component name to archetype field: {value}");
+                    re_log::debug_once!("Moving stray component name {value:?} to archetype field");
                     metadata.insert("rerun.archetype_field".to_owned(), value);
                 } else {
                     metadata.insert("rerun.component".to_owned(), value);
