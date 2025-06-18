@@ -1076,28 +1076,56 @@ pub trait UiExt {
         }
     }
 
+    /// The help menu appears when clicked and/or hovered
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
-        // The help menu appears when clicked and/or hovered
         let mut help_ui: Option<_> = Some(help_ui);
 
         let ui = self.ui_mut();
 
-        let menu_button = egui::containers::menu::MenuButton::from_button(
-            ui.small_icon_button_widget(&icons::HELP, "Help"),
-        );
-        let button_response = menu_button
-            .ui(ui, |ui| {
-                if let Some(help_ui) = help_ui.take() {
-                    help_ui(ui);
-                }
-            })
-            .0;
+        // If we never showed the help before, we want to animate it to draw attention:
+        let has_shown_help_id = egui::Id::new("has_shown_help");
+        let has_been_shown: bool =
+            ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
-        if let Some(help_ui) = help_ui.take() {
-            button_response.on_hover_ui(help_ui)
-        } else {
-            button_response
-        }
+        ui.scope(|ui| {
+            if !has_been_shown {
+                blink_inactive_buttons(ui);
+            }
+
+            let menu_button = egui::containers::menu::MenuButton::from_button(
+                ui.small_icon_button_widget(&icons::HELP, "Help"),
+            );
+            let button_response = menu_button
+                .ui(ui, |ui| {
+                    if let Some(help_ui) = help_ui.take() {
+                        help_ui(ui);
+                        if !has_been_shown {
+                            // Remember that the user has found and used the help button at least once,
+                            // to stop it from animating in the future:
+                            ui.data_mut(|d| {
+                                d.insert_persisted(has_shown_help_id, true);
+                            });
+                        }
+                    }
+                })
+                .0;
+
+            if let Some(help_ui) = help_ui.take() {
+                button_response.on_hover_ui(|ui| {
+                    help_ui(ui);
+                    if !has_been_shown {
+                        // Remember that the user has found and used the help button at least once,
+                        // to stop it from animating in the future:
+                        ui.data_mut(|d| {
+                            d.insert_persisted(has_shown_help_id, true);
+                        });
+                    }
+                })
+            } else {
+                button_response
+            }
+        })
+        .inner
     }
 
     /// Show some markdown
@@ -1238,6 +1266,45 @@ pub trait UiExt {
         } else {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
+    }
+}
+
+/// Draw attention to buttons by blinking them periodically:
+fn blink_inactive_buttons(ui: &mut egui::Ui) {
+    let time = ui.input(|i| i.time);
+
+    // When there are many buttons, animate them as a wave going diagonally through app:
+    let pos = ui.next_widget_position();
+    let time = time - 0.0002 * (pos.x + pos.y) as f64;
+
+    let num_blinks = 2; // blink this many times
+    let num_quiet = 20; // then wait this much (measured in blinks)
+    let blink_duration = 0.3; // seconds
+
+    let blink_cycle = ((time / blink_duration) % (num_blinks + num_quiet) as f64) as f32;
+
+    if blink_cycle < num_blinks as f32 {
+        let shinyness = (blink_cycle * std::f32::consts::PI).sin().abs();
+
+        let (blink_bg_color, blink_fg_color) = if ui.visuals().dark_mode {
+            (egui::Color32::DARK_GRAY, egui::Color32::WHITE)
+        } else {
+            (egui::Color32::LIGHT_GRAY, egui::Color32::BLACK)
+        };
+
+        let visuals = ui.visuals_mut();
+        let widget = &mut visuals.widgets.inactive;
+        widget.bg_fill = widget.bg_fill.lerp_to_gamma(blink_bg_color, shinyness);
+        widget.weak_bg_fill = widget.weak_bg_fill.lerp_to_gamma(blink_bg_color, shinyness);
+        widget.fg_stroke.color = widget
+            .fg_stroke
+            .color
+            .lerp_to_gamma(blink_fg_color, shinyness);
+        ui.ctx().request_repaint();
+    } else {
+        let time_to_next_blink =
+            blink_duration as f32 * ((num_blinks + num_quiet) as f32 - blink_cycle);
+        ui.ctx().request_repaint_after_secs(time_to_next_blink);
     }
 }
 
