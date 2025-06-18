@@ -74,7 +74,7 @@ def _tee(
         ).storage
 
     bindings.tee(
-        sinks,
+        [*sinks],
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
