@@ -1,9 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
+use datafusion::prelude::{col, lit};
+
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
+use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::list_item::ItemActionButton;
@@ -121,6 +124,14 @@ impl Server {
             blueprint
         })
         .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+        .filter(
+            col("entry_kind")
+                .in_list(
+                    vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
+                    false,
+                )
+                .and(col("name").not_eq(lit("__entries"))),
+        )
         .show(viewer_ctx, &self.runtime, ui);
     }
 

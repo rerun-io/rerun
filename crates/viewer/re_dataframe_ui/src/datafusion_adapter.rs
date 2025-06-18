@@ -33,6 +33,7 @@ struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
+    pub filter: Option<datafusion::prelude::Expr>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
@@ -41,12 +42,14 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             sort_by,
             partition_links,
             entry_links,
+            filter,
         } = value;
 
         Self {
             sort_by: sort_by.clone(),
             partition_links: partition_links.clone(),
             entry_links: entry_links.clone(),
+            filter: filter.clone(),
         }
     }
 }
@@ -84,6 +87,7 @@ impl DataFusionQuery {
             sort_by,
             partition_links,
             entry_links,
+            filter,
         } = &self.query_data;
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
@@ -115,6 +119,10 @@ impl DataFusionQuery {
                 ),
             ]);
             dataframe = dataframe.with_column(&entry_links.column_name, column)?;
+        }
+
+        if let Some(filter) = filter {
+            dataframe = dataframe.filter(filter.clone())?;
         }
 
         if let Some(sort_by) = sort_by {

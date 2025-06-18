@@ -187,6 +187,11 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    pub fn filter(mut self, filter: datafusion::prelude::Expr) -> Self {
+        self.initial_blueprint.filter = Some(filter);
+        self
+    }
+
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,

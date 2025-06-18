@@ -82,6 +82,7 @@ pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
+    pub filter: Option<datafusion::prelude::Expr>,
 }
 
 /// The blueprint for a specific column.
