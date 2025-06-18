@@ -1,4 +1,4 @@
-use re_grpc_client::ConnectionRegistryHandle;
+use re_grpc_client::{ConnectionRegistry, ConnectionRegistryHandle};
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
@@ -6,19 +6,26 @@ use re_uri::Scheme;
 use crate::context::Context;
 use crate::servers::Command;
 
-pub struct AddServerModal {
+pub enum ServerModalMode {
+    Add,
+    Edit(re_uri::Origin),
+}
+
+pub struct ServerModal {
     modal: ModalHandler,
 
+    mode: ServerModalMode,
     scheme: Scheme,
     host: String,
     token: String,
     port: u16,
 }
 
-impl Default for AddServerModal {
+impl Default for ServerModal {
     fn default() -> Self {
         Self {
             modal: Default::default(),
+            mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
             token: String::new(),
@@ -27,11 +34,27 @@ impl Default for AddServerModal {
     }
 }
 
-impl AddServerModal {
-    pub fn open(&mut self) {
-        self.scheme = Scheme::Rerun;
-        self.port = 443;
-        self.host = String::new();
+impl ServerModal {
+    pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
+        *self = match mode {
+            ServerModalMode::Add => Default::default(),
+            ServerModalMode::Edit(origin) => {
+                let token = connection_registry
+                    .get_token(&origin)
+                    .map(|t| t.to_string())
+                    .unwrap_or_default();
+                let re_uri::Origin { scheme, host, port } = origin.clone();
+
+                Self {
+                    modal: Default::default(),
+                    mode: ServerModalMode::Edit(origin),
+                    scheme,
+                    host: host.to_string(),
+                    token,
+                    port,
+                }
+            }
+        };
 
         self.modal.open();
     }
@@ -45,7 +68,15 @@ impl AddServerModal {
     ) {
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Add Server"),
+            || {
+                let title = match &self.mode {
+                    ServerModalMode::Add => "Add Server".to_owned(),
+                    ServerModalMode::Edit(origin) => {
+                        format!("Edit Server: {}", origin.host.to_string())
+                    }
+                };
+                ModalWrapper::new(&title)
+            },
             |ui| {
                 ui.warning_label(
                     "The dataplatform is very experimental and not generally \
@@ -108,19 +139,36 @@ impl AddServerModal {
 
                 ui.add_space(24.0);
 
+                let save_text = match &self.mode {
+                    ServerModalMode::Add => "Add",
+                    ServerModalMode::Edit(_) => "Save",
+                };
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let (Ok(origin), Ok(token)) = (origin, token) {
-                        if ui.button("Add").clicked() {
+                        if ui.button(save_text).clicked() {
                             ui.close();
 
                             if let Some(token) = token {
                                 connection_registry.set_token(&origin, token);
                             }
 
-                            ctx.command_sender.send(Command::AddServer(origin)).ok();
+                            match &self.mode {
+                                ServerModalMode::Add => {
+                                    ctx.command_sender.send(Command::AddServer(origin)).ok();
+                                }
+                                ServerModalMode::Edit(old_origin) => {
+                                    ctx.command_sender
+                                        .send(Command::UpdateServer {
+                                            previous_origin: old_origin.clone(),
+                                            new_origin: origin,
+                                        })
+                                        .ok();
+                                }
+                            }
                         }
                     } else {
-                        ui.add_enabled(false, egui::Button::new("Add"));
+                        ui.add_enabled(false, egui::Button::new(save_text));
                     }
 
                     if ui.button("Cancel").clicked() {
