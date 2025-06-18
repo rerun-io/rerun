@@ -159,6 +159,15 @@ pub enum EyeMode {
     Orbital,
 }
 
+/// The speed of a [`ViewEye`] can be computed automatically or set manually.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+enum SpeedControl {
+    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`compute_speed_for_mode`]
+    Auto,
+    /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
+    Override(f32),
+}
+
 /// An eye (camera) in 3D space, controlled by the user.
 ///
 /// This is either a first person camera or an orbital camera,
@@ -196,14 +205,13 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
-    speed: f32,
+    speed: SpeedControl,
     velocity: Vec3,
 }
 
 impl ViewEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
-    const DEFAULT_SPEED: f32 = 1.0;
 
     pub fn new_orbital(
         orbit_center: Vec3,
@@ -218,7 +226,7 @@ impl ViewEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
-            speed: Self::DEFAULT_SPEED,
+            speed: SpeedControl::Auto,
             velocity: Vec3::ZERO,
         }
     }
@@ -279,12 +287,25 @@ impl ViewEye {
         }
     }
 
-    pub fn speed(&self) -> f32 {
-        self.speed
+    /// Compute the speed depending on the [`EyeMode`].
+    fn compute_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+        match self.mode {
+            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
+            EyeMode::Orbital => self.orbit_radius,
+        }
     }
 
+    /// Returns the actual speed (float) of [`ViewEye`].
+    pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+        match self.speed {
+            SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
+            SpeedControl::Override(speed) => speed,
+        }
+    }
+
+    /// Set the speed to a specific value set by the user via the UI.
     pub fn set_speed(&mut self, new_speed: f32) {
-        self.speed = new_speed;
+        self.speed = SpeedControl::Override(new_speed);
     }
 
     /// The local up-axis, if set
@@ -322,16 +343,22 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
-        self.speed = Self::DEFAULT_SPEED;
+        self.speed = SpeedControl::Auto;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
-    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+    pub fn lerp(&self, other: &Self, t: f32, bounding_boxes: &SceneBoundingBoxes) -> Self {
         if t == 0.0 {
             *self // avoid rounding errors
         } else if t == 1.0 {
             *other // avoid rounding errors
         } else {
+            let self_speed = match self.speed {
+                SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
+                SpeedControl::Override(s) => s,
+            };
+            let other_speed = other.compute_speed_for_mode(bounding_boxes);
+            let speed = SpeedControl::Override(egui::lerp(self_speed..=other_speed, t));
             Self {
                 mode: other.mode,
                 center: self.center.lerp(other.center, t),
@@ -342,7 +369,7 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                speed: egui::lerp(other.speed..=other.speed, t),
+                speed,
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
@@ -372,7 +399,15 @@ impl ViewEye {
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
-        let mut speed = self.speed;
+        let mut speed = match self.speed {
+            SpeedControl::Auto => {
+                match self.mode {
+                    EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
+                    EyeMode::Orbital => self.orbit_radius,
+                }
+            }
+            SpeedControl::Override(speed) => speed,
+        };
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
