@@ -668,14 +668,15 @@ impl AppState {
 
                 // Process deferred layout operations and apply updates back to blueprint:
                 viewport_ui.save_to_blueprint_store(&ctx);
+
+                self.redap_servers
+                    .modals_ui(&ctx.global_context, connection_registry, ui);
             }
         }
 
         //
         // Other UI things
         //
-
-        self.redap_servers.modals_ui(connection_registry, ui);
 
         if WATERMARK {
             ui.ctx().paint_watermark();
