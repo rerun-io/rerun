@@ -2,9 +2,9 @@
 
 import platform
 import subprocess
-
 import av
 import rerun as rr
+import time
 
 
 av.logging.set_level(av.logging.VERBOSE)
@@ -48,8 +48,13 @@ output_stream = output_container.add_stream("libx264", rate=fps)
 output_stream.width = input_container.streams.video[0].width
 output_stream.height = input_container.streams.video[0].height
 # Tune for low latency.
-output_stream.options = {"preset": "veryfast", "tune": "zerolatency"}
+output_stream.options = {
+    "preset": "veryfast",
+    "tune": "zerolatency",
+    # "keyint_min": "30", #???
+}
 output_stream.max_b_frames = 0
+
 
 # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
 rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
