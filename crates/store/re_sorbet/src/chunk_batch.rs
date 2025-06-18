@@ -146,7 +146,7 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
         re_tracing::profile_function!();
 
         let batch = crate::migration::reorder_columns(batch);
-        let batch = crate::migration::rewire_indicator_components(&batch);
+        let batch = crate::migration::rewire_tagged_components(&batch);
 
         Self::try_from(SorbetBatch::try_from_record_batch(
             &batch,

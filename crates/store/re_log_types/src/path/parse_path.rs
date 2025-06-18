@@ -103,7 +103,6 @@ impl std::str::FromStr for DataPath {
                 if let Some(&archetype_name) =
                     component_descriptor_tokens.get(archetype_name_delimiter - 1)
                 {
-                    // TODO: This won't fly with the new colon format!
                     if archetype_name.contains('.') {
                         Some(archetype_name.to_owned())
                     } else {

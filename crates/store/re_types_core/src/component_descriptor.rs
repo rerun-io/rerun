@@ -207,7 +207,10 @@ impl ComponentDescriptor {
 // TODO(cmc): we really shouldn't be duplicating these.
 
 /// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
+const FIELD_METADATA_KEY_ARCHETYPE: &str = "rerun.archetype";
+
+/// The key used to identify the [`crate::ComponentIdentifier`] in field-level metadata.
+const FIELD_METADATA_KEY_COMPONENT: &str = "rerun.component";
 
 /// The key used to identify the [`crate::ComponentType`] in field-level metadata.
 const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun.component_type";
@@ -219,10 +222,13 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
 
         let descr = Self {
             archetype_name: md
-                .get(FIELD_METADATA_KEY_ARCHETYPE_NAME)
+                .get(FIELD_METADATA_KEY_ARCHETYPE)
                 .cloned()
                 .map(Into::into),
-            component: field.name().to_string().into(),
+            component: md.get(FIELD_METADATA_KEY_COMPONENT).cloned().unwrap_or_else(|| {
+                re_log::debug!("Missing metadata field {FIELD_METADATA_KEY_COMPONENT}, resorting to field name: {}", field.name());
+                field.name().to_string()
+            }).into(),
             component_type: md
                 .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                 .cloned()

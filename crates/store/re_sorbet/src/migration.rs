@@ -299,11 +299,15 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }
 
-/// Move indicator component to component identifier.
-// TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
-// TODO: naming!
+fn trim_archetype_prefix(name: &str) -> &str {
+    name.trim()
+        .trim_start_matches("rerun.archetypes.")
+        .trim_start_matches("rerun.blueprint.archetypes.")
+}
+
+/// Ensures that incoming data is properly tagged and rewires to our now component descriptor format.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_rewiring = batch.schema_ref().fields().iter().any(|field| {
@@ -323,14 +327,17 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
         .fields()
         .into_iter()
         .map(|field| {
-            // TODO: Avoid clones here!
             let mut field = field.as_ref().clone();
             let mut metadata = field.metadata().clone();
 
-            if let Some(value) = metadata.remove("rerun.component") {
-                if value.ends_with("Indicator") {
-                    re_log::debug_once!("Moving indicator to archetype field: {value}");
-                    metadata.insert("rerun.archetype_field".to_owned(), value);
+            // We first rename the legacy `rerun.component` field to `rerun.component_type`.
+            if let Some(legacy_component) = metadata.remove("rerun.component") {
+                if legacy_component.ends_with("Indicator") {
+                    // TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
+                    re_log::debug_once!(
+                        "Moving indicator to `rerun.component` field: {legacy_component}"
+                    );
+                    metadata.insert("rerun.component".to_owned(), legacy_component);
 
                     // We also strip the archetype name from any indicators.
                     // It turns out that too narrow indicator descriptors cause problems while querying.
@@ -340,17 +347,47 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
                             "Stripped archetype name from indicator: {archetype_name}"
                         );
                     }
+
+                    // For indicators we can return early, because there should be no other descriptor-related fields on there.
+                    field.set_metadata(metadata);
+                    return Arc::new(field);
                 } else if !metadata.contains_key("rerun.archetype")
                     && !metadata.contains_key("rerun.archetype_field")
                 {
-                    // If we don't find the above keys, we likely encountered data that was logged via `AnyValues`.
-                    // We do our best effort to convert that.
-                    re_log::debug!("Moving stray component type to archetype field: {value}");
-                    metadata.insert("rerun.archetype_field".to_owned(), value);
+                    // We likely encountered data that was logged via `AnyValues` and do our best effort to convert it.
+                    re_log::debug!(
+                        "Moving stray component type to component field: {legacy_component}"
+                    );
+                    metadata.insert("rerun.component".to_owned(), legacy_component);
+
+                    // Again, we should be done here because we checked for the other keys.
+                    field.set_metadata(metadata);
+                    return Arc::new(field);
                 } else {
-                    metadata.insert("rerun.component".to_owned(), value);
+                    metadata.insert("rerun.component_type".to_owned(), legacy_component);
                 }
             }
+
+            debug_assert_eq!(
+                metadata.get("rerun.component"),
+                None,
+                "`rerun.component` should be empty so that we can repurpose it."
+            );
+
+            if let Some(legacy_archetype_field) = metadata.remove("rerun.archetype_field") {
+                if let Some(archetype) = metadata.get("rerun.archetype") {
+                    metadata.insert(
+                        "rerun.component".to_owned(),
+                        format!(
+                            "{}:{legacy_archetype_field}",
+                            trim_archetype_prefix(archetype)
+                        ),
+                    );
+                } else {
+                    metadata.insert("rerun.component".to_owned(), legacy_archetype_field);
+                }
+            }
+
             field.set_metadata(metadata);
             Arc::new(field)
         })
