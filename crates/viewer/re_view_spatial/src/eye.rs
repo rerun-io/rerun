@@ -287,7 +287,7 @@ impl ViewEye {
         }
     }
 
-    /// Compute the speed depending on the [`EyeMode`].
+    /// Compute the actual speed depending on the [`EyeMode`].
     fn compute_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.mode {
             EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
@@ -347,18 +347,28 @@ impl ViewEye {
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
+    fn compute_speed_lerp(
+        &self,
+        other: &Self,
+        t: f32,
+        bounding_boxes: &SceneBoundingBoxes,
+    ) -> SpeedControl {
+        let self_speed = match self.speed {
+            SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
+            SpeedControl::Override(s) => s,
+        };
+
+        let other_speed = other.compute_speed_for_mode(bounding_boxes);
+        let lerp_speed = egui::lerp(self_speed..=other_speed, t);
+        SpeedControl::Override(lerp_speed)
+    }
+
     pub fn lerp(&self, other: &Self, t: f32, bounding_boxes: &SceneBoundingBoxes) -> Self {
         if t == 0.0 {
             *self // avoid rounding errors
         } else if t == 1.0 {
             *other // avoid rounding errors
         } else {
-            let self_speed = match self.speed {
-                SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
-                SpeedControl::Override(s) => s,
-            };
-            let other_speed = other.compute_speed_for_mode(bounding_boxes);
-            let speed = SpeedControl::Override(egui::lerp(self_speed..=other_speed, t));
             Self {
                 mode: other.mode,
                 center: self.center.lerp(other.center, t),
@@ -369,7 +379,7 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                speed,
+                speed: self.compute_speed_lerp(other, t, bounding_boxes),
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
