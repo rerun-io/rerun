@@ -1076,13 +1076,14 @@ pub trait UiExt {
         }
     }
 
-    /// The help menu appears when clicked and/or hovered
+    /// Shows a `?` help button that will show a help UI when clicked.
+    ///
+    /// The help buttons will all blink periodically until the user has clicked _any_ help button at least once.
+    /// This is to teach users where they can find help.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
-        let mut help_ui: Option<_> = Some(help_ui);
-
         let ui = self.ui_mut();
 
-        // If we never showed the help before, we want to animate it to draw attention:
+        // Have we ever shown any help UI anywhere?
         let has_shown_help_id = egui::Id::new("has_shown_help");
         let has_been_shown: bool =
             ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
@@ -1095,23 +1096,9 @@ pub trait UiExt {
             let menu_button = egui::containers::menu::MenuButton::from_button(
                 ui.small_icon_button_widget(&icons::HELP, "Help"),
             );
-            let button_response = menu_button
-                .ui(ui, |ui| {
-                    if let Some(help_ui) = help_ui.take() {
-                        help_ui(ui);
-                        if !has_been_shown {
-                            // Remember that the user has found and used the help button at least once,
-                            // to stop it from animating in the future:
-                            ui.data_mut(|d| {
-                                d.insert_persisted(has_shown_help_id, true);
-                            });
-                        }
-                    }
-                })
-                .0;
 
-            if let Some(help_ui) = help_ui.take() {
-                button_response.on_hover_ui(|ui| {
+            menu_button
+                .ui(ui, |ui| {
                     help_ui(ui);
                     if !has_been_shown {
                         // Remember that the user has found and used the help button at least once,
@@ -1121,9 +1108,7 @@ pub trait UiExt {
                         });
                     }
                 })
-            } else {
-                button_response
-            }
+                .0
         })
         .inner
     }
