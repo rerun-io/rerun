@@ -5,7 +5,95 @@
   "small_icon_size": 14,
 
   "Alias": {
-    "native_frame_stroke": { //couldn't find
+
+/* surfaces and backgrounds */
+
+    "surface_panel":{ //new! background of side panels: left, bottom, right
+      "color": "{Gray.1000}"
+    },
+
+    "surface_panel-header":{ //new! headers like blueprint, selection, streams, recordings, also within selection
+      "color": "{Gray.900}"
+    },
+
+    "surface_viewport":{ //new! background of any empty space behind content in the views, ex: when viewport is bigger than a picture/video
+      "color": "{Gray.900}"
+    },
+
+    "surface_viewport-header":{ //new! background of not-selected header in viewport
+      "color": "{Gray.800}"
+    },
+
+    "surface_interactive_primary":{ //new! background of the most important interactive elements, can't be too much. now: play/pause btns, selected view,
+      "color": "{Blue.400}"
+    },
+
+    "surface_interactive_secondary":{ //new! background of interactive elements, that are important, but less than primary. now: selected list item, final breadcrumb
+      "color": "{Blue.400}",
+      "alpha": 50
+    },
+
+    "surface_interactive_on-secondary_hover":{ //new! background of interactive elements, appearing on top of secondary surface, think blue background for an icon to highlight it's clickable
+      "color": "{Blue.400}",
+      "alpha": 25
+    },
+
+    "surface_interactive_neutral":{ //new! majority of interactive backgrounds, like default list item (maybe this one is not even needed?@katya to check with real ex)
+      "color": "{Gray.1000}"
+    },
+
+    "surface_interactive_on-neutral":{ //new! when interactive element in on top of neutral background, ex. timeline btns, input fields, dropdowns
+      "color": "{Gray.850}"
+    },
+
+    "surface_interactive_hover":{ //new! when in doubt about hover: use this one, almost universal for icon background hovers
+      "color": "{Gray.0}",
+      "alpha": 20
+    },
+
+/* icon content */
+
+    "icon_content":{ //new! default color of icon content (almost all)
+      "color": "{Gray.300}"
+    },
+
+    "icon_content_on-primary":{ //new! color of an icon if placed on top of primary surface, ex: play/pause, view icon
+      "color": "{Gray.1000}"
+    },
+
+    "icon_content_on-secondary":{ //new! color of an icon if placed on top of secondary surface, ex: icon in the selected list view
+      "color": "{Blue.400}"
+    },
+
+    "icon_content_disabled":{ //new! when icon is disabled, ex: visualizers
+      "color": "{Gray.650}"
+    },
+
+/* text, font */
+
+    "text_header":{ //new! headers of panel headers
+      "color": "{Gray.300}"
+    },
+
+    "text_body":{ //new! when in doubt - use this one, main content info, maybe also try Gray.300
+      "color": "{Gray.200}"
+    },
+
+    "text_subtle":{ //new! secondary kind of info, ex: parameter, hotkey, input units
+      "color": "{Gray.500}"
+    },
+
+    "text_interactive_disabled":{ //new! input that is not changable
+      "color": "{Gray.500}"
+    },
+
+    "name":{ //new!
+      "color": "{Blue.400}"
+    },
+
+
+
+    "native_frame_stroke": { //related to Windows and Linux https://github.com/rerun-io/rerun/issues/1063
       "color": "{Green.500}",
       "width": 10
     },
@@ -273,7 +361,7 @@
     "Typography": {
       "Default": {
         "value": {
-          "fontSize": "12px",
+          "fontSize": "11.5px",
           "fontWeight": "Medium",
           "fontFamily": "Inter",
           "lineHeight": "16px",
