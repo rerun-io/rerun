@@ -114,6 +114,10 @@ impl Server {
 
             // TODO: Properly sort columns
 
+            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+            }
+
             blueprint
         })
         .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
