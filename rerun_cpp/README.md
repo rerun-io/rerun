@@ -82,7 +82,7 @@ Note that this also what happens when you follow the CMake setup in the [quickst
 ### SDK bundle (rerun_cpp_sdk.zip)
 
 For convenience, Rerun provides a C++ SDK bundle with every release.
-(this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
+You can find the latest release artifacts [here](https://github.com/rerun-io/rerun/releases/latest).
 
 This is a simple zip archive containing the SDK from the [repository](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp)
 (excluding the `tests` folder) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.
