@@ -63,6 +63,8 @@ include "./components/triangle_indices.fbs";
 include "./components/value_range.fbs";
 include "./components/vector2d.fbs";
 include "./components/vector3d.fbs";
+include "./components/video_codec.fbs";
+include "./components/video_sample.fbs";
 include "./components/video_timestamp.fbs";
 include "./components/view_coordinates.fbs";
 include "./components/visible.fbs";

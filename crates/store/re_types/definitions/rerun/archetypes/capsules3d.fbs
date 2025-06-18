@@ -13,9 +13,6 @@ namespace rerun.archetypes;
 /// Orienting and placing capsules forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
 ///
 /// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
-//
-// TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
-// cones, and tapered capsules -- all common shapes based on expanding a line segment circularly.
 table Capsules3D (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
@@ -30,8 +27,6 @@ table Capsules3D (
   lengths: [rerun.components.Length] ("attr.rerun.component_required", order: 1000);
 
   /// Radii of the capsules.
-  //
-  // TODO(#1361): This should eventually become two radii, to generate truncated cones and tapered capsules.
   radii: [rerun.components.Radius] ("attr.rerun.component_required", order: 1100);
 
   // --- Recommended ---
@@ -56,17 +51,23 @@ table Capsules3D (
 
   // --- Optional ---
 
-  // TODO(#1361): Add fill_mode component, or whatever succeeds it in case a wireframe
-  // or other alternate rendering is wanted.
+  /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+  line_radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optionally choose whether the cylinders are drawn with lines or solid.
+  fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the capsules, which will be located at their centers.
-  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional choice of whether the text labels should be shown by default.
-  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3200);
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional class ID for the ellipsoids.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3400);
 }

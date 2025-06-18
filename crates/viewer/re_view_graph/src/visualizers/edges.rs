@@ -70,9 +70,9 @@ impl VisualizerSystem for EdgesVisualizer {
 
             let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges());
             // TODO(#6889): This still uses an untagged query.
-            let graph_type = results.get_mono_with_fallback::<components::GraphType>(
-                &GraphEdges::descriptor_graph_type(),
-            );
+            let graph_type = results
+                .get_mono::<components::GraphType>(&GraphEdges::descriptor_graph_type())
+                .unwrap_or_default();
 
             let sources = all_edges
                 .slice_from_struct_field::<String>(SOURCE)

@@ -483,7 +483,7 @@ impl PythonCodeGenerator {
                         code_for_struct(reporter, type_registry, &ext_class, objects, obj)
                     }
                 }
-                crate::objects::ObjectClass::Enum => {
+                crate::objects::ObjectClass::Enum(_) => {
                     code_for_enum(reporter, type_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
@@ -851,7 +851,7 @@ fn code_for_enum(
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    assert_eq!(obj.class, ObjectClass::Enum);
+    assert!(obj.class.is_enum());
     assert!(matches!(
         obj.kind,
         ObjectKind::Datatype | ObjectKind::Component
@@ -882,7 +882,14 @@ fn code_for_enum(
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for variant in &obj.fields {
-        let enum_value = variant.enum_value.unwrap();
+        let enum_value = obj
+            .enum_integer_type()
+            .expect("enums must have an integer type")
+            .format_value(
+                variant
+                    .enum_or_union_variant_value
+                    .expect("enums fields must have values"),
+            );
 
         // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
         // or else `RGBA` would become `Rgba` and so on.
@@ -1942,7 +1949,7 @@ fn quote_arrow_support_from_obj(
             r#"
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_DATATYPE = {datatype}
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_NAME: str = "{fqname}"
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
@@ -1955,7 +1962,7 @@ fn quote_arrow_support_from_obj(
         unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_NAME: str = "{fqname}"
             "#
         ))
     }
@@ -2097,7 +2104,7 @@ fn quote_arrow_serialization(
             Ok(code)
         }
 
-        ObjectClass::Enum => Ok(unindent(&format!(
+        ObjectClass::Enum(_) => Ok(unindent(&format!(
             r##"
 if isinstance(data, ({name}, int, str)):
     data = [data]

@@ -25,6 +25,8 @@ Orienting and placing capsules forms a separate transform that is applied prior 
 ### Optional
 * `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
 * `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `line_radii`: [`Radius`](../components/radius.md)
+* `fill_mode`: [`FillMode`](../components/fill_mode.md)
 * `labels`: [`Text`](../components/text.md)
 * `show_labels`: [`ShowLabels`](../components/show_labels.md)
 * `class_ids`: [`ClassId`](../components/class_id.md)

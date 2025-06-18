@@ -8,7 +8,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
@@ -20,7 +20,8 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct TableEntryTableProvider {
-    client: RedapClient,
+    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
+    client: ConnectionClient,
     table: EntryIdOrName,
 
     // cache the table id when resolved
@@ -28,7 +29,7 @@ pub struct TableEntryTableProvider {
 }
 
 impl TableEntryTableProvider {
-    pub fn new(client: RedapClient, table: impl Into<EntryIdOrName>) -> Self {
+    pub fn new(client: ConnectionClient, table: impl Into<EntryIdOrName>) -> Self {
         Self {
             client,
             table: table.into(),
@@ -55,6 +56,7 @@ impl TableEntryTableProvider {
 
                 let entry_details: EntryDetails = make_future_send(async move {
                     Ok(client
+                        .inner()
                         .find_entries(FindEntriesRequest {
                             filter: Some(EntryFilter {
                                 id: None,
@@ -99,7 +101,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            make_future_send(async move { Ok(client.get_table_schema(request).await) })
+            make_future_send(async move { Ok(client.inner().get_table_schema(request).await) })
                 .await?
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
@@ -120,7 +122,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.scan_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

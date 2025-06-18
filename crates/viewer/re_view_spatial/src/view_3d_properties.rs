@@ -25,7 +25,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialView3D {
 
 impl TypedComponentFallbackProvider<BackgroundKind> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
-        match ctx.viewer_ctx.egui_ctx().theme() {
+        match ctx.egui_ctx().theme() {
             egui::Theme::Dark => BackgroundKind::GradientDark,
             egui::Theme::Light => BackgroundKind::GradientBright,
         }
@@ -42,7 +42,7 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Plane3D {
         const DEFAULT_PLANE: Plane3D = Plane3D::XY;
 
-        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return DEFAULT_PLANE;
         };
 

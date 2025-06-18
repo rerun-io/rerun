@@ -4,6 +4,7 @@ use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelec
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -14,8 +15,8 @@ use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClassExt as _, ViewClassRegistry, ViewStates,
-    ViewerContext, blueprint_timeline,
+    SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
+    blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -168,6 +169,7 @@ impl AppState {
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
     ) {
         re_tracing::profile_function!();
@@ -317,6 +319,8 @@ impl AppState {
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
+
+                        connection_registry,
                     },
                     component_ui_registry,
                     view_class_registry,
@@ -400,6 +404,8 @@ impl AppState {
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
+
+                        connection_registry,
                     },
                     component_ui_registry,
                     view_class_registry,
@@ -649,7 +655,11 @@ impl AppState {
                                         is_history_enabled,
                                     );
                                 } else {
-                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
+                                    redap_servers.server_central_panel_ui(
+                                        &ctx.global_context,
+                                        ui,
+                                        origin,
+                                    );
                                 }
                             }
 
@@ -669,7 +679,7 @@ impl AppState {
         // Other UI things
         //
 
-        self.redap_servers.modals_ui(ui);
+        self.redap_servers.modals_ui(connection_registry, ui);
 
         if WATERMARK {
             ui.ctx().paint_watermark();

@@ -68,7 +68,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Don't do a shallow clone
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
       - uses: prefix-dev/setup-pixi@v0.8.8
@@ -76,108 +75,36 @@ jobs:
           pixi-version: v0.41.4
           environments: py-docs
 
-      - name: Set up git author
-        run: |
-          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Mike will incrementally update the existing gh-pages branch
-      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
-      # to make sure we don't accumulate unnecessary history in gh-pages branch
-      - name: Deploy via mike # https://github.com/jimporter/mike
-        if: ${{ inputs.UPDATE_LATEST }}
-        run: |
-          git fetch
-          pixi run -e py-docs mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} stable
-          git checkout gh-pages
-          git checkout --orphan gh-pages-orphan
-          git commit -m "Update docs for ${GITHUB_SHA}"
-          git push origin gh-pages-orphan:gh-pages -f
-
-      # Mike will incrementally update the existing gh-pages branch
-      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
-      # to make sure we don't accumulate unnecessary history in gh-pages branch
-      - name: Deploy tag via mike # https://github.com/jimporter/mike
-        if: ${{ ! inputs.UPDATE_LATEST }}
-        run: |
-          git fetch
-          pixi run -e py-docs mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_DOCS_VERSION_NAME}}
-          git checkout gh-pages
-          git checkout --orphan gh-pages-orphan
-          git commit -m "Update docs for ${GITHUB_SHA}"
-          git push origin gh-pages-orphan:gh-pages -f
-
-  # ---------------------------------------------------------------------------
-
-  rs-deploy-docs:
-    name: Rust
-    needs: [py-deploy-docs]
-    runs-on: ubuntu-latest-16-cores
-    steps:
-      - name: Show context
-        run: |
-          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
-          echo "JOB_CONTEXT": $JOB_CONTEXT
-          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
-          echo "ENV_CONTEXT": $ENV_CONTEXT
-        env:
-          ENV_CONTEXT: ${{ toJson(env) }}
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-          JOB_CONTEXT: ${{ toJson(job) }}
-          INPUTS_CONTEXT: ${{ toJson(inputs) }}
-
-      - uses: actions/checkout@v4
+      - id: "auth"
+        uses: google-github-actions/auth@v2
         with:
-          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
-          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - name: Build docs
+        run: pixi run -e py-docs mkdocs build -f rerun_py/mkdocs.yml -d site
+
+      - name: "Upload Python Docs (version)"
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
-          pixi-version: v0.41.4
+          path: "rerun_py/site"
+          destination: "rerun-docs/docs/python/${{ inputs.PY_DOCS_VERSION_NAME }}"
+          process_gcloudignore: false
+          parent: false
 
-      - name: Delete existing /target/doc
-        run: rm -rf ./target/doc
+      - name: "Upload Python Docs (stable)"
+        if: ${{ inputs.UPDATE_LATEST }}
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_py/site"
+          destination: "rerun-docs/docs/python/stable"
+          process_gcloudignore: false
+          parent: false
 
-      - name: cargo doc --document-private-items
-        run: pixi run cargo doc --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
-
-      - name: Set up git author
-        run: |
-          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up ghp-import
-        run: pip install ghp-import
-
-      - name: Patch in a redirect page
-        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
-        env:
-          REDIRECT_CRATE: rerun
-
-      # See: https://github.com/c-w/ghp-import
-      - name: Deploy the docs
-        run: |
-          git fetch
-          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+  # ---------------------------------------------------------------------------
 
   cpp-deploy-docs:
     name: Cpp
-    needs: [rs-deploy-docs]
     runs-on: ubuntu-latest
     steps:
       - name: Show context
@@ -194,8 +121,13 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
@@ -204,29 +136,17 @@ jobs:
       - name: Doxygen C++ docs
         run: pixi run -e cpp cpp-docs
 
-      - name: Set up git author
-        run: |
-          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Upload C++ Docs (version)"
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_cpp/docs/html"
+          destination: "rerun-docs/docs/cpp/${{ inputs.RELEASE_VERSION }}"
+          process_gcloudignore: false
 
-        # TODO(andreas): Do we need this?
-      # - name: Patch in a redirect page
-      #   shell: bash
-      #   run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
-      #   env:
-      #     REDIRECT_CRATE: rerun
-
-      # See: https://github.com/c-w/ghp-import
-      - name: Deploy the docs (versioned)
-        if: ${{ inputs.RELEASE_VERSION }}
-        run: |
-          git fetch
-          pixi run -e cpp python -m ghp_import -n -p -x docs/cpp/${{ inputs.RELEASE_VERSION }} rerun_cpp/docs/html/ -m "Update the C++ docs (versioned)"
-
-      - name: Deploy the docs (named)
-        run: |
-          git fetch
-          pixi run -e cpp python -m ghp_import -n -p -x docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+      - name: "Upload C++ Docs (named)"
+        if: ${{ inputs.UPDATE_LATEST }}
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_cpp/docs/html"
+          destination: "rerun-docs/docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }}"
+          process_gcloudignore: false

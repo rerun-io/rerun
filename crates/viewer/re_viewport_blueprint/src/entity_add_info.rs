@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_entity_db::EntityTree;
 use re_log_types::EntityPath;
-use re_viewer_context::{DataQueryResult, ViewClassExt as _, ViewerContext};
+use re_viewer_context::{DataQueryResult, ViewerContext};
 
 use crate::ViewBlueprint;
 

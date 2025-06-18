@@ -1,4 +1,4 @@
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
@@ -12,9 +12,9 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
     ui.vertical(|ui| {
         let (style, line_height) = if ui.available_width() > 400.0 {
-            (re_ui::DesignTokens::welcome_screen_h1(), 50.0)
+            (DesignTokens::welcome_screen_h1(), 50.0)
         } else {
-            (re_ui::DesignTokens::welcome_screen_h2(), 36.0)
+            (DesignTokens::welcome_screen_h2(), 36.0)
         };
 
         ui.add(
@@ -38,7 +38,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().widgets.active.text_color())
-                            .text_style(re_ui::DesignTokens::welcome_screen_body()),
+                            .text_style(DesignTokens::welcome_screen_body()),
                     )
                     .wrap(),
                 );
@@ -53,7 +53,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         ui.add_space(9.0);
 
         ui.scope(|ui| {
-            ui.style_mut().override_text_style = Some(re_ui::DesignTokens::welcome_screen_body());
+            ui.style_mut().override_text_style = Some(DesignTokens::welcome_screen_body());
             ui.re_hyperlink("Go to documentation", DOCS_URL, true);
         });
     });

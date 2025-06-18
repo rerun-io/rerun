@@ -29,7 +29,7 @@ auto check_logged_error(
             if (expected_status_code != rerun::ErrorCode::Ok) {
                 CHECK(last_logged_status.description.length() > 0);
             } else {
-                CHECK(last_logged_status.description.length() == 0);
+                CHECK(last_logged_status.description == "");
             }
             rerun::Error::set_log_handler(nullptr);
         }

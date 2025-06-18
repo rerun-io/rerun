@@ -186,6 +186,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Video",
         class_list=[
+            "archetypes.VideoStream",
             "archetypes.AssetVideo",
             "archetypes.VideoFrameReference",
         ],
@@ -210,6 +211,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",
             "archetypes.Capsules3D",
+            "archetypes.Cylinders3D",
             "archetypes.Ellipsoids3D",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",

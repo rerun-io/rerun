@@ -56,22 +56,20 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `class_identifier` field.
         static constexpr auto Descriptor_class_identifier = ComponentDescriptor(
             ArchetypeName, "class_identifier",
-            Loggable<rerun::blueprint::components::ViewClass>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ViewClass>::ComponentName
         );
         /// `ComponentDescriptor` for the `display_name` field.
         static constexpr auto Descriptor_display_name = ComponentDescriptor(
-            ArchetypeName, "display_name",
-            Loggable<rerun::components::Name>::Descriptor.component_name
+            ArchetypeName, "display_name", Loggable<rerun::components::Name>::ComponentName
         );
         /// `ComponentDescriptor` for the `space_origin` field.
         static constexpr auto Descriptor_space_origin = ComponentDescriptor(
             ArchetypeName, "space_origin",
-            Loggable<rerun::blueprint::components::ViewOrigin>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ViewOrigin>::ComponentName
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentName
         );
 
       public:

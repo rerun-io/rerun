@@ -17,10 +17,6 @@ class ConfidenceBatch(rr.ComponentBatchMixin):
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
         self.confidence = confidence
 
-    def component_descriptor(self) -> rr.ComponentDescriptor:
-        """The descriptor of the custom component."""
-        return rr.ComponentDescriptor("user.Confidence")
-
     def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
         return pa.array(self.confidence, type=pa.float32())
@@ -31,9 +27,12 @@ class CustomPoints3D(rr.AsComponents):
 
     def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = rr.Points3D(positions)
-        self.confidences = ConfidenceBatch(confidences).or_with_descriptor_overrides(
-            archetype_name="user.CustomPoints3D",
-            archetype_field_name="confidences",
+        self.confidences = ConfidenceBatch(confidences).described(
+            rr.ComponentDescriptor(
+                "confidences",
+                archetype_name="user.CustomPoints3D",
+                component_name="user.Confidence",
+            )
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:

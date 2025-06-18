@@ -724,19 +724,21 @@ pub fn entity_db_button_ui(
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
-            let resp =
-                ui.small_icon_button(&icons::CLOSE_SMALL)
-                    .on_hover_text(match store_id.kind {
-                        re_log_types::StoreKind::Recording => {
-                            "Close this recording (unsaved data will be lost)"
-                        }
-                        re_log_types::StoreKind::Blueprint => {
-                            "Close this blueprint (unsaved data will be lost)"
-                        }
-                    });
+            let resp = ui
+                .small_icon_button(&icons::CLOSE_SMALL, "Close recording")
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseEntry(store_id.clone().into()));
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        store_id.clone().into(),
+                    ));
             }
             resp
         });
@@ -779,7 +781,9 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
+                .send_system(SystemCommand::ActivateRecordingOrTable(
+                    store_id.clone().into(),
+                ));
         }
     }
 
@@ -800,11 +804,13 @@ pub fn table_id_button_ui(
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close table")
                 .on_hover_text("Close this table (all data will be lost)");
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseEntry(table_id.clone().into()));
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        table_id.clone().into(),
+                    ));
             }
             resp
         });
@@ -833,7 +839,9 @@ pub fn table_id_button_ui(
 
     if response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
+            .send_system(SystemCommand::ActivateRecordingOrTable(
+                table_id.clone().into(),
+            ));
     }
     ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

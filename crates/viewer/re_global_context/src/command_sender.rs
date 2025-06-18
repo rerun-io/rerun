@@ -1,9 +1,11 @@
-use crate::StoreHubEntry;
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
+
+use crate::RecordingOrTable;
+
 // ----------------------------------------------------------------------------
 
 /// Commands used by internal system components
@@ -51,11 +53,11 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
-    /// Switch to this [`StoreHubEntry`].
-    ActivateEntry(StoreHubEntry),
+    /// Switch to this [`RecordingOrTable`].
+    ActivateRecordingOrTable(RecordingOrTable),
 
-    /// Close an [`StoreHubEntry`] and free its memory.
-    CloseEntry(StoreHubEntry),
+    /// Close an [`RecordingOrTable`] and free its memory.
+    CloseRecordingOrTable(RecordingOrTable),
 
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,

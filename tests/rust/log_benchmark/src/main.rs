@@ -31,6 +31,7 @@
 //!
 
 use clap::{Parser as _, ValueEnum as _};
+use rerun::external::re_log;
 
 mod image;
 mod points3d_large_batch;
@@ -71,18 +72,35 @@ struct Args {
     /// If enabled, brings up the puffin profiler on startup.
     #[clap(long, default_value = "false")]
     profile: bool,
+
+    /// If true, connect to a running Rerun viewer
+    /// instead of writing to a memory buffer.
+    #[clap(long, default_value = "false")]
+    connect: bool,
 }
 
 fn main() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
     #[cfg(debug_assertions)]
     println!("WARNING: Debug build, timings will be inaccurate!");
 
     let args = Args::parse();
 
+    // Start profiler first thing:
     let mut profiler = re_tracing::Profiler::default();
     if args.profile {
         profiler.start();
     }
+
+    let (rec, _storage) = if args.connect {
+        let rec = rerun::RecordingStreamBuilder::new("rerun_example_benchmark").connect_grpc()?;
+        (rec, None)
+    } else {
+        let (rec, storage) =
+            rerun::RecordingStreamBuilder::new("rerun_example_benchmark").memory()?;
+        (rec, Some(storage))
+    };
 
     let benchmarks: Vec<Benchmark> = args.benchmarks.as_ref().map_or_else(
         || Benchmark::value_variants().to_vec(),
@@ -93,11 +111,13 @@ fn main() -> anyhow::Result<()> {
         println!("Running benchmark: {benchmark:?}");
 
         match benchmark {
-            Benchmark::Points3DLargeBatch => points3d_large_batch::run()?,
-            Benchmark::Points3DManyIndividual => points3d_many_individual::run()?,
-            Benchmark::Image => image::run()?,
+            Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
+            Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
+            Benchmark::Image => image::run(&rec)?,
         }
     }
+
+    rec.flush_blocking();
 
     Ok(())
 }

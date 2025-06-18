@@ -50,7 +50,7 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Dataframe view")
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
             .markdown(
@@ -181,9 +181,10 @@ Configure in the selection panel:
 
 fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
     let full_view_rect = ui.available_rect_before_wrap();
+    let tokens = ui.tokens();
 
     egui::Frame::new()
-        .inner_margin(re_ui::DesignTokens::view_padding())
+        .inner_margin(tokens.view_padding())
         .show(ui, |ui| {
             ui.warning_label("Unknown timeline");
 

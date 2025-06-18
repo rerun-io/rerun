@@ -1,24 +1,22 @@
 use std::sync::Arc;
 
-use arrow::array::Array;
 use arrow::{
-    array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
+    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::EntityPath;
+use re_sorbet::ComponentColumnDescriptor;
 
-use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
-use crate::common::v1alpha1::ComponentDescriptor;
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart};
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
-    RegisterWithDatasetResponse, ScanPartitionTableResponse,
+    RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
 use crate::{TypeConversionError, invalid_field, missing_field};
-
-use re_sorbet::ComponentColumnDescriptor;
 
 // --- QueryDataset ---
 
@@ -289,7 +287,6 @@ pub struct QueryRange {
 impl CreatePartitionManifestsResponse {
     pub const FIELD_ID: &str = "id";
     pub const FIELD_UPDATED_AT: &str = "updated_at";
-    pub const FIELD_URL: &str = "url";
     pub const FIELD_ERROR: &str = "error";
 
     /// The Arrow schema of the dataframe in [`Self::data`].
@@ -301,7 +298,6 @@ impl CreatePartitionManifestsResponse {
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
-            Field::new(Self::FIELD_URL, DataType::Utf8, true),
             Field::new(Self::FIELD_ERROR, DataType::Utf8, true),
         ])
     }
@@ -310,7 +306,6 @@ impl CreatePartitionManifestsResponse {
     pub fn create_dataframe(
         partition_ids: Vec<String>,
         updated_ats: Vec<Option<jiff::Timestamp>>,
-        partition_manifest_urls: Vec<Option<String>>,
         errors: Vec<Option<String>>,
     ) -> arrow::error::Result<RecordBatch> {
         let updated_ats = updated_ats
@@ -322,7 +317,6 @@ impl CreatePartitionManifestsResponse {
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
             Arc::new(TimestampNanosecondArray::from(updated_ats)),
-            Arc::new(StringArray::from(partition_manifest_urls)),
             Arc::new(StringArray::from(errors)),
         ];
 
@@ -465,6 +459,15 @@ impl ScanPartitionTableResponse {
         ];
 
         RecordBatch::try_new(schema, columns)
+    }
+
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self.data.as_ref().ok_or_else(|| {
+            missing_field!(
+                crate::manifest_registry::v1alpha1::ScanPartitionTableResponse,
+                "data"
+            )
+        })?)
     }
 }
 
@@ -688,8 +691,8 @@ impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::Ind
 
             component: Some(ComponentDescriptor {
                 archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-                archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-                component_name: Some(value.component_name.full_name().to_owned()),
+                archetype_field_name: Some(value.archetype_field_name.to_string()),
+                component_name: value.component_name.map(|c| c.full_name().to_owned()),
             }),
         }
     }

@@ -7,7 +7,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
@@ -21,12 +21,13 @@ use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct PartitionTableProvider {
-    client: RedapClient,
+    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
+    client: ConnectionClient,
     dataset_id: EntryId,
 }
 
 impl PartitionTableProvider {
-    pub fn new(client: RedapClient, dataset_id: EntryId) -> Self {
+    pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
 
@@ -48,15 +49,17 @@ impl GrpcStreamToTable for PartitionTableProvider {
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            make_future_send(async move { Ok(client.get_partition_table_schema(request).await) })
-                .await?
-                .map_err(|err| DataFusionError::External(Box::new(err)))?
-                .into_inner()
-                .schema
-                .ok_or(DataFusionError::External(
-                    "Schema missing from GetPartitionTableSchema response".into(),
-                ))?
-                .try_into()?,
+            make_future_send(async move {
+                Ok(client.inner().get_partition_table_schema(request).await)
+            })
+            .await?
+            .map_err(|err| DataFusionError::External(Box::new(err)))?
+            .into_inner()
+            .schema
+            .ok_or(DataFusionError::External(
+                "Schema missing from GetPartitionTableSchema response".into(),
+            ))?
+            .try_into()?,
         ))
     }
 
@@ -70,7 +73,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.scan_partition_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_partition_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

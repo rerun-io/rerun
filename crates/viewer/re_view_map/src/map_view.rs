@@ -13,9 +13,9 @@ use re_types::{
         components::{MapProvider, ZoomLevel},
     },
 };
-use re_ui::{Help, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
+    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemRegistrator, ViewerContext, gpu_bridge,
@@ -101,15 +101,15 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
+                IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
@@ -177,8 +177,9 @@ impl ViewClass for MapView {
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            re_view::view_property_ui::<MapZoom>(ctx, ui, view_id, self, state);
-            re_view::view_property_ui::<MapBackground>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            re_view::view_property_ui::<MapZoom>(&ctx, ui, self);
+            re_view::view_property_ui::<MapBackground>(&ctx, ui, self);
         });
 
         Ok(())
@@ -214,10 +215,10 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(
-            ctx,
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let map_provider = map_background.component_or_fallback(
+            &view_ctx,
             self,
-            state,
             &MapBackground::descriptor_provider(),
         )?;
         if state.selected_provider != map_provider {
@@ -372,7 +373,7 @@ fn create_view_builder(
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
-            view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+            view_from_world: macaw::IsoTransform::from_translation(-glam::vec3(
                 view_rect.left(),
                 view_rect.top(),
                 0.0,

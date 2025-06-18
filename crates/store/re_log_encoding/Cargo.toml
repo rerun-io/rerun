@@ -21,6 +21,7 @@ all-features = true
 
 [features]
 default = []
+testing = []
 
 ## Enable loading data from an .rrd file.
 decoder = [
@@ -54,12 +55,14 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 
 # External:
 arrow = { workspace = true, features = ["ipc"] }
 parking_lot.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
 
 # Optional external dependencies:
 bytes = { workspace = true, optional = true }

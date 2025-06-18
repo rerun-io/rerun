@@ -98,7 +98,10 @@ pub struct Boxes3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
@@ -115,8 +118,8 @@ impl Boxes3D {
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.HalfSize3D".into(),
-            archetype_field_name: Some("half_sizes".into()),
+            component_name: Some("rerun.components.HalfSize3D".into()),
+            archetype_field_name: "half_sizes".into(),
         }
     }
 
@@ -127,8 +130,8 @@ impl Boxes3D {
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseTranslation3D".into(),
-            archetype_field_name: Some("centers".into()),
+            component_name: Some("rerun.components.PoseTranslation3D".into()),
+            archetype_field_name: "centers".into(),
         }
     }
 
@@ -139,8 +142,8 @@ impl Boxes3D {
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseRotationAxisAngle".into(),
-            archetype_field_name: Some("rotation_axis_angles".into()),
+            component_name: Some("rerun.components.PoseRotationAxisAngle".into()),
+            archetype_field_name: "rotation_axis_angles".into(),
         }
     }
 
@@ -151,8 +154,8 @@ impl Boxes3D {
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseRotationQuat".into(),
-            archetype_field_name: Some("quaternions".into()),
+            component_name: Some("rerun.components.PoseRotationQuat".into()),
+            archetype_field_name: "quaternions".into(),
         }
     }
 
@@ -163,8 +166,8 @@ impl Boxes3D {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
         }
     }
 
@@ -175,8 +178,8 @@ impl Boxes3D {
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "radii".into(),
         }
     }
 
@@ -187,8 +190,8 @@ impl Boxes3D {
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.FillMode".into(),
-            archetype_field_name: Some("fill_mode".into()),
+            component_name: Some("rerun.components.FillMode".into()),
+            archetype_field_name: "fill_mode".into(),
         }
     }
 
@@ -199,8 +202,8 @@ impl Boxes3D {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            component_name: Some("rerun.components.Text".into()),
+            archetype_field_name: "labels".into(),
         }
     }
 
@@ -211,8 +214,8 @@ impl Boxes3D {
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            component_name: Some("rerun.components.ShowLabels".into()),
+            archetype_field_name: "show_labels".into(),
         }
     }
 
@@ -223,8 +226,8 @@ impl Boxes3D {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -233,8 +236,8 @@ impl Boxes3D {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.Boxes3DIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.Boxes3DIndicator".into(),
         }
     }
 }
@@ -691,7 +694,10 @@ impl Boxes3D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

@@ -9,15 +9,13 @@ use re_types::{
         },
     },
 };
-use re_ui::{self, Help, MouseButtonText, UiExt as _, icon_text, icons, shortcut_with_icon};
-use re_view::{
-    controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
-    view_property_ui,
-};
+use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
+use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -46,18 +44,17 @@ impl ViewClass for GraphView {
         &re_ui::icons::VIEW_GRAPH
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
+
         Help::new("Graph view")
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
-            .control(
-                "Pan",
-                icon_text!(MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"),
-            )
+            .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.
@@ -135,12 +132,13 @@ impl ViewClass for GraphView {
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceLink>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceManyBody>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForcePosition>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceCenter>(ctx, ui, view_id, self, state);
-            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<VisualBounds2D>(&ctx, ui, self);
+            view_property_force_ui::<ForceLink>(&ctx, ui, self);
+            view_property_force_ui::<ForceManyBody>(&ctx, ui, self);
+            view_property_force_ui::<ForcePosition>(&ctx, ui, self);
+            view_property_force_ui::<ForceCenter>(&ctx, ui, self);
+            view_property_force_ui::<ForceCollisionRadius>(&ctx, ui, self);
         });
 
         Ok(())
@@ -168,7 +166,8 @@ impl ViewClass for GraphView {
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
-        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let params = ForceLayoutParams::get(&view_ctx, self)?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -176,7 +175,7 @@ impl ViewClass for GraphView {
             query.view_id,
         );
         let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
-            .component_or_fallback(ctx, self, state, &VisualBounds2D::descriptor_range())?;
+            .component_or_fallback(&view_ctx, self, &VisualBounds2D::descriptor_range())?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());

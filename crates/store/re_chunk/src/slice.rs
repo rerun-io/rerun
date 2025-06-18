@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_log_types::TimelineName;
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -16,7 +16,7 @@ use crate::{Chunk, RowId, TimeColumn};
 // Most of them are indirectly stressed by our higher-level query tests anyhow.
 
 impl Chunk {
-    /// Returns the cell corresponding to the specified [`RowId`] for a given [`ComponentName`].
+    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentName`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
     ///
@@ -247,55 +247,6 @@ impl Chunk {
                 .map(|(timeline, time_column)| (*timeline, time_column.clone()))
                 .collect(),
             components: components.clone(),
-        };
-
-        #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
-        chunk.sanity_check().unwrap();
-
-        chunk
-    }
-
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_names`.
-    ///
-    /// The result is a new [`Chunk`] with the same rows and (at-most) the selected component columns.
-    /// All non-component columns will be kept as-is.
-    ///
-    /// If none of the `component_names` exist in the [`Chunk`], the end result will be the same as the
-    /// current chunk but without any component column.
-    ///
-    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
-    #[must_use]
-    #[inline]
-    pub fn components_sliced(&self, component_names: &IntSet<ComponentName>) -> Self {
-        let Self {
-            id,
-            entity_path,
-            heap_size_bytes: _,
-            is_sorted,
-            row_ids,
-            timelines,
-            components,
-        } = self;
-
-        let chunk = Self {
-            id: *id,
-            entity_path: entity_path.clone(),
-            heap_size_bytes: Default::default(),
-            is_sorted: *is_sorted,
-            row_ids: row_ids.clone(),
-            timelines: timelines.clone(),
-            components: crate::ChunkComponents(
-                components
-                    .iter()
-                    .filter(|&(component_desc, _list_array)| {
-                        component_names.contains(&component_desc.component_name)
-                    })
-                    .map(|(component_desc, list_array)| {
-                        (component_desc.clone(), list_array.clone())
-                    })
-                    .collect(),
-            ),
         };
 
         #[cfg(debug_assertions)]

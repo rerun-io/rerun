@@ -1,6 +1,4 @@
 mod ffmpeg;
-mod nalu;
-mod sps;
 mod version;
 
 pub use ffmpeg::{Error, FFmpegCliH264Decoder};

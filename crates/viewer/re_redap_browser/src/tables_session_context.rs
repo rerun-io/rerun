@@ -7,8 +7,7 @@ use datafusion::prelude::SessionContext;
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::redap;
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
@@ -52,6 +51,7 @@ pub struct TablesSessionContext {
 
 impl TablesSessionContext {
     pub fn new(
+        connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -62,7 +62,7 @@ impl TablesSessionContext {
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
-                register_all_table_entries(ctx.clone(), origin.clone()),
+                register_all_table_entries(ctx.clone(), connection_registry, origin.clone()),
             )
         };
 
@@ -80,11 +80,13 @@ impl TablesSessionContext {
 
 async fn register_all_table_entries(
     ctx: Arc<SessionContext>,
+    connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
 ) -> Result<Vec<Table>, SessionContextError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
+        .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
                 id: None,
@@ -102,23 +104,23 @@ async fn register_all_table_entries(
     let mut registered_tables = vec![];
 
     for entry in entries {
+        #[expect(clippy::match_same_arms)]
         let table_provider = match entry.kind {
+            // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
+            // some reason, this failure is silent but blocks other tables from being registered.
+            // Since we don't need these tables yet, we just skip them for now.
+            EntryKind::BlueprintDataset => None,
+
             EntryKind::Dataset => Some(
-                PartitionTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
-                )
-                .into_provider()
-                .await?,
+                PartitionTableProvider::new(client.clone(), entry.id)
+                    .into_provider()
+                    .await?,
             ),
 
             EntryKind::Table => Some(
-                TableEntryTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
-                )
-                .into_provider()
-                .await?,
+                TableEntryTableProvider::new(client.clone(), entry.id)
+                    .into_provider()
+                    .await?,
             ),
 
             // TODO(ab): these do not exist yet

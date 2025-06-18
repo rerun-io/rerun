@@ -344,6 +344,26 @@ impl LogMsg {
             }
         }
     }
+
+    /// If we are an [`ArrowMsg`], return a mutable reference to the underlying
+    /// [`ArrowRecordBatch`].
+    pub fn arrow_record_batch_mut(&mut self) -> Option<&mut ArrowRecordBatch> {
+        match self {
+            Self::ArrowMsg(_, arrow_msg) => Some(&mut arrow_msg.batch),
+            _ => None,
+        }
+    }
+
+    /// Insert a metadata key-value pair into the record batch of an [`ArrowMsg`].
+    // TODO(apache/arrow-rs#7628): remove once we can do this with arrow-rs directly.
+    pub fn with_record_batch_metadata(self, key: String, value: String) -> Self {
+        match self {
+            Self::ArrowMsg(store_id, arrow_msg) => {
+                Self::ArrowMsg(store_id, arrow_msg.with_record_batch_metadata(key, value))
+            }
+            _ => self,
+        }
+    }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);

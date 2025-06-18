@@ -2,7 +2,7 @@ use re_types::ComponentDescriptor;
 use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState, ViewerContext,
+    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -10,25 +10,23 @@ use re_viewport_blueprint::ViewProperty;
 ///
 /// Note that this will show default values for components that are null.
 pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    view_id: ViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn ViewState,
 ) {
     let view_property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query, view_id);
-    view_property_ui_impl(ctx, ui, &view_property, fallback_provider, view_state);
+        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    view_property_ui_impl(ctx, ui, &view_property, fallback_provider);
 }
 
 fn view_property_ui_impl(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn ViewState,
 ) {
-    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!(
             "Missing reflection data for archetype {:?}.",
@@ -37,22 +35,26 @@ fn view_property_ui_impl(
         return;
     };
 
-    let query_ctx = property.query_context(ctx, view_state);
-    // If the property archetype only has a single component, don't show an additional hierarchy level!
-    if reflection.fields.len() == 1 {
-        let field = &reflection.fields[0];
+    let archetype_display_name = archetype.display_name;
 
+    let query_ctx = property.query_context(ctx);
+
+    // If the property archetype only has a single component,
+    // and it has the same name as the archetype, then combine them.
+    // Happens in some cases, like for the `NearClipPlane` archetype that
+    // only has one component which is also called `NearClipPlane`.
+    if archetype.fields.len() == 1 && archetype_display_name == archetype.fields[0].display_name {
         view_property_component_ui(
             &query_ctx,
             ui,
             property,
-            reflection.display_name,
-            field,
+            archetype_display_name,
+            &archetype.fields[0],
             fallback_provider,
         );
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
-            for field in &reflection.fields {
+            for field in &archetype.fields {
                 view_property_component_ui(
                     &query_ctx,
                     ui,
@@ -70,7 +72,7 @@ fn view_property_ui_impl(
                 ui,
                 ui.make_persistent_id(property.archetype_name.full_name()),
                 true,
-                list_item::LabelContent::new(reflection.display_name),
+                list_item::LabelContent::new(archetype_display_name),
                 sub_prop_ui,
             );
     }
@@ -93,16 +95,16 @@ pub fn view_property_component_ui(
     let component_array = property.component_raw(&component_descr);
     let row_id = property.component_row_id(&component_descr);
 
-    let ui_types = ctx
-        .viewer_ctx
+    let viewer_ctx = ctx.viewer_ctx();
+    let ui_types = viewer_ctx
         .component_ui_registry()
         .registered_ui_types(field.component_name);
 
     let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-        ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
+        viewer_ctx.component_ui_registry().singleline_edit_ui(
             ctx,
             ui,
-            ctx.viewer_ctx.blueprint_db(),
+            viewer_ctx.blueprint_db(),
             ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
@@ -112,10 +114,10 @@ pub fn view_property_component_ui(
     };
 
     let multiline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
-        ctx.viewer_ctx.component_ui_registry().multiline_edit_ui(
+        viewer_ctx.component_ui_registry().multiline_edit_ui(
             ctx,
             ui,
-            ctx.viewer_ctx.blueprint_db(),
+            viewer_ctx.blueprint_db(),
             ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
@@ -158,8 +160,8 @@ pub fn view_property_component_ui_custom(
     let component_descr = field.component_descriptor(property.archetype_name);
 
     let singleline_list_item_content = list_item::PropertyContent::new(display_name)
-        .menu_button(&re_ui::icons::MORE, |ui| {
-            menu_more(ctx.viewer_ctx, ui, property, &component_descr);
+        .menu_button(&re_ui::icons::MORE, "More options", |ui| {
+            menu_more(ctx.viewer_ctx(), ui, property, &component_descr);
         })
         .value_fn(move |ui, _| singleline_ui(ui));
 

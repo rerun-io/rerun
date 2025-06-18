@@ -7,7 +7,8 @@ mod caches;
 mod image_decode_cache;
 mod image_stats_cache;
 mod tensor_stats_cache;
-mod video_cache;
+mod video_asset_cache;
+mod video_stream_cache;
 
 pub use caches::{Cache, Caches};
 
@@ -18,4 +19,39 @@ pub use caches::{Cache, Caches};
 pub use image_decode_cache::ImageDecodeCache;
 pub use image_stats_cache::ImageStatsCache;
 pub use tensor_stats_cache::TensorStatsCache;
-pub use video_cache::VideoCache;
+pub use video_asset_cache::VideoAssetCache;
+pub use video_stream_cache::{
+    SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+};
+
+// ----
+
+fn filter_blob_removed_events(
+    events: &[re_chunk_store::ChunkStoreEvent],
+) -> ahash::HashSet<crate::StoredBlobCacheKey> {
+    use re_types::Component as _;
+
+    events
+        .iter()
+        .flat_map(|event| {
+            if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
+                itertools::Either::Left(
+                    event
+                        .chunk
+                        .component_descriptors()
+                        .filter(|descr| {
+                            descr.component_name == Some(re_types::components::Blob::name())
+                        })
+                        .flat_map(|descr| {
+                            event
+                                .chunk
+                                .row_ids()
+                                .map(move |row_id| crate::StoredBlobCacheKey::new(row_id, &descr))
+                        }),
+                )
+            } else {
+                itertools::Either::Right(std::iter::empty())
+            }
+        })
+        .collect()
+}

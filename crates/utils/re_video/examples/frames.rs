@@ -27,16 +27,24 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let video = re_video::VideoData::load_mp4(&video_blob).expect("failed to load video");
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
+        .expect("failed to load video");
 
     println!(
         "{} {}x{}",
-        video.gops.len(),
-        video.config.coded_width,
-        video.config.coded_height
+        video.gops.num_elements(),
+        video
+            .encoding_details
+            .as_ref()
+            .map_or(0, |c| c.coded_dimensions[0]),
+        video
+            .encoding_details
+            .as_ref()
+            .map_or(0, |c| c.coded_dimensions[1])
     );
 
-    let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
+    let progress =
+        ProgressBar::new(video.samples.num_elements() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
@@ -49,17 +57,18 @@ fn main() {
         }
     };
 
-    let mut decoder = re_video::decode::new_decoder(
+    let mut decoder = re_video::new_decoder(
         &video_path.to_string(),
         &video,
-        &re_video::decode::DecodeSettings::default(),
+        &re_video::DecodeSettings::default(),
         on_output,
     )
     .expect("Failed to create decoder");
 
     let start = Instant::now();
-    for sample in &video.samples {
-        let chunk = sample.get(&video_blob).unwrap();
+    let video_buffers = std::iter::once(video_blob.as_ref()).collect();
+    for (sample_idx, sample) in video.samples.iter_indexed() {
+        let chunk = sample.get(&video_buffers, sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 

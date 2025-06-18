@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 
 import numpy as np
 import pyarrow as pa
@@ -183,7 +183,7 @@ class AnyBatchValue(ComponentBatchLike):
 
         """
         inst = cls(descriptor, value, drop_untyped_nones)
-        return ComponentColumn(inst)
+        return ComponentColumn(descriptor, inst)
 
 
 class AnyValues(AsComponents):
@@ -261,6 +261,13 @@ class AnyValues(AsComponents):
                 if batch.is_valid():
                     self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
+    def with_field(self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True) -> Self:
+        """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
+        batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+        if batch.is_valid():
+            self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
+        return self
+
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         return self.component_batches
 
@@ -316,4 +323,6 @@ class AnyValues(AsComponents):
 
         """
         inst = cls(drop_untyped_nones, **kwargs)
-        return ComponentColumnList([ComponentColumn(batch) for batch in inst.component_batches])
+        return ComponentColumnList([
+            ComponentColumn(batch.component_descriptor(), batch) for batch in inst.component_batches
+        ])

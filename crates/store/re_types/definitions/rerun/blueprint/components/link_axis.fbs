@@ -1,0 +1,20 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// How should the horizontal/X/time axis be linked across multiple plots
+enum LinkAxis: ubyte (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// The axis is independent from all other plots.
+    Independent = 1 (default),
+
+    /// Link to all other plots that also have this options set.
+    LinkToGlobal = 2,
+}

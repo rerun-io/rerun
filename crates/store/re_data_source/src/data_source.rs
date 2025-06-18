@@ -1,4 +1,4 @@
-use re_grpc_client::message_proxy;
+use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 use re_uri::RedapUri;
@@ -149,6 +149,7 @@ impl DataSource {
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        connection_registry: &ConnectionRegistryHandle,
         on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
@@ -254,8 +255,8 @@ impl DataSource {
                     },
                 );
 
-                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
-                    re_grpc_client::redap::Command::SetLoopSelection {
+                let on_cmd = Box::new(move |cmd: re_grpc_client::Command| match cmd {
+                    re_grpc_client::Command::SetLoopSelection {
                         recording_id,
                         timeline,
                         time_range,
@@ -266,15 +267,18 @@ impl DataSource {
                     }),
                 });
 
-                spawn_future(async move {
-                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
-                        tx,
-                        uri.clone(),
-                        on_cmd,
-                        on_msg,
+                let connection_registry = connection_registry.clone();
+                let uri_clone = uri.clone();
+                let stream_partition = async move {
+                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
+                    re_grpc_client::stream_blueprint_and_partition_from_server(
+                        client, tx, uri_clone, on_cmd, on_msg,
                     )
                     .await
-                    {
+                };
+
+                spawn_future(async move {
+                    if let Err(err) = stream_partition.await {
                         re_log::warn!(
                             "Error while streaming {uri}: {}",
                             re_error::format_ref(&err)

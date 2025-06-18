@@ -10,26 +10,23 @@ use re_types::{
     ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
-        archetypes::{PlotLegend, ScalarAxis},
-        components::{Corner2D, LockRangeDuringZoom},
+        archetypes::{PlotLegend, ScalarAxis, TimeAxis},
+        components::{Corner2D, LinkAxis, LockRangeDuringZoom},
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
 };
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, list_item, shortcut_with_icon};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::{
-    controls::{
-        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-        ZOOM_SCROLL_MODIFIER,
-    },
+    controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
     view_property_ui,
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
+    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
     external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -119,37 +116,54 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions {
+            zoom_modifier,
+            horizontal_scroll_modifier,
+            vertical_scroll_modifier,
+            ..
+        } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
+
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                "Horizontal pan",
+                IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom only x-axis",
-                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control(
+                "Zoom X-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | horizontal_scroll_modifier,
+                    icons::SCROLL,
+                ),
+            )
+            .control(
+                "Zoom Y-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | vertical_scroll_modifier,
+                    icons::SCROLL,
+                ),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
+                (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control(
-                "Move time cursor",
-                icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Move time cursor", MouseButtonText(MOVE_TIME_CURSOR_BUTTON))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
             .control_separator()
-            .control(
-                "Hide/show series",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
-            )
+            .control("Hide/show series", (icons::LEFT_MOUSE_CLICK, "legend"))
             .control(
                 "Hide/show other series",
-                icon_text!(
-                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
-                    "legend"
+                (
+                    IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
+                    "legend",
                 ),
             )
     }
@@ -194,8 +208,10 @@ impl ViewClass for TimeSeriesView {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
-            view_property_ui::<ScalarAxis>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotLegend>(&ctx, ui, self);
+            view_property_ui::<TimeAxis>(&ctx, ui, self);
+            view_property_ui::<ScalarAxis>(&ctx, ui, self);
         });
 
         Ok(())
@@ -338,35 +354,40 @@ impl ViewClass for TimeSeriesView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
+        let view_ctx = self.view_context(ctx, view_id, state);
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &PlotLegend::descriptor_visible(),
         )?;
         let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &PlotLegend::descriptor_corner(),
+        )?;
+
+        let time_axis =
+            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let link_x_axis = time_axis.component_or_fallback::<LinkAxis>(
+            &view_ctx,
+            self,
+            &TimeAxis::descriptor_link(),
         )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &ScalarAxis::descriptor_range(),
         )?;
         let y_range = make_range_sane(y_range);
 
         let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
-            ctx,
+            &view_ctx,
             self,
-            state,
             &ScalarAxis::descriptor_zoom_lock(),
         )?;
         let y_zoom_lock = y_zoom_lock.0.0;
@@ -429,8 +450,7 @@ impl ViewClass for TimeSeriesView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let lock_y_during_zoom =
-            y_zoom_lock || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let lock_y_during_zoom = y_zoom_lock;
 
         // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
         // then reset to the locked range.
@@ -445,18 +465,28 @@ impl ViewClass for TimeSeriesView {
 
         set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
 
+        let min_axis_thickness = ui.tokens().small_icon_size.y;
+
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
             .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
-            .x_axis_formatter(move |time, _| {
-                re_log_types::TimeCell::new(
-                    time_type,
-                    (time.value as i64).saturating_add(time_offset),
-                )
-                .format_compact(timestamp_format)
-            })
-            .y_axis_formatter(move |mark, _| format_y_axis(mark))
+            .custom_x_axes(vec![
+                egui_plot::AxisHints::new_x()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |time, _| {
+                        re_log_types::TimeCell::new(
+                            time_type,
+                            (time.value as i64).saturating_add(time_offset),
+                        )
+                        .format_compact(timestamp_format)
+                    }),
+            ])
+            .custom_y_axes(vec![
+                egui_plot::AxisHints::new_y()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |mark, _| format_y_axis(mark)),
+            ])
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
@@ -475,6 +505,20 @@ impl ViewClass for TimeSeriesView {
                     )
                 }
             });
+
+        if state.reset_bounds_next_frame {
+            plot = plot.reset();
+        }
+
+        match link_x_axis {
+            LinkAxis::Independent => {}
+            LinkAxis::LinkToGlobal => {
+                plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+            }
+        }
+
+        // Sharing the same cursor is always nice:
+        plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
 
         if *legend_visible.0 {
             plot = plot.legend(
@@ -511,11 +555,8 @@ impl ViewClass for TimeSeriesView {
 
             plot_double_clicked = plot_ui.response().double_clicked();
 
-            let current_bounds = plot_ui.plot_bounds();
-            plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
-                [current_bounds.min()[0], y_range.start()],
-                [current_bounds.max()[0], y_range.end()],
-            ));
+            // Let the user pick y_range from the blueprint:
+            plot_ui.set_plot_bounds_y(y_range);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -537,7 +578,8 @@ impl ViewClass for TimeSeriesView {
             } else {
                 plot_ui.set_auto_bounds([
                     // X bounds are handled by egui plot - either to auto or manually controlled.
-                    plot_ui.auto_bounds()[0] || state.reset_bounds_next_frame,
+                    state.reset_bounds_next_frame
+                        || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
                     // Y bounds are always handled by the blueprint.
                     false,
                 ]);
@@ -875,15 +917,16 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D
-        Corner2D::RightBottom
+        // Explicitly pick RightCorner2D::LeftBottom, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D.
+        // We put it on the left side by default so that it does not cover the newest data coming n on the right side.
+        Corner2D::LeftBottom
     }
 }
 
 impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
-        ctx.view_state
+        ctx.view_state()
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
             .map(|s| make_range_sane(s.scalar_range))

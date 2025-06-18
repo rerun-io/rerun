@@ -6,6 +6,7 @@
 
 pub mod entity_db;
 pub mod entity_tree;
+mod ingestion_statistics;
 mod instance_path;
 mod store_bundle;
 mod time_histogram_per_timeline;
@@ -15,8 +16,12 @@ mod versioned_instance_path;
 pub use self::{
     entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
     entity_tree::EntityTree,
+    ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},
     instance_path::{InstancePath, InstancePathHash},
-    store_bundle::{StoreBundle, StoreLoadError},
+    store_bundle::{
+        DatasetRecordings, LocalRecordings, RemoteRecordings, SortDatasetsResults, StoreBundle,
+        StoreLoadError,
+    },
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
     times_per_timeline::{TimeCounts, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},

@@ -42,7 +42,10 @@ pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
-    cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
+    cache::{
+        Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+        TensorStatsCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+    },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
@@ -70,7 +73,10 @@ pub use self::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
-    utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
+    utils::{
+        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
+        video_stream_time_from_query, video_timestamp_component_to_video_time,
+    },
     view::{
         DataBasedVisualizabilityFilter, DataResult, IdentifiedViewSystem,
         OptionalViewEntityHighlight, OverridePath, PerSystemDataResults, PerSystemEntities,

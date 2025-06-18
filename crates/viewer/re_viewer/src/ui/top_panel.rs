@@ -89,12 +89,35 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
-    if app.app_options().show_metrics && !app.is_screenshotting() {
-        ui.separator();
-        frame_time_label_ui(ui, app);
-        memory_use_label_ui(ui, gpu_resource_stats);
+    if !app.is_screenshotting() {
+        if app.app_options().show_metrics {
+            ui.separator();
+            frame_time_label_ui(ui, app);
+            memory_use_label_ui(ui, gpu_resource_stats);
+        }
 
-        latency_ui(ui, app, store_context);
+        let latency_snapshot = store_context
+            .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
+
+        if let Some(latency_snapshot) = latency_snapshot {
+            // Should we show the e2e latency?
+
+            // High enough to be consering; low enough to be believable (and almost realtime).
+            let is_latency_interesting = latency_snapshot
+                .e2e
+                .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
+
+            // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
+
+            if is_latency_interesting {
+                app.latest_latency_interest = web_time::Instant::now();
+            }
+
+            if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                ui.separator();
+                latency_snapshot_button_ui(ui, latency_snapshot);
+            }
+        }
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -270,10 +293,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle selection view{}",
-                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_selection_panel(&app.command_sender);
@@ -286,10 +306,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle timeline view{}",
-                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_time_panel(&app.command_sender);
@@ -302,10 +319,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
-            .on_hover_text(format!(
-                "Toggle blueprint view{}",
-                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
+            .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
             .clicked()
     {
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
@@ -321,6 +335,7 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()
+        .fit_to_original_size(2.0) // hack, because the original SVG is very small
         .max_height(desired_height)
         .tint(ui.tokens().strong_fg_color);
 
@@ -434,105 +449,134 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
     }
 }
 
-fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
-    if let Some(response) = e2e_latency_ui(ui, store_context) {
-        // Show queue latency on hover, as that is part of this.
-        // For instance, if the framerate is really bad we have less time to ingest incoming data,
-        // leading to an ever-increasing input queue.
-        let rx = app.msg_receive_set();
-        let queue_len = rx.queue_len();
-        let latency_sec = rx.latency_nanos() as f32 / 1e9;
-        // empty queue == unreliable latency
-        if 0 < queue_len {
-            response.on_hover_ui(|ui| {
-                ui.label(format!(
-                    "Queue latency: {}, length: {}",
-                    latency_text(latency_sec),
-                    format_uint(queue_len),
-                ));
-
-                ui.label(
-                    "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
-                         We call this the queue latency.");
-            });
-        }
-    } else {
-        // If we don't know the e2e latency we can still show the queue latency.
-        input_queue_latency_ui(ui, app);
-    }
-}
-
 /// Shows the e2e latency.
-fn e2e_latency_ui(
+fn latency_snapshot_button_ui(
     ui: &mut egui::Ui,
-    store_context: Option<&StoreContext<'_>>,
+    latency: re_entity_db::LatencySnapshot,
 ) -> Option<egui::Response> {
-    let store_context = store_context?;
-    let recording = store_context.recording;
-    let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
+    let Some(e2e) = latency.e2e else {
+        return None; // No e2e latency, nothing to show as a summary
+    };
 
-    if e2e_latency_sec > 60.0 {
+    // Unit: seconds
+    if 60.0 < e2e {
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("latency: {}", latency_text(e2e_latency_sec));
+    let text = format!("Latency: {}", latency_text(ui.visuals(), e2e).text());
     let response = ui.weak(text);
 
-    let hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
-                      This includes time for encoding, network latency, and decoding.\n\
-                      It is also affected by the framerate of the viewer.\n\
-                      This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
+    let response = response.on_hover_ui(|ui| {
+        latency_details_ui(ui, latency);
+    });
 
-    Some(response.on_hover_text(hover_text))
+    Some(response)
 }
 
-/// Shows the latency in the input queue.
-fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
-    let rx = app.msg_receive_set();
+fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot) {
+    // The user is interested in the latency, so keep it updated.
+    ui.ctx().request_repaint();
 
-    if rx.is_empty() {
-        return;
-    }
+    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
+    This includes time for encoding, network latency, and decoding.\n\
+    It is also affected by the framerate of the viewer.\n\
+    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
-    let is_latency_interesting = rx.sources().iter().any(|s| s.is_network());
+    // Note: all times are in seconds.
+    let re_entity_db::LatencySnapshot {
+        e2e,
+        log2chunk,
+        chunk2encode,
+        transmission,
+        decode2ingest,
+    } = latency;
 
-    let queue_len = rx.queue_len();
+    if let (Some(log2chunk), Some(chunk2encode), Some(transmission), Some(decode2ingest)) =
+        (log2chunk, chunk2encode, transmission, decode2ingest)
+    {
+        // We have a full picture - use a nice vertical layout:
 
-    // empty queue == unreliable latency
-    let latency_sec = rx.latency_nanos() as f32 / 1e9;
-    if queue_len > 0 && (!is_latency_interesting || app.app_options().warn_latency < latency_sec) {
-        // we use this to avoid flicker
-        app.latest_queue_interest = web_time::Instant::now();
-    }
-
-    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-        ui.separator();
-        if is_latency_interesting {
-            let text = format!(
-                "Queue latency: {}, length: {}",
-                latency_text(latency_sec),
-                format_uint(queue_len),
-            );
-            let hover_text = "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
-                    This latency does NOT include network latency.";
-
-            if latency_sec < app.app_options().warn_latency {
-                ui.weak(text).on_hover_text(hover_text);
-            } else {
-                ui.label(ui.ctx().warning_text(text))
-                    .on_hover_text(hover_text);
-            }
-        } else {
-            ui.weak(format!("Queue: {}", format_uint(queue_len)))
-                .on_hover_text("Number of messages in the inbound queue");
+        if let Some(e2e) = e2e {
+            ui.horizontal(|ui| {
+                ui.label("end-to-end:").on_hover_text(e2e_hover_text);
+                latency_label(ui, e2e);
+            });
+            ui.separator();
         }
+
+        ui.vertical_centered(|ui| {
+            fn small_and_weak(text: &str) -> egui::RichText {
+                egui::RichText::new(text).small().weak()
+            }
+
+            ui.spacing_mut().item_spacing.y = 0.0;
+            ui.label("log call");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, log2chunk);
+            ui.label(small_and_weak("↓"));
+            ui.label("batch creation");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, chunk2encode);
+            ui.label(small_and_weak("↓"));
+            ui.label("encode and transmit");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, transmission);
+            ui.label(small_and_weak("↓"));
+            ui.label("receive and decode");
+            ui.label(small_and_weak("|"));
+            latency_label(ui, decode2ingest);
+            ui.label(small_and_weak("↓"));
+            ui.label("ingest into viewer");
+        });
+    } else {
+        // We have a partial picture - show only what we got:
+        egui::Grid::new("latency_snapshot")
+            .num_columns(2)
+            .striped(false)
+            .show(ui, |ui| {
+                if let Some(e2e) = e2e {
+                    ui.strong("log -> ingest (total end-to-end)")
+                        .on_hover_text(e2e_hover_text);
+                    latency_label(ui, e2e);
+                    ui.end_row();
+
+                    ui.end_row(); // Intentional extra blank line
+                }
+
+                if let Some(log2chunk) = log2chunk {
+                    ui.label("log -> chunk");
+                    latency_label(ui, log2chunk);
+                    ui.end_row();
+                }
+                if let Some(chunk2encode) = chunk2encode {
+                    ui.label("chunk -> encode");
+                    latency_label(ui, chunk2encode);
+                    ui.end_row();
+                }
+                if let Some(transmission) = transmission {
+                    ui.label("encode -> decode (transmission)");
+                    latency_label(ui, transmission);
+                    ui.end_row();
+                }
+                if let Some(decode2ingest) = decode2ingest {
+                    ui.label("decode -> ingest");
+                    latency_label(ui, decode2ingest);
+                    ui.end_row();
+                }
+            });
     }
 }
 
-fn latency_text(latency_sec: f32) -> String {
-    if latency_sec < 1.0 {
-        format!("{:.0} ms", 1e3 * latency_sec)
+fn latency_label(ui: &mut egui::Ui, latency_sec: f32) -> egui::Response {
+    ui.label(latency_text(ui.visuals(), latency_sec))
+}
+
+fn latency_text(visuals: &egui::Visuals, latency_sec: f32) -> egui::RichText {
+    if latency_sec < 0.001 {
+        egui::RichText::new(format!("{:.0} µs", 1e6 * latency_sec))
+    } else if latency_sec < 1.0 {
+        egui::RichText::new(format!("{:.0} ms", 1e3 * latency_sec))
     } else {
-        format!("{latency_sec:.1} s")
+        egui::RichText::new(format!("{latency_sec:.1} s")).color(visuals.warn_fg_color)
     }
 }

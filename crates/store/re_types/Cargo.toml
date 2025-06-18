@@ -33,8 +33,8 @@ ecolor = ["dep:ecolor"]
 ## Enable conversions to plot primitives
 egui_plot = ["dep:egui_plot"]
 
-## Add support for some math operations using [`glam`](https://crates.io/crates/glam/) and [`re_math`](https://crates.io/crates/re_math/).
-glam = ["dep:glam", "dep:re_math"]
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/) and [`macaw`](https://crates.io/crates/macaw/).
+glam = ["dep:glam", "dep:macaw"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG and TIFF support.
 image = ["dep:ecolor", "dep:image", "dep:tiff"]
@@ -58,6 +58,7 @@ re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
+re_sorbet.workspace = true
 re_types_core.workspace = true
 re_video = { workspace = true, optional = true }
 
@@ -90,7 +91,7 @@ image = { workspace = true, optional = true, default-features = false, features 
   "jpeg",
 ] }
 mint = { workspace = true, optional = true }
-re_math = { workspace = true, optional = true }
+macaw = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 
 

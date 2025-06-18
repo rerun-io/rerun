@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicU64;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
+use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ChunkId, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -391,6 +391,41 @@ impl ChunkStoreHandle {
     }
 }
 
+/// A column in a given [`EntityPath`] is uniquely identified by its [`ArchetypeName`] (which can be optional),
+/// and its [`ArchetypeFieldName`].
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ColumnIdentifier {
+    pub archetype_name: Option<ArchetypeName>,
+    pub archetype_field_name: ArchetypeFieldName,
+}
+
+impl From<ComponentDescriptor> for ColumnIdentifier {
+    fn from(value: ComponentDescriptor) -> Self {
+        Self {
+            archetype_name: value.archetype_name,
+            archetype_field_name: value.archetype_field_name,
+        }
+    }
+}
+
+impl nohash_hasher::IsEnabled for ColumnIdentifier {}
+
+impl std::hash::Hash for ColumnIdentifier {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Self {
+            archetype_name,
+            archetype_field_name,
+        } = self;
+
+        let archetype_name = archetype_name.map_or(0, |v| v.hash());
+        let archetype_field_name = archetype_field_name.hash();
+
+        // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
+        // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
+        state.write_u64(archetype_name ^ archetype_field_name);
+    }
+}
+
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -419,8 +454,11 @@ pub struct ChunkStore {
     // different datatype for a given component.
     pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
 
-    pub(crate) per_column_metadata:
-        IntMap<EntityPath, IntMap<ComponentName, IntMap<ComponentDescriptor, ColumnMetadataState>>>,
+    // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
+    pub(crate) per_column_metadata: IntMap<
+        EntityPath,
+        IntMap<ColumnIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
+    >,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
@@ -682,15 +720,15 @@ impl ChunkStore {
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_name| per_name.get(&component_descr.component_name))
-            .and_then(|per_descr| per_descr.get(component_descr))?;
+            .and_then(|per_identifier| per_identifier.get(&component_descr.clone().into()))
+            .map(|(_, metadata_state, _)| metadata_state)?;
 
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .is_some_and(|per_descr| per_descr.get(component_descr).is_some());
 
-        let is_indicator = component_descr.component_name.is_indicator_component();
+        let is_indicator = component_descr.is_indicator_component();
 
         use re_types_core::Archetype as _;
         let is_tombstone = re_types_core::archetypes::Clear::all_components()
@@ -715,6 +753,7 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
@@ -821,6 +860,7 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new_handle`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,

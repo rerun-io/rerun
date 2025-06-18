@@ -138,7 +138,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.24.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-re_math = "0.20.0"
+re_mp4 = "0.3.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
@@ -162,7 +162,12 @@ egui = { version = "0.31.1", features = [
 ] }
 egui_commonmark = { version = "0.20.0", default-features = false }
 egui_dnd = { version = "0.12.0" }
-egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
+egui_extras = { version = "0.31.1", features = [
+  "http",
+  "image",
+  "serde",
+  "svg",
+] }
 egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.32.1" # https://github.com/emilk/egui_plot
 egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
@@ -175,7 +180,7 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "54.3.1", default-features = false }
+arrow = { version = "55.1", default-features = false }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
@@ -200,8 +205,8 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-datafusion = { version = "46", default-features = false }
-datafusion-ffi = "46"
+datafusion = { version = "47", default-features = false }
+datafusion-ffi = "47"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -212,15 +217,16 @@ env_logger = { version = "0.11", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
-flatbuffers = "24.12.23"
+flatbuffers = "25.2.10"
 futures = "0.3"
 futures-util = "0.3"
 getrandom = "0.2"
-glam = { version = "0.28", features = ["debug-glam-assert"] }
+glam = { version = "0.30.3", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
+h264-reader = "0.8"
 half = { version = "2.3.1", features = ["bytemuck"] }
-hexasphere = "14.1.0"
+hexasphere = "16.0.0"
 home = "=0.5.9"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
@@ -237,11 +243,11 @@ linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
+macaw = "0.30.0"
 memory-stats = "1.1"
 mimalloc = "0.1.43"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-re_mp4 = "0.3.0"
 natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
@@ -250,12 +256,11 @@ nohash-hasher = "0.2"
 notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
-numpy = "0.23"
-object_store = { version = "0.11.0" }
+numpy = "0.24"
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
-parquet = { version = "54.1", default-features = false }
+parquet = { version = "55.1", default-features = false }
 paste = "1.0"
 pathdiff = "0.2"
 percent-encoding = "2.3"
@@ -271,10 +276,10 @@ prost-build = "0.13.3"
 prost-types = "0.13.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
-pyo3 = "0.23.3"
-pyo3-build-config = "0.23.3"
+pyo3 = "0.24.1"
+pyo3-build-config = "0.24.1"
 quote = "1.0"
-rand = { version = "0.8", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rexif = "0.7.5"
@@ -287,6 +292,7 @@ roxmltree = "0.19.0"
 rust-format = "0.3"
 rustdoc-json = "0.9.4"
 rustdoc-types = "0.35.0"
+rustls = { version = "0.23", default-features = false }
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
@@ -317,16 +323,17 @@ tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
-tonic = { version = "0.12.3", default-features = false }
-tonic-build = { version = "0.12.3", default-features = false }
-tonic-web = "0.12"
-tonic-web-wasm-client = "0.6"
+tonic = { version = "0.13.1", default-features = false }
+tonic-build = { version = "0.13.1", default-features = false }
+tonic-web = "0.13.1"
+tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
-tower-http = "0.5"
+tower-http = "0.6"
 tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
+urdf-rs = "0.9.0"
 ureq = "2.9.2"
 url = "2.3"
 uuid = "1.1"
@@ -750,7 +757,7 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }

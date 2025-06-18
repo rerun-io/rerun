@@ -248,14 +248,14 @@ fn run_view_ui_and_save_snapshot(
 
             harness.run_steps(8);
 
-            let broken_percent_threshold = 0.0036;
+            let broken_pixels_fraction = 0.0036;
             let num_pixels = (size.x * size.y).ceil() as u64;
 
             use re_viewer_context::test_context::HarnessExt as _;
             success = harness.try_snapshot_with_broken_pixels_threshold(
                 &name,
                 num_pixels,
-                broken_percent_threshold,
+                broken_pixels_fraction,
             );
         }
         assert!(success, "one or more snapshots failed");

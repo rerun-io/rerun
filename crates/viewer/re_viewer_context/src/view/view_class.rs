@@ -10,6 +10,8 @@ use crate::{
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
 
+use super::ViewContext;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ViewClassLayoutPriority {
     /// This view can share space with others
@@ -62,7 +64,7 @@ pub trait ViewClass: Send + Sync {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> re_ui::Help;
+    fn help(&self, os: egui::os::OperatingSystem) -> re_ui::Help;
 
     /// Called once upon registration of the class
     ///
@@ -221,9 +223,7 @@ pub trait ViewClass: Send + Sync {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError>;
-}
 
-pub trait ViewClassExt<'a>: ViewClass + 'a {
     /// Determines the set of visible entities for a given view.
     // TODO(andreas): This should be part of the View's (non-blueprint) state.
     // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
@@ -260,7 +260,34 @@ pub trait ViewClassExt<'a>: ViewClass + 'a {
     }
 }
 
-impl<'a> ViewClassExt<'a> for dyn ViewClass + 'a {}
+pub trait ViewClassExt<'a>: ViewClass + 'a {
+    fn view_context<'b>(
+        &self,
+        viewer_ctx: &'b ViewerContext<'b>,
+        view_id: ViewId,
+        view_state: &'b dyn ViewState,
+    ) -> ViewContext<'b>;
+}
+
+impl<'a, T> ViewClassExt<'a> for T
+where
+    T: ViewClass + 'a,
+{
+    fn view_context<'b>(
+        &self,
+        viewer_ctx: &'b ViewerContext<'b>,
+        view_id: ViewId,
+        view_state: &'b dyn ViewState,
+    ) -> ViewContext<'b> {
+        ViewContext {
+            viewer_ctx,
+            view_id,
+            view_class_identifier: T::identifier(),
+            view_state,
+            query_result: viewer_ctx.lookup_query_result(view_id),
+        }
+    }
+}
 
 /// Unserialized frame to frame state of a view.
 ///

@@ -33,21 +33,21 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
         None
     };
 
-    let archetype_field_name =
-        component_descr.getattr(pyo3::intern!(py, "archetype_field_name"))?;
-    let archetype_field_name: Option<Cow<'_, str>> = if !archetype_field_name.is_none() {
-        Some(archetype_field_name.extract()?)
+    let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
+    let component_name: Option<Cow<'_, str>> = if !component_name.is_none() {
+        Some(component_name.extract()?)
     } else {
         None
     };
 
-    let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
-    let component_name: Cow<'_, str> = component_name.extract()?;
+    let archetype_field_name =
+        component_descr.getattr(pyo3::intern!(py, "archetype_field_name"))?;
+    let archetype_field_name: Cow<'_, str> = archetype_field_name.extract()?;
 
     let descr = ComponentDescriptor {
         archetype_name: archetype_name.map(|s| s.as_ref().into()),
-        archetype_field_name: archetype_field_name.map(|s| s.as_ref().into()),
-        component_name: component_name.as_ref().into(),
+        archetype_field_name: archetype_field_name.as_ref().into(),
+        component_name: component_name.map(|s| s.as_ref().into()),
     };
     descr.sanity_check();
     Ok(descr)

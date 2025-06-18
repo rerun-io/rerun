@@ -164,6 +164,25 @@ pub struct TexturedRect {
     pub options: RectangleOptions,
 }
 
+impl TexturedRect {
+    /// Returns axis aligned bounding box for this rectangle.
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        let left_top = self.top_left_corner_position;
+        let extent_u = self.extent_u;
+        let extent_v = self.extent_v;
+
+        macaw::BoundingBox::from_points(
+            [
+                left_top,
+                left_top + extent_u,
+                left_top + extent_v,
+                left_top + extent_v + extent_u,
+            ]
+            .into_iter(),
+        )
+    }
+}
+
 #[derive(Clone)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,

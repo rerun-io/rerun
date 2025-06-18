@@ -7,6 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -14,8 +15,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
-    StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
@@ -41,6 +42,8 @@ enum TimeControlCommand {
 }
 
 // ----------------------------------------------------------------------------
+
+const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
 
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
@@ -102,7 +105,7 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_queue_interest: web_time::Instant,
+    pub(crate) latest_latency_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -125,6 +128,8 @@ pub struct App {
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
+    connection_registry: ConnectionRegistryHandle,
+
     /// The async runtime that should be used for all asynchronous operations.
     ///
     /// Using the global tokio runtime should be avoided since:
@@ -141,6 +146,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
         Self::with_commands(
@@ -149,18 +155,21 @@ impl App {
             app_env,
             startup_options,
             creation_context,
+            connection_registry,
             tokio_runtime,
             command_channel(),
         )
     }
 
     /// Create a viewer that receives new log messages over time
+    #[expect(clippy::too_many_arguments)]
     pub fn with_commands(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
@@ -175,6 +184,15 @@ impl App {
             re_log::debug!(
                 "re_log not initialized - we won't see any log messages as GUI notifications"
             );
+        }
+
+        let connection_registry =
+            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+
+        if let Some(storage) = creation_context.storage {
+            if let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY) {
+                connection_registry.load_tokens(tokens);
+            }
         }
 
         let mut state: AppState = if startup_options.persist_state {
@@ -202,13 +220,11 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        let mut view_class_registry = ViewClassRegistry::default();
-        if let Err(err) = populate_view_class_registry_with_builtin(&mut view_class_registry) {
-            re_log::error!(
-                "Failed to populate the view type registry with built-in views: {}",
-                err
-            );
-        }
+        let view_class_registry = crate::default_views::create_view_class_registry()
+            .unwrap_or_else(|err| {
+                re_log::error!("Failed to create view class registry: {err}");
+                Default::default()
+            });
 
         #[allow(unused_mut, clippy::needless_update)] // false positive on web
         let mut screenshotter = crate::screenshotter::Screenshotter::default();
@@ -248,7 +264,7 @@ impl App {
                 )
             },
         );
-        analytics.on_viewer_started(build_info, adapter_backend, device_tier);
+        analytics.on_viewer_started(build_info.clone(), adapter_backend, device_tier);
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
@@ -302,7 +318,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_queue_interest: long_time_ago,
+            latest_latency_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -320,6 +336,8 @@ impl App {
             reflection,
 
             event_dispatcher,
+
+            connection_registry,
             async_runtime: tokio_runtime,
         }
     }
@@ -327,6 +345,10 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
+    }
+
+    pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
+        &self.connection_registry
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
@@ -442,19 +464,19 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateEntry(entry) => match &entry {
-                StoreHubEntry::Recording { store_id } => {
+            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
+                RecordingOrTable::Recording { store_id } => {
                     self.state.navigation.replace(DisplayMode::LocalRecordings);
                     store_hub.set_active_recording_id(store_id.clone());
                 }
-                StoreHubEntry::Table { table_id } => {
+                RecordingOrTable::Table { table_id } => {
                     self.state
                         .navigation
                         .replace(DisplayMode::LocalTable(table_id.clone()));
                 }
             },
 
-            SystemCommand::CloseEntry(entry) => {
+            SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
             }
@@ -498,7 +520,7 @@ impl App {
                 if self
                     .store_hub
                     .as_ref()
-                    .is_none_or(|store_hub| store_hub.active_entry().is_none())
+                    .is_none_or(|store_hub| store_hub.active_recording_or_table().is_none())
                 {
                     self.state
                         .navigation
@@ -535,7 +557,10 @@ impl App {
                     }),
                 });
 
-                match data_source.clone().stream(on_cmd, Some(waker)) {
+                match data_source
+                    .clone()
+                    .stream(&self.connection_registry, on_cmd, Some(waker))
+                {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
 
                     Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
@@ -785,7 +810,7 @@ impl App {
             UICommand::SaveRecording => {
                 #[cfg(target_arch = "wasm32")] // Web
                 {
-                    if let Err(err) = save_recording(self, store_context, None) {
+                    if let Err(err) = save_active_recording(self, store_context, None) {
                         re_log::error!("Failed to save recording: {err}");
                     }
                 }
@@ -809,8 +834,19 @@ impl App {
                         }
                     }
 
+                    let selected_stores = selected_stores
+                        .iter()
+                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .collect_vec();
+
                     if selected_stores.is_empty() {
-                        if let Err(err) = save_recording(self, store_context, None) {
+                        if let Err(err) = save_active_recording(self, store_context, None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else if selected_stores.len() == 1 {
+                        // Common case: saving a single recording.
+                        // In this case we want the user to be able to pick a file name (not just a folder):
+                        if let Err(err) = save_recording(self, selected_stores[0], None) {
                             re_log::error!("Failed to save recording: {err}");
                         }
                     } else {
@@ -819,15 +855,15 @@ impl App {
                             .set_title("Save recordings to folder")
                             .pick_folder()
                         {
-                            self.save_all_recordings(_storage_context, &selected_stores, &folder);
+                            self.save_many_recordings(&selected_stores, &folder);
                         } else {
-                            re_log::warn!("No folder selected");
+                            re_log::info!("No folder selected - recordings not saved.");
                         }
                     }
                 }
             }
             UICommand::SaveRecordingSelection => {
-                if let Err(err) = save_recording(
+                if let Err(err) = save_active_recording(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
@@ -910,7 +946,7 @@ impl App {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
-                        .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
+                        .send_system(SystemCommand::CloseRecordingOrTable(cur_rec.clone().into()));
                 }
             }
             UICommand::CloseAllEntries => {
@@ -1139,23 +1175,13 @@ impl App {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_all_recordings(
-        &mut self,
-        storage_context: &StorageContext<'_>,
-        stores: &[StoreId],
-        folder: &std::path::Path,
-    ) {
+    fn save_many_recordings(&mut self, stores: &[&EntityDb], folder: &std::path::Path) {
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         use re_log::ResultExt as _;
         use tap::Pipe as _;
 
         re_tracing::profile_function!();
-
-        let stores = stores
-            .iter()
-            .filter_map(|store_id| storage_context.bundle.get(store_id))
-            .collect_vec();
 
         let num_stores = stores.len();
         let any_error = Arc::new(AtomicBool::new(false));
@@ -1474,9 +1500,11 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.state
-                            .redap_servers
-                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
+                        self.state.redap_servers.on_frame_start(
+                            &self.connection_registry,
+                            &self.async_runtime,
+                            &self.egui_ctx,
+                        );
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1496,6 +1524,7 @@ impl App {
                             },
                             is_history_enabled,
                             self.event_dispatcher.as_ref(),
+                            &self.connection_registry,
                             &self.async_runtime,
                         );
                         render_ctx.before_submit();
@@ -1722,14 +1751,9 @@ impl App {
 
         for event in store_events {
             let chunk = &event.diff.chunk;
-            for component in chunk.component_names() {
-                if let Some(short_archetype_name) =
-                    component.indicator_component_archetype_short_name()
-                {
-                    if let Some(archetype) = self
-                        .reflection
-                        .archetype_reflection_from_short_name(&short_archetype_name)
-                    {
+            for component_descr in chunk.components().keys() {
+                if let Some(archetype_name) = component_descr.archetype_name {
+                    if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
                                 re_log::warn_once!(
@@ -1738,7 +1762,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {short_archetype_name}");
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }
@@ -2165,6 +2189,11 @@ impl eframe::App for App {
 
         // Save the app state
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        eframe::set_value(
+            storage,
+            REDAP_TOKEN_KEY,
+            &self.connection_registry.dump_tokens(),
+        );
 
         // Save the blueprints
         // TODO(#2579): implement web-storage for blueprints as well
@@ -2324,13 +2353,13 @@ impl eframe::App for App {
                 // set_active_app will also activate a new entry.
                 // Select this entry so it's more obvious to the user which recording
                 // is now active.
-                match store_hub.active_entry() {
-                    Some(StoreHubEntry::Recording { store_id }) => {
+                match store_hub.active_recording_or_table() {
+                    Some(RecordingOrTable::Recording { store_id }) => {
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(store_id.clone()));
                     }
-                    Some(StoreHubEntry::Table { table_id }) => {
+                    Some(RecordingOrTable::Table { table_id }) => {
                         self.state
                             .selection_state
                             .set_selection(Item::TableId(table_id.clone()));
@@ -2426,40 +2455,24 @@ impl eframe::App for App {
     }
 }
 
-/// Add built-in views to the registry.
-fn populate_view_class_registry_with_builtin(
-    view_class_registry: &mut ViewClassRegistry,
-) -> Result<(), ViewClassRegistryError> {
-    re_tracing::profile_function!();
-    view_class_registry.add_class::<re_view_bar_chart::BarChartView>()?;
-    view_class_registry.add_class::<re_view_dataframe::DataframeView>()?;
-    view_class_registry.add_class::<re_view_graph::GraphView>()?;
-    #[cfg(feature = "map_view")]
-    view_class_registry.add_class::<re_view_map::MapView>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView2D>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView3D>()?;
-    view_class_registry.add_class::<re_view_tensor::TensorView>()?;
-    view_class_registry.add_class::<re_view_text_document::TextDocumentView>()?;
-    view_class_registry.add_class::<re_view_text_log::TextView>()?;
-    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>()?;
-
-    Ok(())
-}
-
 fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
     // So we fill in that gap (and other) here.
     // Of course this does some over-draw, but we have to live with that.
 
+    let tokens = ui.tokens();
+
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_corner_radius(),
+        tokens.native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
 
 fn paint_native_window_frame(egui_ctx: &egui::Context) {
+    let tokens = egui_ctx.tokens();
+
     let painter = egui::Painter::new(
         egui_ctx.clone(),
         egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
@@ -2468,7 +2481,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_corner_radius(),
+        tokens.native_window_corner_radius(),
         egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
@@ -2600,7 +2613,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     file_contents
 }
 
-fn save_recording(
+fn save_active_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
@@ -2610,6 +2623,14 @@ fn save_recording(
         anyhow::bail!("No recording data to save");
     };
 
+    save_recording(app, entity_db, loop_selection)
+}
+
+fn save_recording(
+    app: &mut App,
+    entity_db: &EntityDb,
+    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+) -> anyhow::Result<()> {
     let rrd_version = entity_db
         .store_info()
         .and_then(|info| info.store_version)

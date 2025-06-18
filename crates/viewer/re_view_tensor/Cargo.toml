@@ -38,3 +38,6 @@ half.workspace = true
 ndarray.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
+
+[dev-dependencies]
+re_viewer_context = { workspace = true, features = ["testing"] }

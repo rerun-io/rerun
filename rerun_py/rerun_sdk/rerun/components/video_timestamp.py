@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .video_timestamp_ext import VideoTimestampExt
@@ -26,7 +25,7 @@ class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin
 
 
 class VideoTimestampBatch(datatypes.VideoTimestampBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.VideoTimestamp")
+    _COMPONENT_NAME: str = "rerun.components.VideoTimestamp"
 
 
 # This is patched in late to avoid circular dependencies.

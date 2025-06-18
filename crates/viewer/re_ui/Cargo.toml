@@ -51,7 +51,6 @@ egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -63,6 +62,12 @@ time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 url.workspace = true
 
 
+# Native
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
+
+
+# Web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 time = { workspace = true, features = [
   "formatting",
@@ -75,3 +80,7 @@ time = { workspace = true, features = [
 egui_kittest.workspace = true
 rand.workspace = true
 re_types.workspace = true
+
+
+[build-dependencies]
+re_build_tools.workspace = true

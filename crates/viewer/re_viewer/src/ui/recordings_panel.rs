@@ -84,7 +84,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                 ui,
                 re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
                     let resp = ui
-                        .small_icon_button(&re_ui::icons::REMOVE)
+                        .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
                         .on_hover_text("Disconnect from this source");
                     if resp.clicked() {
                         rx.remove(&source);
@@ -106,11 +106,11 @@ fn recording_list_ui(
     welcome_screen_state: &WelcomeScreenState,
     servers: &RedapServers,
 ) {
-    let re_redap_browser::SortDatasetsResults {
+    let re_entity_db::SortDatasetsResults {
         remote_recordings,
         example_recordings,
         local_recordings,
-    } = re_redap_browser::sort_datasets(ctx);
+    } = ctx.storage_context.bundle.sort_recordings_by_class();
 
     servers.server_list_ui(ctx, ui, remote_recordings);
 
@@ -209,7 +209,7 @@ fn recording_list_ui(
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::list_item::ItemButton as _;
-    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, "Add…", |ui| {
         if re_ui::UICommand::Open
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()

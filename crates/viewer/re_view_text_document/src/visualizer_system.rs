@@ -53,7 +53,8 @@ impl VisualizerSystem for TextDocumentSystem {
             };
             self.text_entries.push(TextDocumentEntry {
                 body: text.clone(),
-                media_type: results.get_mono_with_fallback(&TextDocument::descriptor_media_type()),
+                media_type: results
+                    .get_mono_with_fallback(&TextDocument::descriptor_media_type(), self),
             });
         }
 

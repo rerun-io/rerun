@@ -44,10 +44,15 @@ impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizab
         // But today, this notion messes with a lot of things:
         // * it means everything can be visualized in a 3D view!
         // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
-        event.diff.chunk.component_names().any(|component_name| {
-            self.visualizability_trigger_components
-                .contains(&component_name)
-        })
+        event
+            .diff
+            .chunk
+            .component_descriptors()
+            .filter_map(|c| c.component_name)
+            .any(|component_name| {
+                self.visualizability_trigger_components
+                    .contains(&component_name)
+            })
     }
 }
 
@@ -62,7 +67,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         Some(Box::new(Transform3DVisualizabilityFilter {
             visualizability_trigger_components: Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
         }))
     }
@@ -129,7 +134,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length(), self)
                 .into();
 
             if axis_length == 0.0 {
@@ -140,7 +145,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0.add_bounding_box(
                 data_result.entity_path.hash(),
-                re_math::BoundingBox::ZERO,
+                macaw::BoundingBox::ZERO,
                 world_from_obj,
             );
 
@@ -174,7 +179,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 }
 
 pub fn add_axis_arrows(
-    design_tokens: &re_ui::DesignTokens,
+    tokens: &re_ui::DesignTokens,
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
@@ -201,56 +206,55 @@ pub fn add_axis_arrows(
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_x)
+        .color(tokens.axis_color_x)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_y)
+        .color(tokens.axis_color_y)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
-        .color(design_tokens.axis_color_z)
+        .color(tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }
 
 impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
-        if let Some(view_ctx) = ctx.view_ctx {
-            let query_result = ctx.viewer_ctx.lookup_query_result(view_ctx.view_id);
+        let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
-            // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
-            if let Some(length) = query_result
-                .tree
-                .lookup_result_by_path(ctx.target_entity_path)
-                .cloned()
-                .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&CamerasVisualizer::identifier())
-                    {
-                        let results = data_result
-                            .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
+        // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
+        if let Some(length) = query_result
+            .tree
+            .lookup_result_by_path(ctx.target_entity_path)
+            .cloned()
+            .and_then(|data_result| {
+                if data_result
+                    .visualizers
+                    .contains(&CamerasVisualizer::identifier())
+                {
+                    let results = data_result
+                        .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx.view_ctx, ctx.query);
 
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
-                            &Pinhole::descriptor_image_plane_distance(),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            {
-                let length: f32 = length.into();
-                return (length * 0.5).into();
-            }
+                    Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
+                        &Pinhole::descriptor_image_plane_distance(),
+                        &CamerasVisualizer::default(),
+                    ))
+                } else {
+                    None
+                }
+            })
+        {
+            let length: f32 = length.into();
+            return (length * 0.5).into();
         }
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
-        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() {
+        if let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() {
             let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {

@@ -49,24 +49,7 @@ impl ChunkStore {
 
         self.insert_id += 1;
 
-        let mut chunk = Arc::clone(chunk);
-
-        // TODO(#6889): This is bad for performance, but indicators should go away all together soon anyways?
-        if chunk
-            .components()
-            .keys()
-            .any(|descr| descr.component_name.is_indicator_component())
-        {
-            let patched = chunk.patched_weak_indicator_descriptor_023_compat();
-            chunk = Arc::new(patched);
-        }
-
-        if self.id.kind == re_log_types::StoreKind::Blueprint {
-            let patched = chunk.patched_for_blueprint_021_compat();
-            chunk = Arc::new(patched);
-        }
-
-        let non_compacted_chunk = Arc::clone(&chunk); // we'll need it to create the store event
+        let non_compacted_chunk = Arc::clone(chunk); // we'll need it to create the store event
 
         let (chunk, diffs) = if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
@@ -139,7 +122,7 @@ impl ChunkStore {
                     .or_insert_with(|| chunk.id());
             }
 
-            self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(&chunk);
+            self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(chunk);
 
             let mut diffs = vec![ChunkStoreDiff::addition(
                 non_compacted_chunk, /* added */
@@ -193,7 +176,7 @@ impl ChunkStore {
                 }
             }
 
-            (Arc::clone(&chunk), diffs)
+            (Arc::clone(chunk), diffs)
         } else {
             // Temporal data: just index the chunk on every dimension of interest.
             re_tracing::profile_scope!("temporal");
@@ -201,7 +184,7 @@ impl ChunkStore {
             let (elected_chunk, chunk_or_compacted) = {
                 re_tracing::profile_scope!("election");
 
-                let elected_chunk = self.find_and_elect_compaction_candidate(&chunk);
+                let elected_chunk = self.find_and_elect_compaction_candidate(chunk);
 
                 let chunk_or_compacted = if let Some(elected_chunk) = &elected_chunk {
                     let chunk_rowid_min = chunk.row_id_range().map(|(min, _)| min);
@@ -209,7 +192,7 @@ impl ChunkStore {
 
                     let mut compacted = if elected_rowid_min < chunk_rowid_min {
                         re_tracing::profile_scope!("concat");
-                        elected_chunk.concatenated(&chunk)?
+                        elected_chunk.concatenated(chunk)?
                     } else {
                         re_tracing::profile_scope!("concat");
                         chunk.concatenated(elected_chunk)?
@@ -232,7 +215,7 @@ impl ChunkStore {
 
                     Arc::new(compacted)
                 } else {
-                    Arc::clone(&chunk)
+                    Arc::clone(chunk)
                 };
 
                 (elected_chunk, chunk_or_compacted)
@@ -368,30 +351,45 @@ impl ChunkStore {
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(old_typ) = self
-                .type_registry
-                .insert(component_descr.component_name, list_array.value_type())
-            {
-                if old_typ != list_array.value_type() {
-                    re_log::warn_once!(
-                        "Component column '{}' changed type from {old_typ:?} to {:?}",
-                        component_descr.component_name,
-                        list_array.value_type()
-                    );
+            if let Some(component_name) = component_descr.component_name {
+                if let Some(old_typ) = self
+                    .type_registry
+                    .insert(component_name, list_array.value_type())
+                {
+                    if old_typ != list_array.value_type() {
+                        re_log::warn_once!(
+                            "Component column '{}' changed type from {old_typ:?} to {:?}",
+                            component_name,
+                            list_array.value_type()
+                        );
+                    }
                 }
             }
 
-            let column_metadata_state = self
+            let (descr, column_metadata_state, datatype) = self
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.component_name)
-                .or_default()
-                .entry(component_descr.clone())
-                .or_insert(ColumnMetadataState {
-                    is_semantically_empty: true,
-                });
+                .entry(component_descr.clone().into())
+                .or_insert((
+                    component_descr.clone(),
+                    ColumnMetadataState {
+                        is_semantically_empty: true,
+                    },
+                    list_array.value_type().clone(),
+                ));
             {
+                if *datatype != list_array.value_type() {
+                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
+                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
+                    re_log::warn!(
+                        "Datatype of column {descr} in {} has changed from {datatype} to {}",
+                        chunk.entity_path(),
+                        list_array.value_type()
+                    );
+                    *datatype = list_array.value_type().clone();
+                }
+
                 let is_semantically_empty =
                     re_arrow_util::is_list_array_semantically_empty(list_array);
 

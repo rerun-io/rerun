@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -61,7 +60,7 @@ class PoseTransformMat3x3(datatypes.Mat3x3, ComponentMixin):
 
 
 class PoseTransformMat3x3Batch(datatypes.Mat3x3Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.PoseTransformMat3x3")
+    _COMPONENT_NAME: str = "rerun.components.PoseTransformMat3x3"
 
 
 # This is patched in late to avoid circular dependencies.

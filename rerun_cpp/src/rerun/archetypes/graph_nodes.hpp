@@ -59,7 +59,10 @@ namespace rerun::archetypes {
         /// Optional text labels for the node.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional radii for nodes.
@@ -76,30 +79,27 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `node_ids` field.
         static constexpr auto Descriptor_node_ids = ComponentDescriptor(
-            ArchetypeName, "node_ids",
-            Loggable<rerun::components::GraphNode>::Descriptor.component_name
+            ArchetypeName, "node_ids", Loggable<rerun::components::GraphNode>::ComponentName
         );
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions",
-            Loggable<rerun::components::Position2D>::Descriptor.component_name
+            ArchetypeName, "positions", Loggable<rerun::components::Position2D>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
         );
 
       public:
@@ -147,7 +147,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         GraphNodes with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

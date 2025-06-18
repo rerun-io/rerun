@@ -79,12 +79,12 @@ jobs:
             linux-arm64)
               runner="buildjet-16vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
@@ -201,7 +201,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # Separated out of roundtrips.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `roundtrips.py`.
-        run: pixi run -e wheel-test-min cpp-build-roundtrips
+        run: pixi run -e cpp cpp-build-roundtrips
 
       - name: Run tests/roundtrips.py
         if: ${{ !inputs.FAST }}
@@ -213,7 +213,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # Separated out of compare_snippet_output.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min cpp-build-snippets
+        run: pixi run -e cpp cpp-build-snippets
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}

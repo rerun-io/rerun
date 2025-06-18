@@ -1,7 +1,5 @@
-use std::path::PathBuf;
-
 use re_log_types::TimestampFormat;
-use re_video::decode::{DecodeHardwareAcceleration, DecodeSettings};
+use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 
@@ -9,8 +7,8 @@ const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppOptions {
-    pub low_latency: f32,
-    pub warn_latency: f32,
+    /// Warn if the e2e latency exceeds this value.
+    pub warn_e2e_latency: f32,
 
     /// Show milliseconds, RAM usage, etc.
     pub show_metrics: bool,
@@ -69,8 +67,7 @@ pub struct AppOptions {
 impl Default for AppOptions {
     fn default() -> Self {
         Self {
-            low_latency: 0.100,
-            warn_latency: 0.200,
+            warn_e2e_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
 
@@ -125,9 +122,11 @@ impl AppOptions {
     pub fn video_decoder_settings(&self) -> DecodeSettings {
         DecodeSettings {
             hw_acceleration: self.video_decoder_hw_acceleration,
+
+            #[cfg(not(target_arch = "wasm32"))]
             ffmpeg_path: self
                 .video_decoder_override_ffmpeg_path
-                .then(|| PathBuf::from(&self.video_decoder_ffmpeg_path)),
+                .then(|| std::path::PathBuf::from(&self.video_decoder_ffmpeg_path)),
         }
     }
 }

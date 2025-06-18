@@ -6,7 +6,7 @@ use re_types::{
     components::{Blob, MediaType, VideoTimestamp},
 };
 use re_ui::{
-    UiExt as _,
+    UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
@@ -14,7 +14,7 @@ use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
 use crate::{
     EntityDataUi,
     image::image_preview_ui,
-    video::{show_decoded_frame_info, video_result_ui},
+    video::{show_decoded_frame_info, video_asset_result_ui},
 };
 
 impl EntityDataUi for Blob {
@@ -152,7 +152,7 @@ pub fn blob_preview_and_save_ui(
             let video_result =
                 ctx.store_context
                     .caches
-                    .entry(|c: &mut re_viewer_context::VideoCache| {
+                    .entry(|c: &mut re_viewer_context::VideoAssetCache| {
                         let debug_name = entity_path.to_string();
                         c.entry(
                             debug_name,
@@ -163,7 +163,7 @@ pub fn blob_preview_and_save_ui(
                             ctx.app_options().video_decoder_settings(),
                         )
                     });
-            video_result_ui(ui, ui_layout, &video_result);
+            video_asset_result_ui(ui, ui_layout, &video_result);
             video_result_for_frame_preview = Some(video_result);
         }
     }
@@ -175,7 +175,13 @@ pub fn blob_preview_and_save_ui(
             } else {
                 "Save blob…"
             };
-            if ui.button(text).clicked() {
+            if ui
+                .add(egui::Button::image_and_text(
+                    icons::DOWNLOAD.as_image(),
+                    text,
+                ))
+                .clicked()
+            {
                 let mut file_name = entity_path
                     .last()
                     .map_or("blob", |name| name.unescaped_str())
@@ -213,14 +219,28 @@ pub fn blob_preview_and_save_ui(
             if let Ok(video) = video_result.as_ref() {
                 ui.separator();
 
-                show_decoded_frame_info(
-                    ctx.render_ctx(),
-                    ui,
-                    ui_layout,
-                    video,
+                let video_timestamp = video_timestamp.unwrap_or_else(|| {
+                    // TODO(emilk): Some time controls would be nice,
+                    // but the point here is not to have a nice viewer,
+                    // but to show the user what they have selected
+                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                    let time = ui.input(|i| i.time);
+
+                    if let Some(duration) = video.data_descr().duration() {
+                        VideoTimestamp::from_secs(time % duration.as_secs_f64())
+                    } else {
+                        // TODO(#7484): show something more useful here
+                        VideoTimestamp::from_nanos(i64::MAX)
+                    }
+                });
+                let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                    ctx,
                     video_timestamp,
-                    blob,
+                    video.data_descr().timescale,
                 );
+                let video_buffers = std::iter::once(blob.as_ref()).collect();
+
+                show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
             }
         }
     }

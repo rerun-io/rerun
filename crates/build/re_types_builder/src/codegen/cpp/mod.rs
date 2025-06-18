@@ -3,7 +3,7 @@ mod forward_decl;
 mod includes;
 mod method;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr as _};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
@@ -16,7 +16,7 @@ use crate::{
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
-    objects::ObjectClass,
+    objects::{EnumIntegerType, ObjectClass},
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -428,7 +428,7 @@ impl QuotedObject {
                     unimplemented!();
                 }
             },
-            ObjectClass::Enum => {
+            ObjectClass::Enum(_) => {
                 if !hpp_type_extensions.is_empty() {
                     reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
                 }
@@ -536,7 +536,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #comment
                     static constexpr auto #constant_name = ComponentDescriptor(
-                        ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
+                        ArchetypeName, #field_name, Loggable<#field_type>::ComponentName
                     );
                 }
             })
@@ -1471,17 +1471,23 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let enum_value = obj_field.enum_value.unwrap();
                 let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_ident(obj_field);
-
-                // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-                let arrow_type_index = Literal::usize_unsuffixed(enum_value as _);
+                let enum_value = proc_macro2::Literal::from_str(
+                    &obj.enum_integer_type()
+                        .expect("enums must have an integer type")
+                        .format_value(
+                            obj_field
+                                .enum_or_union_variant_value
+                                .expect("enums fields must have values"),
+                        ),
+                )
+                .unwrap();
 
                 quote! {
                     #NEWLINE_TOKEN
                     #docstring
-                    #field_name = #arrow_type_index
+                    #field_name = #enum_value
                 }
             })
             .collect_vec();
@@ -1495,6 +1501,13 @@ impl QuotedObject {
             &mut hpp_declarations,
         );
 
+        let enum_integer_type = match obj.enum_integer_type().unwrap() {
+            EnumIntegerType::U8 => quote!(uint8_t),
+            EnumIntegerType::U16 => quote!(uint16_t),
+            EnumIntegerType::U32 => quote!(uint32_t),
+            EnumIntegerType::U64 => quote!(uint64_t),
+        };
+
         let hpp = quote! {
             #hpp_includes
 
@@ -1502,7 +1515,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                enum class #deprecated_notice #type_ident : uint8_t {
+                enum class #deprecated_notice #type_ident : #enum_integer_type {
                     #(#field_declarations,)*
                 };
             }
@@ -1952,8 +1965,8 @@ fn quote_fill_arrow_array_builder(
                 }
             }
 
-            // C-style enum, encoded as a sparse arrow union
-            ObjectClass::Enum => {
+            // C-style enum, encoded as arrow integer array.
+            ObjectClass::Enum(_) => {
                 quote! {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -2681,10 +2694,9 @@ fn quote_arrow_datatype(
                     ObjectClass::Struct => {
                         quote!(arrow::struct_({ #(#quoted_fields,)* }))
                     }
-                    ObjectClass::Enum => {
-                        quote! {
-                            arrow::uint8()
-                        }
+                    ObjectClass::Enum(integer_type) => {
+                        let integer_type = integer_type.to_type();
+                        quote_arrow_datatype(&integer_type, objects, includes, false)
                     }
                     ObjectClass::Union => {
                         quote! {
@@ -2787,8 +2799,6 @@ fn quote_loggable_hpp_and_cpp(
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 
-    hpp_includes.insert_rerun("component_descriptor.hpp");
-
     let (deprecation_ignore_start, deprecation_ignore_end) =
         quote_deprecation_ignore_start_and_end(hpp_includes, obj.is_deprecated());
 
@@ -2801,7 +2811,7 @@ fn quote_loggable_hpp_and_cpp(
             #hide_from_docs_comment
             template<>
             struct #loggable_type_name {
-                static constexpr ComponentDescriptor Descriptor = #fqname;
+                static constexpr std::string_view ComponentName = #fqname;
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #(#methods_hpp)*

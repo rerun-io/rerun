@@ -126,11 +126,16 @@ fn generate_component_reflection(
         .join("\n");
 
         // Emit custom placeholder if there's a default implementation
-        let auto_derive_default = obj.is_enum() // All enums have default values currently!
-            || obj
-                .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
-                .is_some_and(|derives| derives.contains("Default"));
+        let is_enum_with_default = obj.is_enum()
+            && obj
+                .fields
+                .iter()
+                .any(|field| field.attrs.has(crate::ATTR_DEFAULT));
+        let has_default_attr = obj
+            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+            .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
+            .is_some_and(|derives| derives.contains("Default"));
+        let auto_derive_default = is_enum_with_default || has_default_attr;
         let has_custom_default_impl =
             extension_contents_for_fqname
                 .get(&obj.fqname)

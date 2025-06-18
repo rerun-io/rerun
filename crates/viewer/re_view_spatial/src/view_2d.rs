@@ -9,8 +9,8 @@ use re_types::{
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    RecommendedView, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     VisualizableFilterContext,
 };
 
@@ -55,8 +55,8 @@ impl ViewClass for SpatialView2D {
         &re_ui::icons::VIEW_2D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
-        super::ui_2d::help(egui_ctx)
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        super::ui_2d::help(os)
     }
 
     fn on_register(
@@ -254,9 +254,10 @@ impl ViewClass for SpatialView2D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
-            view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
-            view_property_ui::<NearClipPlane>(ctx, ui, view_id, self, state);
-            view_property_ui::<Background>(ctx, ui, view_id, self, state);
+            let view_ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<VisualBounds2D>(&view_ctx, ui, self);
+            view_property_ui::<NearClipPlane>(&view_ctx, ui, self);
+            view_property_ui::<Background>(&view_ctx, ui, self);
         });
 
         Ok(())
@@ -304,7 +305,8 @@ impl NonNestedImageCounts {
     fn increment_count(&mut self, dims: &MaxDimensions) {
         self.color += dims.image_types.contains(ImageTypes::IMAGE) as usize
             + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
-            + dims.image_types.contains(ImageTypes::VIDEO) as usize;
+            + dims.image_types.contains(ImageTypes::VIDEO_ASSET) as usize
+            + dims.image_types.contains(ImageTypes::VIDEO_STREAM) as usize;
         self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
         self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
     }

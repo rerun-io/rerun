@@ -42,4 +42,6 @@ uint8
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Capsules3D`](../archetypes/capsules3d.md)
+* [`Cylinders3D`](../archetypes/cylinders3d.md?speculative-link)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)

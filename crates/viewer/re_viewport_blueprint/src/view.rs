@@ -1,8 +1,4 @@
-use std::sync::Arc;
-
-use ahash::HashMap;
 use itertools::{FoldWhile, Itertools as _};
-use parking_lot::Mutex;
 use re_types::ViewClassIdentifier;
 
 use re_chunk::{Chunk, RowId};
@@ -20,7 +16,7 @@ use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
-    ViewStates, ViewerContext, VisualizerCollection,
+    ViewStates, ViewerContext,
 };
 
 use crate::{ViewContents, ViewProperty};
@@ -427,14 +423,7 @@ impl ViewBlueprint {
             .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
         let view_state = view_states.get_mut_or_create(self.id, class);
-
-        ViewContext {
-            viewer_ctx: ctx,
-            view_id: self.id,
-            view_state,
-            visualizer_collection: self.visualizer_collection(ctx),
-            query_result: ctx.lookup_query_result(self.id),
-        }
+        self.bundle_context_with_state(ctx, view_state)
     }
 
     pub fn bundle_context_with_state<'a>(
@@ -445,33 +434,16 @@ impl ViewBlueprint {
         ViewContext {
             viewer_ctx: ctx,
             view_id: self.id,
+            view_class_identifier: self.class_identifier,
             view_state,
-            visualizer_collection: self.visualizer_collection(ctx),
             query_result: ctx.lookup_query_result(self.id),
         }
-    }
-
-    fn visualizer_collection(&self, ctx: &ViewerContext<'_>) -> Arc<VisualizerCollection> {
-        static VISUALIZER_FOR_CONTEXT: once_cell::sync::Lazy<
-            Mutex<HashMap<ViewClassIdentifier, Arc<VisualizerCollection>>>,
-        > = once_cell::sync::Lazy::new(Default::default);
-
-        VISUALIZER_FOR_CONTEXT
-            .lock()
-            .entry(self.class_identifier())
-            .or_insert_with(|| {
-                Arc::new(
-                    ctx.view_class_registry()
-                        .new_visualizer_collection(self.class_identifier()),
-                )
-            })
-            .clone()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use ahash::HashSet;
     use re_chunk::RowId;
@@ -731,7 +703,7 @@ mod tests {
                         "Scenario {i}"
                     );
 
-                    if component_descr.component_name.ends_with("Indicator") {
+                    if component_descr.is_indicator_component() {
                         // Ignore indicators for overrides.
                         continue;
                     }

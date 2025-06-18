@@ -109,6 +109,8 @@ impl SelectionPanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -130,7 +132,7 @@ impl SelectionPanel {
         } else {
             list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
-                    .with_height(re_ui::DesignTokens::title_bar_height())
+                    .with_height(tokens.title_bar_height())
                     .interactive(false)
                     .selected(true)
                     .show_flat(
@@ -208,36 +210,36 @@ impl SelectionPanel {
                     ));
                 }
 
-                if let Some(archetype_field_name) = archetype_field_name {
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Archetype field")
-                            .value_text(archetype_field_name.to_string()),
-                    );
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Archetype field")
+                        .value_text(archetype_field_name.to_string()),
+                );
+
+                if let Some(component_name) = component_name {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
+                        |ui, _| {
+                            ui.label(component_name.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(component_name.full_name());
+
+                                // Only show the first line of the docs:
+                                if let Some(markdown) = ctx
+                                    .reflection()
+                                    .components
+                                    .get(component_name)
+                                    .map(|info| info.docstring_md)
+                                {
+                                    ui.markdown_ui(markdown);
+                                }
+
+                                if let Some(doc_url) = component_name.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        },
+                    ));
                 }
-
-                ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
-                    |ui, _| {
-                        ui.label(component_name.short_name()).on_hover_ui(|ui| {
-                            ui.spacing_mut().item_spacing.y = 12.0;
-
-                            ui.strong(component_name.full_name());
-
-                            // Only show the first line of the docs:
-                            if let Some(markdown) = ctx
-                                .reflection()
-                                .components
-                                .get(component_name)
-                                .map(|info| info.docstring_md)
-                            {
-                                ui.markdown_ui(markdown);
-                            }
-
-                            if let Some(doc_url) = component_name.doc_url() {
-                                ui.re_hyperlink("Full documentation", doc_url, true);
-                            }
-                        });
-                    },
-                ));
 
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
@@ -427,9 +429,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
                 .button(
-                    list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
-                        self.view_entity_modal.open(*view_id);
-                    })
+                    list_item::ItemActionButton::new(
+                        &re_ui::icons::EDIT,
+                        "Add new entity…",
+                        || {
+                            self.view_entity_modal.open(*view_id);
+                        },
+                    )
                     .hover_text("Modify the entity query using the editor"),
                 )
                 .help_markdown(markdown)
@@ -574,7 +580,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
-        design_tokens: &re_ui::DesignTokens,
+        tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -591,7 +597,7 @@ fn entity_path_filter_ui(
             let color = if is_exclusion {
                 style.visuals.error_fg_color
             } else {
-                design_tokens.info_log_text_color
+                tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {
@@ -695,7 +701,7 @@ fn container_children(
 
     ui.section_collapsing_header("Contents")
         .button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
+            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
                 show_add_view_or_container_modal(*container_id);
             })
             .hover_text("Add a new view or container to this container"),
@@ -977,7 +983,7 @@ fn show_list_item_for_container_child(
                     .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this view")
                             .on_hover_text("Remove this view");
 
                         if response.clicked() {
@@ -1003,7 +1009,7 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this container")
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {

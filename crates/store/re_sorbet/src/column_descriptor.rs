@@ -8,7 +8,7 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
-use re_types_core::ComponentName;
+use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
@@ -70,7 +70,7 @@ impl ColumnDescriptor {
     pub fn component_name(&self) -> Option<&ComponentName> {
         match self {
             Self::RowId(_) | Self::Time(_) => None,
-            Self::Component(descr) => Some(&descr.component_name),
+            Self::Component(descr) => descr.component_name.as_ref(),
         }
     }
 
@@ -129,6 +129,13 @@ impl ColumnDescriptor {
             .map(|field| Self::try_from_arrow_field(chunk_entity_path, field.as_ref()))
             .collect()
     }
+
+    pub fn archetype_name(&self) -> Option<ArchetypeName> {
+        match self {
+            Self::Component(component) => component.archetype_name,
+            _ => None,
+        }
+    }
 }
 
 impl ColumnDescriptor {
@@ -164,8 +171,8 @@ fn test_schema_over_ipc() {
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype_name: Some("archetype".to_owned().into()),
-            archetype_field_name: Some("field".to_owned().into()),
-            component_name: re_types_core::ComponentName::new("component"),
+            archetype_field_name: "field".to_owned().into(),
+            component_name: Some(re_types_core::ComponentName::new("component")),
             store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,
             is_tombstone: false,

@@ -3,15 +3,22 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{
+    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource,
+};
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin};
+use re_uri::{DatasetDataUri, Origin, TimeRange};
 
-use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
+use crate::{
+    ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
+    spawn_future,
+};
 
 pub enum Command {
     SetLoopSelection {
@@ -25,6 +32,7 @@ pub enum Command {
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
+    connection_registry: &ConnectionRegistryHandle,
     uri: DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
@@ -42,8 +50,23 @@ pub fn stream_dataset_from_redap(
         },
     );
 
+    async fn stream_partition(
+        connection_registry: ConnectionRegistryHandle,
+        tx: re_smart_channel::Sender<LogMsg>,
+        uri: DatasetDataUri,
+        on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+    ) -> Result<(), StreamError> {
+        let client = connection_registry.client(uri.origin.clone()).await?;
+
+        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_cmd, on_msg).await
+    }
+
+    let connection_registry = connection_registry.clone();
     spawn_future(async move {
-        if let Err(err) = stream_partition_async(tx, uri.clone(), on_cmd, on_msg).await {
+        if let Err(err) =
+            stream_partition(connection_registry, tx, uri.clone(), on_cmd, on_msg).await
+        {
             re_log::error!(
                 "Error while streaming {uri}: {}",
                 re_error::format_ref(&err)
@@ -123,19 +146,20 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>;
 
 #[cfg(target_arch = "wasm32")]
-pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
+pub(crate) async fn client(
+    origin: Origin,
+    token: Option<re_auth::Jwt>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    //TODO(ab): actually provide a token here
-    let auth = AuthDecorator::new(None);
+    let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
@@ -149,48 +173,31 @@ pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub type RedapClient = FrontendServiceClient<
-    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
->;
+pub type RedapClientInner =
+    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>;
+
 // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClient = FrontendServiceClient<
-//     tower_http::trace::Trace<
-//         tonic::service::interceptor::InterceptedService<
-//             tonic::transport::Channel,
-//             redap_telemetry::TracingInjectorInterceptor,
-//         >,
-//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+// pub type RedapClientInner = tower_http::trace::Trace<
+//     tonic::service::interceptor::InterceptedService<
+//         tonic::transport::Channel,
+//         redap_telemetry::TracingInjectorInterceptor,
 //     >,
+//     tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
 // >;
 
+pub type RedapClient = FrontendServiceClient<RedapClientInner>;
+
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
+pub(crate) async fn client(
+    origin: Origin,
+    token: Option<re_auth::Jwt>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    // Use the token from the env var if available, logging any error
-    //
-    // TODO(rerun-io/dataplatform#721): we should support configuring the token from
-    // the UI and/or API too
-    let maybe_token = std::env::var("REDAP_TOKEN")
-        .map_err(|err| match err {
-            std::env::VarError::NotPresent => {}
-            std::env::VarError::NotUnicode(..) => {
-                re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
-            }
-        })
-        .and_then(|t| {
-            re_auth::Jwt::try_from(t).map_err(|err| {
-                re_log::warn_once!(
-                    "REDAP_TOKEN env var is present, but the token is invalid: {err}"
-                );
-            })
-        })
-        .ok();
-
-    let auth = AuthDecorator::new(maybe_token);
+    let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
-        .layer(tonic::service::interceptor::interceptor(auth))
+        .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
@@ -222,39 +229,131 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     })
 }
 
-pub async fn stream_partition_async(
+/// Canonical way to ingest partition data from a Rerun data platform server, dealing with
+/// server-stored blueprints if any.
+///
+/// The current strategy currently consists of _always_ downloading the blueprint first and setting
+/// it as the default blueprint. It does look bruteforce, but it is strictly equivalent to loading
+/// related RRDs which each contain a blueprint (e.g. because `rr.send_blueprint()` was called).
+///
+/// A key advantage of this approach is that it ensures that the default blueprint is always in sync
+/// with the server's version.
+pub async fn stream_blueprint_and_partition_from_server(
+    mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    let re_uri::DatasetDataUri {
-        origin,
-        dataset_id,
-        partition_id,
-        time_range,
-        fragment: _, // Only affects the viewer
-    } = uri;
+    re_log::debug!("Loading {uri}…");
 
-    re_log::debug!("Connecting to {}…", origin);
-    let mut client = client(origin).await?;
-
-    re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
-
-    let read_dataset_response: ReadDatasetEntryResponse = client
+    let response: ReadDatasetEntryResponse = client
+        .inner()
         .read_dataset_entry(ReadDatasetEntryRequest {
-            id: Some(dataset_id.into()),
+            id: Some(uri.dataset_id.into()),
         })
         .await?
         .into_inner()
         .try_into()?;
 
-    let dataset_name = read_dataset_response.dataset_entry.details.name;
+    if let Some((blueprint_dataset, blueprint_partition)) =
+        response.dataset_entry.dataset_details.default_bluprint()
+    {
+        re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
+        // It may be tempting to use the partition id to build the `StoreId` here, but we require
+        // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
+        // ids are only unique within a given dataset.
+        // This is a hack be cause
+        // TODO(#7950)
+        let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
+
+        let blueprint_store_info = StoreInfo {
+            application_id: uri.dataset_id.to_string().into(),
+            store_id: blueprint_store_id.clone(),
+            cloned_from: None,
+            store_source: StoreSource::Unknown,
+            store_version: None,
+        };
+
+        stream_partition_from_server(
+            &mut client,
+            blueprint_store_info,
+            &tx,
+            blueprint_dataset,
+            blueprint_partition,
+            None,
+            &on_cmd,
+            on_msg.as_deref(),
+        )
+        .await?;
+
+        if tx
+            .send(LogMsg::BlueprintActivationCommand(
+                BlueprintActivationCommand {
+                    blueprint_id: blueprint_store_id,
+                    make_active: false,
+                    make_default: true,
+                },
+            ))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
+    } else {
+        re_log::debug!("No blueprint dataset found for {uri}");
+    }
+
+    let store_info = StoreInfo {
+        application_id: uri.dataset_id.to_string().into(),
+        // See note above about `StoreId::random`.
+        store_id: StoreId::random(StoreKind::Recording),
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    let re_uri::DatasetDataUri {
+        origin: _,
+        dataset_id,
+        partition_id,
+        time_range,
+        fragment: _,
+    } = uri;
+
+    stream_partition_from_server(
+        &mut client,
+        store_info,
+        &tx,
+        dataset_id.into(),
+        partition_id.into(),
+        time_range,
+        &on_cmd,
+        on_msg.as_deref(),
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Low-level function to stream data as a chunk store from a server.
+#[expect(clippy::too_many_arguments)]
+async fn stream_partition_from_server(
+    client: &mut ConnectionClient,
+    store_info: StoreInfo,
+    tx: &re_smart_channel::Sender<LogMsg>,
+    dataset_id: EntryId,
+    partition_id: PartitionId,
+    time_range: Option<TimeRange>,
+    on_cmd: &(dyn Fn(Command) + Send + Sync),
+    on_msg: Option<&(dyn Fn() + Send + Sync)>,
+) -> Result<(), StreamError> {
     let catalog_chunk_stream = client
+        .inner()
         .get_chunks(GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
-            partition_ids: vec![partition_id.clone().into()],
+            partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
             entity_paths: vec![],
             query: None,
@@ -262,16 +361,7 @@ pub async fn stream_partition_async(
         .await?
         .into_inner();
 
-    drop(client);
-
-    let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
-    let store_info = StoreInfo {
-        application_id: dataset_name.into(),
-        store_id: store_id.clone(),
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
+    let store_id = store_info.store_id.clone();
 
     if let Some(time_range) = time_range {
         on_cmd(Command::SetLoopSelection {

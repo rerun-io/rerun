@@ -38,6 +38,9 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, Channel>,
 
+    /// The connection registry to use for the viewer.
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+
     app_options: AppOptions,
 }
 
@@ -50,9 +53,12 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
+        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+
         Ok(Self {
             runner: eframe::WebRunner::new(),
             tx_channels: Default::default(),
+            connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
     }
@@ -93,11 +99,19 @@ impl WebHandle {
             ..Default::default()
         };
 
+        let connection_registry = self.connection_registry.clone();
         self.runner
             .start(
                 canvas,
                 web_options,
-                Box::new(move |cc| Ok(Box::new(create_app(main_thread_token, cc, app_options)?))),
+                Box::new(move |cc| {
+                    Ok(Box::new(create_app(
+                        main_thread_token,
+                        cc,
+                        connection_registry,
+                        app_options,
+                    )?))
+                }),
             )
             .await?;
 
@@ -188,6 +202,7 @@ impl WebHandle {
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
         if let Some(rx) = url_to_receiver(
+            &self.connection_registry,
             app.egui_ctx.clone(),
             follow_if_http,
             url.to_owned(),
@@ -638,6 +653,8 @@ pub struct AppOptions {
 
     notebook: Option<bool>,
     persist: Option<bool>,
+
+    fallback_token: Option<String>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -672,6 +689,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
@@ -692,7 +710,18 @@ fn create_app(
 
         notebook,
         persist,
+
+        fallback_token,
     } = app_options;
+
+    if let Some(fallback_token) = fallback_token {
+        match re_auth::Jwt::try_from(fallback_token) {
+            Ok(token) => connection_registry.set_fallback_token(token),
+            Err(err) => {
+                re_log::warn!("Failed to parse JWT token: {err}");
+            }
+        };
+    }
 
     let enable_history = enable_history.unwrap_or(false);
 
@@ -741,6 +770,7 @@ fn create_app(
         &app_env,
         startup_options,
         cc,
+        Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
 
@@ -756,6 +786,7 @@ fn create_app(
         let follow_if_http = false;
         for url in urls.into_inner() {
             if let Some(receiver) = url_to_receiver(
+                app.connection_registry(),
                 cc.egui_ctx.clone(),
                 follow_if_http,
                 url,

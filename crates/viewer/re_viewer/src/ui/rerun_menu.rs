@@ -142,7 +142,7 @@ impl App {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
-        } = *self.build_info();
+        } = self.build_info();
 
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 

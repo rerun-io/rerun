@@ -2,11 +2,12 @@ use egui::os::OperatingSystem;
 use egui::{Modifiers, vec2};
 use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{Harness, SnapshotResults};
-use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, maybe_plus, modifiers_text};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
 
 #[test]
 fn test_help() {
     let mut snapshot_results = SnapshotResults::new();
+
     // We show different shortcuts based on the OS
     for os in [OperatingSystem::Windows, OperatingSystem::Mac] {
         let mut harness = Harness::builder()
@@ -15,19 +16,15 @@ fn test_help() {
                 ui.ctx().set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                ui.help_hover_button().on_hover_ui(|ui| {
+                ui.help_button(|ui| {
                     let mut help = Help::new("Help example")
                         .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-                        .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+                        .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
                         .control(
                             "Zoom",
-                            icon_text!(
-                                modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                                maybe_plus(ui.ctx()),
-                                icons::SCROLL
-                            ),
+                            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
                         )
-                        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK));
+                        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK));
 
                     for modifier in [
                         Modifiers::ALT,
@@ -39,7 +36,7 @@ fn test_help() {
                     ] {
                         help = help.control(
                             format!("{modifier:?}"),
-                            icon_text!(modifiers_text(modifier, ui.ctx())),
+                            IconText::from_modifiers(os, modifier),
                         );
                     }
 
@@ -50,14 +47,14 @@ fn test_help() {
                         egui::PointerButton::Extra1,
                         egui::PointerButton::Extra2,
                     ] {
-                        help = help.control(format!("{btn:?}"), icon_text!(MouseButtonText(btn)));
+                        help = help.control(format!("{btn:?}"), MouseButtonText(btn));
                     }
 
                     help.ui(ui);
                 });
             });
 
-        harness.get_by_label("❓").hover();
+        harness.get_by_label("Help").hover();
 
         harness.try_run_realtime().ok();
 

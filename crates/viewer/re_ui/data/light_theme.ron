@@ -1,4 +1,9 @@
 {
+  "large_button_size": 22,
+  "large_button_icon_size": 12,
+  "large_button_corner_radius": 6,
+  "small_icon_size": 14,
+
   "Alias": {
     "native_frame_stroke": {
       "color": "{Gray.750}",
@@ -236,6 +241,9 @@
     },
     "list_item_default_text": {
       "color": "{Gray.350}"
+    },
+    "list_item_strong_text": {
+      "color": "{Gray.300}"
     },
     "list_item_selected_icon": {
       "color": "{Blue.250}"

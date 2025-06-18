@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -32,7 +31,7 @@ class HalfSize3D(datatypes.Vec3D, ComponentMixin):
 
 
 class HalfSize3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.HalfSize3D")
+    _COMPONENT_NAME: str = "rerun.components.HalfSize3D"
 
 
 # This is patched in late to avoid circular dependencies.

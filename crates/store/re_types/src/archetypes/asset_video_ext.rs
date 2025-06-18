@@ -76,11 +76,14 @@ impl AssetVideo {
             return Err(re_video::VideoLoadError::UnrecognizedMimeType);
         };
 
-        Ok(
-            re_video::VideoData::load_from_bytes(blob_bytes, media_type.as_str())?
-                .frame_timestamps_nanos()
-                .collect(),
-        )
+        Ok(re_video::VideoDataDescription::load_from_bytes(
+            blob_bytes,
+            media_type.as_str(),
+            "AssetVideo",
+        )?
+        .frame_timestamps_nanos()
+        .ok_or(re_video::VideoLoadError::NoTimescale)?
+        .collect())
     }
 
     /// DEPRECATED: renamed to `read_frame_timestamps_nanos`

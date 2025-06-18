@@ -20,6 +20,7 @@ all-features = true
 
 [dependencies]
 re_auth.workspace = true
+re_arrow_util.workspace = true
 re_chunk.workspace = true
 re_error.workspace = true
 re_log.workspace = true
@@ -30,18 +31,20 @@ re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_uri.workspace = true
 
+arrow.workspace = true
 async-stream.workspace = true
+serde.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true
 url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tonic = { workspace = true, default-features = false, features = [
   "transport",
-  "tls",
   "tls-native-roots",
 ] }
 

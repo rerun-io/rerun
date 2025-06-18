@@ -121,7 +121,10 @@ namespace rerun::archetypes {
         /// Optional text labels for the ellipsoids.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
@@ -140,51 +143,45 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `half_sizes` field.
         static constexpr auto Descriptor_half_sizes = ComponentDescriptor(
-            ArchetypeName, "half_sizes",
-            Loggable<rerun::components::HalfSize3D>::Descriptor.component_name
+            ArchetypeName, "half_sizes", Loggable<rerun::components::HalfSize3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `centers` field.
         static constexpr auto Descriptor_centers = ComponentDescriptor(
-            ArchetypeName, "centers",
-            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+            ArchetypeName, "centers", Loggable<rerun::components::PoseTranslation3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
             ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentName
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
             ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+            Loggable<rerun::components::PoseRotationQuat>::ComponentName
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `line_radii` field.
         static constexpr auto Descriptor_line_radii = ComponentDescriptor(
-            ArchetypeName, "line_radii",
-            Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "line_radii", Loggable<rerun::components::Radius>::ComponentName
         );
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
-            ArchetypeName, "fill_mode",
-            Loggable<rerun::components::FillMode>::Descriptor.component_name
+            ArchetypeName, "fill_mode", Loggable<rerun::components::FillMode>::ComponentName
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
         );
 
       public: // START of extensions from ellipsoids3d_ext.cpp:
@@ -314,7 +311,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         Ellipsoids3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

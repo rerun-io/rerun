@@ -7,6 +7,7 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod capsules3d;
+mod cylinders3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_image;
@@ -19,7 +20,7 @@ mod points3d;
 mod segmentation_images;
 mod transform3d_arrows;
 mod utilities;
-mod videos;
+mod video;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
@@ -85,7 +86,8 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -97,9 +99,11 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
-    system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
+    system_registry.register_visualizer::<cylinders3d::Cylinders3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
+    system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
@@ -108,10 +112,10 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
-    system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -153,8 +157,12 @@ pub fn visualizers_processing_draw_order()
             archetypes::SegmentationImage::descriptor_draw_order(),
         ),
         (
-            videos::VideoFrameReferenceVisualizer::identifier(),
+            video::VideoFrameReferenceVisualizer::identifier(),
             archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
+        (
+            video::VideoStreamVisualizer::identifier(),
+            archetypes::VideoStream::descriptor_draw_order(),
         ),
     ]
     .into_iter()

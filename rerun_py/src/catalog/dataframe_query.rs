@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use arrow::array::RecordBatchReader;
 use arrow::datatypes::Schema;
+use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -9,22 +11,23 @@ use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 
-use re_chunk::ComponentName;
-use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk_store::{
+    ChunkStoreHandle, ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector,
+};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{PyDataset, to_py_err};
+use crate::catalog::{PyDatasetEntry, to_py_err};
 use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
-    dataset: Py<PyDataset>,
+    dataset: Py<PyDatasetEntry>,
 
     query_expression: QueryExpression,
 
@@ -37,7 +40,7 @@ pub struct PyDataframeQueryView {
 impl PyDataframeQueryView {
     #[expect(clippy::fn_params_excessive_bools)]
     pub fn new(
-        dataset: Py<PyDataset>,
+        dataset: Py<PyDatasetEntry>,
         index: String,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
@@ -51,7 +54,7 @@ impl PyDataframeQueryView {
             let dataset_py = dataset.borrow(py);
             let entry = dataset_py.as_super();
             let dataset_id = entry.details.id;
-            let mut connection = entry.client.borrow(py).connection().clone();
+            let connection = entry.client.borrow(py).connection().clone();
 
             connection.get_dataset_schema(py, dataset_id)?
         };
@@ -403,7 +406,7 @@ impl PyDataframeQueryView {
         let dataset = self_.dataset.borrow(py);
         let entry = dataset.as_super();
         let dataset_id = entry.details.id;
-        let mut connection = entry.client.borrow(py).connection().clone();
+        let connection = entry.client.borrow(py).connection().clone();
 
         //
         // Fetch relevant chunks
@@ -469,6 +472,27 @@ impl PyDataframeQueryView {
         let df = ctx.call_method1("table", (name,))?;
 
         Ok(df)
+    }
+
+    /// Get the relevant chunk_ids for this view.
+    fn get_chunk_ids<'py>(
+        self_: PyRef<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let dataset = self_.dataset.borrow(py);
+        let entry = dataset.as_super();
+        let dataset_id = entry.details.id;
+        let connection = entry.client.borrow(py).connection().clone();
+
+        // Fetch relevant chunks
+        connection.get_chunk_ids_for_dataframe_query(
+            py,
+            dataset_id,
+            &self_.query_expression.view_contents,
+            self_.query_expression.min_latest_at(),
+            self_.query_expression.max_range(),
+            self_.partition_ids.as_slice(),
+        )
     }
 }
 
@@ -552,12 +576,12 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<String> = if let Ok(component) =
+            let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
                 value.extract::<ComponentLike>()
             {
-                std::iter::once(component.0).collect()
+                std::iter::once(component.into()).collect()
             } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
-                components.into_iter().map(|c| c.0).collect()
+                components.into_iter().map(Into::into).collect()
             } else {
                 return Err(PyTypeError::new_err(format!(
                     "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
@@ -567,15 +591,7 @@ fn extract_contents_expr(
             let mut key_contents = known_components
                 .keys()
                 .filter(|p| path_filter.matches(p))
-                .map(|entity_path| {
-                    let components: BTreeSet<ComponentName> = component_strs
-                        .iter()
-                        .map(|component_name| {
-                            find_best_component(&known_components, entity_path, component_name)
-                        })
-                        .collect();
-                    (entity_path.clone(), Some(components))
-                })
+                .map(|entity_path| (entity_path.clone(), Some(component_strs.clone())))
                 .collect();
 
             contents.append(&mut key_contents);
@@ -587,20 +603,4 @@ fn extract_contents_expr(
             "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
         ));
     }
-}
-
-fn find_best_component(
-    mapping: &BTreeMap<EntityPath, BTreeSet<ComponentDescriptor>>,
-    entity_path: &EntityPath,
-    component_name: &str,
-) -> ComponentName {
-    mapping
-        .get(entity_path)
-        .and_then(|components| {
-            components
-                .iter()
-                .find(|component| component.component_name.matches(component_name))
-        })
-        .map(|component| component.component_name)
-        .unwrap_or_else(|| ComponentName::new(component_name))
 }

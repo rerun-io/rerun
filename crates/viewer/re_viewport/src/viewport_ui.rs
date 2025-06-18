@@ -3,11 +3,13 @@
 //! Contains all views.
 
 use ahash::HashMap;
+use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _, design_tokens_of_visuals};
+use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
+use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -39,6 +41,8 @@ impl ViewportUi {
         ctx: &ViewerContext<'_>,
         view_states: &mut ViewStates,
     ) {
+        let tokens = ui.tokens();
+
         let Self { blueprint } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
@@ -58,7 +62,12 @@ impl ViewportUi {
             }
         }
 
-        let mut tree = if let Some(view_id) = blueprint.maximized {
+        let (animating_view_id, animated_rect) = ui
+            .data(|data| data.get_temp::<MaximizeAnimationState>(egui::Id::NULL))
+            .unwrap_or_default()
+            .animated_view_and_rect(ui.ctx(), ui.max_rect());
+
+        let mut tree = if let Some(view_id) = blueprint.maximized.or(animating_view_id) {
             let mut tiles = egui_tiles::Tiles::default();
 
             // we must ensure that our temporary tree has the correct tile id, such that the tile id
@@ -79,9 +88,11 @@ impl ViewportUi {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding() as f32;
+            ui.spacing_mut().item_spacing.x = tokens.view_padding() as f32;
 
             re_tracing::profile_scope!("tree.ui");
+
+            *ui = ui.new_child(egui::UiBuilder::new().max_rect(animated_rect));
 
             let mut egui_tiles_delegate = TilesDelegate {
                 view_states,
@@ -144,7 +155,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        ui.tokens().drop_target_container_stroke
+                        tokens.drop_target_container_stroke
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -505,7 +516,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         &mut self,
         tiles: &egui_tiles::Tiles<ViewId>,
         ui: &mut egui::Ui,
-        _tile_id: egui_tiles::TileId,
+        tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
         _scroll_offset: &mut f32,
     ) {
@@ -527,21 +538,53 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         if *self.maximized == Some(view_id) {
             // Show minimize-button:
             if ui
-                .small_icon_button(&re_ui::icons::MINIMIZE)
-                .on_hover_text("Restore - show all spaces")
+                .small_icon_button(&re_ui::icons::MINIMIZE, "Restore viewport")
+                .on_hover_ui(|ui| {
+                    Help::new_without_title()
+                        .control(
+                            "Restore - show all spaces",
+                            IconText::from_keyboard_shortcut(ui.ctx().os(), TOGGLE_MAXIMIZE_VIEW),
+                        )
+                        .ui(ui);
+                })
                 .clicked()
+                || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
             {
                 *self.maximized = None;
+                MaximizeAnimationState::restore_view(ui.ctx(), view_id);
             }
         } else if num_views > 1 {
             // Show maximize-button:
+            let is_view_the_only_selected =
+                self.ctx.selection().is_view_the_only_selected(&view_id);
+            let toggle = is_view_the_only_selected
+                && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
             if ui
-                .small_icon_button(&re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize view")
+                .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
+                .on_hover_ui(|ui| {
+                    if is_view_the_only_selected {
+                        Help::new_without_title()
+                            .control(
+                                "Maximize view",
+                                IconText::from_keyboard_shortcut(
+                                    ui.ctx().os(),
+                                    TOGGLE_MAXIMIZE_VIEW,
+                                ),
+                            )
+                            .ui(ui);
+                    } else {
+                        ui.label("Maximize view");
+                    }
+                })
                 .clicked()
+                || toggle
             {
-                *self.maximized = Some(view_id);
                 // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
+                *self.maximized = Some(view_id);
+
+                if let Some(rect) = tiles.rect(tile_id) {
+                    MaximizeAnimationState::start_maximizing(ui.ctx(), view_id, rect);
+                }
             }
         }
 
@@ -565,8 +608,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 );
             });
 
-        ui.help_hover_button().on_hover_ui(|ui| {
-            view_class.help(ui.ctx()).ui(ui);
+        ui.help_button(|ui| {
+            view_class.help(ui.ctx().os()).ui(ui);
         });
     }
 
@@ -596,8 +639,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     }
 
     /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::DesignTokens::title_bar_height()
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?
@@ -654,6 +697,8 @@ impl TabWidget {
         tab_state: &egui_tiles::TabState,
         gamma: f32,
     ) -> Self {
+        let tokens = ui.tokens();
+
         struct TabDesc {
             label: egui::WidgetText,
             user_named: bool,
@@ -763,8 +808,8 @@ impl TabWidget {
             .is_some_and(|item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
-        let icon_size = DesignTokens::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
+        let icon_size = tokens.small_icon_size;
+        let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
         let text = if !tab_desc.user_named {
@@ -780,7 +825,7 @@ impl TabWidget {
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(
             galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            DesignTokens::title_bar_height(),
+            tokens.title_bar_height(),
         ));
         let galley_rect = egui::Rect::from_two_pos(
             rect.min + egui::vec2(icon_width_plus_padding, 0.0),
@@ -840,5 +885,147 @@ impl TabWidget {
             self.galley,
             label_color,
         );
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// This enables best-effort animation when one maximizes/restores a view.
+///
+/// There are a few ways this can fail (gracefully):
+/// - Maximization happens outside of this file (I don't think we have a way of doing that atm though).
+/// - The viewport has changes chaped since we last maximized
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum MaximizeAnimationState {
+    #[default]
+    Nothing,
+
+    /// We are in the progress of maximizing, or have finished doing so.
+    ///
+    /// We keep this around even after we've finished, because
+    /// we use this to remember the pre-maxmize rect of the view,
+    /// and _hope_ that it's where it will return to.
+    /// This might cause visual glitches if the viewport has changed shape since we maximized.
+    Maximizing {
+        /// What view is being maximized?
+        view_id: ViewId,
+
+        /// When maximization started.
+        start_time: web_time::Instant,
+
+        /// Where the view started.
+        normal_rect: egui::Rect,
+    },
+
+    Restoring {
+        /// What view is being restored?
+        view_id: ViewId,
+
+        /// When restoration started.
+        start_time: web_time::Instant,
+
+        /// Where the view should end up.
+        normal_rect: egui::Rect,
+    },
+}
+
+impl MaximizeAnimationState {
+    fn start_maximizing(egui_ctx: &egui::Context, view_id: ViewId, rect: egui::Rect) {
+        // Animate the maximization of the view:
+        egui_ctx.data_mut(|data| {
+            data.insert_temp(
+                egui::Id::NULL,
+                Self::Maximizing {
+                    view_id,
+                    normal_rect: rect,
+                    start_time: web_time::Instant::now(),
+                },
+            );
+        });
+        egui_ctx.request_repaint();
+    }
+
+    fn restore_view(egui_ctx: &egui::Context, view_id: ViewId) {
+        egui_ctx.data_mut(|data| {
+            let animation_state = data.get_temp_mut_or_default(egui::Id::NULL);
+
+            if let Self::Maximizing {
+                view_id: animation_view_id,
+                normal_rect,
+                ..
+            } = animation_state
+            {
+                if view_id == *animation_view_id {
+                    // We can do a restoration animation!
+                    *animation_state = Self::Restoring {
+                        view_id,
+                        start_time: web_time::Instant::now(),
+                        normal_rect: *normal_rect,
+                    };
+                }
+            }
+        });
+        egui_ctx.request_repaint();
+    }
+
+    fn animated_view_and_rect(
+        self,
+        egui_ctx: &egui::Context,
+        viewport_rect: egui::Rect,
+    ) -> (Option<ViewId>, egui::Rect) {
+        let animation_time = egui_ctx.style().animation_time;
+
+        let mut animating_view_id = None;
+        let mut animated_rect = viewport_rect;
+
+        match self {
+            Self::Nothing => {}
+
+            Self::Maximizing {
+                view_id,
+                start_time,
+                normal_rect,
+            } => {
+                // Animate the maximization of the view:
+                let progress = remap_clamp(
+                    start_time.elapsed().as_secs_f32(),
+                    0.0..=animation_time,
+                    0.0..=1.0,
+                );
+                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
+
+                if progress < 1.0 {
+                    egui_ctx.request_repaint();
+                    animated_rect = normal_rect.lerp_towards(&viewport_rect, progress);
+                    animating_view_id = Some(view_id);
+                } else {
+                    // Keep the Maximizing state so we remember the pre-maximized rect
+                }
+            }
+
+            Self::Restoring {
+                view_id,
+                start_time,
+                normal_rect,
+            } => {
+                // Animate the restoring of the view:
+                let progress = remap_clamp(
+                    start_time.elapsed().as_secs_f32(),
+                    0.0..=animation_time,
+                    0.0..=1.0,
+                );
+                let progress = egui::emath::easing::quadratic_out(progress); // Move quickly at first, then slow down
+                if progress < 1.0 {
+                    egui_ctx.request_repaint();
+                    animated_rect = viewport_rect.lerp_towards(&normal_rect, progress);
+                    animating_view_id = Some(view_id);
+                }
+            }
+        };
+
+        // Prevent glitches when the viewport has changed size since the animation started.
+        let animated_rect = animated_rect.intersect(viewport_rect);
+
+        (animating_view_id, animated_rect)
     }
 }

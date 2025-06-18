@@ -8,13 +8,13 @@ use pyo3::{Py, PyRef, PyResult, Python, pyclass, pymethods};
 use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 
-use crate::catalog::{PyCatalogClient, to_py_err};
+use crate::catalog::{PyCatalogClientInternal, to_py_err};
 use crate::dataframe::PyDataFusionTable;
 
 /// A handle on a remote task.
 #[pyclass(name = "Task")]
 pub struct PyTask {
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 
     pub id: TaskId,
 }
@@ -37,7 +37,7 @@ impl PyTask {
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     pub fn wait(&self, py: Python<'_>, timeout_secs: u64) -> PyResult<()> {
-        let mut connection = self.client.borrow(py).connection().clone();
+        let connection = self.client.borrow(py).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(py, &[self.id.clone()], timeout)?;
 
@@ -51,7 +51,7 @@ impl PyTask {
 #[allow(rustdoc::broken_intra_doc_links)]
 #[pyclass(name = "Tasks")]
 pub struct PyTasks {
-    client: Py<PyCatalogClient>,
+    client: Py<PyCatalogClientInternal>,
 
     ids: Vec<TaskId>,
 }
@@ -60,7 +60,7 @@ impl PyTasks {
     /// Create a new [`PyTasks`] instance.
     ///
     /// NOTE: Task ids will be deduplicated.
-    pub fn new(client: Py<PyCatalogClient>, ids: impl IntoIterator<Item = TaskId>) -> Self {
+    pub fn new(client: Py<PyCatalogClientInternal>, ids: impl IntoIterator<Item = TaskId>) -> Self {
         Self {
             client,
             ids: ids.into_iter().unique().collect(),
@@ -74,7 +74,7 @@ impl PyTasks {
     ///
     /// A `TimeoutError` is raised if the timeout is reached.
     pub fn wait(self_: PyRef<'_, Self>, timeout_secs: u64) -> PyResult<()> {
-        let mut connection = self_.client.borrow(self_.py()).connection().clone();
+        let connection = self_.client.borrow(self_.py()).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
         connection.wait_for_tasks(self_.py(), &self_.ids, timeout)?;
 
@@ -83,7 +83,7 @@ impl PyTasks {
 
     /// Return a table with the status of all tasks.
     pub fn status_table(&self, py: Python<'_>) -> PyResult<PyDataFusionTable> {
-        let mut connection = self.client.borrow(py).connection().clone();
+        let connection = self.client.borrow(py).connection().clone();
 
         // TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
         let hash = Hash64::hash(&self.ids);

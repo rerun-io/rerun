@@ -1,28 +1,24 @@
-use std::collections::BTreeMap;
-
 use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
-use re_grpc_client::redap::ConnectionError;
-use re_grpc_client::{StreamError, redap};
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle, StreamError};
 use re_log_encoding::codec::CodecError;
-use re_log_types::{ApplicationId, EntryId, StoreKind, natural_ordering};
+use re_log_types::{ApplicationId, EntryId, natural_ordering};
 use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::{
     EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
     ext::{DatasetEntry, EntryDetails},
 };
-use re_smart_channel::SmartChannelSource;
 use re_sorbet::SorbetError;
 use re_types::archetypes::RecordingProperties;
 use re_types::components::{Name, Timestamp};
 use re_ui::{UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry, SystemCommand, SystemCommandSender as _,
-    ViewerContext, external::re_entity_db::EntityDb,
+    AsyncRuntimeHandle, DisplayMode, Item, RecordingOrTable, SystemCommand,
+    SystemCommandSender as _, ViewerContext, external::re_entity_db::EntityDb,
 };
 
 use crate::context::Context;
@@ -78,11 +74,12 @@ pub struct Entries {
 
 impl Entries {
     pub fn new(
+        connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let datasets = fetch_dataset_entries(origin);
+        let datasets = fetch_dataset_entries(connection_registry, origin);
 
         Self {
             datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets),
@@ -115,7 +112,7 @@ impl Entries {
         viewer_context: &ViewerContext<'_>,
         _ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        mut recordings: Option<DatasetRecordings<'_>>,
+        mut recordings: Option<re_entity_db::DatasetRecordings<'_>>,
     ) {
         match self.datasets.try_as_ref() {
             None => {
@@ -152,59 +149,6 @@ impl Entries {
                 .on_hover_text(err.to_string());
             }
         }
-    }
-}
-
-pub type DatasetRecordings<'a> = BTreeMap<EntryId, Vec<&'a EntityDb>>;
-
-pub type RemoteRecordings<'a> = BTreeMap<re_uri::Origin, DatasetRecordings<'a>>;
-
-pub type LocalRecordings<'a> = BTreeMap<ApplicationId, Vec<&'a EntityDb>>;
-
-pub struct SortDatasetsResults<'a> {
-    pub remote_recordings: RemoteRecordings<'a>,
-    pub example_recordings: LocalRecordings<'a>,
-    pub local_recordings: LocalRecordings<'a>,
-}
-
-pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
-    let mut remote_recordings: RemoteRecordings<'_> = BTreeMap::new();
-    let mut local_recordings: LocalRecordings<'_> = BTreeMap::new();
-    let mut example_recordings: LocalRecordings<'_> = BTreeMap::new();
-
-    for entity_db in viewer_ctx
-        .storage_context
-        .bundle
-        .entity_dbs()
-        .filter(|r| r.store_kind() == StoreKind::Recording)
-    {
-        // We want to show all open applications, even if they have no recordings
-        let Some(app_id) = entity_db.app_id().cloned() else {
-            continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
-        };
-        if let Some(SmartChannelSource::RedapGrpcStream { uri, .. }) = &entity_db.data_source {
-            let origin_recordings = remote_recordings.entry(uri.origin.clone()).or_default();
-
-            let dataset_recordings = origin_recordings
-                // Currently a origin only has a single dataset, this should change soon
-                .entry(EntryId::from(uri.dataset_id))
-                .or_default();
-
-            dataset_recordings.push(entity_db);
-        } else if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
-        {
-            let recordings = example_recordings.entry(app_id).or_default();
-            recordings.push(entity_db);
-        } else {
-            let recordings = local_recordings.entry(app_id).or_default();
-            recordings.push(entity_db);
-        }
-    }
-
-    SortDatasetsResults {
-        remote_recordings,
-        example_recordings,
-        local_recordings,
     }
 }
 
@@ -270,11 +214,12 @@ impl EntryKind {
         match self {
             Self::Remote { .. } => {
                 for db in dbs {
-                    ctx.command_sender().send_system(SystemCommand::CloseEntry(
-                        StoreHubEntry::Recording {
-                            store_id: db.store_id(),
-                        },
-                    ));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::CloseRecordingOrTable(
+                            RecordingOrTable::Recording {
+                                store_id: db.store_id(),
+                            },
+                        ));
                 }
             }
             Self::Local(app_id) => {
@@ -316,7 +261,7 @@ pub fn dataset_and_its_recordings_ui(
         dataset_list_item_content = dataset_list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
                 .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
             if resp.clicked() {
                 kind.close(ctx, &entity_dbs);
@@ -358,11 +303,13 @@ pub fn dataset_and_its_recordings_ui(
 }
 
 async fn fetch_dataset_entries(
+    connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let resp = client
+        .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
                 id: None,
@@ -379,6 +326,7 @@ async fn fetch_dataset_entries(
         let entry_details = EntryDetails::try_from(entry_details)?;
 
         let dataset_entry: DatasetEntry = client
+            .inner()
             .read_dataset_entry(ReadDatasetEntryRequest {
                 id: Some(entry_details.id.into()),
             })

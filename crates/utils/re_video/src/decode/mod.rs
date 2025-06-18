@@ -93,10 +93,14 @@ pub use ffmpeg_h264::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-use crate::Time;
+mod gop_detection;
+
+pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
+
+use crate::{Time, VideoDataDescription};
 
 #[derive(thiserror::Error, Debug, Clone)]
-pub enum Error {
+pub enum DecodeError {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
@@ -120,7 +124,7 @@ pub enum Error {
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
-    WebDecoder(#[from] webcodecs::Error),
+    WebDecoder(#[from] webcodecs::WebError),
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
@@ -130,8 +134,9 @@ pub enum Error {
     BadBitsPerComponent(usize),
 }
 
-pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
+#[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
 pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
 /// Interface for an asynchronous video decoder.
@@ -152,8 +157,12 @@ pub trait AsyncDecoder: Send + Sync {
 
     /// Resets the decoder.
     ///
+    /// Expected to be called for backward seeking and major jumps forward in the video.
+    /// Newly created decoder can assume to get reset at least once before any chunks are submitted.
+    ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
-    fn reset(&mut self) -> Result<()>;
+    /// Previously missing [`VideoDataDescription::encoding_details`] may be present now.
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<()>;
 
     /// Minimum number of samples the decoder requests to stay head of the currently requested sample.
     ///
@@ -171,7 +180,7 @@ pub trait AsyncDecoder: Send + Sync {
 /// Creates a new async decoder for the given `video` data.
 pub fn new_decoder(
     debug_name: &str,
-    video: &crate::VideoData,
+    video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
 ) -> Result<Box<dyn AsyncDecoder>> {
@@ -192,18 +201,18 @@ pub fn new_decoder(
     )?));
 
     #[cfg(not(target_arch = "wasm32"))]
-    match &video.config.stsd.contents {
+    match video.codec {
         #[cfg(feature = "av1")]
-        re_mp4::StsdBoxContent::Av01(_av01_box) => {
+        crate::VideoCodec::AV1 => {
             #[cfg(linux_arm64)]
             {
-                return Err(Error::NoDav1dOnLinuxArm64);
+                return Err(DecodeError::NoDav1dOnLinuxArm64);
             }
 
             #[cfg(with_dav1d)]
             {
                 if cfg!(debug_assertions) {
-                    return Err(Error::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
+                    return Err(DecodeError::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
                 }
 
                 re_log::trace!("Decoding AV1…");
@@ -216,23 +225,25 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+        crate::VideoCodec::H264 => {
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                avc1_box.clone(),
+                &video.encoding_details,
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
             )?))
         }
 
-        _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
+        _ => Err(DecodeError::UnsupportedCodec(
+            video.human_readable_codec_string(),
+        )),
     }
 }
 
-/// One chunk of encoded video data, representing a single [`crate::Sample`].
+/// One chunk of encoded video data, representing a single [`crate::SampleMetadata`].
 ///
-/// For details on how to interpret the data, see [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::SampleMetadata`].
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {
@@ -256,7 +267,10 @@ pub struct Chunk {
     /// which is true for MP4.
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
-    pub frame_nr: usize,
+    ///
+    /// Do *not* use this to index into the video data description!
+    /// Use [`Self::sample_idx`] instead.
+    pub frame_nr: u32,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -264,13 +278,19 @@ pub struct Chunk {
     /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
-    /// Presentation timestamp for the sample in this chunk.
+    /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
     /// Often synonymous with `composition_timestamp`.
     ///
     /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    pub duration: Time,
+    /// Duration of the sample.
+    ///
+    /// Typically the time difference in presentation timestamp to the next sample.
+    /// May be unknown if this is the last sample in an ongoing video stream.
+    pub duration: Option<Time>,
 }
 
 /// Data for a decoded frame on native targets.
@@ -282,9 +302,31 @@ pub struct FrameContent {
     pub format: PixelFormat,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+impl FrameContent {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+}
+
 /// Data for a decoded frame on the web.
 #[cfg(target_arch = "wasm32")]
 pub type FrameContent = webcodecs::WebVideoFrame;
+
+#[cfg(target_arch = "wasm32")]
+impl FrameContent {
+    pub fn width(&self) -> u32 {
+        self.display_width()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.display_height()
+    }
+}
 
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
@@ -315,13 +357,21 @@ pub struct FrameInfo {
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
     ///
     /// None = unknown.
-    pub frame_nr: Option<usize>,
+    pub frame_nr: Option<u32>,
 
-    /// The presentation timestamp of the frame.
+    /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
+    /// Often synonymous with `composition_timestamp`.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    /// How long the frame is valid.
-    pub duration: Time,
+    /// Duration of the frame.
+    ///
+    /// Typically the time difference in presentation timestamp to the next frame.
+    /// May be unknown if this is the last frame in an ongoing video stream.
+    pub duration: Option<Time>,
 
     /// The decode timestamp of the last chunk that was needed to decode this frame.
     ///
@@ -331,8 +381,14 @@ pub struct FrameInfo {
 
 impl FrameInfo {
     /// Presentation timestamp range in which this frame is valid.
+    ///
+    /// If there's no known duration, the range is open ended.
     pub fn presentation_time_range(&self) -> std::ops::Range<Time> {
-        self.presentation_timestamp..self.presentation_timestamp + self.duration
+        if let Some(duration) = self.duration {
+            self.presentation_timestamp..self.presentation_timestamp + duration
+        } else {
+            self.presentation_timestamp..Time::MAX
+        }
     }
 }
 
@@ -442,6 +498,7 @@ pub struct DecodeSettings {
     /// Custom path for the ffmpeg binary.
     ///
     /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
+    #[cfg(not(target_arch = "wasm32"))]
     pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 

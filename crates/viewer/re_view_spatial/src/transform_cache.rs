@@ -56,11 +56,11 @@ impl Default for TransformCacheStoreSubscriber {
         Self {
             transform_components: archetypes::Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
             pose_components: archetypes::InstancePoses3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_name)
                 .collect(),
             pinhole_components: [
                 components::PinholeProjection::name(),
@@ -784,7 +784,11 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
             // But that's fairly rare, so a few false positive entries here are fine.
             let mut aspects = TransformAspect::empty();
-            for component_name in event.chunk.component_names() {
+            for component_name in event
+                .chunk
+                .component_descriptors()
+                .filter_map(|c| c.component_name)
+            {
                 if self.transform_components.contains(&component_name) {
                     aspects |= TransformAspect::Tree;
                 }
@@ -911,7 +915,7 @@ fn query_and_resolve_tree_transform_at_entity(
 /// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
 // TODO(andreas, jleibs): Model this out as a generic extension mechanism.
 fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
--> [(ArchetypeName, ComponentDescriptor); 3] {
+-> [(ArchetypeName, ComponentDescriptor); 4] {
     [
         (
             archetypes::Boxes3D::name(),
@@ -924,6 +928,10 @@ fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
         (
             archetypes::Capsules3D::name(),
             archetypes::Capsules3D::descriptor_translations(),
+        ),
+        (
+            archetypes::Cylinders3D::name(),
+            archetypes::Cylinders3D::descriptor_centers(),
         ),
     ]
 }
@@ -1004,7 +1012,7 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
 ) -> Vec<Affine3A> {
     debug_assert_eq!(
         descriptor_translations.component_name,
-        components::PoseTranslation3D::name()
+        Some(components::PoseTranslation3D::name())
     );
     debug_assert_eq!(descriptor_translations.archetype_name, Some(archetype_name));
     let descriptor_rotation_axis_angles =

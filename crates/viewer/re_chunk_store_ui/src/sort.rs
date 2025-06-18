@@ -2,6 +2,8 @@
 
 //TODO(ab): make this more generally applicable, in particular for the dataframe view?
 
+use re_ui::UiExt as _;
+
 /// Sort direction.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) enum SortDirection {
@@ -33,11 +35,12 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     sort_column: &mut SortColumn<T>,
     label: &'static str,
 ) {
+    let tokens = ui.tokens();
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
     let (left_clicked, right_clicked) = egui::Sides::new()
-        .height(re_ui::DesignTokens::table_line_height())
+        .height(tokens.deprecated_table_line_height())
         .show(
             ui,
             |ui| {

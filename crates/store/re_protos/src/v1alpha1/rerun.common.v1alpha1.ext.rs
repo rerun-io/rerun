@@ -1,10 +1,13 @@
 use std::hash::Hasher;
 use std::sync::Arc;
 
+use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+
+use re_log_types::{StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
-use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
+
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -87,7 +90,9 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -129,6 +134,12 @@ impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
     }
 }
 
+impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
+    fn from(value: PartitionId) -> Self {
+        Self { id: Some(value.id) }
+    }
+}
+
 // shortcuts
 
 impl From<String> for crate::common::v1alpha1::PartitionId {
@@ -150,12 +161,18 @@ impl From<&str> for crate::common::v1alpha1::PartitionId {
 #[derive(Debug, Clone)]
 pub struct DatasetHandle {
     pub id: Option<re_log_types::EntryId>,
+    pub store_kind: StoreKind,
     pub url: url::Url,
 }
 
 impl DatasetHandle {
-    pub fn new(url: url::Url) -> Self {
-        Self { id: None, url }
+    /// Create a new dataset handle
+    pub fn new(url: url::Url, store_kind: StoreKind) -> Self {
+        Self {
+            id: None,
+            store_kind,
+            url,
+        }
     }
 }
 
@@ -165,6 +182,7 @@ impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
     fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.entry_id.map(|id| id.try_into()).transpose()?,
+            store_kind: crate::common::v1alpha1::StoreKind::try_from(value.store_kind)?.into(),
             url: value
                 .dataset_url
                 .ok_or(missing_field!(
@@ -183,6 +201,7 @@ impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
     fn from(value: DatasetHandle) -> Self {
         Self {
             entry_id: value.id.map(Into::into),
+            store_kind: crate::common::v1alpha1::StoreKind::from(value.store_kind) as i32,
             dataset_url: Some(value.url.to_string()),
         }
     }
@@ -705,7 +724,7 @@ pub struct ScanParameters {
     pub filter: Option<String>,
     pub limit_offset: Option<i64>,
     pub limit_len: Option<i64>,
-    pub order_by: Option<ScanParametersOrderClause>,
+    pub order_by: Vec<ScanParametersOrderClause>,
     pub explain_plan: bool,
     pub explain_filter: bool,
 }
@@ -714,11 +733,6 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ScanParameters) -> Result<Self, Self::Error> {
-        let order_by = if let Some(order_by) = value.order_by {
-            Some(order_by.try_into()?)
-        } else {
-            None
-        };
         Ok(Self {
             columns: value.columns,
             on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::try_from(
@@ -728,7 +742,11 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
             filter: value.filter,
             limit_offset: value.limit_offset,
             limit_len: value.limit_len,
-            order_by,
+            order_by: value
+                .order_by
+                .into_iter()
+                .map(|ob| ob.try_into())
+                .collect::<Result<Vec<_>, _>>()?,
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         })
@@ -745,7 +763,7 @@ impl From<ScanParameters> for crate::common::v1alpha1::ScanParameters {
             filter: value.filter,
             limit_offset: value.limit_offset,
             limit_len: value.limit_len,
-            order_by: value.order_by.map(Into::into),
+            order_by: value.order_by.into_iter().map(|ob| ob.into()).collect(),
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         }
@@ -859,8 +877,8 @@ impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor 
     fn from(value: ComponentDescriptor) -> Self {
         Self {
             archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-            component_name: Some(value.component_name.full_name().to_owned()),
+            archetype_field_name: Some(value.archetype_field_name.to_string()),
+            component_name: value.component_name.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -869,17 +887,23 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
-        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+        let crate::common::v1alpha1::ComponentDescriptor {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = value;
+
+        let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
-            "component_name"
+            "archetype_field_name"
         ))?);
 
-        if let Some(archetype_name) = value.archetype_name {
+        if let Some(archetype_name) = archetype_name {
             descriptor = descriptor.with_archetype_name(archetype_name.into());
         }
 
-        if let Some(archetype_field_name) = value.archetype_field_name {
-            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        if let Some(component_name) = component_name {
+            descriptor = descriptor.with_component_name(component_name.into());
         }
 
         Ok(descriptor)
@@ -893,6 +917,100 @@ impl Eq for TaskId {}
 impl std::hash::Hash for TaskId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.as_str().hash(state)
+    }
+}
+
+// ---
+
+impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
+    fn from(build_info: re_build_info::BuildInfo) -> Self {
+        Self {
+            crate_name: Some(build_info.crate_name.to_string()),
+            features: Some(build_info.features.to_string()),
+            version: Some(build_info.version.into()),
+            rustc_version: Some(build_info.rustc_version.to_string()),
+            llvm_version: Some(build_info.llvm_version.to_string()),
+            git_hash: Some(build_info.git_hash.to_string()),
+            git_branch: Some(build_info.git_branch.to_string()),
+            target_triple: Some(build_info.target_triple.to_string()),
+            build_time: Some(build_info.datetime.to_string()),
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::BuildInfo> for re_build_info::BuildInfo {
+    fn from(build_info: crate::common::v1alpha1::BuildInfo) -> Self {
+        Self {
+            crate_name: build_info.crate_name().to_owned().into(),
+            features: build_info.features().to_owned().into(),
+            version: build_info.version.clone().unwrap_or_default().into(),
+            rustc_version: build_info.rustc_version().to_owned().into(),
+            llvm_version: build_info.llvm_version().to_owned().into(),
+            git_hash: build_info.git_hash().to_owned().into(),
+            git_branch: build_info.git_branch().to_owned().into(),
+            is_in_rerun_workspace: false,
+            target_triple: build_info.target_triple().to_owned().into(),
+            datetime: build_info.build_time().to_owned().into(),
+        }
+    }
+}
+
+impl From<re_build_info::CrateVersion> for crate::common::v1alpha1::SemanticVersion {
+    fn from(version: re_build_info::CrateVersion) -> Self {
+        crate::common::v1alpha1::SemanticVersion {
+            major: Some(version.major.into()),
+            minor: Some(version.minor.into()),
+            patch: Some(version.patch.into()),
+            meta: version.meta.map(Into::into),
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::SemanticVersion> for re_build_info::CrateVersion {
+    fn from(version: crate::common::v1alpha1::SemanticVersion) -> Self {
+        Self {
+            major: version.major() as u8,
+            minor: version.minor() as u8,
+            patch: version.patch() as u8,
+            meta: version.meta.map(Into::into),
+        }
+    }
+}
+
+impl From<re_build_info::Meta> for crate::common::v1alpha1::semantic_version::Meta {
+    fn from(version_meta: re_build_info::Meta) -> Self {
+        match version_meta {
+            re_build_info::Meta::Rc(v) => Self::Rc(v.into()),
+
+            re_build_info::Meta::Alpha(v) => Self::Alpha(v.into()),
+
+            re_build_info::Meta::DevAlpha { alpha, commit } => {
+                Self::DevAlpha(crate::common::v1alpha1::DevAlpha {
+                    alpha: Some(alpha.into()),
+                    commit: commit.map(|s| String::from_utf8_lossy(s).to_string()),
+                })
+            }
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Meta {
+    fn from(version_meta: crate::common::v1alpha1::semantic_version::Meta) -> Self {
+        match version_meta {
+            crate::common::v1alpha1::semantic_version::Meta::Rc(v) => Self::Rc(v as _),
+
+            crate::common::v1alpha1::semantic_version::Meta::Alpha(v) => Self::Alpha(v as _),
+
+            crate::common::v1alpha1::semantic_version::Meta::DevAlpha(dev_alpha) => {
+                Self::DevAlpha {
+                    alpha: dev_alpha.alpha() as u8,
+                    // TODO(cmc): support this, but that means DevAlpha is not-const
+                    // anymore, which trigger a chain reaction of changes that I really
+                    // don't want to get in right now.
+                    commit: None,
+                }
+            }
+        }
     }
 }
 
