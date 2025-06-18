@@ -655,11 +655,7 @@ impl AppState {
                                         is_history_enabled,
                                     );
                                 } else {
-                                    redap_servers.server_central_panel_ui(
-                                        &ctx.global_context,
-                                        ui,
-                                        origin,
-                                    );
+                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
                             }
 
