@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use egui::{Frame, Margin, RichText};
-
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::list_item::ItemActionButton;
-use re_ui::{UiExt as _, icons, list_item};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
     ViewerContext,
@@ -88,9 +86,7 @@ impl Server {
     }
 
     /// Central panel UI for when a server is selected.
-    fn server_ui(&self, viewer_ctx: &ViewerContext, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
-
+    fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             "__entries",
@@ -461,7 +457,7 @@ impl RedapServers {
         };
 
         self.add_server_modal_ui
-            .ui(&global_ctx, &ctx, connection_registry, ui);
+            .ui(global_ctx, &ctx, connection_registry, ui);
     }
 
     #[inline]

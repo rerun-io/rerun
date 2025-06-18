@@ -3,9 +3,9 @@ use re_types_core::{ComponentDescriptor, RowId};
 use re_viewer_context::ViewerContext;
 use std::error::Error;
 
-/// Parse an Int32Array as an EntryKind and display it.
+/// Parse an `Int32Array` as an `EntryKind` and display it.
 pub fn redap_entry_kind(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     _component_descriptor: &ComponentDescriptor,
     _row_id: Option<RowId>,

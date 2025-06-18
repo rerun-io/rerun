@@ -4,9 +4,7 @@ use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{
-    DisplayMode, GlobalContext, SystemCommand, SystemCommandSender, ViewerContext,
-};
+use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
 pub struct AddServerModal {
     modal: ModalHandler,
