@@ -751,7 +751,7 @@ def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyB
     """Create a new binary stream sink, and return the associated binary stream."""
 
 class GrpcSink:
-    def __new__(cls, url: str | None, flush_timeout_sec: float | None) -> GrpcSink:
+    def __new__(cls, url: str | None = None, flush_timeout_sec: float | None = None) -> GrpcSink:
         pass
 
 class FileSink:
