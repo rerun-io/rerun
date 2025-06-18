@@ -619,7 +619,6 @@ ghp-import = "==2.1.0" # for CI documentation handling
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-dev.dependencies]
-av = ">=14.2.0" # Used for some video examples. Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
 # and other common examples/snippets.
 #
@@ -653,6 +652,11 @@ sphobjinv = "==2.3.1"
 
 [feature.py-test-deps]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
+
+[feature.py-test-deps.dependencies]
+# Used for some video examples.
+# Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
+av = ">=14.2.0"
 
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
