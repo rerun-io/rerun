@@ -345,7 +345,7 @@ fn shutdown(py: Python<'_>) {
     re_log::debug!("Shutting down the Rerun SDK");
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        // NOTE: Do **NOT* try and drain() `all_recordings` here.
+        // NOTE: Do **NOT** try and drain() `all_recordings` here.
         //
         // Doing so would drop the last remaining reference to these recordings, and therefore
         // trigger their deallocation as well as the deallocation of all the Python and C++ data
