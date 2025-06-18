@@ -19,7 +19,6 @@ from rerun_bindings import (
 from rerun_bindings.types import (
     AnyColumn as AnyColumn,
     AnyComponentColumn as AnyComponentColumn,
-    ComponentLike as ComponentLike,
     ViewContentsLike as ViewContentsLike,
 )
 

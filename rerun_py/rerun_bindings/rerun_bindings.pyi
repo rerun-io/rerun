@@ -12,7 +12,6 @@ from rerun.catalog import CatalogClient
 from .types import (
     AnyColumn,
     AnyComponentColumn,
-    ComponentLike,
     IndexValuesLike,
     ViewContentsLike,
 )
@@ -126,7 +125,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike) -> None:
+    def __init__(self, entity_path: str, component: str) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -134,8 +133,8 @@ class ComponentColumnSelector:
         ----------
         entity_path : str
             The entity path to select.
-        component : ComponentLike
-            The component to select
+        component : str
+            The component to select. Example: `Points3D:positions`.
 
         """
     @property
@@ -179,7 +178,7 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
 
-    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: str) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -187,7 +186,7 @@ class Schema:
         ----------
         entity_path : str
             The entity path to look up.
-        component : ComponentLike
+        component : str
             The component to look up.
 
         Returns

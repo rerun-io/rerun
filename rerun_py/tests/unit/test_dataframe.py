@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 import rerun as rr
 from rerun_bindings.rerun_bindings import Schema
-from rerun_bindings.types import AnyColumn, ComponentLike, ViewContentsLike
+from rerun_bindings.types import AnyColumn, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
 
@@ -245,7 +245,7 @@ class TestDataframe:
         view = self.recording.view(index="my_index", contents="points")
         index_col_selectors: list[AnyColumn] = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
-        selectors: list[ComponentLike] = ["Points3D:positions"]
+        selectors: list[str] = ["Points3D:positions"]
 
         all_selectors: list[AnyColumn] = [
             *[rr.dataframe.ComponentColumnSelector("points", selector) for selector in selectors],
@@ -380,7 +380,7 @@ class TestDataframe:
     def test_filter_is_not_null(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
 
-        color = rr.dataframe.ComponentColumnSelector("points", "rerun.archetypes.Points3D:colors")
+        color = rr.dataframe.ComponentColumnSelector("points", "Points3D:colors")
 
         view = view.filter_is_not_null(color)
 
@@ -397,9 +397,7 @@ class TestDataframe:
     def test_view_syntax(self) -> None:
         good_content_expressions: list[ViewContentsLike] = [
             {"points": "Points3D:positions"},
-            {"points": "rerun.archetypes.Points3D:positions"},
             {"points/**": "Points3D:positions"},
-            {"points/**": "rerun.archetypes.Points3D:positions"},
         ]
 
         for expr in good_content_expressions:

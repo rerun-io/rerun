@@ -323,7 +323,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             component
                                 .component_descriptor()
                                 .archetype_field_name()
-                                .to_string()
+                                .to_owned()
                         } else {
                             column.display_name()
                         },

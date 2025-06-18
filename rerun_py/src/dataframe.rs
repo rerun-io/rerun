@@ -31,7 +31,7 @@ use re_chunk_store::{
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_sdk::{ArchetypeName, EntityPath, StoreId, StoreKind};
+use re_sdk::{EntityPath, StoreId, StoreKind};
 use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
@@ -234,12 +234,11 @@ impl PyComponentColumnSelector {
     /// Create a new `ComponentColumnSelector`.
     // Note: the `Parameters` section goes into the class docstring.
     #[new]
-    #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
-    fn new(entity_path: &str, component: ComponentLike) -> Self {
+    #[pyo3(text_signature = "(self, entity_path: str, component: str)")]
+    fn new(entity_path: &str, component: &str) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            // TODO: clean this up if `ComponentLike` sticks around
-            component: ComponentIdentifier::from(component).to_string(),
+            component: component.to_owned(),
         })
     }
 
@@ -440,43 +439,6 @@ impl IndexValuesLike<'_> {
     }
 }
 
-// TODO(#9978): Remove!
-pub struct ComponentLike {
-    pub archetype_name: Option<String>,
-    pub component: String,
-}
-
-// TODO(#7699): Avoid interning strings from requests here.
-impl From<ComponentLike> for ComponentIdentifier {
-    fn from(value: ComponentLike) -> Self {
-        value
-            .archetype_name
-            .map(|archetype_name| ArchetypeName::from(archetype_name).with_field(&value.component))
-            .unwrap_or_else(|| value.component.into())
-    }
-}
-
-impl FromPyObject<'_> for ComponentLike {
-    fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(column_name) = component.extract::<String>() {
-            match column_name.rfind(':') {
-                Some(i) => Ok(Self {
-                    archetype_name: Some(column_name[..i].into()),
-                    component: column_name[(i + 1)..].into(),
-                }),
-                None => Ok(Self {
-                    component: column_name,
-                    archetype_name: None,
-                }),
-            }
-        } else {
-            Err(PyTypeError::new_err(
-                "ComponentLike input must be a string of format [<archetype_name>:]component",
-            ))
-        }
-    }
-}
-
 #[pyclass]
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
@@ -550,8 +512,8 @@ impl PySchema {
     /// ----------
     /// entity_path : str
     ///     The entity path to look up.
-    /// component : ComponentLike
-    ///     The component to look up.
+    /// component : str
+    ///     The component to look up. Example: `Points3D:positions`.
     ///
     /// Returns
     /// -------
@@ -560,13 +522,13 @@ impl PySchema {
     fn column_for(
         &self,
         entity_path: &str,
-        component: ComponentLike,
+        component: &str,
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
         let selector = ComponentColumnSelector {
             entity_path,
-            component: component.component,
+            component: component.to_owned(),
         };
 
         self.schema.component_columns().find_map(|col| {
@@ -1239,7 +1201,7 @@ impl PyRecording {
 
             Ok(contents)
         } else if let Ok(dict) = expr.downcast::<PyDict>() {
-            // `Union[ComponentLike, Sequence[ComponentLike]]]`
+            // `Union[str, Sequence[str]]]`
 
             let mut contents = ViewContentsSelector::default();
 
@@ -1257,10 +1219,10 @@ impl PyRecording {
                 })?;
 
                 let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
-                    value.extract::<ComponentLike>()
+                    value.extract::<String>()
                 {
                     std::iter::once(component.into()).collect()
-                } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+                } else if let Ok(components) = value.extract::<Vec<String>>() {
                     components.into_iter().map(Into::into).collect()
                 } else {
                     return Err(PyTypeError::new_err(format!(
