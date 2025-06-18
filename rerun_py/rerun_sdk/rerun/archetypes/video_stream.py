@@ -38,8 +38,6 @@ class VideoStream(Archetype):
     -------
     ### Live streaming of on-the-fly encoded video:
     ```python
-    from fractions import Fraction
-
     import av
     import numpy as np
     import numpy.typing as npt
@@ -66,7 +64,7 @@ class VideoStream(Archetype):
         return img
 
 
-    rr.init("rerun_example_video_stream", spawn=True)
+    rr.init("rerun_example_video_stream_synthetic", spawn=True)
 
     # Setup encoding pipeline.
     av.logging.set_level(av.logging.VERBOSE)
@@ -74,7 +72,6 @@ class VideoStream(Archetype):
     stream = container.add_stream("libx264", rate=fps)
     stream.width = width
     stream.height = height
-    stream.rate = Fraction(fps, 1)
     # TODO(#10090): Rerun Video Streams don't support b-frames yet.
     # Note that b-frames are generally not recommended for low-latency streaming and may make logging more complex.
     stream.max_b_frames = 0
@@ -87,11 +84,15 @@ class VideoStream(Archetype):
         img = create_example_video_frame(frame_i)
         frame = av.VideoFrame.from_ndarray(img, format="rgb24")
         for packet in stream.encode(frame):
+            if packet.pts is None:
+                continue
             rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
             rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
 
     # Flush stream.
     for packet in stream.encode():
+        if packet.pts is None:
+            continue
         rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
         rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
     ```
