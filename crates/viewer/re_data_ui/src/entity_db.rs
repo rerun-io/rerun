@@ -85,6 +85,32 @@ impl crate::DataUi for EntityDb {
                 }
             }
 
+            // Duration block: show HH:MM:SS.MS between timeline start and end using time_range_for
+            if let Some(timeline_name) = self.timelines().keys().find(|k| **k == re_log_types::TimelineName::log_time()) {
+                if let Some(range) = self.time_range_for(timeline_name) {
+                    let duration = range.max().as_i64() - range.min().as_i64();
+                    if duration > 0 {
+                        let duration = std::time::Duration::from_nanos(duration as u64);
+                        let hours = duration.as_secs() / 3600;
+                        let minutes = (duration.as_secs() % 3600) / 60;
+                        let seconds = duration.as_secs() % 60;
+                        let millis = duration.subsec_millis();
+                        let duration_str = if hours > 0 {
+                            format!("{}h {}m {:02}.{:03}s", hours, minutes, seconds, millis)
+                        } else if minutes > 0 {
+                            format!("{}m {:02}.{:03}s", minutes, seconds, millis)
+                        } else {
+                            format!("{:02}.{:03}s", seconds, millis)
+                        };
+                        ui.grid_left_hand_label("Duration");
+                        ui.label(duration_str)
+                            .on_hover_text("Duration between the earliest and latest timestamps on the 'log_time' timeline.");
+                        ui.end_row();
+                    }
+                }
+            }
+
+
             {
                 ui.grid_left_hand_label("Size");
                 ui.label(re_format::format_bytes(self.total_size_bytes() as _))
