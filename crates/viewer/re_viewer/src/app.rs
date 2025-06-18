@@ -810,7 +810,7 @@ impl App {
             UICommand::SaveRecording => {
                 #[cfg(target_arch = "wasm32")] // Web
                 {
-                    if let Err(err) = save_recording(self, store_context, None) {
+                    if let Err(err) = save_active_recording(self, store_context, None) {
                         re_log::error!("Failed to save recording: {err}");
                     }
                 }
@@ -834,8 +834,19 @@ impl App {
                         }
                     }
 
+                    let selected_stores = selected_stores
+                        .iter()
+                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .collect_vec();
+
                     if selected_stores.is_empty() {
-                        if let Err(err) = save_recording(self, store_context, None) {
+                        if let Err(err) = save_active_recording(self, store_context, None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else if selected_stores.len() == 1 {
+                        // Common case: saving a single recording.
+                        // In this case we want the user to be able to pick a file name (not just a folder):
+                        if let Err(err) = save_recording(self, selected_stores[0], None) {
                             re_log::error!("Failed to save recording: {err}");
                         }
                     } else {
@@ -844,15 +855,15 @@ impl App {
                             .set_title("Save recordings to folder")
                             .pick_folder()
                         {
-                            self.save_all_recordings(_storage_context, &selected_stores, &folder);
+                            self.save_many_recordings(&selected_stores, &folder);
                         } else {
-                            re_log::warn!("No folder selected");
+                            re_log::info!("No folder selected - recordings not saved.");
                         }
                     }
                 }
             }
             UICommand::SaveRecordingSelection => {
-                if let Err(err) = save_recording(
+                if let Err(err) = save_active_recording(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
@@ -1164,23 +1175,13 @@ impl App {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_all_recordings(
-        &mut self,
-        storage_context: &StorageContext<'_>,
-        stores: &[StoreId],
-        folder: &std::path::Path,
-    ) {
+    fn save_many_recordings(&mut self, stores: &[&EntityDb], folder: &std::path::Path) {
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
         use re_log::ResultExt as _;
         use tap::Pipe as _;
 
         re_tracing::profile_function!();
-
-        let stores = stores
-            .iter()
-            .filter_map(|store_id| storage_context.bundle.get(store_id))
-            .collect_vec();
 
         let num_stores = stores.len();
         let any_error = Arc::new(AtomicBool::new(false));
@@ -2612,7 +2613,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     file_contents
 }
 
-fn save_recording(
+fn save_active_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
@@ -2622,6 +2623,14 @@ fn save_recording(
         anyhow::bail!("No recording data to save");
     };
 
+    save_recording(app, entity_db, loop_selection)
+}
+
+fn save_recording(
+    app: &mut App,
+    entity_db: &EntityDb,
+    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+) -> anyhow::Result<()> {
     let rrd_version = entity_db
         .store_info()
         .and_then(|info| info.store_version)

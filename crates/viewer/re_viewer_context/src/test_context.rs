@@ -20,21 +20,21 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
 pub trait HarnessExt {
-    /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
+    /// Fails the test iff more than `broken_pixels_fraction * num_pixels` pixels are broken.
     //
     // TODO(emilk/egui#5683): this should be natively supported by kittest
     fn snapshot_with_broken_pixels_threshold(
         &mut self,
         name: &str,
         num_pixels: u64,
-        broken_percent_threshold: f64,
+        broken_pixels_fraction: f64,
     );
 
     fn try_snapshot_with_broken_pixels_threshold(
         &mut self,
         name: &str,
         num_pixels: u64,
-        broken_percent_threshold: f64,
+        broken_pixels_fraction: f64,
     ) -> bool;
 
     fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: usize);
@@ -45,7 +45,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
         &mut self,
         name: &str,
         num_pixels: u64,
-        broken_percent_threshold: f64,
+        broken_fraction_threshold: f64,
     ) {
         match self.try_snapshot(name) {
             Ok(_) => {}
@@ -56,11 +56,11 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                     diff: num_broken_pixels,
                     diff_path,
                 } => {
-                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
-                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    let broken_fraction = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_fraction);
                     assert!(
-                        broken_percent <= broken_percent_threshold,
-                        "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                        broken_fraction <= broken_fraction_threshold,
+                        "{name} failed because {broken_fraction} > {broken_fraction_threshold}\n{diff_path:?}"
                     );
                 }
 
@@ -73,7 +73,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
         &mut self,
         name: &str,
         num_pixels: u64,
-        broken_percent_threshold: f64,
+        broken_pixels_fraction: f64,
     ) -> bool {
         match self.try_snapshot(name) {
             Ok(_) => true,
@@ -84,11 +84,11 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                     diff: num_broken_pixels,
                     diff_path,
                 } => {
-                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
-                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
-                    if broken_percent >= broken_percent_threshold {
+                    let broken_fraction = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_fraction);
+                    if broken_fraction >= broken_pixels_fraction {
                         re_log::error!(
-                            "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                            "{name} failed because {broken_fraction} > {broken_pixels_fraction}\n{diff_path:?}"
                         );
                         return false;
                     }

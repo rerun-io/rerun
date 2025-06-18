@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use arrow::array::RecordBatchReader;
 use arrow::datatypes::Schema;
+use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -470,6 +472,27 @@ impl PyDataframeQueryView {
         let df = ctx.call_method1("table", (name,))?;
 
         Ok(df)
+    }
+
+    /// Get the relevant chunk_ids for this view.
+    fn get_chunk_ids<'py>(
+        self_: PyRef<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let dataset = self_.dataset.borrow(py);
+        let entry = dataset.as_super();
+        let dataset_id = entry.details.id;
+        let connection = entry.client.borrow(py).connection().clone();
+
+        // Fetch relevant chunks
+        connection.get_chunk_ids_for_dataframe_query(
+            py,
+            dataset_id,
+            &self_.query_expression.view_contents,
+            self_.query_expression.min_latest_at(),
+            self_.query_expression.max_range(),
+            self_.partition_ids.as_slice(),
+        )
     }
 }
 

@@ -46,7 +46,12 @@ need_stdout = false
 watch = ["tests", "benches", "examples"]
 
 [jobs.test]
-command = ["cargo", "test", "--color=always"]
+command = ["cargo", "test", "--all-features", "--color=always"]
+need_stdout = true
+watch = ["tests"]
+
+[jobs.nextest]
+command = ["cargo", "nextest", "run", "--all-features", "--color=always"]
 need_stdout = true
 watch = ["tests"]
 
@@ -87,3 +92,4 @@ d = "job:doc-open"
 t = "job:test"
 r = "job:run"
 a = "job:wasm"
+n = "job:nextest"

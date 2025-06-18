@@ -1,4 +1,4 @@
-//! Server implementation of an in-memory Storage Node.
+//! Server implementation of an in-memory Storage Node ("proxy").
 
 pub mod shutdown;
 

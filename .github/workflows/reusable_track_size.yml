@@ -169,26 +169,6 @@ jobs:
 
             ${{ steps.measure.outputs.comparison }}
 
-      - name: Alert on regression
-        if: github.ref == 'refs/heads/main'
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Sizes
-          tool: customSmallerIsBetter
-          output-file-path: /tmp/data.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Show alert with commit on detecting possible size regression
-          comment-on-alert: true
-          alert-threshold: "110%"
-          fail-on-alert: false
-          comment-always: false # Generates too much GitHub notification spam
-
-          # Don't push to gh-pages
-          save-data-file: false
-          auto-push: false
-
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4

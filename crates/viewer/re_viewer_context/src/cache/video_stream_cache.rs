@@ -42,13 +42,17 @@ pub struct PlayableVideoStream {
 }
 
 impl PlayableVideoStream {
-    pub fn sample_buffer_slices(&self) -> StableIndexDeque<&[u8]> {
+    pub fn sample_buffers(&self) -> StableIndexDeque<&[u8]> {
         StableIndexDeque::from_iter_with_offset(
             self.video_sample_buffers.min_index(),
             self.video_sample_buffers
                 .iter()
                 .map(|b| b.buffer.as_slice()),
         )
+    }
+
+    pub fn video_descr(&self) -> &re_video::VideoDataDescription {
+        self.video_renderer.data_descr()
     }
 }
 
@@ -786,7 +790,7 @@ mod tests {
             chunk_builder = chunk_builder.with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
         }
         store
@@ -822,7 +826,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -868,7 +872,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, 0)]),
-                &VideoStream::new(frame_iter.next().unwrap(), VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_iter.next().unwrap()),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -889,7 +893,7 @@ mod tests {
                 let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                     RowId::new(),
                     timepoint,
-                    &VideoStream::new(frame_bytes, VideoCodec::H264),
+                    &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
                 );
                 let store_events = store
                     .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
@@ -929,7 +933,7 @@ mod tests {
             let chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into()).with_archetype(
                 RowId::new(),
                 TimePoint::from_iter([(timeline, i as i64)]),
-                &VideoStream::new(frame_bytes, VideoCodec::H264),
+                &VideoStream::new(VideoCodec::H264).with_sample(frame_bytes),
             );
             store
                 .add_chunk(&Arc::new(chunk_builder.build().unwrap()))

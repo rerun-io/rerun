@@ -14,7 +14,6 @@ use crate::catalog::{
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")]
 pub struct PyCatalogClientInternal {
-    #[expect(dead_code)]
     origin: re_uri::Origin,
 
     connection: ConnectionHandle,
@@ -35,6 +34,13 @@ impl PyCatalogClientInternal {
     #[new]
     #[pyo3(text_signature = "(self, addr, token=None)")]
     fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
+        // NOTE: The entire TLS stack expects this global variable to be set. It doesn't matter
+        // what we set it to. But we have to set it, or we will crash at runtime, as soon as
+        // anything tries to do anything TLS-related.
+        // This used to be implicitly done by `object_store`, just by virtue of depending on it,
+        // but we removed that unused dependency, so now we must do it ourselves.
+        _ = rustls::crypto::ring::default_provider().install_default();
+
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection_registry = re_grpc_client::ConnectionRegistry::new();
@@ -263,6 +269,10 @@ impl PyCatalogClientInternal {
                 "DataFusion context not available (the `datafusion` package may need to be installed)".to_owned(),
             ))
         }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("CatalogClient({})", self.origin)
     }
 
     // ---

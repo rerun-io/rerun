@@ -17,6 +17,13 @@ table VideoStream (
 ) {
     // --- Required ---
 
+    /// The codec used to encode the video chunks.
+    ///
+    /// This property is expected to be constant over time and is ideally logged statically once per stream.
+    codec: rerun.components.VideoCodec ("attr.rerun.component_required", order: 1000);
+
+    // --- Recommended ---
+
     /// Video sample data (also known as "video chunk").
     ///
     /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
@@ -34,12 +41,7 @@ table VideoStream (
     /// (this restriction may be relaxed in the future for some codecs).
     ///
     /// See [components.VideoCodec] for codec specific requirements.
-    sample: rerun.components.VideoSample ("attr.rerun.component_required", required, order: 1000);
-
-    /// The codec used to encode the video chunks.
-    ///
-    /// This property is expected to be constant over time and is ideally logged statically once per stream.
-    codec: rerun.components.VideoCodec ("attr.rerun.component_required", order: 1100);
+    sample: rerun.components.VideoSample ("attr.rerun.component_recommended", nullable, order: 2000);
 
     // --- Optional ---
 
@@ -49,5 +51,5 @@ table VideoStream (
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-15.0`.
-    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 2100);
+    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3000);
 }

@@ -7,7 +7,7 @@ use re_types::{
     components::Visible,
     datatypes::TensorBuffer,
 };
-use re_ui::{Help, IconText, MouseButtonText, icon_text, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::{
     controls::SELECTION_RECT_ZOOM_BUTTON, suggest_view_for_each_entity, view_property_ui,
 };
@@ -53,7 +53,7 @@ impl ViewClass for BarChartView {
 
         Help::new("Bar chart view")
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Horizontal pan",
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
@@ -80,9 +80,9 @@ impl ViewClass for BarChartView {
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
+                (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
@@ -272,14 +272,21 @@ impl ViewClass for BarChartView {
             });
 
             // Interact with the plot items.
-            if let Some(entity_path) = hovered_plot_item
+            let hovered_data_result = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
-            {
-                ctx.viewer_ctx.handle_select_hover_drag_interactions(
-                    &response,
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into()),
-                    false,
-                );
+                .map(|entity_path| {
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
+                })
+                .or_else(|| {
+                    if response.hovered() {
+                        Some(re_viewer_context::Item::View(query.view_id))
+                    } else {
+                        None
+                    }
+                });
+            if let Some(hovered) = hovered_data_result {
+                ctx.viewer_ctx
+                    .handle_select_hover_drag_interactions(&response, hovered, false);
             }
         });
 

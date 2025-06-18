@@ -23,6 +23,8 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 pub fn log_msg_from_proto(
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
+    re_tracing::profile_function!();
+
     use crate::codec::{CodecError, arrow::decode_arrow};
     use crate::decoder::DecodeError;
     use re_protos::{

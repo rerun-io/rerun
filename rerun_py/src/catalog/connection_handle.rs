@@ -1,11 +1,13 @@
-use arrow::array::RecordBatch;
+use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
     exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
@@ -26,7 +28,9 @@ use re_protos::{
         ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
+    frontend::v1alpha1::{
+        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, RegisterWithDatasetRequest,
+    },
     manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
@@ -455,5 +459,98 @@ impl ConnectionHandle {
         })?;
 
         Ok(stores)
+    }
+
+    // TODO(ab): migrate this to the `ConnectionClient` API.
+    pub fn get_chunk_ids_for_dataframe_query(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        contents: &Option<ViewContentsSelector>,
+        latest_at: Option<LatestAtQuery>,
+        range: Option<RangeQuery>,
+        partition_ids: &[impl AsRef<str> + Sync],
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let entity_paths = contents
+            .as_ref()
+            .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
+
+        let query = Query {
+            latest_at: latest_at.map(|latest_at| QueryLatestAt {
+                index: latest_at.timeline().to_string(),
+                at: latest_at.at().as_i64(),
+                fuzzy_descriptors: vec![], // TODO(jleibs): support this
+            }),
+            range: range.map(|range| {
+                QueryRange {
+                    index: range.timeline().to_string(),
+                    index_range: range.range,
+                    fuzzy_descriptors: vec![], // TODO(jleibs): support this
+                }
+            }),
+            columns_always_include_everything: false,
+            columns_always_include_chunk_ids: false,
+            columns_always_include_entity_paths: false,
+            columns_always_include_byte_offsets: false,
+            columns_always_include_static_indexes: false,
+            columns_always_include_global_indexes: false,
+            columns_always_include_component_indexes: false,
+        };
+
+        wait_for_future(py, async {
+            let response_stream = self
+                .client()
+                .await?
+                .inner()
+                .query_dataset(QueryDatasetRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    partition_ids: partition_ids
+                        .iter()
+                        .map(|id| id.as_ref().to_owned().into())
+                        .collect(),
+                    chunk_ids: vec![],
+                    entity_paths: entity_paths
+                        .into_iter()
+                        .map(|p| (*p).clone().into())
+                        .collect(),
+                    query: Some(query.into()),
+                    scan_parameters: Some(
+                        ScanParameters {
+                            columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                })
+                .await
+                .map_err(to_py_err)?
+                .into_inner();
+
+            // TODO(jleibs): Make this streaming
+            let record_batches: Result<Vec<RecordBatch>, PyErr> = response_stream
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .map_err(to_py_err)?
+                .into_iter()
+                .filter_map(|response| response.data)
+                .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
+                .collect();
+
+            let record_batches = record_batches?;
+
+            // TODO(jleibs): Still need a better pattern for getting these schemas
+            let first = record_batches
+                .first()
+                .ok_or_else(|| PyValueError::new_err("No chunks returned from query"))?;
+
+            let schema = first.schema();
+
+            let reader: Box<dyn RecordBatchReader + Send> = Box::new(RecordBatchIterator::new(
+                record_batches.into_iter().map(Ok),
+                schema,
+            ));
+
+            Ok(PyArrowType(reader))
+        })
     }
 }

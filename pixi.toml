@@ -252,7 +252,7 @@ fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo --quiet run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-files
 lint-rerun = "python scripts/lint.py"
-lint-rs-files = "rustfmt --edition 2021 --check"
+lint-rs-files = "rustfmt --edition 2024 --check"
 lint-rs-all = "cargo fmt --check"
 
 lint-typos = "typos"
@@ -434,6 +434,9 @@ search-index = "cargo run --locked --quiet -p re_dev_tools -- search-index"
 
 # Serve python docs locally
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
+
+# Build python docs locally
+py-docs-build = "mkdocs build -f rerun_py/mkdocs.yml"
 
 [feature.wheel-test.tasks]
 # In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
@@ -644,7 +647,6 @@ mkdocs-material-extensions = "==1.3"
 mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
 mkdocstrings = "==0.26.2"
 mkdocstrings-python = "==1.12.1"
-mike = "==1.1.2"
 setuptools = ">75"
 sphobjinv = "==2.3.1"
 
