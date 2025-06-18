@@ -703,7 +703,7 @@ fn tee(
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::new(sink.path.clone())
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-            resolved_sinks.push(Box::new(sink))
+            resolved_sinks.push(Box::new(sink));
         } else {
             let type_name = sink.bind(py).get_type().name()?;
             return Err(PyRuntimeError::new_err(format!(
