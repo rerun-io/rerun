@@ -50,7 +50,7 @@ project folder. This will create a `pixi.toml` file that manages the project. Af
 `pixi add arrow-cpp==18.0.0` to add arrow-cpp as a dependency to your project.
 
 If you install the `rerun-sdk` Python package into the same environment, take care to pick a compatible arrow version.
-See [`rerun-sdk`'s project definition](https://github.com/rerun-io/rerun/blob/latest/rerun_py/pyproject.toml).
+On Linux & Mac you can check the current arrow version for instance using `curl -s https://pypi.org/pypi/rerun-sdk/json  | jq -r | grep pyarrow`.
 
 Now, any Pixi tasks added to your project will have access to the `arrow-cpp` library.
 
