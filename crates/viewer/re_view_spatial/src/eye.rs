@@ -409,15 +409,7 @@ impl ViewEye {
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
-        let mut speed = match self.speed {
-            SpeedControl::Auto => {
-                match self.mode {
-                    EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
-                    EyeMode::Orbital => self.orbit_radius,
-                }
-            }
-            SpeedControl::Override(speed) => speed,
-        };
+        let mut speed = self.compute_speed_for_mode(bounding_boxes);
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
