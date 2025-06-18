@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[repr(u8)]
+#[repr(u32)]
 pub enum VideoCodec {
     /// Advanced Video Coding (AVC/H.264)
     ///
@@ -37,7 +37,9 @@ pub enum VideoCodec {
     /// (Note that this is different from AVCC format found in MP4 files.
     /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
-    H264 = 1,
+    ///
+    /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
+    H264 = 0x61766331,
 }
 
 impl ::re_types_core::Component for VideoCodec {
@@ -54,7 +56,7 @@ impl ::re_types_core::Loggable for VideoCodec {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
-        DataType::UInt8
+        DataType::UInt32
     }
 
     fn to_arrow_opt<'a>(
@@ -72,7 +74,7 @@ impl ::re_types_core::Loggable for VideoCodec {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| *datum as u8);
+                    let datum = datum.map(|datum| *datum as u32);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -80,7 +82,7 @@ impl ::re_types_core::Loggable for VideoCodec {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            as_array_ref(PrimitiveArray::<UInt8Type>::new(
+            as_array_ref(PrimitiveArray::<UInt32Type>::new(
                 ScalarBuffer::from(
                     data0
                         .into_iter()
@@ -103,7 +105,7 @@ impl ::re_types_core::Loggable for VideoCodec {
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
-            .downcast_ref::<UInt8Array>()
+            .downcast_ref::<UInt32Array>()
             .ok_or_else(|| {
                 let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
@@ -112,7 +114,7 @@ impl ::re_types_core::Loggable for VideoCodec {
             .with_context("rerun.components.VideoCodec#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::H264)),
+                Some(1635148593) => Ok(Some(Self::H264)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -143,7 +145,7 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::H264 => {
-                "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)"
+                "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample?speculative-link)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian."
             }
         }
     }

@@ -2332,16 +2332,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "sample".into(), display_name :
-                    "Sample", component_name : "rerun.components.VideoSample".into(),
+                    ArchetypeFieldReflection { name : "codec".into(), display_name :
+                    "Codec", component_name : "rerun.components.VideoCodec".into(),
                     docstring_md :
-                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link) for codec specific requirements.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "codec"
-                    .into(), display_name : "Codec", component_name :
-                    "rerun.components.VideoCodec".into(), docstring_md :
                     "The codec used to encode the video chunks.\n\nThis property is expected to be constant over time and is ideally logged statically once per stream.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "draw_order"
-                    .into(), display_name : "Draw order", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "sample"
+                    .into(), display_name : "Sample", component_name :
+                    "rerun.components.VideoSample".into(), docstring_md :
+                    "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec?speculative-link) for codec specific requirements.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-15.0`.",
                     is_required : false, },

@@ -16,8 +16,10 @@ TODO(#7484): Add snippet.
 
 ## Fields
 ### Required
-* `sample`: [`VideoSample`](../components/video_sample.md)
 * `codec`: [`VideoCodec`](../components/video_codec.md)
+
+### Recommended
+* `sample`: [`VideoSample`](../components/video_sample.md)
 
 ### Optional
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)

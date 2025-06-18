@@ -305,7 +305,8 @@ impl NonNestedImageCounts {
     fn increment_count(&mut self, dims: &MaxDimensions) {
         self.color += dims.image_types.contains(ImageTypes::IMAGE) as usize
             + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
-            + dims.image_types.contains(ImageTypes::VIDEO) as usize;
+            + dims.image_types.contains(ImageTypes::VIDEO_ASSET) as usize
+            + dims.image_types.contains(ImageTypes::VIDEO_STREAM) as usize;
         self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
         self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
     }
