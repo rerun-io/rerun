@@ -161,9 +161,10 @@ pub enum EyeMode {
 
 /// The speed of a [`ViewEye`] can be computed automatically or set manually.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-enum SpeedControl {
+enum CameraTranslationSpeed {
     /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`fallback_speed_for_mode`]
     Auto,
+
     /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
     Override(f32),
 }
@@ -205,7 +206,7 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
-    speed: SpeedControl,
+    speed: CameraTranslationSpeed,
     velocity: Vec3,
 }
 
@@ -226,7 +227,7 @@ impl ViewEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
-            speed: SpeedControl::Auto,
+            speed: CameraTranslationSpeed::Auto,
             velocity: Vec3::ZERO,
         }
     }
@@ -298,14 +299,14 @@ impl ViewEye {
     /// Returns the actual speed (float) of [`ViewEye`].
     pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.speed {
-            SpeedControl::Auto => self.fallback_speed_for_mode(bounding_boxes),
-            SpeedControl::Override(speed) => speed,
+            CameraTranslationSpeed::Auto => self.fallback_speed_for_mode(bounding_boxes),
+            CameraTranslationSpeed::Override(speed) => speed,
         }
     }
 
     /// Set the speed to a specific value set by the user via the UI.
     pub fn set_speed(&mut self, new_speed: f32) {
-        self.speed = SpeedControl::Override(new_speed);
+        self.speed = CameraTranslationSpeed::Override(new_speed);
     }
 
     /// The local up-axis, if set
@@ -343,7 +344,7 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
-        self.speed = SpeedControl::Auto;
+        self.speed = CameraTranslationSpeed::Auto;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
