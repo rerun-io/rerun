@@ -7,7 +7,7 @@ use re_types::{
     components::Visible,
     datatypes::TensorBuffer,
 };
-use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
+use re_ui::{Help, IconText, MouseButtonText, icons, list_item, UiExt};
 use re_view::{
     controls::SELECTION_RECT_ZOOM_BUTTON, suggest_view_for_each_entity, view_property_ui,
 };
@@ -192,6 +192,8 @@ impl ViewClass for BarChartView {
 
             let mut plot_item_id_to_entity_path = HashMap::default();
 
+            let is_dark_theme = matches!(ui.theme(), egui::Theme::Dark);
+
             let egui_plot::PlotResponse {
                 response,
                 hovered_plot_item,
@@ -201,9 +203,14 @@ impl ViewClass for BarChartView {
                     ent_path: &EntityPath,
                     values: impl Iterator<Item = N>,
                     color: &re_types::components::Color,
+                    is_dark_theme: bool,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();
-                    let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
+                    let fill = if is_dark_theme {
+                        color.gamma_multiply(0.75).additive() // make sure overlapping bars are obvious for dark mode
+                    } else {
+                        color.gamma_multiply(0.75)
+                    };
                     let stroke_color = fill.linear_multiply(0.5);
                     BarChart::new(
                         "bar_chart",
@@ -225,41 +232,43 @@ impl ViewClass for BarChartView {
                 for (ent_path, (tensor, color)) in charts {
                     let chart = match &tensor.buffer {
                         TensorBuffer::U8(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::U16(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::U32(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::U64(data) => create_bar_chart(
                             ent_path,
                             data.iter().copied().map(|v| v as f64),
                             color,
+                            is_dark_theme,
                         ),
                         TensorBuffer::I8(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::I16(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::I32(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::I64(data) => create_bar_chart(
                             ent_path,
                             data.iter().copied().map(|v| v as f64),
                             color,
+                            is_dark_theme,
                         ),
                         TensorBuffer::F16(data) => {
-                            create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()), color)
+                            create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()), color, is_dark_theme)
                         }
                         TensorBuffer::F32(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                         TensorBuffer::F64(data) => {
-                            create_bar_chart(ent_path, data.iter().copied(), color)
+                            create_bar_chart(ent_path, data.iter().copied(), color, is_dark_theme)
                         }
                     };
 
