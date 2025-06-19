@@ -228,6 +228,7 @@ h264-reader = "0.8"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "16.0.0"
 home = "=0.5.9"
+http = "1.2.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
@@ -329,7 +330,7 @@ tonic-web = "0.13.1"
 tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
 tower-http = "0.6"
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
@@ -373,6 +374,26 @@ wgpu = { version = "25.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 xshell = "0.2.7"
+
+
+
+# TODO: do telemetry & tracy support for real
+redap_telemetry = { path = "crates/utils/redap_telemetry", version = "=0.24.0-alpha.1", default-features = false }
+opentelemetry = { version = "0.29.0", features = ["metrics"] }
+opentelemetry-otlp = "0.29.0"
+opentelemetry-stdout = "0.29.0"
+opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"] }
+tower-service = "0.3"
+tracing-opentelemetry = "0.30.0"
+tracing-subscriber = { version = "0.3.18", features = ["tracing-log", "fmt", "env-filter"] }
+tracing-tracy = { version = "0.11", default-features = false, features = [
+  "broadcast",
+  "callstack-inlines",
+  "code-transfer",
+  "context-switch-tracing",
+  "enable",
+  "system-tracing",
+] } # no sampling, it's very noisy and not that useful
 
 
 # ---------------------------------------------------------------------------------
