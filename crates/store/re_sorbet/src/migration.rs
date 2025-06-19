@@ -272,17 +272,6 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         batch.schema().metadata.clone(),
     ));
 
-    eprintln!(
-        "Reordered columns. Before: {:?}, after: {:?}",
-        batch
-            .schema()
-            .fields()
-            .iter()
-            .map(|f| f.name())
-            .collect_vec(),
-        schema.fields().iter().map(|f| f.name()).collect_vec()
-    );
-
     if schema.fields() != batch.schema().fields() {
         re_log::debug!(
             "Reordered columns. Before: {:?}, after: {:?}",
