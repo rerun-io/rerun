@@ -405,7 +405,7 @@ impl ViewEye {
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
-        let mut speed = self.compute_speed_for_mode(bounding_boxes);
+        let mut speed = self.speed(bounding_boxes);
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
