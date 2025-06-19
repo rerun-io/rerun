@@ -496,7 +496,6 @@ impl ConnectionHandle {
                             .entered();
 
                             for chunk_and_partition_id in chunks_and_partition_ids {
-                                // while let Some(chunk_and_partition_id) = chunk_stream.next().await {
                                 let (chunk, partition_id) = chunk_and_partition_id;
 
                                 let partition_id = partition_id.ok_or_else(|| {
