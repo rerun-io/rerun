@@ -139,6 +139,18 @@ pub struct DesignTokens {
     pub error_fg_color: Color32,
     pub warn_fg_color: Color32,
     pub popup_shadow_color: Color32,
+    pub surface_success: Color32,
+    pub surface_info: Color32,
+    pub surface_warning: Color32,
+    pub surface_error: Color32,
+    pub border_success: Color32,
+    pub border_info: Color32,
+    pub border_warning: Color32,
+    pub border_error: Color32,
+    pub icon_content_success: Color32,
+    pub icon_content_info: Color32,
+    pub icon_content_warning: Color32,
+    pub icon_content_error: Color32,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -261,6 +273,19 @@ impl DesignTokens {
             text_strong: get_color("text_strong"),
             error_fg_color: get_color("error_fg_color"),
             warn_fg_color: get_color("warn_fg_color"),
+
+            surface_success: get_color("surface_success"),
+            surface_info: get_color("surface_info"),
+            surface_warning: get_color("surface_warning"),
+            surface_error: get_color("surface_error"),
+            border_success: get_color("border_success"),
+            border_info: get_color("border_info"),
+            border_warning: get_color("border_warning"),
+            border_error: get_color("border_error"),
+            icon_content_success: get_color("icon_content_success"),
+            icon_content_info: get_color("icon_content_info"),
+            icon_content_warning: get_color("icon_content_warning"),
+            icon_content_error: get_color("icon_content_error"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
@@ -741,8 +766,15 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
     if color.starts_with('#') {
-        Ok(Color32::from_hex(color)
-            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?)
+        let mut color = Color32::from_hex(color)
+            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?;
+        if let Ok(alpha) = color_alias.get("alpha") {
+            let alpha = alpha
+                .as_u8()
+                .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
+            color = color.linear_multiply(alpha as f32 / 255.0);
+        }
+        Ok(color)
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
@@ -760,7 +792,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
             let alpha = alpha
                 .as_u8()
                 .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
-            color = color.gamma_multiply_u8(alpha);
+            color = color.linear_multiply(alpha as f32 / 255.0);
         }
         Ok(color)
     } else {

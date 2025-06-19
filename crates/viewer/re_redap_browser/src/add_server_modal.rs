@@ -156,13 +156,15 @@ impl ServerModal {
 
                             match &self.mode {
                                 ServerModalMode::Add => {
-                                    ctx.command_sender.send(Command::AddServer(origin)).ok();
+                                    ctx.command_sender
+                                        .send(Command::AddServer(origin.clone()))
+                                        .ok();
                                 }
                                 ServerModalMode::Edit(old_origin) => {
                                     ctx.command_sender
                                         .send(Command::UpdateServer {
                                             previous_origin: old_origin.clone(),
-                                            new_origin: origin,
+                                            new_origin: origin.clone(),
                                         })
                                         .ok();
                                 }

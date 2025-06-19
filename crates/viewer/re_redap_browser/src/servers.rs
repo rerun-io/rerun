@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
+use std::task::Poll;
 
+use ahash::HashMap;
 use datafusion::prelude::{col, lit};
 use egui::{Frame, Margin, RichText, Widget as _};
+use tonic::{Code, Status};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -10,8 +13,9 @@ use re_log_types::{EntityPathPart, EntryId};
 use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_ui::alert::Alert;
 use re_ui::list_item::{ItemActionButton, ItemButton as _, ItemMenuButton};
-use re_ui::{UiExt as _, list_item};
+use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
     ViewerContext,
@@ -19,7 +23,7 @@ use re_viewer_context::{
 
 use crate::add_server_modal::{ServerModal, ServerModalMode};
 use crate::context::Context;
-use crate::entries::{Dataset, Entries};
+use crate::entries::{Dataset, Entries, EntryError};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
@@ -89,8 +93,118 @@ impl Server {
         self.entries.find_dataset(entry_id)
     }
 
+    fn title_ui(
+        &self,
+        title: String,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        content: impl FnOnce(&mut egui::Ui),
+    ) {
+        Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(RichText::new(title).strong());
+                if ui
+                    .small_icon_button(&icons::RESET, "Refresh collection")
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send(Command::RefreshCollection(self.origin.clone()))
+                        .ok();
+                }
+            });
+
+            ui.add_space(12.0);
+
+            content(ui);
+        });
+    }
+
+    /*
+
+        [crates/viewer/re_redap_browser/src/servers.rs:125:13] &err = TonicError(
+            Status {
+                code: Unauthenticated,
+                message: "missing credentials",
+                metadata: MetadataMap {
+                    headers: {
+                        "content-type": "application/grpc",
+                        "date": "Thu, 19 Jun 2025 16:02:32 GMT",
+                        "access-control-expose-headers": "*",
+                        "vary": "origin, access-control-request-method, access-control-request-headers",
+                        "access-control-allow-origin": "*",
+                    },
+                },
+                source: None,
+            },
+        )
+
+
+    [crates/viewer/re_redap_browser/src/servers.rs:125:13] &err = TonicError(
+        Status {
+            code: Unauthenticated,
+            message: "invalid credentials",
+            metadata: MetadataMap {
+                headers: {
+                    "content-type": "application/grpc",
+                    "date": "Thu, 19 Jun 2025 16:03:31 GMT",
+                    "access-control-expose-headers": "*",
+                    "vary": "origin, access-control-request-method, access-control-request-headers",
+                    "access-control-allow-origin": "*",
+                },
+            },
+            source: None,
+        },
+    )
+
+
+             */
+
     /// Central panel UI for when a server is selected.
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        if let Poll::Ready(Err(err)) = self.entries.state() {
+            dbg!(&err);
+            self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
+                if err.is_missing_token() || err.is_wrong_token() {
+                    let message = if err.is_missing_token() {
+                        "This server requires a token to access its data."
+                    } else {
+                        "The provided token is invalid for this server."
+                    };
+                    let edit_message = if err.is_missing_token() {
+                        "Add a token"
+                    } else {
+                        "Edit token"
+                    };
+                    Alert::warning().show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.strong(message);
+                            if ui
+                                .link(RichText::new(edit_message).strong().underline())
+                                .clicked()
+                            {
+                                ctx.command_sender
+                                    .send(Command::OpenEditServerModal(self.origin.clone()))
+                                    .ok();
+                            }
+                        });
+                    });
+                }
+
+                match err {
+                    EntryError::TonicError(status) => match status.code() {
+                        Code::Unauthenticated => {}
+                        _ => {
+                            ui.error_label(err.to_string());
+                        }
+                    },
+                    _ => {
+                        ui.error_label(err.to_string());
+                    }
+                }
+            });
+            return;
+        };
+
         const ENTRY_LINK_COLUMN_NAME: &str = "link";
 
         re_dataframe_ui::DataFusionTableWidget::new(
@@ -455,6 +569,7 @@ impl RedapServers {
 
             Command::RemoveServer(origin) => {
                 self.servers.remove(&origin);
+                connection_registry.remove_token(&origin);
             }
 
             Command::RefreshCollection(origin) => {
