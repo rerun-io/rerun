@@ -470,7 +470,9 @@ impl ConnectionHandle {
                     async move {
                         while let Some(chunk_and_partition_id) = chunk_stream.next().await {
                             // The only possible error is the other end hanging up, which is not our problem.
-                            _ = tx.send(chunk_and_partition_id).await;
+                            if tx.send(chunk_and_partition_id).await.is_err() {
+                                break;
+                            }
                         }
                     }
                     .instrument(tracing::trace_span!("get_chunks::forward"))
