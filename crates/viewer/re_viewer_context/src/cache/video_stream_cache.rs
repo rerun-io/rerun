@@ -335,9 +335,8 @@ fn read_samples_from_chunk(
                 }
 
                 let sample_idx = sample_base_idx + start;
-                let byte_offset = offsets[start] as usize;
-                let byte_length = lengths[start];
-                let sample_bytes = &values[byte_offset..(byte_offset + byte_length)];
+                let byte_range = URange { start:offsets[start] as usize, len: lengths[start] };
+                let sample_bytes = &values[byte_range.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
                 // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
@@ -386,6 +385,11 @@ fn read_samples_from_chunk(
                     }
                 }
 
+                let Some(byte_range) = byte_range.try_cast::<u32>() else {
+                    re_log::warn_once!("Video byte range does not fit in u32: {byte_range:?}");
+                    return None;
+                };
+
                 Some(re_video::SampleMetadata {
                     is_sync,
 
@@ -399,8 +403,7 @@ fn read_samples_from_chunk(
 
                     // We're using offsets directly into the chunk data.
                     buffer_index,
-                    byte_offset: byte_offset as u32,
-                    byte_length: byte_length as u32,
+                    byte_range
                 })
             }),
     );
@@ -740,10 +743,8 @@ mod tests {
                 .all(|s| s.buffer_index < video_sample_buffers.num_elements())
         );
         assert!(
-            samples
-                .iter()
-                .all(|s| (s.byte_offset + s.byte_length) as usize
-                    <= video_sample_buffers[s.buffer_index].buffer.len())
+            samples.iter().all(|s| s.byte_range.end() as usize
+                <= video_sample_buffers[s.buffer_index].buffer.len())
         );
 
         // The GOPs in the sample data have a fixed size of 10.

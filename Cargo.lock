@@ -7973,6 +7973,7 @@ dependencies = [
  "re_mp4",
  "re_rav1d",
  "re_tracing",
+ "re_urange",
  "serde",
  "thiserror 1.0.65",
  "wasm-bindgen",
