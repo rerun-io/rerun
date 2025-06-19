@@ -1,4 +1,4 @@
-use re_grpc_client::{ConnectionRegistry, ConnectionRegistryHandle};
+use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
@@ -72,7 +72,7 @@ impl ServerModal {
                 let title = match &self.mode {
                     ServerModalMode::Add => "Add Server".to_owned(),
                     ServerModalMode::Edit(origin) => {
-                        format!("Edit Server: {}", origin.host.to_string())
+                        format!("Edit Server: {}", origin.host)
                     }
                 };
                 ModalWrapper::new(&title)
