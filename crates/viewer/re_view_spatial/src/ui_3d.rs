@@ -172,9 +172,7 @@ impl View3DState {
             let t = ease_out(t);
 
             if let Some(target_orbit) = &cam_interpolation.target_view_eye {
-                *view_eye = cam_interpolation
-                    .start
-                    .lerp(target_orbit, t, bounding_boxes);
+                *view_eye = cam_interpolation.start.lerp(target_orbit, t);
             } else if let Some(target_eye) = &cam_interpolation.target_eye {
                 let camera = cam_interpolation.start.to_eye().lerp(target_eye, t);
                 view_eye.copy_from_eye(&camera);

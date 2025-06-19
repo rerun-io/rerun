@@ -347,19 +347,7 @@ impl ViewEye {
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
-    fn compute_speed_lerp(
-        &self,
-        other: &Self,
-        t: f32,
-        bounding_boxes: &SceneBoundingBoxes,
-    ) -> SpeedControl {
-        let self_speed = self.speed(bounding_boxes);
-        let other_speed = other.fallback_speed_for_mode(bounding_boxes);
-        let lerp_speed = egui::lerp(self_speed..=other_speed, t);
-        SpeedControl::Override(lerp_speed)
-    }
-
-    pub fn lerp(&self, other: &Self, t: f32, bounding_boxes: &SceneBoundingBoxes) -> Self {
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
         if t == 0.0 {
             *self // avoid rounding errors
         } else if t == 1.0 {
@@ -375,7 +363,7 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                speed: self.compute_speed_lerp(other, t, bounding_boxes),
+                speed: other.speed,
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
