@@ -55,6 +55,8 @@ const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 
 pub const REDAP_URI_BUTTON_VARIANT: &str = "redap_uri";
 
+pub const REDAP_ENTRY_KIND_VARIANT: &str = "redap_entry_kind";
+
 // ----
 
 /// Crates a component ui registry and registers all editors of this crate to it.
@@ -199,6 +201,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // --------------------------------------------------------------------------------
 
     registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
+    registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
 
     registry
 }

@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use egui::{Frame, Margin, RichText};
+use datafusion::prelude::{col, lit};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
+use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_sorbet::BatchType;
+use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::list_item::ItemActionButton;
-use re_ui::{UiExt as _, icons, list_item};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
     ViewerContext,
@@ -88,58 +89,56 @@ impl Server {
     }
 
     /// Central panel UI for when a server is selected.
-    fn server_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        Frame::new()
-            .inner_margin(Margin {
-                top: 16,
-                bottom: 12,
-                left: 16,
-                right: 16,
-            })
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading(RichText::new("Catalog").strong());
-                    if ui
-                        .small_icon_button(&icons::RESET, "Refresh collection")
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::RefreshCollection(self.origin.clone()))
-                            .ok();
-                    }
-                });
+    fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        const ENTRY_LINK_COLUMN_NAME: &str = "link";
 
-                ui.add_space(12.0);
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.ctx.clone(),
+            "__entries",
+        )
+        .title(self.origin.host.to_string())
+        .title_button(ItemActionButton::new(
+            &re_ui::icons::RESET,
+            "Refresh collection",
+            || {
+                ctx.command_sender
+                    .send(Command::RefreshCollection(self.origin.clone()))
+                    .ok();
+            },
+        ))
+        .column_blueprint(|desc| {
+            let mut blueprint = ColumnBlueprint::default();
 
-                ui.list_item_scope(
-                    egui::Id::new(&self.origin).with("catalog server ui"),
-                    |ui| {
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Address").value_fn(|ui, _| {
-                                ui.strong(self.origin.to_string());
-                            }),
-                        );
+            if let ColumnDescriptorRef::Component(component) = desc {
+                if component.archetype_field_name == "entry_kind" {
+                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
+                }
+            }
 
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Datasets").value_fn(|ui, _| {
-                                match self.entries.dataset_count() {
-                                    None => ui.label("loading…"),
-                                    Some(Ok(count)) => ui.strong(format!("{count}")),
-                                    Some(Err(err)) => ui
-                                        .error_label("could not load entries")
-                                        .on_hover_text(err.to_string()),
-                                };
-                            }),
-                        );
+            let column_sort_key = match desc.display_name().as_str() {
+                "name" => 0,
+                ENTRY_LINK_COLUMN_NAME => 1,
+                _ => 2,
+            };
 
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Tables").value_fn(|ui, _| {
-                                ui.strong(format!("{}", self.entries.table_count()));
-                            }),
-                        );
-                    },
-                );
-            });
+            blueprint = blueprint.sort_key(column_sort_key);
+
+            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+            }
+
+            blueprint
+        })
+        .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+        .filter(
+            col("entry_kind")
+                .in_list(
+                    vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
+                    false,
+                )
+                .and(col("name").not_eq(lit("__entries"))),
+        )
+        .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn dataset_entry_ui(
@@ -420,17 +419,17 @@ impl RedapServers {
 
     pub fn server_central_panel_ui(
         &self,
-        global_ctx: &GlobalContext<'_>,
+        viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
     ) {
         if let Some(server) = self.servers.get(origin) {
             self.with_ctx(|ctx| {
-                server.server_ui(ctx, ui);
+                server.server_ui(viewer_ctx, ctx, ui);
             });
         } else {
-            global_ctx
-                .command_sender
+            viewer_ctx
+                .command_sender()
                 .send_system(SystemCommand::ChangeDisplayMode(
                     DisplayMode::LocalRecordings,
                 ));
@@ -472,13 +471,19 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(&mut self, connection_registry: &ConnectionRegistryHandle, ui: &egui::Ui) {
+    pub fn modals_ui(
+        &mut self,
+        global_ctx: &GlobalContext<'_>,
+        connection_registry: &ConnectionRegistryHandle,
+        ui: &egui::Ui,
+    ) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
         };
 
-        self.add_server_modal_ui.ui(&ctx, connection_registry, ui);
+        self.add_server_modal_ui
+            .ui(global_ctx, &ctx, connection_registry, ui);
     }
 
     #[inline]
