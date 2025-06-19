@@ -353,11 +353,7 @@ impl ViewEye {
         t: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> SpeedControl {
-        let self_speed = match self.speed {
-            SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
-            SpeedControl::Override(s) => s,
-        };
-
+        let self_speed = self.speed(bounding_boxes);
         let other_speed = other.compute_speed_for_mode(bounding_boxes);
         let lerp_speed = egui::lerp(self_speed..=other_speed, t);
         SpeedControl::Override(lerp_speed)
