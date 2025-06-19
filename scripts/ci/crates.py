@@ -183,7 +183,6 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
         helper(ctx, crates, name, output, visited)
     return output
 
-
 class Bump(Enum):
     MAJOR = "major"
     """Bump the major version, e.g. `0.9.0-alpha.5+dev` -> `1.0.0`"""
@@ -234,16 +233,42 @@ class Bump(Enum):
             if latest_version == latest_version_finalized:
                 # Latest published is not a pre-release, bump minor and add alpha+dev
                 # example: 0.9.1 -> 0.10.0-alpha.1+dev
-                return version.bump_minor().bump_prerelease(token="alpha").replace(build="dev")
+                return version.bump_minor().bump_prerelease(token="alpha").replace(build=build_metadata())
             else:
                 # Latest published is a pre-release, bump prerelease
                 # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
-                return version.bump_prerelease(token="alpha").replace(build="dev")
+                return version.bump_prerelease(token="alpha").replace(build=build_metadata())
 
+def build_metadata(ctx: Context | None = None, dev: str | None = None) -> str:
+    """
+    Returns a string to be used as build metadata for dev versions.
+
+    Args:
+        ctx: Optional context for error reporting
+        dev: If "sha", returns the 7-digits prefix of the commit sha
+             If any other value, returns "dev".
+
+    Returns:
+        A string of the form "dev" or "<7digits_commit_sha>"
+
+    """
+    if not dev or dev != "sha":
+        return "dev"
+
+    try:
+        commit_sha: str = git.Repo().head.object.hexsha[:7]
+    except Exception as e:
+        # If we can't get the commit SHA, fall back
+        if ctx:
+            ctx.error(f"failed to get commit sha: {e}")
+        else:
+            print(f"failed to get commit sha, falling back to \"dev\": {e}", file=sys.stderr)
+        return "dev"
+
+    return commit_sha
 
 def is_pinned(version: str) -> bool:
     return version.startswith("=")
-
 
 class Context:
     ops: list[str] = []
@@ -330,7 +355,7 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
+def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: str | None) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
@@ -345,7 +370,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         else:
             new_version = VersionInfo.parse(bump)
     if dev is not None:
-        new_version = new_version.replace(build="dev" if dev else None)
+        new_version = new_version.replace(build=build_metadata(ctx, dev) if dev else None)
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
@@ -552,6 +577,7 @@ def get_release_version_from_git_branch() -> str:
     return git.Repo().active_branch.name.removeprefix("release-")
 
 
+
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
     if target is Target.Git:
         branch_name = get_release_version_from_git_branch()
@@ -669,7 +695,13 @@ def main() -> None:
     )
     target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
-    dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
+    dev_parser.add_argument(
+        "--dev",
+        nargs="?",
+        const="static",
+        choices=["static", "sha"],
+        help="Set build metadata to `+dev` (static) or `+<sha>` (sha)",
+    )
     dev_parser.add_argument(
         "--no-dev",
         dest="dev",
