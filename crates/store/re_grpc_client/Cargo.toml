@@ -30,6 +30,7 @@ re_protos.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_uri.workspace = true
+redap_telemetry.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true

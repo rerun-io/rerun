@@ -1,0 +1,51 @@
+[package]
+name = "redap_telemetry"
+authors.workspace = true
+description = "Rerun's analytics SDK"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[features]
+default = []
+tracy = ["dep:tracing-tracy"]
+
+
+[dependencies]
+
+# External
+ahash.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+http.workspace = true
+opentelemetry = { workspace = true, features = ["metrics"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tonic.workspace = true
+tower-http = { workspace = true, features = ["propagate-header", "trace"] }
+tower.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "json"] }
+
+# External (optional)
+tracing-tracy = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+rand.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
