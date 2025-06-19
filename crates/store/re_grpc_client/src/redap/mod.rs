@@ -216,6 +216,7 @@ pub(crate) async fn client(
 //TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
 //TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
 //the `Chunk` conversion. The chunks should instead include that information.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
@@ -256,6 +257,36 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             res.map_err(Into::<StreamError>::into)
                 .and_then(std::convert::identity)
         })
+}
+
+// This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
+#[cfg(target_arch = "wasm32")]
+pub fn get_chunks_response_to_chunk_and_partition_id(
+    response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    response.map(|resp| {
+        resp.map_err(Into::into).and_then(|r| {
+            let _span =
+                tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                    .entered();
+
+            r.chunks
+                .into_iter()
+                .map(|arrow_msg| {
+                    let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+
+                    let arrow_msg =
+                        re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
+                            .map_err(Into::<StreamError>::into)?;
+
+                    let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                        .map_err(Into::<StreamError>::into)?;
+
+                    Ok((chunk, partition_id))
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+    })
 }
 
 /// Canonical way to ingest partition data from a Rerun data platform server, dealing with
