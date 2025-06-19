@@ -9,7 +9,7 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{ChunkId, EntityPath, TimelineName};
+use re_chunk::{ChunkId, EntityPath, TimelineName, URange};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
@@ -322,7 +322,7 @@ fn read_samples_from_chunk(
         chunk
             .iter_component_offsets(&sample_descr)
             .zip(chunk.iter_component_indices(&timeline, &sample_descr))
-            .filter_map(move |((idx, len), (time, _row_id))| {
+            .filter_map(move |(URange { start, len }, (time, _row_id))| {
                 if len == 0 {
                     // Ignore empty samples.
                     return None;
@@ -334,9 +334,9 @@ fn read_samples_from_chunk(
                     return None;
                 }
 
-                let sample_idx = sample_base_idx + idx;
-                let byte_offset = offsets[idx] as usize;
-                let byte_length = lengths[idx];
+                let sample_idx = sample_base_idx + start;
+                let byte_offset = offsets[start] as usize;
+                let byte_length = lengths[start];
                 let sample_bytes = &values[byte_offset..(byte_offset + byte_length)];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:

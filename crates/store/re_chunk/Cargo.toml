@@ -40,6 +40,7 @@ re_sorbet.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
+re_urange.workspace = true
 
 # External
 ahash.workspace = true
