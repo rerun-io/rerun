@@ -14,6 +14,12 @@ pub fn run_native_app(
     app_creator: AppCreator,
     force_wgpu_backend: Option<&str>,
 ) -> eframe::Result {
+    if crate::docker_detection::is_docker() {
+        re_log::warn_once!(
+            "It looks like you are running the Rerun Viewer inside a Docker container. This is not officially supported, and may lead to performance issues and bugs.",
+        );
+    }
+
     let native_options = eframe_options(force_wgpu_backend);
 
     let window_title = "Rerun Viewer";

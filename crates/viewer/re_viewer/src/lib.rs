@@ -8,6 +8,7 @@ mod app_blueprint;
 mod app_state;
 mod background_tasks;
 mod default_views;
+mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
