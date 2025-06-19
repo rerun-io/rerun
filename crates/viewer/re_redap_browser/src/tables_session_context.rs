@@ -58,13 +58,11 @@ impl TablesSessionContext {
     ) -> Self {
         let ctx = Arc::new(SessionContext::new());
 
-        let registered_tables = {
-            RequestedObject::new_with_repaint(
-                runtime,
-                egui_ctx.clone(),
-                register_all_table_entries(ctx.clone(), connection_registry, origin.clone()),
-            )
-        };
+        let registered_tables = RequestedObject::new_with_repaint(
+            runtime,
+            egui_ctx.clone(),
+            register_all_table_entries(ctx.clone(), connection_registry, origin.clone()),
+        );
 
         Self {
             ctx,

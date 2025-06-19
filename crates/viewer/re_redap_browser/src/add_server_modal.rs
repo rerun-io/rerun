@@ -1,10 +1,10 @@
+use crate::context::Context;
+use crate::servers::Command;
 use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-
-use crate::context::Context;
-use crate::servers::Command;
+use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
 pub enum ServerModalMode {
     Add,
@@ -62,6 +62,7 @@ impl ServerModal {
     //TODO(ab): handle ESC and return
     pub fn ui(
         &mut self,
+        global_ctx: &GlobalContext<'_>,
         ctx: &Context<'_>,
         connection_registry: &ConnectionRegistryHandle,
         ui: &egui::Ui,
@@ -166,6 +167,9 @@ impl ServerModal {
                                         .ok();
                                 }
                             }
+                            global_ctx.command_sender.send_system(
+                                SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),
+                            );
                         }
                     } else {
                         ui.add_enabled(false, egui::Button::new(save_text));
