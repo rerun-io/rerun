@@ -32,9 +32,80 @@ class VideoStream(Archetype):
     All components except `sample` are typically logged statically once per entity.
     `sample` is then logged repeatedly for each frame on the timeline.
 
-    TODO(#7484): Add snippet.
-
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
+    Example
+    -------
+    ### Live streaming of on-the-fly encoded video:
+    ```python
+    import av
+    import numpy as np
+    import numpy.typing as npt
+    import rerun as rr
+
+    fps = 30
+    duration_seconds = 4
+    width = 480
+    height = 320
+    ball_radius = 30
+
+
+    def create_example_video_frame(frame_i: int) -> npt.NDArray[np.uint8]:
+        img = np.zeros((height, width, 3), dtype=np.uint8)
+        for h in range(height):
+            img[h, :] = [0, int(100 * h / height), int(200 * h / height)]  # Blue to purple gradient.
+
+        x_pos = width // 2  # Center horizontally.
+        y_pos = height // 2 + 80 * np.sin(2 * np.pi * frame_i / fps)
+        y, x = np.ogrid[:height, :width]
+        r_sq = (x - x_pos) ** 2 + (y - y_pos) ** 2
+        img[r_sq < ball_radius**2] = [255, 200, 0]  # Gold color
+
+        return img
+
+
+    rr.init("rerun_example_video_stream_synthetic", spawn=True)
+
+    # Setup encoding pipeline.
+    av.logging.set_level(av.logging.VERBOSE)
+    container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
+    stream = container.add_stream("libx264", rate=fps)
+    stream.width = width
+    stream.height = height
+    # TODO(#10090): Rerun Video Streams don't support b-frames yet.
+    # Note that b-frames are generally not recommended for low-latency streaming and may make logging more complex.
+    stream.max_b_frames = 0
+
+    # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
+    rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
+
+    # Generate frames and stream them directly to Rerun.
+    for frame_i in range(fps * duration_seconds):
+        img = create_example_video_frame(frame_i)
+        frame = av.VideoFrame.from_ndarray(img, format="rgb24")
+        for packet in stream.encode(frame):
+            if packet.pts is None:
+                continue
+            rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
+            rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
+
+    # Flush stream.
+    for packet in stream.encode():
+        if packet.pts is None:
+            continue
+        rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
+        rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png">
+      <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(
@@ -68,6 +139,10 @@ class VideoStream(Archetype):
             The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
+
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
@@ -134,6 +209,10 @@ class VideoStream(Archetype):
             The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
+
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
@@ -203,6 +282,10 @@ class VideoStream(Archetype):
             The samples are expected to be encoded using the `codec` field.
             Each video sample must contain enough data for exactly one video frame
             (this restriction may be relaxed in the future for some codecs).
+
+            Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+            never log this component as static data as this means that you loose all information of
+            previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         draw_order:
@@ -286,6 +369,10 @@ class VideoStream(Archetype):
     # The samples are expected to be encoded using the `codec` field.
     # Each video sample must contain enough data for exactly one video frame
     # (this restriction may be relaxed in the future for some codecs).
+    #
+    # Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
+    # never log this component as static data as this means that you loose all information of
+    # previous samples which may be required to decode an image.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
     #

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -261,7 +261,9 @@ class AnyValues(AsComponents):
                 if batch.is_valid():
                     self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
-    def with_field(self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True) -> Self:
+    def with_field(
+        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+    ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         if batch.is_valid():

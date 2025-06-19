@@ -6,9 +6,7 @@ use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
-use re_protos::manifest_registry::v1alpha1::{
-    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
-};
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
@@ -188,15 +186,20 @@ impl Server {
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME
-                        | DATASET_MANIFEST_ID_FIELD_NAME
-                        | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
+                    RECORDING_LINK_COLUMN_NAME | DATASET_MANIFEST_ID_FIELD_NAME
                 )
+            };
+
+            let column_sort_key = match desc.display_name().as_str() {
+                DATASET_MANIFEST_ID_FIELD_NAME => 0,
+                RECORDING_LINK_COLUMN_NAME => 1,
+                _ => 2,
             };
 
             let mut blueprint = ColumnBlueprint::default()
                 .display_name(name)
-                .default_visibility(default_visible);
+                .default_visibility(default_visible)
+                .sort_key(column_sort_key);
 
             if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
                 blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);

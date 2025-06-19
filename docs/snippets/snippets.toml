@@ -166,6 +166,10 @@ features = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
+"archetypes/video_stream_synthetic" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",

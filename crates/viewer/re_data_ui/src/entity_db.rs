@@ -1,3 +1,6 @@
+use jiff::SignedDuration;
+use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
+
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
@@ -84,6 +87,30 @@ impl crate::DataUi for EntityDb {
                     ui.end_row();
                 }
             }
+
+            if let Some(tl_name) = self.timelines().keys()
+                .find(|k| **k == re_log_types::TimelineName::log_time())
+            {
+                if let Some(range) = self.time_range_for(tl_name) {
+                    let delta_ns = (range.max() - range.min()).as_i64();
+                    if delta_ns > 0 {
+                        let duration = SignedDuration::from_nanos(delta_ns);
+
+                        let printer = SpanPrinter::new()
+                            .fractional(Some(FractionalUnit::Second))
+                            .precision(Some(2));
+
+                        let pretty = printer.duration_to_string(&duration);
+
+
+                        ui.grid_left_hand_label("Duration");
+                        ui.label(pretty)
+                            .on_hover_text("Duration between earliest and latest log_time.");
+                        ui.end_row();
+                    }
+                }
+            }
+
 
             {
                 ui.grid_left_hand_label("Size");
