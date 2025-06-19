@@ -100,6 +100,12 @@ url.workspace = true
 thiserror.workspace = true
 
 
+# TODO: do telemetry & tracy support for real
+redap_telemetry = { workspace = true, features = ["tracy"] }
+clap.workspace = true
+tracing.workspace = true
+
+
 [build-dependencies]
 re_build_tools.workspace = true
 pyo3-build-config.workspace = true

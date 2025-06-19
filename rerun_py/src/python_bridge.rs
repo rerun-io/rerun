@@ -43,6 +43,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::dataframe::PyRecording;
+use crate::utils::get_tokio_runtime;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -105,13 +106,43 @@ fn global_web_viewer_server()
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
+// TODO
+fn telemetry() -> parking_lot::MutexGuard<'static, redap_telemetry::Telemetry> {
+    static TELEMETRY: OnceCell<parking_lot::Mutex<redap_telemetry::Telemetry>> = OnceCell::new();
+    TELEMETRY
+        .get_or_init(|| {
+            #[allow(unsafe_code)]
+            unsafe {
+                std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
+            }
+
+            use clap::Parser as _;
+            let args = redap_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
+
+            let runtime = get_tokio_runtime(); // TODO
+            runtime.block_on(async {
+                let telemetry = redap_telemetry::Telemetry::init(
+                    args,
+                    redap_telemetry::TelemetryDropBehavior::Shutdown,
+                )
+                .unwrap();
+                parking_lot::Mutex::new(telemetry)
+            })
+        })
+        .lock()
+}
+
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
-    re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    //
+    // TODO: how do we coexist with that?
+    // re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+
+    let _telemetry = telemetry();
 
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;
@@ -359,6 +390,8 @@ fn shutdown(py: Python<'_>) {
 
         flush_garbage_queue();
     });
+
+    telemetry().shutdown();
 }
 
 // --- Recordings ---
