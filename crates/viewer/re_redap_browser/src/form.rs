@@ -54,15 +54,14 @@ impl FormField {
                 }
 
                 let response = ui.add(content);
+                if let Some(hint) = &self.hint_text {
+                    // ui.end_row();
+                    // ui.small("");
+                    ui.small(hint);
+                }
                 response
             })
             .inner;
-
-        if let Some(hint) = &self.hint_text {
-            ui.end_row();
-            ui.small("");
-            ui.small(hint);
-        }
 
         ui.end_row();
 
