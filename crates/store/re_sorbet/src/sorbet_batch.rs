@@ -162,6 +162,7 @@ impl SorbetBatch {
     /// Will perform some transformations:
     /// * Will automatically wrap data columns in `ListArrays` if they are not already
     /// * Will migrate legacy data to more modern form
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,
@@ -204,8 +205,21 @@ impl SorbetBatch {
 }
 
 /// Make sure all data columns are `ListArrays`.
+#[tracing::instrument(level = "trace", skip_all)]
 fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
+
+    let needs_migration = batch
+        .schema_ref()
+        .fields()
+        .iter()
+        .filter(|field| {
+            ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
+        })
+        .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
+    if !needs_migration {
+        return batch.clone();
+    }
 
     let num_columns = batch.num_columns();
     let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);

@@ -7,6 +7,7 @@ use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods,
 };
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
@@ -51,6 +52,7 @@ impl PyDatasetEntry {
 
     /// Return the Arrow schema of the data contained in the dataset.
     //TODO(#9457): there should be another `schema` method which returns a `PySchema`
+    #[instrument(skip_all)]
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
         let arrow_schema = Self::fetch_arrow_schema(&self_)?;
 
@@ -140,6 +142,7 @@ impl PyDatasetEntry {
     }
 
     /// Return the partition table as a Datafusion table provider.
+    #[instrument(skip_all)]
     fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -223,6 +226,7 @@ impl PyDatasetEntry {
     }
 
     /// Download a partition from the dataset.
+    #[instrument(skip(self_), err)]
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let catalog_client = super_.client.borrow(self_.py());
@@ -263,11 +267,13 @@ impl PyDatasetEntry {
             let mut chunk_stream =
                 get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
-            while let Some(chunk) = chunk_stream.next().await {
-                let (chunk, _partition_id) = chunk.map_err(to_py_err)?;
-                store
-                    .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(to_py_err)?;
+            while let Some(chunks) = chunk_stream.next().await {
+                for chunk in chunks.map_err(to_py_err)? {
+                    let (chunk, _partition_id) = chunk;
+                    store
+                        .insert_chunk(&std::sync::Arc::new(chunk))
+                        .map_err(to_py_err)?;
+                }
             }
 
             Ok(store)
@@ -322,6 +328,7 @@ impl PyDatasetEntry {
             store_position = false,
             base_tokenizer = "simple",
         ))]
+    #[instrument(skip(self_, column, time_index), err)]
     fn create_fts_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
@@ -378,6 +385,7 @@ impl PyDatasetEntry {
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
+    #[instrument(skip(self_, column, time_index, distance_metric), err)]
     fn create_vector_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
@@ -432,6 +440,7 @@ impl PyDatasetEntry {
     }
 
     /// Search the dataset using a full-text search query.
+    #[instrument(skip(self_, column), err)]
     fn search_fts(
         self_: PyRef<'_, Self>,
         query: String,
@@ -492,6 +501,7 @@ impl PyDatasetEntry {
     }
 
     /// Search the dataset using a vector search query.
+    #[instrument(skip(self_, query, column), err)]
     fn search_vector(
         self_: PyRef<'_, Self>,
         query: VectorLike<'_>,

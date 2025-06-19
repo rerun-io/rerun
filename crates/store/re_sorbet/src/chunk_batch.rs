@@ -159,6 +159,7 @@ impl TryFrom<SorbetBatch> for ChunkBatch {
     type Error = SorbetError;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    #[tracing::instrument(level = "trace", skip_all)]
     fn try_from(sorbet_batch: SorbetBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 

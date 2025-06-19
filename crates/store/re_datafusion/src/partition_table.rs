@@ -6,6 +6,7 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use tracing::instrument;
 
 use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -41,6 +42,7 @@ impl PartitionTableProvider {
 impl GrpcStreamToTable for PartitionTableProvider {
     type GrpcStreamData = ScanPartitionTableResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetPartitionTableSchemaRequest {
             dataset_id: Some(self.dataset_id.into()),
@@ -63,6 +65,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
         ))
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {

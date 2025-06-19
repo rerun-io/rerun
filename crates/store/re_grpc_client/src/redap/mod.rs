@@ -2,7 +2,6 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
@@ -116,6 +115,9 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
                 .with_enabled_roots()
                 .assume_http2(true),
         )?
+        // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
+        // .initial_stream_window_size(Some(4 * 1024 * 1024))
+        // .initial_connection_window_size(Some(16 * 1024 * 1024))
         .connect()
         .await
     {
@@ -219,17 +221,44 @@ pub(crate) async fn client(
 //the `Chunk` conversion. The chunks should instead include that information.
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
-) -> impl Stream<Item = Result<(Chunk, Option<String>), StreamError>> {
-    response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    response
+        .then(|resp| {
+            // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
+            // not going to make this one single pipeline any faster, but it will prevent starvation of
+            // the Tokio runtime (which would slow down every other futures currently scheduled!).
+            tokio::task::spawn_blocking(move || {
+                resp.map_err(Into::<StreamError>::into).and_then(|r| {
+                    let _span = tracing::trace_span!(
+                        "get_chunks::batch_decode",
+                        num_chunks = r.chunks.len()
+                    )
+                    .entered();
 
-            let partition_id = batch.schema().metadata().get("rerun.partition_id").cloned();
-            let chunk = Chunk::from_record_batch(&batch).map_err(Into::<StreamError>::into)?;
+                    r.chunks
+                        .into_iter()
+                        .map(|arrow_msg| {
+                            let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
 
-            Ok((chunk, partition_id))
+                            let arrow_msg =
+                                re_log_encoding::protobuf_conversions::arrow_msg_from_proto(
+                                    &arrow_msg,
+                                )
+                                .map_err(Into::<StreamError>::into)?;
+
+                            let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                                .map_err(Into::<StreamError>::into)?;
+
+                            Ok((chunk, partition_id))
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+            })
         })
-    })
+        .map(|res| {
+            res.map_err(Into::<StreamError>::into)
+                .and_then(std::convert::identity)
+        })
 }
 
 /// Canonical way to ingest partition data from a Rerun data platform server, dealing with
@@ -385,21 +414,25 @@ async fn stream_partition_from_server(
         return Ok(());
     }
 
+    // TODO(#10229): this looks to be converting back and forth?
+
     let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
-    while let Some(chunk) = chunk_stream.next().await {
-        let (chunk, _partition_id) = chunk?;
+    while let Some(chunks) = chunk_stream.next().await {
+        for chunk in chunks? {
+            let (chunk, _partition_id) = chunk;
 
-        if tx
-            .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok(());
-        }
+            if tx
+                .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
+            }
 
-        if let Some(on_msg) = &on_msg {
-            on_msg();
+            if let Some(on_msg) = &on_msg {
+                on_msg();
+            }
         }
     }
 

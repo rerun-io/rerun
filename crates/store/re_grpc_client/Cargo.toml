@@ -38,6 +38,7 @@ serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
+tracing.workspace = true
 tower.workspace = true
 url.workspace = true
 

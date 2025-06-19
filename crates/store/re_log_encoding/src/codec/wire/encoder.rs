@@ -33,7 +33,7 @@ impl Encode<RerunChunk> for ArrowRecordBatch {
         let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
         Ok(RerunChunk {
             encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
-            payload,
+            payload: payload.into(),
         })
     }
 }
@@ -43,7 +43,7 @@ impl Encode<re_protos::common::v1alpha1::DataframePart> for ArrowRecordBatch {
         let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
         Ok(re_protos::common::v1alpha1::DataframePart {
             encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
-            payload: Some(payload),
+            payload: Some(payload.into()),
         })
     }
 }

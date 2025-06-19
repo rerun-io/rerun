@@ -527,7 +527,6 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
 clang-tools = "16.0.6.*"          # clang-format
-clang = "16.0.6.*"
 cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
@@ -596,6 +595,7 @@ sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://b
 sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
 
 [feature.cpp.target.unix.dependencies]
+clang = "16.0.6.*"
 ninja = "1.11.1.*"
 # Use system compilers for C/C++.
 #

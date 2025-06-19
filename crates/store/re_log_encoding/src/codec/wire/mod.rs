@@ -1,3 +1,5 @@
+// TODO: this whole module feels uber-confusing, can we remove it now?
+
 pub mod decoder;
 pub mod encoder;
 
@@ -50,7 +52,7 @@ mod tests {
         let data = vec![2, 3, 4];
         let dataframe_part = DataframePart {
             encoder_version: EncoderVersion::V0 as i32,
-            payload: Some(data.clone()),
+            payload: Some(data.clone().into()),
         };
         let decoded = dataframe_part.decode();
 
