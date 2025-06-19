@@ -162,7 +162,7 @@ pub enum EyeMode {
 /// The speed of a [`ViewEye`] can be computed automatically or set manually.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 enum SpeedControl {
-    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`compute_speed_for_mode`]
+    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`fallback_speed_for_mode`]
     Auto,
     /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
     Override(f32),
@@ -288,7 +288,7 @@ impl ViewEye {
     }
 
     /// Compute the actual speed depending on the [`EyeMode`].
-    fn compute_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+    fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.mode {
             EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
             EyeMode::Orbital => self.orbit_radius,
@@ -298,7 +298,7 @@ impl ViewEye {
     /// Returns the actual speed (float) of [`ViewEye`].
     pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.speed {
-            SpeedControl::Auto => self.compute_speed_for_mode(bounding_boxes),
+            SpeedControl::Auto => self.fallback_speed_for_mode(bounding_boxes),
             SpeedControl::Override(speed) => speed,
         }
     }
@@ -354,7 +354,7 @@ impl ViewEye {
         bounding_boxes: &SceneBoundingBoxes,
     ) -> SpeedControl {
         let self_speed = self.speed(bounding_boxes);
-        let other_speed = other.compute_speed_for_mode(bounding_boxes);
+        let other_speed = other.fallback_speed_for_mode(bounding_boxes);
         let lerp_speed = egui::lerp(self_speed..=other_speed, t);
         SpeedControl::Override(lerp_speed)
     }
