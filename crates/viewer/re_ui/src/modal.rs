@@ -76,6 +76,7 @@ pub struct ModalWrapper {
     min_width: Option<f32>,
     min_height: Option<f32>,
     default_height: Option<f32>,
+    default_width: Option<f32>,
     full_span_content: bool,
     set_side_margins: bool,
     scrollable: egui::Vec2b,
@@ -89,6 +90,7 @@ impl ModalWrapper {
             min_width: None,
             min_height: None,
             default_height: None,
+            default_width: None,
             full_span_content: false,
             set_side_margins: true,
             scrollable: false.into(),
@@ -113,6 +115,13 @@ impl ModalWrapper {
     #[inline]
     pub fn default_height(mut self, default_height: f32) -> Self {
         self.default_height = Some(default_height);
+        self
+    }
+
+    /// Set the default width of the modal window.
+    #[inline]
+    pub fn default_width(mut self, default_width: f32) -> Self {
+        self.default_width = Some(default_width);
         self
     }
 
@@ -161,6 +170,9 @@ impl ModalWrapper {
         let mut area = egui::Modal::default_area(id);
         if let Some(default_height) = self.default_height {
             area = area.default_height(default_height);
+        }
+        if let Some(default_width) = self.default_width {
+            area = area.default_width(default_width);
         }
 
         let modal_response = egui::Modal::new(id.with("modal"))

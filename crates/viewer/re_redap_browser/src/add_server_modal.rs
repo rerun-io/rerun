@@ -1,9 +1,11 @@
+use egui::Ui;
 use re_grpc_client::{ConnectionRegistry, ConnectionRegistryHandle};
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 
 use crate::context::Context;
+use crate::form::{Form, FormField};
 use crate::servers::Command;
 
 pub enum ServerModalMode {
@@ -66,70 +68,53 @@ impl ServerModal {
         connection_registry: &ConnectionRegistryHandle,
         ui: &egui::Ui,
     ) {
+        let title = match &self.mode {
+            ServerModalMode::Add => "Add Server".to_owned(),
+            ServerModalMode::Edit(origin) => {
+                format!("Edit Server: {}", origin.host.to_string())
+            }
+        };
         self.modal.ui(
             ui.ctx(),
-            || {
-                let title = match &self.mode {
-                    ServerModalMode::Add => "Add Server".to_owned(),
-                    ServerModalMode::Edit(origin) => {
-                        format!("Edit Server: {}", origin.host.to_string())
-                    }
-                };
-                ModalWrapper::new(&title)
-            },
+            || ModalWrapper::new(&title).default_width(423.0),
             |ui| {
                 ui.warning_label(
                     "The dataplatform is very experimental and not generally \
                 available yet. Proceed with caution!",
                 );
-                ui.label("Scheme:");
 
-                egui::ComboBox::new("scheme", "")
-                    .selected_text(if self.scheme == Scheme::RerunHttp {
-                        "http"
-                    } else {
-                        "https"
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.scheme, Scheme::RerunHttps, "https");
-                        ui.selectable_value(&mut self.scheme, Scheme::RerunHttp, "http");
+                let host = url::Host::parse(&self.host);
+                let token = (!self.token.is_empty())
+                    .then(|| re_auth::Jwt::try_from(self.token.clone()))
+                    .transpose();
+
+                Form::new(title.clone()).show(ui, |ui| {
+                    FormField::new("Scheme").show(ui, |ui: &mut Ui| {
+                        egui::ComboBox::new("scheme", "")
+                            .selected_text(if self.scheme == Scheme::RerunHttp {
+                                "http"
+                            } else {
+                                "https"
+                            })
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut self.scheme, Scheme::RerunHttps, "https");
+                                ui.selectable_value(&mut self.scheme, Scheme::RerunHttp, "http");
+                            })
+                            .response
                     });
 
-                ui.add_space(14.0);
+                    FormField::new("Host name")
+                        .error(!self.host.is_empty() && host.is_err())
+                        .show(ui, egui::TextEdit::singleline(&mut self.host));
 
-                ui.label("Host name:");
-                let host = url::Host::parse(&self.host);
-                ui.scope(|ui| {
-                    // make field red if host is invalid
-                    if host.is_err() {
-                        style_invalid_field(ui);
-                    }
-                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
+                    FormField::new("Token")
+                        .hint("Optional, will be stored in clear text")
+                        .error(!self.token.is_empty() && token.is_err())
+                        .show(ui, egui::TextEdit::singleline(&mut self.token));
+
+                    FormField::new("Port")
+                        .show(ui, egui::DragValue::new(&mut self.port).range(1..=65535));
                 });
-
-                ui.add_space(14.0);
-
-                ui.label("Token (optional, will be stored in clear text):");
-                let token = ui
-                    .scope(|ui| {
-                        let token = (!self.token.is_empty())
-                            .then(|| re_auth::Jwt::try_from(self.token.clone()))
-                            .transpose();
-
-                        if token.is_err() {
-                            style_invalid_field(ui);
-                        }
-
-                        ui.add(egui::TextEdit::singleline(&mut self.token));
-
-                        token
-                    })
-                    .inner;
-
-                ui.add_space(14.0);
-
-                ui.label("Port:");
-                ui.add(egui::DragValue::new(&mut self.port));
 
                 let origin = host.map(|host| re_uri::Origin {
                     scheme: self.scheme,

@@ -4,6 +4,7 @@
 mod add_server_modal;
 mod context;
 mod entries;
+mod form;
 mod servers;
 mod tables_session_context;
 
