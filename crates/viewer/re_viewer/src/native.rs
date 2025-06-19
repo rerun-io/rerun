@@ -16,7 +16,7 @@ pub fn run_native_app(
 ) -> eframe::Result {
     if crate::docker_detection::is_docker() {
         re_log::warn_once!(
-            "It looks like you are running the Rerun Viewer inside a Docker container. This is not officially supported, and may lead to performance issues and bugs.",
+            "It looks like you are running the Rerun Viewer inside a Docker container. This is not officially supported, and may lead to performance issues and bugs. See https://github.com/rerun-io/rerun/issues/6835 for more.",
         );
     }
 
