@@ -166,12 +166,15 @@ namespace rerun {
         /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
         ///
+        /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        /// on the same machine, otherwise you're potentially doubling your memory usage!
+        ///
         /// Returns the URI of the gRPC server so you can connect to it from a viewer.
         ///
         /// This function returns immediately.
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
-            std::string_view server_memory_limit = "75%"
+            std::string_view server_memory_limit = "25%"
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
