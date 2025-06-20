@@ -285,6 +285,7 @@ impl PyDatasetEntry {
     }
 
     /// Create a view to run a dataframe query on the dataset.
+    //TODO improve docstring
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
@@ -543,7 +544,7 @@ impl PyDatasetEntry {
 }
 
 impl PyDatasetEntry {
-    fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+    pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow_mut(self_.py()).connection().clone();
 
@@ -552,7 +553,7 @@ impl PyDatasetEntry {
         Ok(schema)
     }
 
-    fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
+    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
             let schema =
                 SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
