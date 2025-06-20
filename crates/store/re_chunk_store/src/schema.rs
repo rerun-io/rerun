@@ -4,7 +4,7 @@ use std::error::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
-use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, SorbetColumnDescriptors};
 use re_types_core::Archetype as _;
 
 /// Helper to track static-ness ("any" semantics) and emptiness ("all" semantics) of columns across
@@ -77,16 +77,28 @@ pub async fn store_schema_from_chunk_stream<E: Error>(
                 ColumnDescriptor::Component(component_column_descriptor) => {
                     let component_descriptor = component_column_descriptor.component_descriptor();
 
-                    component_column_descriptor.is_static = metadata.is_static;
-                    component_column_descriptor.is_semantically_empty =
-                        metadata.is_semantically_empty;
+                    //TODO(#10315): we need a type safe way to do this gymnastics
+                    let ComponentColumnDescriptor {
+                        // these should be properly set already
+                        store_datatype: _,
+                        component_name: _,
+                        entity_path: _,
+                        archetype_name: _,
+                        archetype_field_name: _,
 
-                    component_column_descriptor.is_indicator =
-                        component_descriptor.is_indicator_component();
-                    component_column_descriptor.is_tombstone =
-                        re_types_core::archetypes::Clear::all_components()
-                            .iter()
-                            .any(|descr| descr == &component_descriptor);
+                        // these needs updating
+                        is_static,
+                        is_indicator,
+                        is_tombstone,
+                        is_semantically_empty,
+                    } = component_column_descriptor;
+
+                    *is_static = metadata.is_static;
+                    *is_semantically_empty = metadata.is_semantically_empty;
+                    *is_indicator = component_descriptor.is_indicator_component();
+                    *is_tombstone = re_types_core::archetypes::Clear::all_components()
+                        .iter()
+                        .any(|descr| descr == &component_descriptor);
                 }
             };
 
