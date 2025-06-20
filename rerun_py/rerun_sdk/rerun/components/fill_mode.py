@@ -78,7 +78,7 @@ FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.components.FillMode"
+    _COMPONENT_TYPE: str = "rerun.components.FillMode"
 
     @staticmethod
     def _native_to_pa_array(data: FillModeArrayLike, data_type: pa.DataType) -> pa.Array:

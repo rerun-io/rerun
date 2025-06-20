@@ -60,7 +60,7 @@ PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.blueprint.components.PanelState"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.PanelState"
 
     @staticmethod
     def _native_to_pa_array(data: PanelStateArrayLike, data_type: pa.DataType) -> pa.Array:

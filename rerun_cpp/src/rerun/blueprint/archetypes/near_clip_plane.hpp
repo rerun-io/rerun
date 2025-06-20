@@ -27,18 +27,18 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> near_clip_plane;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.NearClipPlaneIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.NearClipPlane";
 
         /// `ComponentDescriptor` for the `near_clip_plane` field.
         static constexpr auto Descriptor_near_clip_plane = ComponentDescriptor(
-            ArchetypeName, "near_clip_plane",
-            Loggable<rerun::blueprint::components::NearClipPlane>::ComponentName
+            ArchetypeName, "NearClipPlane:near_clip_plane",
+            Loggable<rerun::blueprint::components::NearClipPlane>::ComponentType
         );
 
       public:

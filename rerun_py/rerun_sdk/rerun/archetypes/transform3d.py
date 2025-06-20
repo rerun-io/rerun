@@ -432,13 +432,13 @@ class Transform3D(Transform3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "translation": translation,
-            "rotation_axis_angle": rotation_axis_angle,
-            "quaternion": quaternion,
-            "scale": scale,
-            "mat3x3": mat3x3,
-            "relation": relation,
-            "axis_length": axis_length,
+            "Transform3D:translation": translation,
+            "Transform3D:rotation_axis_angle": rotation_axis_angle,
+            "Transform3D:quaternion": quaternion,
+            "Transform3D:scale": scale,
+            "Transform3D:mat3x3": mat3x3,
+            "Transform3D:relation": relation,
+            "Transform3D:axis_length": axis_length,
         }
         columns = []
 
@@ -447,7 +447,7 @@ class Transform3D(Transform3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

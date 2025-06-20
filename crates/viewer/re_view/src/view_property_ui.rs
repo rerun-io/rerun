@@ -98,7 +98,7 @@ pub fn view_property_component_ui(
     let viewer_ctx = ctx.viewer_ctx();
     let ui_types = viewer_ctx
         .component_ui_registry()
-        .registered_ui_types(field.component_name);
+        .registered_ui_types(field.component_type);
 
     let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
         viewer_ctx.component_ui_registry().singleline_edit_ui(

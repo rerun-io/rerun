@@ -41,7 +41,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::PrimitiveComponent> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.testing.datatypes.PrimitiveComponent";
 
         /// Returns the arrow data type this type corresponds to.

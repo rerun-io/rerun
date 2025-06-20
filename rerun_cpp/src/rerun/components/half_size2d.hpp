@@ -64,7 +64,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::HalfSize2D> {
-        static constexpr std::string_view ComponentName = "rerun.components.HalfSize2D";
+        static constexpr std::string_view ComponentType = "rerun.components.HalfSize2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

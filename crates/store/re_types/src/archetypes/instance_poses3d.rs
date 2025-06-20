@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
@@ -116,9 +116,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: Some("rerun.components.PoseTranslation3D".into()),
-            archetype_field_name: "translations".into(),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:translations".into(),
+            component_type: Some("rerun.components.PoseTranslation3D".into()),
         }
     }
 
@@ -128,9 +128,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: Some("rerun.components.PoseRotationAxisAngle".into()),
-            archetype_field_name: "rotation_axis_angles".into(),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:rotation_axis_angles".into(),
+            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
         }
     }
 
@@ -140,9 +140,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: Some("rerun.components.PoseRotationQuat".into()),
-            archetype_field_name: "quaternions".into(),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:quaternions".into(),
+            component_type: Some("rerun.components.PoseRotationQuat".into()),
         }
     }
 
@@ -152,9 +152,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: Some("rerun.components.PoseScale3D".into()),
-            archetype_field_name: "scales".into(),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:scales".into(),
+            component_type: Some("rerun.components.PoseScale3D".into()),
         }
     }
 
@@ -164,9 +164,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: Some("rerun.components.PoseTransformMat3x3".into()),
-            archetype_field_name: "mat3x3".into(),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:mat3x3".into(),
+            component_type: Some("rerun.components.PoseTransformMat3x3".into()),
         }
     }
 
@@ -174,9 +174,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.InstancePoses3DIndicator".into(),
+            archetype: None,
+            component: "rerun.components.InstancePoses3DIndicator".into(),
+            component_type: None,
         }
     }
 }

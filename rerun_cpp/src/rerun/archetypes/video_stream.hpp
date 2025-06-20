@@ -63,25 +63,28 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.VideoStreamIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoStream";
 
         /// `ComponentDescriptor` for the `codec` field.
         static constexpr auto Descriptor_codec = ComponentDescriptor(
-            ArchetypeName, "codec", Loggable<rerun::components::VideoCodec>::ComponentName
+            ArchetypeName, "VideoStream:codec",
+            Loggable<rerun::components::VideoCodec>::ComponentType
         );
         /// `ComponentDescriptor` for the `sample` field.
         static constexpr auto Descriptor_sample = ComponentDescriptor(
-            ArchetypeName, "sample", Loggable<rerun::components::VideoSample>::ComponentName
+            ArchetypeName, "VideoStream:sample",
+            Loggable<rerun::components::VideoSample>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
+            ArchetypeName, "VideoStream:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public:

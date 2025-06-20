@@ -36,7 +36,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::FlattenedScalar> {
-        static constexpr std::string_view ComponentName = "rerun.testing.datatypes.FlattenedScalar";
+        static constexpr std::string_view ComponentType = "rerun.testing.datatypes.FlattenedScalar";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

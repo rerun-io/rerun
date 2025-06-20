@@ -28,7 +28,7 @@ class Enabled(datatypes.Bool, ComponentMixin):
 
 
 class EnabledBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.Enabled"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.Enabled"
 
 
 # This is patched in late to avoid circular dependencies.

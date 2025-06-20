@@ -11,10 +11,12 @@ expression: DisplayRB(dataframe)
 │ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ List[Utf8]     │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ archetype: exa │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyPoints  │
-│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ archetype_fiel │
-│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ d: labels      │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ component: exa │
-│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyLabel   │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyPoints: │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ labels         │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ component_type │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ : example.MyLa │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ bel            │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ entity_path:   │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ /this/that     │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ is_static:     │

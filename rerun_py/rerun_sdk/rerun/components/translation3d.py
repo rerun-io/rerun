@@ -24,7 +24,7 @@ class Translation3D(datatypes.Vec3D, ComponentMixin):
 
 
 class Translation3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Translation3D"
+    _COMPONENT_TYPE: str = "rerun.components.Translation3D"
 
 
 # This is patched in late to avoid circular dependencies.

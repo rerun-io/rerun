@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a container.
@@ -72,9 +72,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_container_kind() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.ContainerKind".into()),
-            archetype_field_name: "container_kind".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:container_kind".into(),
+            component_type: Some("rerun.blueprint.components.ContainerKind".into()),
         }
     }
 
@@ -84,9 +84,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.components.Name".into()),
-            archetype_field_name: "display_name".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:display_name".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -96,9 +96,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_contents() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.IncludedContent".into()),
-            archetype_field_name: "contents".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:contents".into(),
+            component_type: Some("rerun.blueprint.components.IncludedContent".into()),
         }
     }
 
@@ -108,9 +108,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_col_shares() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.ColumnShare".into()),
-            archetype_field_name: "col_shares".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:col_shares".into(),
+            component_type: Some("rerun.blueprint.components.ColumnShare".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_row_shares() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.RowShare".into()),
-            archetype_field_name: "row_shares".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:row_shares".into(),
+            component_type: Some("rerun.blueprint.components.RowShare".into()),
         }
     }
 
@@ -132,9 +132,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_active_tab() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.ActiveTab".into()),
-            archetype_field_name: "active_tab".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:active_tab".into(),
+            component_type: Some("rerun.blueprint.components.ActiveTab".into()),
         }
     }
 
@@ -144,9 +144,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.components.Visible".into()),
-            archetype_field_name: "visible".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -156,9 +156,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_grid_columns() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.GridColumns".into()),
-            archetype_field_name: "grid_columns".into(),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:grid_columns".into(),
+            component_type: Some("rerun.blueprint.components.GridColumns".into()),
         }
     }
 
@@ -166,9 +166,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
+            component_type: None,
         }
     }
 }

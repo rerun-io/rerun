@@ -5,7 +5,7 @@ use std::sync::Arc;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{
-    Component, ComponentDescriptor, ComponentName, DeserializationError, Loggable,
+    Component, ComponentDescriptor, ComponentType, DeserializationError, Loggable,
     SerializedComponentBatch,
 };
 
@@ -31,34 +31,37 @@ impl MyPoints {
     }
 
     pub fn descriptor_points() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "points".into(),
-            component_name: Some(MyPoint::name()),
+            archetype: Some(archetype_name),
+            component: archetype_name.with_field("points"),
+            component_type: Some(MyPoint::name()),
         }
     }
 
     pub fn descriptor_colors() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "colors".into(),
-            component_name: Some(MyColor::name()),
+            archetype: Some(archetype_name),
+            component: archetype_name.with_field("colors"),
+            component_type: Some(MyColor::name()),
         }
     }
 
     pub fn descriptor_labels() -> ComponentDescriptor {
+        let archetype_name = "example.MyPoints".into();
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "labels".into(),
-            component_name: Some(MyLabel::name()),
+            archetype: Some(archetype_name),
+            component: archetype_name.with_field("labels"),
+            component_type: Some(MyLabel::name()),
         }
     }
 
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: "rerun.components.MyPointsIndicator".into(),
-            component_name: None,
+            archetype: None,
+            component: "rerun.components.MyPointsIndicator".into(),
+            component_type: None,
         }
     }
 
@@ -257,7 +260,7 @@ impl Loggable for MyPoint {
 }
 
 impl Component for MyPoint {
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "example.MyPoint".into()
     }
 }
@@ -378,7 +381,7 @@ impl Loggable for MyPoint64 {
 }
 
 impl Component for MyPoint64 {
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "example.MyPoint64".into()
     }
 }
@@ -452,7 +455,7 @@ impl Loggable for MyColor {
 }
 
 impl Component for MyColor {
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "example.MyColor".into()
     }
 }
@@ -503,7 +506,7 @@ impl Loggable for MyLabel {
 }
 
 impl Component for MyLabel {
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "example.MyLabel".into()
     }
 }
@@ -525,9 +528,9 @@ impl MyIndex {
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_field_name: "my_index".into(),
-            archetype_name: None,
-            component_name: Some(Self::name()),
+            component: "my_index".into(),
+            archetype: None,
+            component_type: Some(Self::name()),
         }
     }
 }
@@ -572,7 +575,7 @@ impl Loggable for MyIndex {
 }
 
 impl Component for MyIndex {
-    fn name() -> re_types_core::ComponentName {
+    fn name() -> re_types_core::ComponentType {
         "example.MyIndex".into()
     }
 }

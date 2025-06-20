@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An infinite 3D plane represented by a unit normal vector and a distance.
@@ -34,7 +34,7 @@ pub struct Plane3D(pub crate::datatypes::Plane3D);
 
 impl ::re_types_core::Component for Plane3D {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.Plane3D".into()
     }
 }

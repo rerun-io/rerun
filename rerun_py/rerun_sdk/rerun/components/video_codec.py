@@ -72,7 +72,7 @@ VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
 
 class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint32()
-    _COMPONENT_NAME: str = "rerun.components.VideoCodec"
+    _COMPONENT_TYPE: str = "rerun.components.VideoCodec"
 
     @staticmethod
     def _native_to_pa_array(data: VideoCodecArrayLike, data_type: pa.DataType) -> pa.Array:

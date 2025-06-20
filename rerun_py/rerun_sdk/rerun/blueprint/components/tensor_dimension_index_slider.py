@@ -28,7 +28,7 @@ class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider,
 
 
 class TensorDimensionIndexSliderBatch(blueprint_datatypes.TensorDimensionIndexSliderBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.TensorDimensionIndexSlider"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.TensorDimensionIndexSlider"
 
 
 # This is patched in late to avoid circular dependencies.

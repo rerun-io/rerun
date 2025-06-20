@@ -57,7 +57,7 @@ LinkAxisArrayLike = Union[LinkAxisLike, Sequence[LinkAxisLike]]
 
 class LinkAxisBatch(BaseBatch[LinkAxisArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.blueprint.components.LinkAxis"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.LinkAxis"
 
     @staticmethod
     def _native_to_pa_array(data: LinkAxisArrayLike, data_type: pa.DataType) -> pa.Array:

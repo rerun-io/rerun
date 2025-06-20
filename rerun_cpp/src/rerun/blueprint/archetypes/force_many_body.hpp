@@ -36,22 +36,23 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> strength;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.ForceManyBodyIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForceManyBody";
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled", Loggable<rerun::blueprint::components::Enabled>::ComponentName
+            ArchetypeName, "ForceManyBody:enabled",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
         /// `ComponentDescriptor` for the `strength` field.
         static constexpr auto Descriptor_strength = ComponentDescriptor(
-            ArchetypeName, "strength",
-            Loggable<rerun::blueprint::components::ForceStrength>::ComponentName
+            ArchetypeName, "ForceManyBody:strength",
+            Loggable<rerun::blueprint::components::ForceStrength>::ComponentType
         );
 
       public:

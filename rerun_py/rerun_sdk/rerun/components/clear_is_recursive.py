@@ -25,7 +25,7 @@ class ClearIsRecursive(ClearIsRecursiveExt, datatypes.Bool, ComponentMixin):
 
 
 class ClearIsRecursiveBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ClearIsRecursive"
+    _COMPONENT_TYPE: str = "rerun.components.ClearIsRecursive"
 
 
 # This is patched in late to avoid circular dependencies.

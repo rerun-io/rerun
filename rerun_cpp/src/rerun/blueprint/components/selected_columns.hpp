@@ -45,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::SelectedColumns> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.SelectedColumns";
 
         /// Returns the arrow data type this type corresponds to.

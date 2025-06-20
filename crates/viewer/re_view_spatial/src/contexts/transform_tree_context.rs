@@ -544,7 +544,7 @@ fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflect
 
     let mut remaining_fields = expected_order.clone();
     for field in transform3d_reflection.fields.iter().rev() {
-        if Some(&field.component_name) == remaining_fields.last() {
+        if Some(&field.component_type) == remaining_fields.last() {
             remaining_fields.pop();
         }
     }
@@ -553,7 +553,7 @@ fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflect
         let actual_order = transform3d_reflection
             .fields
             .iter()
-            .map(|f| f.component_name)
+            .map(|f| f.component_type)
             .collect::<Vec<_>>();
         panic!(
             "Expected transform fields in the following order:\n{expected_order:?}\n

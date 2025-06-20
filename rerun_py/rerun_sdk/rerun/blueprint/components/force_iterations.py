@@ -30,7 +30,7 @@ class ForceIterations(datatypes.UInt64, ComponentMixin):
 
 
 class ForceIterationsBatch(datatypes.UInt64Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ForceIterations"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceIterations"
 
 
 # This is patched in late to avoid circular dependencies.

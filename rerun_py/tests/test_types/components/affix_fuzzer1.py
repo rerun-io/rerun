@@ -23,7 +23,7 @@ class AffixFuzzer1(datatypes.AffixFuzzer1, ComponentMixin):
 
 
 class AffixFuzzer1Batch(datatypes.AffixFuzzer1Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer1"
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer1"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -28,7 +28,7 @@ class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
 
 
 class FilterByRangeBatch(blueprint_datatypes.FilterByRangeBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.FilterByRange"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.FilterByRange"
 
 
 # This is patched in late to avoid circular dependencies.

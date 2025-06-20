@@ -35,7 +35,7 @@ class DepthMeter(datatypes.Float32, ComponentMixin):
 
 
 class DepthMeterBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.DepthMeter"
+    _COMPONENT_TYPE: str = "rerun.components.DepthMeter"
 
 
 # This is patched in late to avoid circular dependencies.

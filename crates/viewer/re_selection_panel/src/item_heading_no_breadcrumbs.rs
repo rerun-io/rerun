@@ -68,7 +68,7 @@ fn item_heading_no_breadcrumbs(
         Item::ComponentPath(component_path) => {
             let is_component_static = is_component_static(ctx, component_path);
 
-            // Break up into entity path and component name:
+            // Break up into entity path and component descriptor:
             let ComponentPath {
                 entity_path,
                 component_descriptor,

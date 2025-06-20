@@ -24,7 +24,7 @@ class AlbedoFactor(datatypes.Rgba32, ComponentMixin):
 
 
 class AlbedoFactorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.AlbedoFactor"
+    _COMPONENT_TYPE: str = "rerun.components.AlbedoFactor"
 
 
 # This is patched in late to avoid circular dependencies.

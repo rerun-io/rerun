@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, Instance};
 use re_types::{
-    Archetype as _, ComponentName,
+    Archetype as _, ComponentType,
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
 };
@@ -34,7 +34,7 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 }
 
 struct Transform3DVisualizabilityFilter {
-    visualizability_trigger_components: IntSet<ComponentName>,
+    visualizability_trigger_components: IntSet<ComponentType>,
 }
 
 impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
@@ -48,10 +48,10 @@ impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizab
             .diff
             .chunk
             .component_descriptors()
-            .filter_map(|c| c.component_name)
-            .any(|component_name| {
+            .filter_map(|c| c.component_type)
+            .any(|component_type| {
                 self.visualizability_trigger_components
-                    .contains(&component_name)
+                    .contains(&component_type)
             })
     }
 }
@@ -67,7 +67,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         Some(Box::new(Transform3DVisualizabilityFilter {
             visualizability_trigger_components: Transform3D::all_components()
                 .iter()
-                .filter_map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
         }))
     }

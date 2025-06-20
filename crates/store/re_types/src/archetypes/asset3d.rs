@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
@@ -86,9 +86,9 @@ impl Asset3D {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.Blob".into()),
-            archetype_field_name: "blob".into(),
+            archetype: Some("rerun.archetypes.Asset3D".into()),
+            component: "Asset3D:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -98,9 +98,9 @@ impl Asset3D {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.MediaType".into()),
-            archetype_field_name: "media_type".into(),
+            archetype: Some("rerun.archetypes.Asset3D".into()),
+            component: "Asset3D:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -110,9 +110,9 @@ impl Asset3D {
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: Some("rerun.components.AlbedoFactor".into()),
-            archetype_field_name: "albedo_factor".into(),
+            archetype: Some("rerun.archetypes.Asset3D".into()),
+            component: "Asset3D:albedo_factor".into(),
+            component_type: Some("rerun.components.AlbedoFactor".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl Asset3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.Asset3DIndicator".into(),
+            archetype: None,
+            component: "rerun.components.Asset3DIndicator".into(),
+            component_type: None,
         }
     }
 }

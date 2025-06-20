@@ -141,7 +141,7 @@ macro_rules! delegate_arrow_tuid {
 
         impl $crate::Component for $typ {
             #[inline]
-            fn name() -> $crate::ComponentName {
+            fn name() -> $crate::ComponentType {
                 $fqname.into()
             }
         }

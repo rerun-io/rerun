@@ -28,7 +28,7 @@ class RootContainer(datatypes.Uuid, ComponentMixin):
 
 
 class RootContainerBatch(datatypes.UuidBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.RootContainer"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.RootContainer"
 
 
 # This is patched in late to avoid circular dependencies.

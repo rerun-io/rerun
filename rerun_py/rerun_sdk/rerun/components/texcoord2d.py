@@ -41,7 +41,7 @@ class Texcoord2D(datatypes.Vec2D, ComponentMixin):
 
 
 class Texcoord2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Texcoord2D"
+    _COMPONENT_TYPE: str = "rerun.components.Texcoord2D"
 
 
 # This is patched in late to avoid circular dependencies.

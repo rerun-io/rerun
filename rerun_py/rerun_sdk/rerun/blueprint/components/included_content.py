@@ -28,7 +28,7 @@ class IncludedContent(datatypes.EntityPath, ComponentMixin):
 
 
 class IncludedContentBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.IncludedContent"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.IncludedContent"
 
 
 # This is patched in late to avoid circular dependencies.

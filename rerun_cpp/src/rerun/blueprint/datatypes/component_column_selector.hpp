@@ -27,10 +27,8 @@ namespace rerun::blueprint::datatypes {
 
         /// The name of the component.
         ///
-        /// This acts as the column name in the context of a given `entity_path`
-        /// By convention, for all Rerun typtes this is a combination of `<ArchetypeName>:<ArchetypeFieldName>`.
-        /// (if there's no `ArchetypeName` it is just the field name).
-        /// An example for this would be `Points3D:positions`, for the `positions` field in the `archetypes::Points3D` archetype.
+        /// This acts as the component name in the context of a given `entity_path`
+        /// An example for this would be `Points3D:positions`, for the `positions` field in the `Points3D` archetype.
         rerun::datatypes::Utf8 component;
 
       public:
@@ -45,7 +43,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::ComponentColumnSelector> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.datatypes.ComponentColumnSelector";
 
         /// Returns the arrow data type this type corresponds to.

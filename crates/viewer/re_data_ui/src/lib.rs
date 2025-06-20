@@ -10,8 +10,8 @@ mod annotation_context;
 mod app_id;
 mod blob;
 mod component;
-mod component_name;
 mod component_path;
+mod component_type;
 mod component_ui_registry;
 mod data_source;
 mod entity_db;
@@ -42,7 +42,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
         .into_iter()
         .filter(|d| !d.is_indicator_component())
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
-            acc.entry(descriptor.archetype_name)
+            acc.entry(descriptor.archetype)
                 .or_default()
                 .push(descriptor.clone());
             acc
@@ -58,12 +58,12 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
                 reflection
                     .fields
                     .iter()
-                    .position(|field| field.name == c.archetype_field_name)
+                    .position(|field| field.name == c.archetype_field_name())
                     .unwrap_or(usize::MAX)
             });
         } else {
             // As a fallback, sort by the short name, as that is what is shown in the UI.
-            components.sort_by_key(|c| c.display_name());
+            components.sort_by_key(|c| c.display_name().to_owned());
         }
     }
 

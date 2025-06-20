@@ -51,11 +51,11 @@ Now instead they are scaled relative to the entity's center.
 
 #### `re_log_types`
 
-* Removed auto-filling of `rerun.components.` to `ComponentName` in path parsing.
+* Removed auto-filling of `rerun.components.` to `ComponentType` in path parsing.
 
 #### `re_sorbet`
 
-* Lookup `ColumnDescriptor` by `ArchetypeFieldName` instead of `ComponentName`.
+* Lookup `ColumnDescriptor` by `ComponentIdentifier` instead of `ComponentType`.
 * Changed `ComponentColumnSelector`.
 * Changed `ComponentColumnDescriptor::column_name` to use fully-qualified column names.
 
@@ -69,7 +69,7 @@ We can now have multiple components of the same type living on the same archetyp
 For this we introduce the following new string-based representation:
 
 ```
-<entity_path>:[<archetype_name>]:<archetype_field_name>
+<entity_path>:[<archetype_name>]:<component>
 ```
 
 Note that the `archetype_name` section is optional, because components can also be logged as plain fields.

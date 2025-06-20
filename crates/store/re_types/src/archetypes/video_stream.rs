@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Video stream consisting of raw video chunks.
@@ -71,9 +71,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_codec() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.VideoCodec".into()),
-            archetype_field_name: "codec".into(),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:codec".into(),
+            component_type: Some("rerun.components.VideoCodec".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_sample() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.VideoSample".into()),
-            archetype_field_name: "sample".into(),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:sample".into(),
+            component_type: Some("rerun.components.VideoSample".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -105,9 +105,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.VideoStreamIndicator".into(),
+            archetype: None,
+            component: "rerun.components.VideoStreamIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The annotation context provides additional information on how to display entities.
@@ -85,9 +85,9 @@ impl AnnotationContext {
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
-            component_name: Some("rerun.components.AnnotationContext".into()),
-            archetype_field_name: "context".into(),
+            archetype: Some("rerun.archetypes.AnnotationContext".into()),
+            component: "AnnotationContext:context".into(),
+            component_type: Some("rerun.components.AnnotationContext".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl AnnotationContext {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.AnnotationContextIndicator".into(),
+            archetype: None,
+            component: "rerun.components.AnnotationContextIndicator".into(),
+            component_type: None,
         }
     }
 }

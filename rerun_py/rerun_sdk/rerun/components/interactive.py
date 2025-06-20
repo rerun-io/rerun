@@ -28,7 +28,7 @@ class Interactive(datatypes.Bool, ComponentMixin):
 
 
 class InteractiveBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Interactive"
+    _COMPONENT_TYPE: str = "rerun.components.Interactive"
 
 
 # This is patched in late to avoid circular dependencies.

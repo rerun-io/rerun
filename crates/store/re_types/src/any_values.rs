@@ -3,15 +3,15 @@
 use nohash_hasher::IntMap;
 
 use crate::{
-    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, SerializedComponentBatch,
+    ArchetypeName, Component, ComponentDescriptor, ComponentIdentifier, SerializedComponentBatch,
 };
-use re_types_core::{try_serialize_field, AsComponents, ComponentName, Loggable};
+use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 
 /// A helper for logging arbitrary data to Rerun.
 #[derive(Default)]
 pub struct AnyValues {
     archetype_name: Option<ArchetypeName>,
-    batches: IntMap<ArchetypeFieldName, SerializedComponentBatch>,
+    batches: IntMap<ComponentIdentifier, SerializedComponentBatch>,
 }
 
 impl AnyValues {
@@ -28,20 +28,21 @@ impl AnyValues {
     ///
     /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
     #[inline]
-    pub fn with_field(
-        mut self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
-        array: arrow::array::ArrayRef,
-    ) -> Self {
-        let archetype_field_name = archetype_field_name.into();
+    pub fn with_field(mut self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
+        let field = field.as_ref();
+        let component = self
+            .archetype_name
+            .map(|archetype_name| archetype_name.with_field(field))
+            .unwrap_or_else(|| field.into());
+
         self.batches.insert(
-            archetype_field_name,
+            component,
             SerializedComponentBatch {
                 array,
                 descriptor: ComponentDescriptor {
-                    archetype_name: self.archetype_name,
-                    component_name: None,
-                    archetype_field_name,
+                    archetype: self.archetype_name,
+                    component_type: None,
+                    component,
                 },
             },
         );
@@ -52,32 +53,37 @@ impl AnyValues {
     #[inline]
     pub fn with_component<C: Component>(
         self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
-        component: impl IntoIterator<Item = impl Into<C>>,
+        field: impl AsRef<str>,
+        loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
-        self.with_loggable(archetype_field_name, C::name(), component)
+        self.with_loggable(field, C::name(), loggable)
     }
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     ///
-    /// This method can be used to override the component name.
+    /// This method can be used to override the component type.
     #[inline]
     pub fn with_loggable<L: Loggable>(
         mut self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
-        component_name: impl Into<ComponentName>,
+        field: impl AsRef<str>,
+        component_type: impl Into<ComponentType>,
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {
-        let archetype_field_name = archetype_field_name.into();
+        let field = field.as_ref();
+        let component = self
+            .archetype_name
+            .map(|archetype_name| archetype_name.with_field(field))
+            .unwrap_or_else(|| field.into());
+
         try_serialize_field(
             ComponentDescriptor {
-                archetype_name: self.archetype_name,
-                archetype_field_name,
-                component_name: Some(component_name.into()),
+                archetype: self.archetype_name,
+                component,
+                component_type: Some(component_type.into()),
             },
             loggable,
         )
-        .and_then(|serialized| self.batches.insert(archetype_field_name, serialized));
+        .and_then(|serialized| self.batches.insert(component, serialized));
         self
     }
 }
@@ -91,18 +97,70 @@ impl AsComponents for AnyValues {
 #[cfg(test)]
 mod test {
 
+    use std::collections::BTreeSet;
+
     use crate::components;
 
     use super::*;
 
     #[test]
-    fn simple() {
-        let _ = AnyValues::default()
+    fn without_archetype() {
+        let values = AnyValues::default()
             .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
             .with_loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
             .with_field(
                 "description",
                 std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
             );
+
+        let actual = values
+            .as_serialized_batches()
+            .into_iter()
+            .map(|batch| batch.descriptor)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            actual,
+            [
+                ComponentDescriptor::partial("confidence")
+                    .with_component_type(components::Scalar::name()),
+                ComponentDescriptor::partial("homepage").with_component_type("user.url".into()),
+                ComponentDescriptor::partial("description"),
+            ]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn with_archetype() {
+        let values = AnyValues::new("MyExample")
+            .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
+            .with_loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
+            .with_field(
+                "description",
+                std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
+            );
+
+        let actual = values
+            .as_serialized_batches()
+            .into_iter()
+            .map(|batch| batch.descriptor)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(
+            actual,
+            [
+                ComponentDescriptor::partial("confidence")
+                    .with_archetype("MyExample".into())
+                    .with_component_type(components::Scalar::name()),
+                ComponentDescriptor::partial("homepage")
+                    .with_component_type("user.url".into())
+                    .with_archetype("MyExample".into()),
+                ComponentDescriptor::partial("description").with_archetype("MyExample".into()),
+            ]
+            .into_iter()
+            .collect()
+        );
     }
 }

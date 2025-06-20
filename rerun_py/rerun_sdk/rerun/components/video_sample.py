@@ -31,7 +31,7 @@ class VideoSample(datatypes.Blob, ComponentMixin):
 
 
 class VideoSampleBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.VideoSample"
+    _COMPONENT_TYPE: str = "rerun.components.VideoSample"
 
 
 # This is patched in late to avoid circular dependencies.

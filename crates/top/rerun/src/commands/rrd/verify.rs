@@ -101,21 +101,21 @@ impl Verifier {
         column: &dyn arrow::array::Array,
     ) -> anyhow::Result<()> {
         let re_sdk::ComponentDescriptor {
-            component_name,
-            archetype_name,
-            archetype_field_name,
+            component_type,
+            archetype: archetype_name,
+            component,
         } = column_descriptor.component_descriptor();
 
-        let Some(component_name) = component_name else {
+        let Some(component_type) = component_type else {
             re_log::debug_once!(
-                "Encountered component descriptor without component name: {}",
+                "Encountered component descriptor without component type: {}",
                 column_descriptor.component_descriptor()
             );
             return Ok(());
         };
 
-        if !component_name.full_name().starts_with("rerun.") {
-            re_log::debug_once!("Ignoring non-Rerun component {component_name:?}");
+        if !component_type.full_name().starts_with("rerun.") {
+            re_log::debug_once!("Ignoring non-Rerun component {component_type:?}");
             return Ok(());
         }
 
@@ -129,7 +129,7 @@ impl Verifier {
             let component_reflection = self
                 .reflection
                 .components
-                .get(&component_name)
+                .get(&component_type)
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
             if let Some(deprecation_summary) = component_reflection.deprecation_summary {
@@ -169,18 +169,18 @@ impl Verifier {
                 // Verify archetype field.
                 // We may want to have a flag to allow some of this?
                 let archetype_field_reflection = archetype_reflection
-                        .get_field(&archetype_field_name)
+                        .get_field(column_descriptor.component_descriptor().archetype_field_name())
                         .ok_or_else(|| {
                             anyhow::anyhow!(
-                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {}",
+                                "Input column referred to the component {component:?} of {archetype_name:?}, which only has the fields: {}",
                                 archetype_reflection.fields.iter().map(|field| field.name).join(" ")
                             )
                         })?;
 
-                let expected_component_name = &archetype_field_reflection.component_name;
-                if &component_name != expected_component_name {
+                let expected_component_type = &archetype_field_reflection.component_type;
+                if &component_type != expected_component_type {
                     return Err(anyhow::anyhow!(
-                        "Archetype field {archetype_field_name:?} of {archetype_name:?} has component {expected_component_name:?} in this version of Rerun, but the data column has component {component_name:?}"
+                        "Component {component:?} of {archetype_name:?} has type {expected_component_type:?} in this version of Rerun, but the data column has type {component_type:?}"
                     ));
                 }
             } else {

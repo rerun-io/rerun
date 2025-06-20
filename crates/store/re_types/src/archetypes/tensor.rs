@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An N-dimensional array of numbers.
@@ -77,9 +77,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: Some("rerun.components.TensorData".into()),
-            archetype_field_name: "data".into(),
+            archetype: Some("rerun.archetypes.Tensor".into()),
+            component: "Tensor:data".into(),
+            component_type: Some("rerun.components.TensorData".into()),
         }
     }
 
@@ -89,9 +89,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: Some("rerun.components.ValueRange".into()),
-            archetype_field_name: "value_range".into(),
+            archetype: Some("rerun.archetypes.Tensor".into()),
+            component: "Tensor:value_range".into(),
+            component_type: Some("rerun.components.ValueRange".into()),
         }
     }
 
@@ -99,9 +99,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.TensorIndicator".into(),
+            archetype: None,
+            component: "rerun.components.TensorIndicator".into(),
+            component_type: None,
         }
     }
 }

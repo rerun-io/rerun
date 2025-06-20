@@ -35,7 +35,7 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8, ComponentMixin):
 
 
 class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.TextLogLevel"
+    _COMPONENT_TYPE: str = "rerun.components.TextLogLevel"
 
 
 # This is patched in late to avoid circular dependencies.

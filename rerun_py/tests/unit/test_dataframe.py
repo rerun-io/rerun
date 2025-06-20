@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 import rerun as rr
 from rerun_bindings.rerun_bindings import Schema
-from rerun_bindings.types import AnyColumn, ComponentLike, ViewContentsLike
+from rerun_bindings.types import AnyColumn, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
 
@@ -113,59 +113,59 @@ class TestDataframe:
 
         # Content columns
         assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.Points3DIndicator"
-        assert schema.component_columns()[col].component_name is None
+        assert schema.component_columns()[col].archetype is None
+        assert schema.component_columns()[col].component == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "colors"
-        assert schema.component_columns()[col].component_name == "rerun.components.Color"
+        assert schema.component_columns()[col].archetype == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].component == "Points3D:colors"
+        assert schema.component_columns()[col].component_type == "rerun.components.Color"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "positions"
-        assert schema.component_columns()[col].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[col].archetype == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].component == "Points3D:positions"
+        assert schema.component_columns()[col].component_type == "rerun.components.Position3D"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[col].archetype_field_name == "radii"
-        assert schema.component_columns()[col].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[col].archetype == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[col].component == "Points3D:radii"
+        assert schema.component_columns()[col].component_type == "rerun.components.Radius"
         assert schema.component_columns()[col].is_static is False
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
-        assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.TextLogIndicator"
-        assert schema.component_columns()[col].component_name is None
+        assert schema.component_columns()[col].archetype is None
+        assert schema.component_columns()[col].component == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
-        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.TextLog"
-        assert schema.component_columns()[col].archetype_field_name == "text"
-        assert schema.component_columns()[col].component_name == "rerun.components.Text"
+        assert schema.component_columns()[col].archetype == "rerun.archetypes.TextLog"
+        assert schema.component_columns()[col].component == "TextLog:text"
+        assert schema.component_columns()[col].component_type == "rerun.components.Text"
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         # Default property columns
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
-        assert schema.component_columns()[col].archetype_name is None
-        assert schema.component_columns()[col].archetype_field_name == "rerun.components.RecordingPropertiesIndicator"
-        assert schema.component_columns()[col].component_name is None
+        assert schema.component_columns()[col].archetype is None
+        assert schema.component_columns()[col].component == "rerun.components.RecordingPropertiesIndicator"
+        assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/__properties/recording"
-        assert schema.component_columns()[col].archetype_name == "rerun.archetypes.RecordingProperties"
-        assert schema.component_columns()[col].archetype_field_name == "start_time"
-        assert schema.component_columns()[col].component_name == "rerun.components.Timestamp"
+        assert schema.component_columns()[col].archetype == "rerun.archetypes.RecordingProperties"
+        assert schema.component_columns()[col].component == "RecordingProperties:start_time"
+        assert schema.component_columns()[col].component_type == "rerun.components.Timestamp"
         assert schema.component_columns()[col].is_static is True
 
     def test_schema_view(self) -> None:
@@ -179,13 +179,13 @@ class TestDataframe:
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
-        assert schema.component_columns()[0].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[0].archetype_field_name == "colors"
-        assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[0].archetype == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[0].component == "Points3D:colors"
+        assert schema.component_columns()[0].component_type == "rerun.components.Color"
         assert schema.component_columns()[1].entity_path == "/points"
-        assert schema.component_columns()[1].archetype_name == "rerun.archetypes.Points3D"
-        assert schema.component_columns()[1].archetype_field_name == "positions"
-        assert schema.component_columns()[1].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[1].archetype == "rerun.archetypes.Points3D"
+        assert schema.component_columns()[1].component == "Points3D:positions"
+        assert schema.component_columns()[1].component_type == "rerun.components.Position3D"
 
         # Force radius to be included
         schema = self.recording.view(
@@ -197,7 +197,7 @@ class TestDataframe:
         assert len(schema.index_columns()) == 3
         # Color, Position3D, Radius
         assert len(schema.component_columns()) == 3
-        assert schema.component_columns()[2].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[2].component_type == "rerun.components.Radius"
 
     def test_full_view(self) -> None:
         view = self.recording.view(index="my_index", contents="/**")
@@ -245,7 +245,7 @@ class TestDataframe:
         view = self.recording.view(index="my_index", contents="points")
         index_col_selectors: list[AnyColumn] = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
-        selectors: list[ComponentLike] = ["Points3D:positions"]
+        selectors: list[str] = ["Points3D:positions"]
 
         all_selectors: list[AnyColumn] = [
             *[rr.dataframe.ComponentColumnSelector("points", selector) for selector in selectors],
@@ -380,7 +380,7 @@ class TestDataframe:
     def test_filter_is_not_null(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
 
-        color = rr.dataframe.ComponentColumnSelector("points", "rerun.archetypes.Points3D:colors")
+        color = rr.dataframe.ComponentColumnSelector("points", "Points3D:colors")
 
         view = view.filter_is_not_null(color)
 
@@ -397,9 +397,7 @@ class TestDataframe:
     def test_view_syntax(self) -> None:
         good_content_expressions: list[ViewContentsLike] = [
             {"points": "Points3D:positions"},
-            {"points": "rerun.archetypes.Points3D:positions"},
             {"points/**": "Points3D:positions"},
-            {"points/**": "rerun.archetypes.Points3D:positions"},
         ]
 
         for expr in good_content_expressions:

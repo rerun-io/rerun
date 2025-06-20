@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Controls the visual bounds of a 2D view.
@@ -43,9 +43,9 @@ impl VisualBounds2D {
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component_name: Some("rerun.blueprint.components.VisualBounds2D".into()),
-            archetype_field_name: "range".into(),
+            archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+            component: "VisualBounds2D:range".into(),
+            component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
         }
     }
 
@@ -53,9 +53,9 @@ impl VisualBounds2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
+            component_type: None,
         }
     }
 }

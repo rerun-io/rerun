@@ -12,9 +12,9 @@ rr.log(
         repository="https://github.com/rerun-io/rerun",
     )
     .with_field(
-        rr.ComponentDescriptor("confidence", component_name=rr.components.ScalarBatch._COMPONENT_NAME), [1.2, 3.4, 5.6]
+        rr.ComponentDescriptor("confidence", component_type=rr.components.ScalarBatch._COMPONENT_TYPE), [1.2, 3.4, 5.6]
     )
     .with_field(
-        rr.ComponentDescriptor("description", component_name=rr.components.TextBatch._COMPONENT_NAME), "Bla bla bla…"
+        rr.ComponentDescriptor("description", component_type=rr.components.TextBatch._COMPONENT_TYPE), "Bla bla bla…"
     ),
 )

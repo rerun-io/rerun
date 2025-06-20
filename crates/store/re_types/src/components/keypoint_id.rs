@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
@@ -43,7 +43,7 @@ pub struct KeypointId(pub crate::datatypes::KeypointId);
 
 impl ::re_types_core::Component for KeypointId {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.KeypointId".into()
     }
 }

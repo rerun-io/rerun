@@ -5,9 +5,9 @@ use std::sync::atomic::AtomicU64;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ChunkId, RowId, TimelineName};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::{ComponentDescriptor, ComponentType};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
@@ -391,41 +391,6 @@ impl ChunkStoreHandle {
     }
 }
 
-/// A column in a given [`EntityPath`] is uniquely identified by its [`ArchetypeName`] (which can be optional),
-/// and its [`ArchetypeFieldName`].
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ColumnIdentifier {
-    pub archetype_name: Option<ArchetypeName>,
-    pub archetype_field_name: ArchetypeFieldName,
-}
-
-impl From<ComponentDescriptor> for ColumnIdentifier {
-    fn from(value: ComponentDescriptor) -> Self {
-        Self {
-            archetype_name: value.archetype_name,
-            archetype_field_name: value.archetype_field_name,
-        }
-    }
-}
-
-impl nohash_hasher::IsEnabled for ColumnIdentifier {}
-
-impl std::hash::Hash for ColumnIdentifier {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let Self {
-            archetype_name,
-            archetype_field_name,
-        } = self;
-
-        let archetype_name = archetype_name.map_or(0, |v| v.hash());
-        let archetype_field_name = archetype_field_name.hash();
-
-        // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
-        // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
-        state.write_u64(archetype_name ^ archetype_field_name);
-    }
-}
-
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -452,12 +417,12 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+    pub(crate) type_registry: IntMap<ComponentType, ArrowDataType>,
 
     // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
     pub(crate) per_column_metadata: IntMap<
         EntityPath,
-        IntMap<ColumnIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
+        IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
     >,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
@@ -478,7 +443,7 @@ pub struct ChunkStore {
     pub(crate) temporal_chunk_ids_per_entity_per_component:
         ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
+    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
@@ -705,8 +670,8 @@ impl ChunkStore {
 
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
-        self.type_registry.get(component_name).cloned()
+    pub fn lookup_datatype(&self, component_type: &ComponentType) -> Option<ArrowDataType> {
+        self.type_registry.get(component_type).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
@@ -720,7 +685,7 @@ impl ChunkStore {
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component_descr.clone().into()))
+            .and_then(|per_identifier| per_identifier.get(&component_descr.component))
             .map(|(_, metadata_state, _)| metadata_state)?;
 
         let is_static = self

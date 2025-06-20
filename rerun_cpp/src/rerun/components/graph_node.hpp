@@ -52,7 +52,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::GraphNode> {
-        static constexpr std::string_view ComponentName = "rerun.components.GraphNode";
+        static constexpr std::string_view ComponentType = "rerun.components.GraphNode";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

@@ -29,7 +29,7 @@ class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
 
 
 class PoseRotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.PoseRotationAxisAngle"
+    _COMPONENT_TYPE: str = "rerun.components.PoseRotationAxisAngle"
 
 
 # This is patched in late to avoid circular dependencies.

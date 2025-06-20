@@ -40,7 +40,7 @@ fn filter_blob_removed_events(
                         .chunk
                         .component_descriptors()
                         .filter(|descr| {
-                            descr.component_name == Some(re_types::components::Blob::name())
+                            descr.component_type == Some(re_types::components::Blob::name())
                         })
                         .flat_map(|descr| {
                             event

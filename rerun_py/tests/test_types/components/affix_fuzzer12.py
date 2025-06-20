@@ -41,7 +41,7 @@ AffixFuzzer12ArrayLike = Union[
 
 class AffixFuzzer12Batch(BaseBatch[AffixFuzzer12ArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={}))
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer12"
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer12"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer12ArrayLike, data_type: pa.DataType) -> pa.Array:

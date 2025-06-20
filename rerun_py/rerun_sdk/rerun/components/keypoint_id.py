@@ -31,7 +31,7 @@ class KeypointId(datatypes.KeypointId, ComponentMixin):
 
 
 class KeypointIdBatch(datatypes.KeypointIdBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.KeypointId"
+    _COMPONENT_TYPE: str = "rerun.components.KeypointId"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -82,7 +82,7 @@ impl ImageInfo {
         // This also means that the `ImageKind` may change!
         // But until then, image kind and descriptor should be in sync.
         debug_assert_eq!(
-            ImageKind::from_archetype_name(component_descriptor.archetype_name),
+            ImageKind::from_archetype_name(component_descriptor.archetype),
             kind
         );
 

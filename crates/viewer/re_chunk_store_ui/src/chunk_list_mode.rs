@@ -143,13 +143,13 @@ impl ChunkListMode {
 
                 ui.label("component:");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
-                egui::ComboBox::new("component_name", "")
+                egui::ComboBox::new("component_type", "")
                     .selected_text(current_component.display_name())
                     .height(500.0)
                     .show_ui(ui, |ui| {
-                        for component_name in all_components {
-                            if ui.button(component_name.display_name()).clicked() {
-                                *query_component = component_name;
+                        for component_type in all_components {
+                            if ui.button(component_type.display_name()).clicked() {
+                                *query_component = component_type;
                             }
                         }
                     });

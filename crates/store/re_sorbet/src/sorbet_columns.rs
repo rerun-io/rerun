@@ -130,7 +130,7 @@ impl SorbetColumnDescriptors {
     ) -> Option<&ComponentColumnDescriptor> {
         let found = self
             .component_columns()
-            .find(|column| column.matches_weak(component_column_selector));
+            .find(|column| column.matches(component_column_selector));
         found
     }
 

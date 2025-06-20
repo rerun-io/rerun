@@ -18,7 +18,7 @@ arrow::Status run_main() {
     auto confidences = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
         rerun::ComponentDescriptor("confidence")
-            .with_component_name(rerun::Loggable<rerun::components::Scalar>::ComponentName)
+            .with_component_type(rerun::Loggable<rerun::components::Scalar>::ComponentType)
     );
 
     arrow::StringBuilder description_builder;
@@ -27,9 +27,9 @@ arrow::Status run_main() {
     auto description = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
         rerun::ComponentDescriptor("description")
-            .with_component_name(
+            .with_component_type(
 
-                rerun::Loggable<rerun::components::Text>::ComponentName
+                rerun::Loggable<rerun::components::Text>::ComponentType
             )
     );
     // URIs will become clickable links

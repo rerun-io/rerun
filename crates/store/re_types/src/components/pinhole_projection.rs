@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Camera projection, from image coordinates to view coordinates.
@@ -35,7 +35,7 @@ pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
 impl ::re_types_core::Component for PinholeProjection {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.PinholeProjection".into()
     }
 }

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A depth image, i.e. as captured by a depth camera.
@@ -123,9 +123,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.ImageBuffer".into()),
-            archetype_field_name: "buffer".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:buffer".into(),
+            component_type: Some("rerun.components.ImageBuffer".into()),
         }
     }
 
@@ -135,9 +135,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.ImageFormat".into()),
-            archetype_field_name: "format".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:format".into(),
+            component_type: Some("rerun.components.ImageFormat".into()),
         }
     }
 
@@ -147,9 +147,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.DepthMeter".into()),
-            archetype_field_name: "meter".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:meter".into(),
+            component_type: Some("rerun.components.DepthMeter".into()),
         }
     }
 
@@ -159,9 +159,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.Colormap".into()),
-            archetype_field_name: "colormap".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:colormap".into(),
+            component_type: Some("rerun.components.Colormap".into()),
         }
     }
 
@@ -171,9 +171,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.ValueRange".into()),
-            archetype_field_name: "depth_range".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:depth_range".into(),
+            component_type: Some("rerun.components.ValueRange".into()),
         }
     }
 
@@ -183,9 +183,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.FillRatio".into()),
-            archetype_field_name: "point_fill_ratio".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:point_fill_ratio".into(),
+            component_type: Some("rerun.components.FillRatio".into()),
         }
     }
 
@@ -195,9 +195,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -205,9 +205,9 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.DepthImageIndicator".into(),
+            archetype: None,
+            component: "rerun.components.DepthImageIndicator".into(),
+            component_type: None,
         }
     }
 }

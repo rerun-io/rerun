@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
@@ -29,7 +29,7 @@ pub struct PoseRotationAxisAngle(pub crate::datatypes::RotationAxisAngle);
 
 impl ::re_types_core::Component for PoseRotationAxisAngle {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.PoseRotationAxisAngle".into()
     }
 }

@@ -15,7 +15,7 @@ use crate::{QueryCache, QueryCacheKey, QueryError};
 // --- Public API ---
 
 impl QueryCache {
-    /// Queries for the given `component_names` using range semantics.
+    /// Queries for the given `component_types` using range semantics.
     ///
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
@@ -93,7 +93,7 @@ impl RangeResults {
         }
     }
 
-    /// Returns the [`Chunk`]s for the specified `component_name`.
+    /// Returns the [`Chunk`]s for the specified `component_type`.
     #[inline]
     pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
         self.components

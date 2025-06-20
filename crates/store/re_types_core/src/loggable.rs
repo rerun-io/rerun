@@ -87,8 +87,8 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 /// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
-    /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
-    fn name() -> ComponentName;
+    /// The fully-qualified type of this component, e.g. `rerun.components.Position2D`.
+    fn name() -> ComponentType;
 }
 
 // ---
@@ -100,24 +100,24 @@ pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct ComponentName;
+    pub struct ComponentType;
 );
 
-impl ComponentName {
+impl ComponentType {
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        let full_name = self.0.as_str();
+        let full_type = self.0.as_str();
         debug_assert!(
-            !full_name.starts_with("rerun.components.rerun.components."),
-            "DEBUG ASSERT: Found component with full name {full_name:?}. Maybe some bad round-tripping?"
+            !full_type.starts_with("rerun.components.rerun.components."),
+            "DEBUG ASSERT: Found component with full type {full_type:?}. Maybe some bad round-tripping?"
         );
     }
 
     /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.
     ///
-    /// This is the default `Display` implementation for [`ComponentName`].
+    /// This is the default `Display` implementation for [`ComponentType`].
     #[inline]
     pub fn full_name(&self) -> &'static str {
         self.sanity_check();
@@ -129,8 +129,8 @@ impl ComponentName {
     /// Used for most UI elements.
     ///
     /// ```
-    /// # use re_types_core::ComponentName;
-    /// assert_eq!(ComponentName::from("rerun.components.Position2D").short_name(), "Position2D");
+    /// # use re_types_core::ComponentType;
+    /// assert_eq!(ComponentType::from("rerun.components.Position2D").short_name(), "Position2D");
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
@@ -151,14 +151,14 @@ impl ComponentName {
 
     /// Web URL to the Rerun documentation for this component.
     pub fn doc_url(&self) -> Option<String> {
-        if let Some(component_name_pascal_case) = self.full_name().strip_prefix("rerun.components.")
+        if let Some(component_type_pascal_case) = self.full_name().strip_prefix("rerun.components.")
         {
             // This code should be correct as long as this url passes our link checker:
             // https://rerun.io/docs/reference/types/components/line_strip2d
 
-            let component_name_snake_case = re_case::to_snake_case(component_name_pascal_case);
+            let component_type_snake_case = re_case::to_snake_case(component_type_pascal_case);
             let base_url = "https://rerun.io/docs/reference/types/components";
-            Some(format!("{base_url}/{component_name_snake_case}"))
+            Some(format!("{base_url}/{component_type_snake_case}"))
         } else {
             None // A user component
         }
@@ -176,7 +176,7 @@ impl ComponentName {
 
 // ---
 
-impl re_byte_size::SizeBytes for ComponentName {
+impl re_byte_size::SizeBytes for ComponentType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

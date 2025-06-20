@@ -134,7 +134,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.components.AnnotationContext"
+    _COMPONENT_TYPE: str = "rerun.components.AnnotationContext"
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:

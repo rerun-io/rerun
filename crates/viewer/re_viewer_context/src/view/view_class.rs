@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{ComponentName, ViewClassIdentifier};
+use re_types::{ComponentType, ViewClassIdentifier};
 
 use crate::{
     IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
@@ -82,7 +82,7 @@ pub trait ViewClass: Send + Sync {
     /// Optional archetype of the View's blueprint properties.
     ///
     /// Blueprint components that only apply to the view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentType>> {
         None
     }
 

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for one or more line series in a chart.
@@ -122,9 +122,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -134,9 +134,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: Some("rerun.components.StrokeWidth".into()),
-            archetype_field_name: "widths".into(),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:widths".into(),
+            component_type: Some("rerun.components.StrokeWidth".into()),
         }
     }
 
@@ -146,9 +146,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: Some("rerun.components.Name".into()),
-            archetype_field_name: "names".into(),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:names".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -158,9 +158,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: Some("rerun.components.SeriesVisible".into()),
-            archetype_field_name: "visible_series".into(),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:visible_series".into(),
+            component_type: Some("rerun.components.SeriesVisible".into()),
         }
     }
 
@@ -170,9 +170,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: Some("rerun.components.AggregationPolicy".into()),
-            archetype_field_name: "aggregation_policy".into(),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:aggregation_policy".into(),
+            component_type: Some("rerun.components.AggregationPolicy".into()),
         }
     }
 
@@ -180,9 +180,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.SeriesLinesIndicator".into(),
+            archetype: None,
+            component: "rerun.components.SeriesLinesIndicator".into(),
+            component_type: None,
         }
     }
 }

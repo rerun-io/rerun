@@ -218,14 +218,14 @@ class Boxes2D(Boxes2DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "colors": colors,
-            "radii": radii,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
+            "Boxes2D:half_sizes": half_sizes,
+            "Boxes2D:centers": centers,
+            "Boxes2D:colors": colors,
+            "Boxes2D:radii": radii,
+            "Boxes2D:labels": labels,
+            "Boxes2D:show_labels": show_labels,
+            "Boxes2D:draw_order": draw_order,
+            "Boxes2D:class_ids": class_ids,
         }
         columns = []
 
@@ -234,7 +234,7 @@ class Boxes2D(Boxes2DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

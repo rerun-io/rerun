@@ -29,7 +29,7 @@ class Opacity(datatypes.Float32, ComponentMixin):
 
 
 class OpacityBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Opacity"
+    _COMPONENT_TYPE: str = "rerun.components.Opacity"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of edges in a graph.
@@ -70,9 +70,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_name: Some("rerun.components.GraphEdge".into()),
-            archetype_field_name: "edges".into(),
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
+            component: "GraphEdges:edges".into(),
+            component_type: Some("rerun.components.GraphEdge".into()),
         }
     }
 
@@ -82,9 +82,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_name: Some("rerun.components.GraphType".into()),
-            archetype_field_name: "graph_type".into(),
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
+            component: "GraphEdges:graph_type".into(),
+            component_type: Some("rerun.components.GraphType".into()),
         }
     }
 
@@ -92,9 +92,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.GraphEdgesIndicator".into(),
+            archetype: None,
+            component: "rerun.components.GraphEdgesIndicator".into(),
+            component_type: None,
         }
     }
 }

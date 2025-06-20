@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A line strip in 3D space.
@@ -36,7 +36,7 @@ pub struct LineStrip3D(pub Vec<crate::datatypes::Vec3D>);
 
 impl ::re_types_core::Component for LineStrip3D {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.LineStrip3D".into()
     }
 }

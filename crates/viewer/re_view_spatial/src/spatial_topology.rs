@@ -269,7 +269,7 @@ impl SpatialTopology {
         let mut new_subspace_connections = SubSpaceConnectionFlags::empty();
         let mut new_heuristic_hints = HeuristicHints::empty();
 
-        for added_component in added_components.filter_map(|descr| descr.component_name) {
+        for added_component in added_components.filter_map(|descr| descr.component_type) {
             if added_component == PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
@@ -471,7 +471,7 @@ mod tests {
             add_diff(
                 &mut topo,
                 "",
-                &[ComponentDescriptor::partial("whatever").with_component_name(name)],
+                &[ComponentDescriptor::partial("whatever").with_component_type(name)],
             );
             let subspace = topo.subspace_for_entity(&"robo".into());
             assert_eq!(subspace.connection_to_parent, flags);
@@ -492,7 +492,7 @@ mod tests {
             &mut topo,
             "robo/eyes/left/cam",
             &[ComponentDescriptor::partial("whatever")
-                .with_component_name(PinholeProjection::name())],
+                .with_component_type(PinholeProjection::name())],
         );
         add_diff(&mut topo, "robo/eyes/right/cam/annotation", &[]);
         add_diff(&mut topo, "robo/eyes/right/cam", &[]);
@@ -532,7 +532,7 @@ mod tests {
             &mut topo,
             "robo/eyes/right/cam",
             &[ComponentDescriptor::partial("whatever")
-                .with_component_name(PinholeProjection::name())],
+                .with_component_type(PinholeProjection::name())],
         );
         {
             check_paths_in_space(&topo, &["robo", "robo/arm"], "/");
@@ -579,7 +579,7 @@ mod tests {
             &mut topo,
             "robo",
             &[ComponentDescriptor::partial("whatever")
-                .with_component_name(ViewCoordinates::name())],
+                .with_component_type(ViewCoordinates::name())],
         );
         {
             let root = topo.subspace_for_entity(&EntityPath::root());
@@ -605,26 +605,26 @@ mod tests {
                     &mut topo,
                     "cam0/cam1",
                     &[ComponentDescriptor::partial("whatever1")
-                        .with_component_name(PinholeProjection::name())],
+                        .with_component_type(PinholeProjection::name())],
                 );
                 add_diff(
                     &mut topo,
                     "cam0",
                     &[ComponentDescriptor::partial("whatever2")
-                        .with_component_name(PinholeProjection::name())],
+                        .with_component_type(PinholeProjection::name())],
                 );
             } else {
                 add_diff(
                     &mut topo,
                     "cam0",
                     &[ComponentDescriptor::partial("whatever3")
-                        .with_component_name(PinholeProjection::name())],
+                        .with_component_type(PinholeProjection::name())],
                 );
                 add_diff(
                     &mut topo,
                     "cam0/cam1",
                     &[ComponentDescriptor::partial("whatever4")
-                        .with_component_name(PinholeProjection::name())],
+                        .with_component_type(PinholeProjection::name())],
                 );
             }
 

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration of the map view zoom level.
@@ -37,9 +37,9 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_zoom() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
-            component_name: Some("rerun.blueprint.components.ZoomLevel".into()),
-            archetype_field_name: "zoom".into(),
+            archetype: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            component: "MapZoom:zoom".into(),
+            component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
         }
     }
 
@@ -47,9 +47,9 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.MapZoomIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.MapZoomIndicator".into(),
+            component_type: None,
         }
     }
 }

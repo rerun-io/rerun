@@ -24,7 +24,7 @@ class AxisLength(datatypes.Float32, ComponentMixin):
 
 
 class AxisLengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.AxisLength"
+    _COMPONENT_TYPE: str = "rerun.components.AxisLength"
 
 
 # This is patched in late to avoid circular dependencies.

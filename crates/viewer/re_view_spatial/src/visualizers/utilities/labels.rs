@@ -120,7 +120,7 @@ pub fn show_labels_fallback(
     instance_count_component: &ComponentDescriptor,
     text_component: &ComponentDescriptor,
 ) -> ShowLabels {
-    debug_assert!(text_component.component_name == Some(Text::name()));
+    debug_assert!(text_component.component_type == Some(Text::name()));
 
     let results = ctx.recording().latest_at(
         ctx.query,

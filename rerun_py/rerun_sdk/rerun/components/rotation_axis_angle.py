@@ -29,7 +29,7 @@ class RotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
 
 
 class RotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.RotationAxisAngle"
+    _COMPONENT_TYPE: str = "rerun.components.RotationAxisAngle"
 
 
 # This is patched in late to avoid circular dependencies.

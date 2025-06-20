@@ -28,7 +28,7 @@ class RowShare(datatypes.Float32, ComponentMixin):
 
 
 class RowShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.RowShare"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.RowShare"
 
 
 # This is patched in late to avoid circular dependencies.

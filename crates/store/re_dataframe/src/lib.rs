@@ -20,7 +20,7 @@ pub use self::external::re_log_types::{
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
 
 #[doc(no_inline)]
-pub use self::external::re_types_core::{ComponentDescriptor, ComponentName};
+pub use self::external::re_types_core::{ComponentDescriptor, ComponentType};
 
 pub mod external {
     pub use re_chunk;

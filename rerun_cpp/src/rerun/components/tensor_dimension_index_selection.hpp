@@ -43,7 +43,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::TensorDimensionIndexSelection> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.components.TensorDimensionIndexSelection";
 
         /// Returns the arrow data type this type corresponds to.

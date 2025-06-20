@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An edge in a graph connecting two nodes.
@@ -26,7 +26,7 @@ pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
 
 impl ::re_types_core::Component for GraphEdge {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.GraphEdge".into()
     }
 }

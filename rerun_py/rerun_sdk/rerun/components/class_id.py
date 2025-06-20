@@ -24,7 +24,7 @@ class ClassId(datatypes.ClassId, ComponentMixin):
 
 
 class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ClassId"
+    _COMPONENT_TYPE: str = "rerun.components.ClassId"
 
 
 # This is patched in late to avoid circular dependencies.

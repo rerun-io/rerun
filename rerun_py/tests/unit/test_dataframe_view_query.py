@@ -8,17 +8,17 @@ from rerun.blueprint.archetypes import DataframeQuery
 
 
 def test_component_column_selector_explicit() -> None:
-    selector = blueprint_components.ComponentColumnSelector(entity_path="entity/path", component="ComponentName")
+    selector = blueprint_components.ComponentColumnSelector(entity_path="entity/path", component="Component")
 
     assert selector.entity_path == rr.datatypes.EntityPath("entity/path")
-    assert selector.component == rr.datatypes.Utf8("ComponentName")
+    assert selector.component == rr.datatypes.Utf8("Component")
 
 
 def test_component_column_selector_spec() -> None:
-    selector = blueprint_components.ComponentColumnSelector("entity/path:ComponentName")
+    selector = blueprint_components.ComponentColumnSelector("entity/path:Component")
 
     assert selector.entity_path == rr.datatypes.EntityPath("entity/path")
-    assert selector.component == rr.datatypes.Utf8("ComponentName")
+    assert selector.component == rr.datatypes.Utf8("Component")
 
 
 def test_component_column_selector_fail() -> None:
@@ -26,10 +26,10 @@ def test_component_column_selector_fail() -> None:
         blueprint_components.ComponentColumnSelector(entity_path="entity/path", component=None)
 
     with pytest.raises(ValueError):
-        blueprint_components.ComponentColumnSelector(spec="entity/path:ComponentName", entity_path="entity/path")
+        blueprint_components.ComponentColumnSelector(spec="entity/path:Component", entity_path="entity/path")
 
     with pytest.raises(ValueError):
-        blueprint_components.ComponentColumnSelector(spec="entity/path:ComponentName", component="ComponentName")
+        blueprint_components.ComponentColumnSelector(spec="entity/path:Component", component="Component")
 
     with pytest.raises(ValueError):
         blueprint_components.ComponentColumnSelector()
@@ -42,12 +42,12 @@ def test_component_column_selector_fail() -> None:
 
 
 def test_component_column_selector_batch() -> None:
-    a = blueprint_components.ComponentColumnSelectorBatch(["/entity/path:ComponentName"])
+    a = blueprint_components.ComponentColumnSelectorBatch(["/entity/path:Component"])
     b = blueprint_components.ComponentColumnSelectorBatch(
-        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName"),
+        blueprint_components.ComponentColumnSelector("/entity/path:Component"),
     )
     c = blueprint_components.ComponentColumnSelectorBatch([
-        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName"),
+        blueprint_components.ComponentColumnSelector("/entity/path:Component"),
     ])
 
     assert a == b
@@ -57,7 +57,7 @@ def test_component_column_selector_batch() -> None:
 def test_selected_columns() -> None:
     columns = blueprint_components.SelectedColumns([
         "t",
-        "/entity/path:ComponentName",
+        "/entity/path:Component",
         datatypes.Utf8("frame"),
         blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
     ])
@@ -67,7 +67,7 @@ def test_selected_columns() -> None:
         datatypes.Utf8("frame"),
     ]
     assert columns.component_columns == [
-        blueprint_components.ComponentColumnSelector("/entity/path:ComponentName"),
+        blueprint_components.ComponentColumnSelector("/entity/path:Component"),
         blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
     ]
 
@@ -76,7 +76,7 @@ def test_selected_columns_batch() -> None:
     a = blueprint_components.SelectedColumnsBatch([
         [
             "t",
-            "/entity/path:ComponentName",
+            "/entity/path:Component",
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ],
@@ -84,7 +84,7 @@ def test_selected_columns_batch() -> None:
     b = blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
             "t",
-            "/entity/path:ComponentName",
+            "/entity/path:Component",
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ]),
@@ -99,7 +99,7 @@ def test_selected_columns_batch_multiple() -> None:
             "t",
         ],
         [
-            "/entity/path:ComponentName",
+            "/entity/path:Component",
         ],
         [
             "frame",
@@ -111,7 +111,7 @@ def test_selected_columns_batch_multiple() -> None:
             "t",
         ]),
         blueprint_components.SelectedColumns([
-            "/entity/path:ComponentName",
+            "/entity/path:Component",
         ]),
         blueprint_components.SelectedColumns([
             datatypes.Utf8("frame"),
@@ -126,11 +126,11 @@ def test_dataframe_query_property() -> None:
     query = DataframeQuery(
         timeline="frame",
         filter_by_range=(TimeInt(seq=1), TimeInt(seq=10)),
-        filter_is_not_null="/entity/path:ComponentName",
+        filter_is_not_null="/entity/path:Component",
         apply_latest_at=True,
         select=[
             "t",
-            "/entity/path:ComponentName",
+            "/entity/path:Component",
         ],
     )
 
@@ -141,7 +141,7 @@ def test_dataframe_query_property() -> None:
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
             active=True,
-            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
+            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="Component"),
         ),
     )
 
@@ -150,7 +150,7 @@ def test_dataframe_query_property() -> None:
     assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
             datatypes.Utf8("t"),
-            blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
+            blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="Component"),
         ]),
     )
 
@@ -161,7 +161,7 @@ def test_dataframe_query_property_explicit() -> None:
         filter_by_range=blueprint_components.FilterByRange(start=TimeInt(seq=1), end=TimeInt(seq=10)),
         filter_is_not_null=blueprint_components.ComponentColumnSelector(
             entity_path="/entity/path",
-            component="ComponentName",
+            component="Component",
         ),
         select=[
             datatypes.Utf8("frame"),
@@ -176,7 +176,7 @@ def test_dataframe_query_property_explicit() -> None:
     assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
         blueprint_components.FilterIsNotNull(
             active=True,
-            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
+            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="Component"),
         ),
     )
 

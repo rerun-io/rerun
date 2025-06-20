@@ -30,7 +30,7 @@ class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
 
 
 class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.LockRangeDuringZoom"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.LockRangeDuringZoom"
 
 
 # This is patched in late to avoid circular dependencies.

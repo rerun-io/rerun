@@ -134,7 +134,7 @@ ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.components.Colormap"
+    _COMPONENT_TYPE: str = "rerun.components.Colormap"
 
     @staticmethod
     def _native_to_pa_array(data: ColormapArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -173,8 +173,8 @@ pub struct CStoreInfo {
 #[repr(C)]
 pub struct CComponentDescriptor {
     pub archetype_name: CStringView,
-    pub archetype_field_name: CStringView,
-    pub component_name: CStringView,
+    pub component: CStringView,
+    pub component_type: CStringView,
 }
 
 /// See `rr_component_type` in the C header.
@@ -366,8 +366,8 @@ fn rr_register_component_type_impl(
 ) -> Result<CComponentTypeHandle, CError> {
     let CComponentDescriptor {
         archetype_name,
-        archetype_field_name,
-        component_name,
+        component,
+        component_type: component_type_descr,
     } = &component_type.descriptor;
 
     let archetype_name = if !archetype_name.is_null() {
@@ -375,18 +375,17 @@ fn rr_register_component_type_impl(
     } else {
         None
     };
-    let archetype_field_name =
-        archetype_field_name.as_str("component_type.descriptor.archetype_field_name")?;
-    let component_name = if !component_name.is_null() {
-        Some(component_name.as_str("component_type.descriptor.component_name")?)
+    let component = component.as_str("component_type.descriptor.component")?;
+    let component_type_descr = if !component_type_descr.is_null() {
+        Some(component_type_descr.as_str("component_type.descriptor.component_type")?)
     } else {
         None
     };
 
     let component_descr = ComponentDescriptor {
-        archetype_name: archetype_name.map(Into::into),
-        archetype_field_name: archetype_field_name.into(),
-        component_name: component_name.map(Into::into),
+        archetype: archetype_name.map(Into::into),
+        component: component.into(),
+        component_type: component_type_descr.map(Into::into),
     };
 
     let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {

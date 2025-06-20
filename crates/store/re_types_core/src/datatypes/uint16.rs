@@ -16,7 +16,7 @@
 use crate::try_serialize_field;
 use crate::SerializationResult;
 use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentName};
+use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16bit unsigned integer.

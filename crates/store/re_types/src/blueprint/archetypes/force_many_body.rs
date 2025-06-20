@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
@@ -45,9 +45,9 @@ impl ForceManyBody {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: Some("rerun.blueprint.components.Enabled".into()),
-            archetype_field_name: "enabled".into(),
+            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component: "ForceManyBody:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,9 +57,9 @@ impl ForceManyBody {
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: Some("rerun.blueprint.components.ForceStrength".into()),
-            archetype_field_name: "strength".into(),
+            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component: "ForceManyBody:strength".into(),
+            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
         }
     }
 
@@ -67,9 +67,9 @@ impl ForceManyBody {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
+            component_type: None,
         }
     }
 }

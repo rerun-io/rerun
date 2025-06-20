@@ -45,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::BackgroundKind> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.BackgroundKind";
 
         /// Returns the arrow data type this type corresponds to.

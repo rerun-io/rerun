@@ -103,7 +103,7 @@ class AffixFuzzer16Batch(BaseBatch[AffixFuzzer16ArrayLike], ComponentBatchMixin)
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer16"
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer16"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer16ArrayLike, data_type: pa.DataType) -> pa.Array:

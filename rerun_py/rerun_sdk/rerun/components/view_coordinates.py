@@ -46,7 +46,7 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
 
 
 class ViewCoordinatesBatch(datatypes.ViewCoordinatesBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ViewCoordinates"
+    _COMPONENT_TYPE: str = "rerun.components.ViewCoordinates"
 
 
 # This is patched in late to avoid circular dependencies.

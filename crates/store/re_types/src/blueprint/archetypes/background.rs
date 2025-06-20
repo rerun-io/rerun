@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the background of a view.
@@ -38,9 +38,9 @@ impl Background {
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: Some("rerun.blueprint.components.BackgroundKind".into()),
-            archetype_field_name: "kind".into(),
+            archetype: Some("rerun.blueprint.archetypes.Background".into()),
+            component: "Background:kind".into(),
+            component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
         }
     }
 
@@ -50,9 +50,9 @@ impl Background {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: Some("rerun.components.Color".into()),
-            archetype_field_name: "color".into(),
+            archetype: Some("rerun.blueprint.archetypes.Background".into()),
+            component: "Background:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -60,9 +60,9 @@ impl Background {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.BackgroundIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.BackgroundIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -1,10 +1,10 @@
-use re_types_core::ComponentName;
+use re_types_core::ComponentType;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 
-impl DataUi for ComponentName {
+impl DataUi for ComponentType {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

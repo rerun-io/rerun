@@ -252,28 +252,28 @@ class AffixFuzzer1(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "fuzz1001": fuzz1001,
-            "fuzz1002": fuzz1002,
-            "fuzz1003": fuzz1003,
-            "fuzz1004": fuzz1004,
-            "fuzz1005": fuzz1005,
-            "fuzz1006": fuzz1006,
-            "fuzz1007": fuzz1007,
-            "fuzz1008": fuzz1008,
-            "fuzz1009": fuzz1009,
-            "fuzz1010": fuzz1010,
-            "fuzz1011": fuzz1011,
-            "fuzz1012": fuzz1012,
-            "fuzz1013": fuzz1013,
-            "fuzz1014": fuzz1014,
-            "fuzz1015": fuzz1015,
-            "fuzz1016": fuzz1016,
-            "fuzz1017": fuzz1017,
-            "fuzz1018": fuzz1018,
-            "fuzz1019": fuzz1019,
-            "fuzz1020": fuzz1020,
-            "fuzz1021": fuzz1021,
-            "fuzz1022": fuzz1022,
+            "AffixFuzzer1:fuzz1001": fuzz1001,
+            "AffixFuzzer1:fuzz1002": fuzz1002,
+            "AffixFuzzer1:fuzz1003": fuzz1003,
+            "AffixFuzzer1:fuzz1004": fuzz1004,
+            "AffixFuzzer1:fuzz1005": fuzz1005,
+            "AffixFuzzer1:fuzz1006": fuzz1006,
+            "AffixFuzzer1:fuzz1007": fuzz1007,
+            "AffixFuzzer1:fuzz1008": fuzz1008,
+            "AffixFuzzer1:fuzz1009": fuzz1009,
+            "AffixFuzzer1:fuzz1010": fuzz1010,
+            "AffixFuzzer1:fuzz1011": fuzz1011,
+            "AffixFuzzer1:fuzz1012": fuzz1012,
+            "AffixFuzzer1:fuzz1013": fuzz1013,
+            "AffixFuzzer1:fuzz1014": fuzz1014,
+            "AffixFuzzer1:fuzz1015": fuzz1015,
+            "AffixFuzzer1:fuzz1016": fuzz1016,
+            "AffixFuzzer1:fuzz1017": fuzz1017,
+            "AffixFuzzer1:fuzz1018": fuzz1018,
+            "AffixFuzzer1:fuzz1019": fuzz1019,
+            "AffixFuzzer1:fuzz1020": fuzz1020,
+            "AffixFuzzer1:fuzz1021": fuzz1021,
+            "AffixFuzzer1:fuzz1022": fuzz1022,
         }
         columns = []
 
@@ -282,7 +282,7 @@ class AffixFuzzer1(Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

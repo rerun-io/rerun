@@ -50,7 +50,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::AffixFuzzer1> {
-        static constexpr std::string_view ComponentName = "rerun.testing.datatypes.AffixFuzzer1";
+        static constexpr std::string_view ComponentType = "rerun.testing.datatypes.AffixFuzzer1";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -24,7 +24,7 @@ class PoseTranslation3D(datatypes.Vec3D, ComponentMixin):
 
 
 class PoseTranslation3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.PoseTranslation3D"
+    _COMPONENT_TYPE: str = "rerun.components.PoseTranslation3D"
 
 
 # This is patched in late to avoid circular dependencies.

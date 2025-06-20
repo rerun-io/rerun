@@ -28,7 +28,7 @@ class TimelineName(datatypes.Utf8, ComponentMixin):
 
 
 class TimelineNameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.TimelineName"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.TimelineName"
 
 
 # This is patched in late to avoid circular dependencies.

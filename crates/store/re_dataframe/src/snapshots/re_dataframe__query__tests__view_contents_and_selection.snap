@@ -7,10 +7,12 @@ expression: DisplayRB(dataframe)
 │ ---                  ┆ ---                  ┆ ---                  ┆ points                       ┆ colors                       ┆ labels                       │
 │ type: i64            ┆ type: Timestamp(ns)  ┆ type: null           ┆ ---                          ┆ ---                          ┆ ---                          │
 │ index_name: frame_nr ┆ index_name: log_time ┆ index_name: log_tick ┆ type: null                   ┆ type: List[u32]              ┆ type: List[Utf8]             │
-│ kind: index          ┆ kind: index          ┆ is_sorted: true      ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  │
-│                      ┆                      ┆ kind: index          ┆ archetype_field: points      ┆ archetype_field: colors      ┆ archetype_field: labels      │
-│                      ┆                      ┆                      ┆ entity_path: /this/that      ┆ component: example.MyColor   ┆ component: example.MyLabel   │
-│                      ┆                      ┆                      ┆ kind: data                   ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
+│ kind: index          ┆ kind: index          ┆ is_sorted: true      ┆ component:                   ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  │
+│                      ┆                      ┆ kind: index          ┆ example.MyPoints:points      ┆ component:                   ┆ component:                   │
+│                      ┆                      ┆                      ┆ entity_path: /this/that      ┆ example.MyPoints:colors      ┆ example.MyPoints:labels      │
+│                      ┆                      ┆                      ┆ kind: data                   ┆ component_type:              ┆ component_type:              │
+│                      ┆                      ┆                      ┆                              ┆ example.MyColor              ┆ example.MyLabel              │
+│                      ┆                      ┆                      ┆                              ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
 │                      ┆                      ┆                      ┆                              ┆ kind: data                   ┆ is_static: true              │
 │                      ┆                      ┆                      ┆                              ┆                              ┆ kind: data                   │
 ╞══════════════════════╪══════════════════════╪══════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡

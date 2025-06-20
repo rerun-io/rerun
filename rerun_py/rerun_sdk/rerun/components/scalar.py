@@ -28,7 +28,7 @@ class Scalar(datatypes.Float64, ComponentMixin):
 
 
 class ScalarBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Scalar"
+    _COMPONENT_TYPE: str = "rerun.components.Scalar"
 
 
 # This is patched in late to avoid circular dependencies.

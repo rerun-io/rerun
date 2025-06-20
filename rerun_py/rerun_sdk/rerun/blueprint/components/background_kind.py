@@ -72,7 +72,7 @@ BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.blueprint.components.BackgroundKind"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.BackgroundKind"
 
     @staticmethod
     def _native_to_pa_array(data: BackgroundKindArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -33,21 +33,22 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> visible;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.PlotLegendIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PlotLegend";
 
         /// `ComponentDescriptor` for the `corner` field.
         static constexpr auto Descriptor_corner = ComponentDescriptor(
-            ArchetypeName, "corner", Loggable<rerun::blueprint::components::Corner2D>::ComponentName
+            ArchetypeName, "PlotLegend:corner",
+            Loggable<rerun::blueprint::components::Corner2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentName
+            ArchetypeName, "PlotLegend:visible", Loggable<rerun::components::Visible>::ComponentType
         );
 
       public:

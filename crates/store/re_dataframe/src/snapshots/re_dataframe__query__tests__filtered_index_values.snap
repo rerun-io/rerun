@@ -7,8 +7,8 @@ expression: DisplayRB(dataframe)
 │ ---                  ┆ ---                  ┆ ---                                ┆ ---                                ┆ ---                                │
 │ type: i64            ┆ type: Timestamp(ns)  ┆ type: List[u32]                    ┆ type: List[Utf8]                   ┆ type: List[Struct[2]]              │
 │ index_name: frame_nr ┆ index_name: log_time ┆ archetype: example.MyPoints        ┆ archetype: example.MyPoints        ┆ archetype: example.MyPoints        │
-│ kind: index          ┆ kind: index          ┆ archetype_field: colors            ┆ archetype_field: labels            ┆ archetype_field: points            │
-│                      ┆                      ┆ component: example.MyColor         ┆ component: example.MyLabel         ┆ component: example.MyPoint         │
+│ kind: index          ┆ kind: index          ┆ component: example.MyPoints:colors ┆ component: example.MyPoints:labels ┆ component: example.MyPoints:points │
+│                      ┆                      ┆ component_type: example.MyColor    ┆ component_type: example.MyLabel    ┆ component_type: example.MyPoint    │
 │                      ┆                      ┆ entity_path: /this/that            ┆ entity_path: /this/that            ┆ entity_path: /this/that            │
 │                      ┆                      ┆ kind: data                         ┆ is_static: true                    ┆ kind: data                         │
 │                      ┆                      ┆                                    ┆ kind: data                         ┆                                    │

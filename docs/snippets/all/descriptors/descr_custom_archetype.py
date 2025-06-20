@@ -13,14 +13,14 @@ class CustomPoints3D(rr.AsComponents):
         self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(
                 "custom_positions",
-                archetype_name="user.CustomPoints3D",
-                component_name="user.CustomPosition3D",
+                archetype="user.CustomPoints3D",
+                component_type="user.CustomPosition3D",
             ),
         )
         self.colors = rr.components.ColorBatch(colors).described(
             rr.ComponentDescriptor("colors").with_overrides(
-                archetype_name="user.CustomPoints3D",
-                component_name=rr.components.ColorBatch._COMPONENT_NAME,
+                archetype="user.CustomPoints3D",
+                component_type=rr.components.ColorBatch._COMPONENT_TYPE,
             )
         )
 

@@ -28,16 +28,16 @@ namespace rerun::components {
     /// Indicator component used by archetypes when converting them to component lists.
     ///
     /// This is done in order to track how a collection of component was logged.
-    template <const char ComponentName[]>
+    template <const char ComponentType[]>
     struct IndicatorComponent {};
 } // namespace rerun::components
 
 namespace rerun {
     /// \private
-    template <const char ComponentName_[]>
-    struct Loggable<components::IndicatorComponent<ComponentName_>> {
+    template <const char ComponentType_[]>
+    struct Loggable<components::IndicatorComponent<ComponentType_>> {
         /// Returns the name of this type.
-        static constexpr ComponentDescriptor Descriptor = ComponentDescriptor(ComponentName_);
+        static constexpr ComponentDescriptor Descriptor = ComponentDescriptor(ComponentType_);
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
@@ -46,7 +46,7 @@ namespace rerun {
 
         /// Creates an arrow ComponentBatch from an array of IndicatorComponent components.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::IndicatorComponent<ComponentName_>*, size_t num_instances
+            const components::IndicatorComponent<ComponentType_>*, size_t num_instances
         ) {
             // If possible, use the statically allocated shared pointer returned by the parameterless version.
             if (num_instances == 1) {

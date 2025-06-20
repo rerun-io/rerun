@@ -21,7 +21,7 @@ all-features = true
 
 [package.metadata.cargo-shear]
 ignored = [
-  "serde", # Needed to make `ComponentName` (an interned string) serializable.
+  "serde", # Needed to make `ComponentType` (an interned string) serializable.
 ]
 
 

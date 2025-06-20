@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
@@ -30,7 +30,7 @@ pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
 
 impl ::re_types_core::Component for VisibleTimeRange {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.blueprint.components.VisibleTimeRange".into()
     }
 }

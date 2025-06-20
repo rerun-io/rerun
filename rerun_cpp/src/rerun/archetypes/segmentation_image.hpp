@@ -90,29 +90,33 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.SegmentationImageIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SegmentationImage";
 
         /// `ComponentDescriptor` for the `buffer` field.
         static constexpr auto Descriptor_buffer = ComponentDescriptor(
-            ArchetypeName, "buffer", Loggable<rerun::components::ImageBuffer>::ComponentName
+            ArchetypeName, "SegmentationImage:buffer",
+            Loggable<rerun::components::ImageBuffer>::ComponentType
         );
         /// `ComponentDescriptor` for the `format` field.
         static constexpr auto Descriptor_format = ComponentDescriptor(
-            ArchetypeName, "format", Loggable<rerun::components::ImageFormat>::ComponentName
+            ArchetypeName, "SegmentationImage:format",
+            Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity", Loggable<rerun::components::Opacity>::ComponentName
+            ArchetypeName, "SegmentationImage:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
+            ArchetypeName, "SegmentationImage:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from segmentation_image_ext.cpp:

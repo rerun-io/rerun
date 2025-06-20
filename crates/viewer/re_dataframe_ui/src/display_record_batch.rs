@@ -217,7 +217,7 @@ impl DisplayComponentColumn {
             // because without cache key, the image thumbnail will no be displayed by the component
             // ui.
             if row_id.is_none()
-                && (self.component_descr.component_name == Some(re_types::components::Blob::name()))
+                && (self.component_descr.component_type == Some(re_types::components::Blob::name()))
             {
                 re_tracing::profile_scope!("Blob hash");
 
