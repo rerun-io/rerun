@@ -4,6 +4,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
+use std::path::PathBuf;
 use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
@@ -660,7 +661,7 @@ impl PyGrpcSink {
 #[pyclass(frozen, eq, hash, name = "FileSink")]
 #[derive(PartialEq, Hash)]
 struct PyFileSink {
-    path: String,
+    path: PathBuf,
 }
 
 #[pymethods]
@@ -668,7 +669,7 @@ impl PyFileSink {
     #[new]
     #[pyo3(signature = (path))]
     #[pyo3(text_signature = "(self, path)")]
-    fn new(path: String) -> Self {
+    fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
@@ -783,7 +784,7 @@ fn connect_grpc_blueprint(
 ) -> PyResult<()> {
     let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
 
-    if let Some(blueprint_id) = (blueprint_stream).store_info().map(|info| info.store_id) {
+    if let Some(blueprint_id) = blueprint_stream.store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {

@@ -784,7 +784,7 @@ class FileSink:
     Save the recording stream to a file.
     """
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: os.PathLike) -> None:
         """
         Initialize a file sink.
 
