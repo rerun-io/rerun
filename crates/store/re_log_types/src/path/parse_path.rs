@@ -477,7 +477,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("My.Custom.Archetype".into()),
+                    .with_archetype("My.Custom.Archetype".into()),
             })
         );
         assert_eq!(
@@ -485,7 +485,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("rerun.archetypes.Points3D".into()),
+                    .with_archetype("rerun.archetypes.Points3D".into()),
             })
         );
         assert_eq!(
@@ -493,7 +493,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("My.Custom.Archetype".into())
+                    .with_archetype("My.Custom.Archetype".into())
                     .with_component_type("colors".into()),
             })
         );
@@ -502,7 +502,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("rerun.archetypes.Points3D".into())
+                    .with_archetype("rerun.archetypes.Points3D".into())
                     .with_component_type("my.custom.colors".into()),
             })
         );
@@ -562,7 +562,7 @@ mod tests {
                 instance: None,
                 component_descriptor: Some(
                     ComponentDescriptor::partial("colors")
-                        .with_archetype_name("rerun.archetypes.Points3D".into())
+                        .with_archetype("rerun.archetypes.Points3D".into())
                         .with_component_type("my.custom.color".into())
                 ),
             })

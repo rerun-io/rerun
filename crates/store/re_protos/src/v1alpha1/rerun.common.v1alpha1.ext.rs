@@ -906,7 +906,7 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
         ))?);
 
         if let Some(archetype_name) = archetype_name {
-            descriptor = descriptor.with_archetype_name(archetype_name.into());
+            descriptor = descriptor.with_archetype(archetype_name.into());
         }
 
         if let Some(component_type) = component_type {

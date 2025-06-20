@@ -1016,13 +1016,11 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     );
     debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
     let descriptor_rotation_axis_angles =
-        InstancePoses3D::descriptor_rotation_axis_angles().with_archetype_name(archetype_name);
+        InstancePoses3D::descriptor_rotation_axis_angles().with_archetype(archetype_name);
     let descriptor_quaternions =
-        InstancePoses3D::descriptor_quaternions().with_archetype_name(archetype_name);
-    let descriptor_scales =
-        InstancePoses3D::descriptor_scales().with_archetype_name(archetype_name);
-    let descriptor_mat3x3 =
-        InstancePoses3D::descriptor_mat3x3().with_archetype_name(archetype_name);
+        InstancePoses3D::descriptor_quaternions().with_archetype(archetype_name);
+    let descriptor_scales = InstancePoses3D::descriptor_scales().with_archetype(archetype_name);
+    let descriptor_mat3x3 = InstancePoses3D::descriptor_mat3x3().with_archetype(archetype_name);
 
     let result = entity_db.latest_at(
         query,

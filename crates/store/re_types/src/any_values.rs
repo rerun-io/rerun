@@ -152,12 +152,12 @@ mod test {
             actual,
             [
                 ComponentDescriptor::partial("confidence")
-                    .with_archetype_name("MyExample".into())
+                    .with_archetype("MyExample".into())
                     .with_component_type(components::Scalar::name()),
                 ComponentDescriptor::partial("homepage")
                     .with_component_type("user.url".into())
-                    .with_archetype_name("MyExample".into()),
-                ComponentDescriptor::partial("description").with_archetype_name("MyExample".into()),
+                    .with_archetype("MyExample".into()),
+                ComponentDescriptor::partial("description").with_archetype("MyExample".into()),
             ]
             .into_iter()
             .collect()

@@ -156,7 +156,7 @@ impl ComponentDescriptor {
     ///
     /// This also changes the archetype part of [`Self::component`].
     #[inline]
-    pub fn with_archetype_name(mut self, archetype_name: ArchetypeName) -> Self {
+    pub fn with_archetype(mut self, archetype_name: ArchetypeName) -> Self {
         {
             let field_name = self.archetype_field_name();
             self.component = archetype_name.with_field(field_name);
@@ -176,7 +176,7 @@ impl ComponentDescriptor {
     ///
     /// This also changes the archetype part of [`Self::component`].
     #[inline]
-    pub fn or_with_archetype_name(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
+    pub fn or_with_archetype(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
         if self.archetype.is_none() {
             let archetype_name = archetype_name();
             self.component = archetype_name.with_field(self.component);
@@ -257,7 +257,7 @@ mod test {
         assert_eq!(descr.display_name(), "MyExample:test");
 
         let archetype_name: ArchetypeName = "rerun.archetypes.MyOtherExample".into();
-        let descr = descr.with_archetype_name(archetype_name);
+        let descr = descr.with_archetype(archetype_name);
         assert_eq!(descr.archetype_field_name(), "test");
         assert_eq!(descr.display_name(), "MyOtherExample:test");
     }

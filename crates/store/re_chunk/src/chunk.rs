@@ -108,7 +108,7 @@ impl ChunkComponents {
     }
 
     /// Whether any of the components in this chunk is tagged with the given archetype name.
-    pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
+    pub fn has_component_with_archetype(&self, archetype_name: ArchetypeName) -> bool {
         self.0
             .keys()
             .any(|desc| desc.archetype == Some(archetype_name))

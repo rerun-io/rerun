@@ -154,8 +154,8 @@ impl SerializedComponentBatch {
 
     /// Unconditionally sets the descriptor's `archetype_name` to the given one.
     #[inline]
-    pub fn with_archetype_name(mut self, archetype_name: ArchetypeName) -> Self {
-        self.descriptor = self.descriptor.with_archetype_name(archetype_name);
+    pub fn with_archetype(mut self, archetype_name: ArchetypeName) -> Self {
+        self.descriptor = self.descriptor.with_archetype(archetype_name);
         self
     }
 
@@ -168,8 +168,8 @@ impl SerializedComponentBatch {
 
     /// Sets the descriptor's `archetype_name` to the given one iff it's not already set.
     #[inline]
-    pub fn or_with_archetype_name(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
-        self.descriptor = self.descriptor.or_with_archetype_name(archetype_name);
+    pub fn or_with_archetype(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
+        self.descriptor = self.descriptor.or_with_archetype(archetype_name);
         self
     }
 
