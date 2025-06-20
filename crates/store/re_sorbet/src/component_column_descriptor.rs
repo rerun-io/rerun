@@ -195,11 +195,9 @@ impl ComponentColumnDescriptor {
             is_semantically_empty,
         } = self;
 
-        // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        // We use the long names for the archetype and component types so that they roundtrip properly!
         let mut metadata = std::collections::HashMap::from([
             ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
-            ("rerun.archetype_field".to_owned(), component.to_string()),
+            ("rerun.component".to_owned(), component.to_string()),
         ]);
 
         match batch_type {
@@ -221,7 +219,7 @@ impl ComponentColumnDescriptor {
 
         if let Some(component_type) = component_type {
             metadata.insert(
-                "rerun.component".to_owned(),
+                "rerun.component_type".to_owned(),
                 component_type.full_name().to_owned(),
             );
         }

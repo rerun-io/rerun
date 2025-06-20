@@ -268,11 +268,12 @@ impl SerializedComponentBatch {
 // TODO(cmc): we really shouldn't be duplicating these.
 
 /// The key used to identify the [`ArchetypeName`] in field-level metadata.
-// TODO(#10142): Use new colon-based identifier here.
-const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
+const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype";
+
+/// The [`ComponentIdentifier`] in field-level metadata.
+const FIELD_METADATA_KEY_COMPONENT: &str = "rerun.component";
 
 /// The key used to identify the [`ComponentType`] in field-level metadata.
-// TODO(#10142): Use new colon-based identifier here.
 const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun.component_type";
 
 impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
@@ -291,6 +292,10 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
                         name.to_string(),
                     )
                 }),
+                Some((
+                    FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                    batch.descriptor.component.to_string(),
+                )),
                 batch.descriptor.component_type.map(|name| {
                     (
                         FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),

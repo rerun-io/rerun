@@ -30,8 +30,8 @@ from .recording_stream import RecordingStream
 SORBET_INDEX_NAME = b"rerun.index_name"
 SORBET_ENTITY_PATH = b"rerun.entity_path"
 SORBET_ARCHETYPE_NAME = b"rerun.archetype"
-SORBET_ARCHETYPE_FIELD = b"rerun.archetype_field"
-SORBET_COMPONENT_TYPE = b"rerun.component"
+SORBET_COMPONENT = b"rerun.component"
+SORBET_COMPONENT_TYPE = b"rerun.component_type"
 RERUN_KIND = b"rerun.kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
@@ -63,8 +63,8 @@ class RawComponentBatchLike(ComponentColumn):
             kwargs["archetype_name"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
         if SORBET_COMPONENT_TYPE in self.metadata:
             kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
-        if SORBET_ARCHETYPE_FIELD in self.metadata:
-            kwargs["component"] = self.metadata[SORBET_ARCHETYPE_FIELD].decode("utf-8")
+        if SORBET_COMPONENT in self.metadata:
+            kwargs["component"] = self.metadata[SORBET_COMPONENT].decode("utf-8")
 
         if "component_type" not in kwargs:
             kwargs["component_type"] = "Unknown"
