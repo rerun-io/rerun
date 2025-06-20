@@ -74,6 +74,7 @@ crossbeam.workspace = true
 datafusion.workspace = true
 datafusion-ffi.workspace = true
 document-features.workspace = true
+futures.workspace = true
 itertools.workspace = true
 infer.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
@@ -88,6 +89,7 @@ rand = { workspace = true, features = ["std", "std_rng"] }
 rustls = { workspace = true, features = ["ring"] }
 strum.workspace = true
 strum_macros.workspace = true
+tracing.workspace = true
 uuid.workspace = true
 
 # Deps for remote feature

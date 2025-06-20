@@ -4,6 +4,7 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
@@ -23,6 +24,7 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 /// using Arrow IPC format.
 ///
 /// Returns only the first record batch in the stream.
+#[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
@@ -59,6 +61,7 @@ pub(crate) fn encode_arrow(
         crate::Compression::Off => uncompressed,
         crate::Compression::LZ4 => {
             re_tracing::profile_scope!("lz4::compress");
+            let _span = tracing::trace_span!("lz4::compress").entered();
             lz4_flex::block::compress(&uncompressed)
         }
     };
@@ -69,6 +72,9 @@ pub(crate) fn encode_arrow(
     })
 }
 
+// TODO(cmc): can we use the File-oriented APIs in order to re-use the transport buffer as backing
+// storage for the final RecordBatch?
+// See e.g. https://github.com/apache/arrow-rs/blob/b8b2f21f6a8254224d37a1e2d231b6b1e1767648/arrow/examples/zero_copy_ipc.rs
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn decode_arrow(
@@ -76,16 +82,41 @@ pub(crate) fn decode_arrow(
     uncompressed_size: usize,
     compression: crate::Compression,
 ) -> Result<ArrowRecordBatch, crate::decoder::DecodeError> {
-    let mut uncompressed = Vec::new();
-    let data = match compression {
-        crate::Compression::Off => data,
-        crate::Compression::LZ4 => {
-            re_tracing::profile_scope!("LZ4-decompress");
-            uncompressed.resize(uncompressed_size, 0);
-            lz4_flex::block::decompress_into(data, &mut uncompressed)?;
-            uncompressed.as_slice()
-        }
-    };
+    if true {
+        let mut uncompressed = Vec::new();
+        let data = match compression {
+            crate::Compression::Off => data,
+            crate::Compression::LZ4 => {
+                re_tracing::profile_scope!("LZ4-decompress");
+                let _span = tracing::trace_span!("lz4::decompress").entered();
+                uncompressed.resize(uncompressed_size, 0);
+                lz4_flex::block::decompress_into(data, &mut uncompressed)?;
+                uncompressed.as_slice()
+            }
+        };
 
-    Ok(read_arrow_from_bytes(&mut &data[..])?)
+        Ok(read_arrow_from_bytes(&mut &data[..])?)
+    } else {
+        // Zero-alloc path: not used today because allocations are bottlenecked on other things,
+        // but I want to keep this around for later.
+
+        use std::cell::RefCell;
+        thread_local! {
+            static BUFFER: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+        }
+
+        BUFFER.with_borrow_mut(|uncompressed| {
+            let data = match compression {
+                crate::Compression::Off => data,
+                crate::Compression::LZ4 => {
+                    let _span = tracing::trace_span!("lz4::decompress").entered();
+                    uncompressed.resize(uncompressed_size, 0);
+                    lz4_flex::block::decompress_into(data, uncompressed)?;
+                    uncompressed.as_slice()
+                }
+            };
+
+            Ok(read_arrow_from_bytes(&mut &data[..])?)
+        })
+    }
 }
