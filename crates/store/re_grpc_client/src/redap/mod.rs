@@ -108,18 +108,23 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 
     let http_url = origin.as_url();
 
-    match Endpoint::new(http_url)?
-        .tls_config(
+    let endpoint = {
+        let mut endpoint = Endpoint::new(http_url)?.tls_config(
             tonic::transport::ClientTlsConfig::new()
                 .with_enabled_roots()
                 .assume_http2(true),
-        )?
-        // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
-        // .initial_stream_window_size(Some(4 * 1024 * 1024))
-        // .initial_connection_window_size(Some(16 * 1024 * 1024))
-        .connect()
-        .await
-    {
+        )?;
+
+        if false {
+            // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
+            endpoint = endpoint.initial_stream_window_size(Some(4 * 1024 * 1024));
+            endpoint = endpoint.initial_connection_window_size(Some(16 * 1024 * 1024));
+        }
+
+        endpoint.connect().await
+    };
+
+    match endpoint {
         Ok(channel) => Ok(channel),
         Err(original_error) => {
             if ![
