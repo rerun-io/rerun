@@ -661,6 +661,9 @@ class RecordingStream:
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
+        It is highly recommended that you set the memory limit to `0B` if both the server and client are running in the
+        same process, otherwise you're potentially doubling your memory usage!
+
         Returns the URI of the server so you can connect the viewer to it.
 
         This function returns immediately.
