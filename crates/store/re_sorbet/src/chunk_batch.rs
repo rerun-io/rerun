@@ -145,17 +145,11 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        let mut batch = crate::migration::reorder_columns(batch);
+        // Migrations to `0.23` below.
+        let batch = crate::migrations::v0_23::reorder_columns(batch);
 
-        if batch
-            .schema()
-            .fields()
-            .iter()
-            .flat_map(|field| field.metadata().keys())
-            .any(|key| key.starts_with("rerun."))
-        {
-            batch = crate::migration::rewire_tagged_components(&batch);
-        };
+        // Migrations to `0.24` below.
+        let batch = crate::migrations::v0_24::rewire_tagged_components(&batch);
 
         Self::try_from(SorbetBatch::try_from_record_batch(
             &batch,

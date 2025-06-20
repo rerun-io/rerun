@@ -52,12 +52,12 @@ fn check_tags(rec: &rerun::RecordingStream) {
             let expected = vec![
                 ComponentDescriptor {
                     archetype: Some("rerun.archetypes.Points3D".into()),
-                    component: "positions".into(),
+                    component: "Points3D:positions".into(),
                     component_type: Some("rerun.components.Position3D".into()),
                 },
                 ComponentDescriptor {
                     archetype: Some("rerun.archetypes.Points3D".into()),
-                    component: "radii".into(),
+                    component: "Points3D:radii".into(),
                     component_type: Some("rerun.components.Radius".into()),
                 },
             ];

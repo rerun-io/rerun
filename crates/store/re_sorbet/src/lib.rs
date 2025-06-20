@@ -22,7 +22,7 @@ mod error;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
-mod migration;
+mod migrations;
 mod row_id_column_descriptor;
 mod selectors;
 mod sorbet_batch;

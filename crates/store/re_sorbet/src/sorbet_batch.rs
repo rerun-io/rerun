@@ -169,9 +169,17 @@ impl SorbetBatch {
     ) -> Result<Self, SorbetError> {
         re_tracing::profile_function!();
 
-        let batch = make_all_data_columns_list_arrays(batch);
-        let batch = crate::migration::migrate_tuids(&batch);
-        let batch = crate::migration::migrate_record_batch(&batch);
+        // Migrations to `0.23` below.
+        let batch =
+            make_all_data_columns_list_arrays(batch, crate::migrations::v0_23::is_component_column);
+        let batch = crate::migrations::v0_23::migrate_tuids(&batch);
+        let batch = crate::migrations::v0_23::migrate_record_batch(&batch);
+
+        // Migrations to `0.24` below.
+        let batch = make_all_data_columns_list_arrays(
+            &batch,
+            crate::migrations::v0_24::is_component_column,
+        );
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
@@ -206,16 +214,17 @@ impl SorbetBatch {
 
 /// Make sure all data columns are `ListArrays`.
 #[tracing::instrument(level = "trace", skip_all)]
-fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+fn make_all_data_columns_list_arrays(
+    batch: &ArrowRecordBatch,
+    is_component_column: impl FnMut(&&ArrowFieldRef) -> bool,
+) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_migration = batch
         .schema_ref()
         .fields()
         .iter()
-        .filter(|field| {
-            ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
-        })
+        .filter(is_component_column)
         .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
     if !needs_migration {
         return batch.clone();

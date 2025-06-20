@@ -9,7 +9,7 @@ impl CustomPoints3D {
     fn overridden_position_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("user.CustomPoints3D".into()),
-            component: "custom_positions".into(),
+            component: "user.CustomPoints3D:custom_positions".into(),
             component_type: Some("user.CustomPosition3D".into()),
         }
     }
@@ -92,12 +92,12 @@ fn check_tags(rec: &rerun::RecordingStream) {
         let expected = vec![
             ComponentDescriptor {
                 archetype: Some("user.CustomPoints3D".into()),
-                component: "colors".into(),
+                component: "user.CustomPoints3D:colors".into(),
                 component_type: Some("rerun.components.Color".into()),
             },
             ComponentDescriptor {
                 archetype: Some("user.CustomPoints3D".into()),
-                component: "custom_positions".into(),
+                component: "user.CustomPoints3D:custom_positions".into(),
                 component_type: Some("user.CustomPosition3D".into()),
             },
         ];
