@@ -306,10 +306,12 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
     re_tracing::profile_function!();
 
     let needs_rewiring = batch.schema_ref().fields().iter().any(|field| {
-        field
-            .metadata()
+        let metadata = field.metadata();
+        metadata
             .get("rerun.component")
             .is_some_and(|value| value.ends_with("Indicator"))
+            || (!metadata.contains_key("rerun.archetype")
+                && !metadata.contains_key("rerun.archetype_field"))
     });
     if !needs_rewiring {
         return batch.clone();
