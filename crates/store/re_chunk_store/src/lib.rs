@@ -19,6 +19,7 @@ mod drop_time_range;
 mod events;
 mod gc;
 mod query;
+mod schema;
 mod stats;
 mod store;
 mod subscribers;
@@ -30,6 +31,7 @@ pub use self::{
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
+    schema::{SchemaFromChunkStreamError, store_schema_from_chunk_stream},
     stats::{ChunkStoreChunkStats, ChunkStoreStats},
     store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnIdentifier,
