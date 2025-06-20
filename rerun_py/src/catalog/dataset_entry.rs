@@ -252,7 +252,7 @@ impl PyDatasetEntry {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            let store_id = StoreId::from_string(StoreKind::Recording, partition_id);
+            let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
             let store_info = StoreInfo {
                 application_id: dataset_name.into(),
                 store_id: store_id.clone(),
@@ -269,7 +269,15 @@ impl PyDatasetEntry {
 
             while let Some(chunks) = chunk_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, _partition_id) = chunk;
+                    let (chunk, chunk_partition_id) = chunk;
+
+                    if Some(&partition_id) != chunk_partition_id.as_ref() {
+                        re_log::warn!(
+                            expected = partition_id,
+                            got = chunk_partition_id,
+                            "unexpected partition ID in chunk stream, this is a bug"
+                        );
+                    }
                     store
                         .insert_chunk(&std::sync::Arc::new(chunk))
                         .map_err(to_py_err)?;
