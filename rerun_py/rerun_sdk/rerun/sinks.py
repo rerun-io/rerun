@@ -289,8 +289,8 @@ def serve_grpc(
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-    It is highly recommended that you set the memory limit to `0B` if both the server and client are running in the
-    same process, otherwise you're potentially doubling your memory usage!
+    It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+    on the same machine, otherwise you're potentially doubling your memory usage!
 
     Returns the URI of the server so you can connect the viewer to it.
 
@@ -500,6 +500,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
+    server_memory_limit: str = "0B",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
     default_blueprint: BlueprintLike | None = None,
@@ -523,6 +524,13 @@ def spawn(
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
+    server_memory_limit:
+        An upper limit on how much memory the gRPC server running
+        in the same process as the Rerun Viewer should use.
+        When this limit is reached, Rerun will drop the oldest data.
+        Example: `16GB` or `50%` (of system total).
+
+        Defaults to `0B`.
     hide_welcome_screen:
         Hide the normal Rerun welcome screen.
     detach_process:
@@ -544,7 +552,11 @@ def spawn(
         return
 
     _spawn_viewer(
-        port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen, detach_process=detach_process
+        port=port,
+        memory_limit=memory_limit,
+        server_memory_limit=server_memory_limit,
+        hide_welcome_screen=hide_welcome_screen,
+        detach_process=detach_process,
     )
 
     if connect:

@@ -650,7 +650,7 @@ class RecordingStream:
         *,
         grpc_port: int | None = None,
         default_blueprint: BlueprintLike | None = None,
-        server_memory_limit: str = "75%",
+        server_memory_limit: str = "25%",
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -661,8 +661,8 @@ class RecordingStream:
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-        It is highly recommended that you set the memory limit to `0B` if both the server and client are running in the
-        same process, otherwise you're potentially doubling your memory usage!
+        It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        on the same machine, otherwise you're potentially doubling your memory usage!
 
         Returns the URI of the server so you can connect the viewer to it.
 
