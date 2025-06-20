@@ -13,11 +13,11 @@ pub struct ComponentDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `rerun.archetypes.Points3D`.
-    pub archetype_name: Option<ArchetypeName>,
+    pub archetype: Option<ArchetypeName>,
 
     /// Name of the component associated with this data.
     ///
-    /// If `archetype_name` is `None`, this will be a simple field name.
+    /// If `archetype` is `None`, this will be a simple field name.
     /// [`ArchetypeName::with_field`] is a convenient method to create a [`ComponentIdentifier`].
     ///
     /// Example: `Points3D:positions`. Warning: Never parse this string to retrieve an archetype!
@@ -35,7 +35,7 @@ impl std::hash::Hash for ComponentDescriptor {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let Self {
-            archetype_name,
+            archetype: archetype_name,
             component,
             component_type,
         } = self;
@@ -120,7 +120,7 @@ impl ComponentDescriptor {
     /// This is the result of stripping the [`ArchetypeName`] from [`Self::component`].
     #[inline]
     pub fn archetype_field_name(&self) -> &str {
-        self.archetype_name
+        self.archetype
             .and_then(|archetype_name| {
                 self.component
                     .strip_prefix(&format!("{}:", archetype_name.short_name()))
@@ -133,7 +133,7 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            archetype_name,
+            archetype: archetype_name,
             component,
             component_type,
         } = self;
@@ -146,13 +146,13 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
 impl ComponentDescriptor {
     pub fn partial(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
-            archetype_name: None,
+            archetype: None,
             component: component.into(),
             component_type: None,
         }
     }
 
-    /// Unconditionally sets [`Self::archetype_name`] to the given one.
+    /// Unconditionally sets [`Self::archetype`] to the given one.
     ///
     /// This also changes the archetype part of [`Self::component`].
     #[inline]
@@ -161,7 +161,7 @@ impl ComponentDescriptor {
             let field_name = self.archetype_field_name();
             self.component = archetype_name.with_field(field_name);
         }
-        self.archetype_name = Some(archetype_name);
+        self.archetype = Some(archetype_name);
         self
     }
 
@@ -172,15 +172,15 @@ impl ComponentDescriptor {
         self
     }
 
-    /// Sets [`Self::archetype_name`] to the given one iff it's not already set.
+    /// Sets [`Self::archetype`] to the given one iff it's not already set.
     ///
     /// This also changes the archetype part of [`Self::component`].
     #[inline]
     pub fn or_with_archetype_name(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
-        if self.archetype_name.is_none() {
+        if self.archetype.is_none() {
             let archetype_name = archetype_name();
             self.component = archetype_name.with_field(self.component);
-            self.archetype_name = Some(archetype_name);
+            self.archetype = Some(archetype_name);
         }
         self
     }
@@ -221,7 +221,7 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
         let md = field.metadata();
 
         let descr = Self {
-            archetype_name: md
+            archetype: md
                 .get(FIELD_METADATA_KEY_ARCHETYPE)
                 .cloned()
                 .map(Into::into),
@@ -249,7 +249,7 @@ mod test {
     fn component_descriptor_manipulation() {
         let archetype_name: ArchetypeName = "rerun.archetypes.MyExample".into();
         let descr = ComponentDescriptor {
-            archetype_name: Some(archetype_name),
+            archetype: Some(archetype_name),
             component: archetype_name.with_field("test"),
             component_type: Some("user.Whatever".into()),
         };

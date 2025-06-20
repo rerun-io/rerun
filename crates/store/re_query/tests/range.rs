@@ -163,7 +163,7 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     let points3_2 = vec![MyPoint::new(11.0, 21.0), MyPoint::new(31.0, 41.0)];
     let points3_2_serialized = points3_2
         .serialized(re_types::ComponentDescriptor {
-            archetype_name: Some("MyPoints2".into()),
+            archetype: Some("MyPoints2".into()),
             component: "points2".into(),
             component_type: Some(<MyPoint as re_types_core::Component>::name()),
         })

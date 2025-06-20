@@ -45,9 +45,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component: "ForceCollisionRadius:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,9 +57,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component: "ForceCollisionRadius:strength".into(),
+            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
         }
     }
 
@@ -69,9 +69,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
             component: "ForceCollisionRadius:iterations".into(),
+            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
         }
     }
 
@@ -79,9 +79,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
+            component_type: None,
         }
     }
 }

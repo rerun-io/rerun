@@ -70,9 +70,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_type: Some("rerun.components.GraphEdge".into()),
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
             component: "GraphEdges:edges".into(),
+            component_type: Some("rerun.components.GraphEdge".into()),
         }
     }
 
@@ -82,9 +82,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_type: Some("rerun.components.GraphType".into()),
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
             component: "GraphEdges:graph_type".into(),
+            component_type: Some("rerun.components.GraphType".into()),
         }
     }
 
@@ -92,9 +92,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.GraphEdgesIndicator".into(),
+            component_type: None,
         }
     }
 }

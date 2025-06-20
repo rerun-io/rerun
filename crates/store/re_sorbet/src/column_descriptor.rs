@@ -132,7 +132,7 @@ impl ColumnDescriptor {
 
     pub fn archetype_name(&self) -> Option<ArchetypeName> {
         match self {
-            Self::Component(component) => component.archetype_name,
+            Self::Component(component) => component.archetype,
             _ => None,
         }
     }
@@ -170,7 +170,7 @@ fn test_schema_over_ipc() {
         )),
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
-            archetype_name: Some("archetype".to_owned().into()),
+            archetype: Some("archetype".to_owned().into()),
             component: "field".to_owned().into(),
             component_type: Some(re_types_core::ComponentType::new("component")),
             store_datatype: arrow::datatypes::DataType::Int64,

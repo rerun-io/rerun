@@ -37,9 +37,9 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_zoom() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
-            component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
+            archetype: Some("rerun.blueprint.archetypes.MapZoom".into()),
             component: "MapZoom:zoom".into(),
+            component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
         }
     }
 
@@ -47,9 +47,9 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.MapZoomIndicator".into(),
+            component_type: None,
         }
     }
 }

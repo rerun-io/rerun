@@ -366,9 +366,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.Translation3D".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:translation".into(),
+            component_type: Some("rerun.components.Translation3D".into()),
         }
     }
 
@@ -378,9 +378,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:rotation_axis_angle".into(),
+            component_type: Some("rerun.components.RotationAxisAngle".into()),
         }
     }
 
@@ -390,9 +390,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.RotationQuat".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:quaternion".into(),
+            component_type: Some("rerun.components.RotationQuat".into()),
         }
     }
 
@@ -402,9 +402,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_scale() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.Scale3D".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:scale".into(),
+            component_type: Some("rerun.components.Scale3D".into()),
         }
     }
 
@@ -414,9 +414,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.TransformMat3x3".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:mat3x3".into(),
+            component_type: Some("rerun.components.TransformMat3x3".into()),
         }
     }
 
@@ -426,9 +426,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_relation() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.TransformRelation".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:relation".into(),
+            component_type: Some("rerun.components.TransformRelation".into()),
         }
     }
 
@@ -438,9 +438,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_type: Some("rerun.components.AxisLength".into()),
+            archetype: Some("rerun.archetypes.Transform3D".into()),
             component: "Transform3D:axis_length".into(),
+            component_type: Some("rerun.components.AxisLength".into()),
         }
     }
 
@@ -448,9 +448,9 @@ impl Transform3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.Transform3DIndicator".into(),
+            component_type: None,
         }
     }
 }

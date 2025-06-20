@@ -109,7 +109,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             for (descr, list_array) in components.iter() {
-                let Some(archetype_name) = descr.archetype_name else {
+                let Some(archetype_name) = descr.archetype else {
                     // Don't care about non-builtin types, therefore archetype name should be present.
                     continue;
                 };
@@ -158,7 +158,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     // Is there a media type paired up with this blob?
                     let media_type_descr = components.keys().find(|desc| {
                         desc.component_type == Some(components::MediaType::name())
-                            && desc.archetype_name == descr.archetype_name
+                            && desc.archetype == descr.archetype
                     });
                     let media_types = media_type_descr.map_or(Vec::new(), |media_type_descr| {
                         chunk

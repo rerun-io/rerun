@@ -49,9 +49,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_type: Some("rerun.components.MagnificationFilter".into()),
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component: "TensorScalarMapping:mag_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
         }
     }
 
@@ -61,9 +61,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_type: Some("rerun.components.Colormap".into()),
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component: "TensorScalarMapping:colormap".into(),
+            component_type: Some("rerun.components.Colormap".into()),
         }
     }
 
@@ -73,9 +73,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_type: Some("rerun.components.GammaCorrection".into()),
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
             component: "TensorScalarMapping:gamma".into(),
+            component_type: Some("rerun.components.GammaCorrection".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
+            component_type: None,
         }
     }
 }

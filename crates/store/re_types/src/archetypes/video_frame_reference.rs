@@ -159,9 +159,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_type: Some("rerun.components.VideoTimestamp".into()),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
             component: "VideoFrameReference:timestamp".into(),
+            component_type: Some("rerun.components.VideoTimestamp".into()),
         }
     }
 
@@ -171,9 +171,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_type: Some("rerun.components.EntityPath".into()),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
             component: "VideoFrameReference:video_reference".into(),
+            component_type: Some("rerun.components.EntityPath".into()),
         }
     }
 
@@ -183,9 +183,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
             component: "VideoFrameReference:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -193,9 +193,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.VideoFrameReferenceIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -349,7 +349,7 @@ impl ChunkStore {
                     ),
 
                     entity_path: entity_path.clone(),
-                    archetype_name: component_descr.archetype_name,
+                    archetype: component_descr.archetype,
                     component: component_descr.component,
                     component_type: component_descr.component_type,
                     is_static,
@@ -405,7 +405,7 @@ impl ChunkStore {
             store_datatype: ArrowDatatype::Null,
             component_type: None,
             entity_path: selector.entity_path.clone(),
-            archetype_name: None,
+            archetype: None,
             component: selector.component.as_str().into(),
             is_static: false,
             is_indicator: false,
@@ -424,7 +424,7 @@ impl ChunkStore {
             return result;
         };
         result.store_datatype = datatype.clone();
-        result.archetype_name = component_descr.archetype_name;
+        result.archetype = component_descr.archetype;
         result.component_type = component_descr.component_type;
 
         if let Some(ColumnMetadata {

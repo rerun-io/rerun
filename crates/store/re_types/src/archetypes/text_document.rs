@@ -110,9 +110,9 @@ impl TextDocument {
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_type: Some("rerun.components.Text".into()),
+            archetype: Some("rerun.archetypes.TextDocument".into()),
             component: "TextDocument:text".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -122,9 +122,9 @@ impl TextDocument {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_type: Some("rerun.components.MediaType".into()),
+            archetype: Some("rerun.archetypes.TextDocument".into()),
             component: "TextDocument:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -132,9 +132,9 @@ impl TextDocument {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.TextDocumentIndicator".into(),
+            component_type: None,
         }
     }
 }

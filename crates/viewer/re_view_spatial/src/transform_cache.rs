@@ -1014,7 +1014,7 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
         descriptor_translations.component_type,
         Some(components::PoseTranslation3D::name())
     );
-    debug_assert_eq!(descriptor_translations.archetype_name, Some(archetype_name));
+    debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
     let descriptor_rotation_axis_angles =
         InstancePoses3D::descriptor_rotation_axis_angles().with_archetype_name(archetype_name);
     let descriptor_quaternions =

@@ -331,13 +331,13 @@ fn preview_single_image(
 
     let (image_format_descr, image_format_chunk) = components.iter().find(|(descr, _chunk)| {
         descr.component_type == Some(components::ImageFormat::name())
-            && descr.archetype_name == image_buffer_descr.archetype_name
+            && descr.archetype == image_buffer_descr.archetype
     })?;
     let image_format = image_format_chunk
         .component_mono::<components::ImageFormat>(image_format_descr)?
         .ok()?;
 
-    let kind = ImageKind::from_archetype_name(image_format_descr.archetype_name);
+    let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
     let image = ImageInfo::from_stored_blob(
         blob_row_id,
         image_buffer_descr,
@@ -352,11 +352,11 @@ fn preview_single_image(
 
     let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
         components,
-        image_buffer_descr.archetype_name,
+        image_buffer_descr.archetype,
     );
     let value_range = find_and_deserialize_archetype_mono_component::<components::ValueRange>(
         components,
-        image_buffer_descr.archetype_name,
+        image_buffer_descr.archetype,
     );
 
     let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
@@ -554,7 +554,7 @@ fn preview_single_blob(
     // Look for the one that matches the blob's archetype.
     let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
         components,
-        blob_descr.archetype_name,
+        blob_descr.archetype,
     )
     .or_else(|| components::MediaType::guess_from_data(&blob));
 
@@ -626,7 +626,7 @@ fn find_and_deserialize_archetype_mono_component<C: Component>(
     archetype_name: Option<ArchetypeName>,
 ) -> Option<C> {
     components.iter().find_map(|(descr, chunk)| {
-        (descr.component_type == Some(C::name()) && descr.archetype_name == archetype_name)
+        (descr.component_type == Some(C::name()) && descr.archetype == archetype_name)
             .then(|| chunk.component_mono::<C>(descr).and_then(|r| r.ok()))
             .flatten()
     })

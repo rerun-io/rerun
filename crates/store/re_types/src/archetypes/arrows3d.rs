@@ -106,9 +106,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_vectors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.Vector3D".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:vectors".into(),
+            component_type: Some("rerun.components.Vector3D".into()),
         }
     }
 
@@ -118,9 +118,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_origins() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.Position3D".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:origins".into(),
+            component_type: Some("rerun.components.Position3D".into()),
         }
     }
 
@@ -130,9 +130,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -142,9 +142,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -154,9 +154,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.Text".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -166,9 +166,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.ShowLabels".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -178,9 +178,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-            component_type: Some("rerun.components.ClassId".into()),
+            archetype: Some("rerun.archetypes.Arrows3D".into()),
             component: "Arrows3D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 
@@ -188,9 +188,9 @@ impl Arrows3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.Arrows3DIndicator".into(),
+            component_type: None,
         }
     }
 }

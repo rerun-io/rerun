@@ -50,7 +50,7 @@ impl TableStore {
         {
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".into()),
+                archetype: Some("archetype".into()),
                 component: "field".into(),
                 component_type: Some("component".into()),
                 store_datatype: arrow::datatypes::DataType::Int64,
@@ -69,7 +69,7 @@ impl TableStore {
 
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".into()),
+                archetype: Some("archetype".into()),
                 component: "short_list".into(),
                 component_type: Some("short_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
@@ -95,7 +95,7 @@ impl TableStore {
 
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".to_owned().into()),
+                archetype: Some("archetype".to_owned().into()),
                 component: "long_list".into(),
                 component_type: Some("long_list".into()),
                 store_datatype: arrow::datatypes::DataType::List(field.clone()),
@@ -128,7 +128,7 @@ impl TableStore {
 
             let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
                 entity_path: re_log_types::EntityPath::from("/some/path"),
-                archetype_name: Some("archetype".to_owned().into()),
+                archetype: Some("archetype".to_owned().into()),
                 component: "thumbnail".into(),
                 component_type: Some("rerun.components.Blob".into()),
                 store_datatype: array.data_type().clone(),

@@ -550,7 +550,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 store_datatype,
                 component_type,
                 entity_path,
-                archetype_name,
+                archetype: archetype_name,
                 component: _component,
                 is_static,
                 is_indicator,

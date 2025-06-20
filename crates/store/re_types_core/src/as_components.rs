@@ -216,7 +216,7 @@ mod tests {
     impl MyColor {
         fn descriptor() -> ComponentDescriptor {
             ComponentDescriptor {
-                archetype_name: Some("test".into()),
+                archetype: Some("test".into()),
                 component: "color".into(),
                 component_type: Some(Self::name()),
             }

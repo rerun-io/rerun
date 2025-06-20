@@ -189,7 +189,7 @@ impl SelectionPanel {
                 );
 
                 let ComponentDescriptor {
-                    archetype_name,
+                    archetype: archetype_name,
                     component: _,
                     component_type,
                 } = component_descriptor;

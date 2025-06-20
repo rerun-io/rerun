@@ -77,9 +77,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_type: Some("rerun.components.TensorData".into()),
+            archetype: Some("rerun.archetypes.Tensor".into()),
             component: "Tensor:data".into(),
+            component_type: Some("rerun.components.TensorData".into()),
         }
     }
 
@@ -89,9 +89,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_type: Some("rerun.components.ValueRange".into()),
+            archetype: Some("rerun.archetypes.Tensor".into()),
             component: "Tensor:value_range".into(),
+            component_type: Some("rerun.components.ValueRange".into()),
         }
     }
 
@@ -99,9 +99,9 @@ impl Tensor {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.TensorIndicator".into(),
+            component_type: None,
         }
     }
 }

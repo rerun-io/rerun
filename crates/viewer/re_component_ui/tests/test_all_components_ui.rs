@@ -247,7 +247,7 @@ fn test_single_component_ui_as_list_item(
                     // caching and actual lookup of uis is only done via `ComponentType`.
                     &ComponentDescriptor {
                         component: test_case.label.into(),
-                        archetype_name: None,
+                        archetype: None,
                         component_type: Some(test_case.component_type),
                     },
                     None,

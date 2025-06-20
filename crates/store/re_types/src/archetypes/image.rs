@@ -158,9 +158,9 @@ impl Image {
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_type: Some("rerun.components.ImageBuffer".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
             component: "Image:buffer".into(),
+            component_type: Some("rerun.components.ImageBuffer".into()),
         }
     }
 
@@ -170,9 +170,9 @@ impl Image {
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_type: Some("rerun.components.ImageFormat".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
             component: "Image:format".into(),
+            component_type: Some("rerun.components.ImageFormat".into()),
         }
     }
 
@@ -182,9 +182,9 @@ impl Image {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_type: Some("rerun.components.Opacity".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
             component: "Image:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -194,9 +194,9 @@ impl Image {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
             component: "Image:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -204,9 +204,9 @@ impl Image {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.ImageIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -59,9 +59,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.RootContainer".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component: "ViewportBlueprint:root_container".into(),
+            component_type: Some("rerun.blueprint.components.RootContainer".into()),
         }
     }
 
@@ -71,9 +71,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component: "ViewportBlueprint:maximized".into(),
+            component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.AutoLayout".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component: "ViewportBlueprint:auto_layout".into(),
+            component_type: Some("rerun.blueprint.components.AutoLayout".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.AutoViews".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component: "ViewportBlueprint:auto_views".into(),
+            component_type: Some("rerun.blueprint.components.AutoViews".into()),
         }
     }
 
@@ -107,9 +107,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
             component: "ViewportBlueprint:past_viewer_recommendations".into(),
+            component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
         }
     }
 
@@ -117,9 +117,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
+            component_type: None,
         }
     }
 }

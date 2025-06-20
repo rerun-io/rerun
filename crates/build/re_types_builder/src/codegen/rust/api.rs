@@ -1138,9 +1138,9 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #[inline]
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
-                        archetype_name: Some(#archetype_name.into()),
-                        component_type: Some(#component_type.into()),
+                        archetype: Some(#archetype_name.into()),
                         component: #component.into(),
+                        component_type: Some(#component_type.into()),
                     }
                 }
             }
@@ -1158,9 +1158,9 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 #[inline]
                 pub fn descriptor_indicator() -> ComponentDescriptor {
                     ComponentDescriptor {
-                        archetype_name: None,
-                        component_type: None,
+                        archetype: None,
                         component: #indicator_component_type.into(),
+                        component_type: None,
                     }
                 }
             }

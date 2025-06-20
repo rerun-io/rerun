@@ -146,9 +146,9 @@ impl AssetVideo {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_type: Some("rerun.components.Blob".into()),
+            archetype: Some("rerun.archetypes.AssetVideo".into()),
             component: "AssetVideo:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -158,9 +158,9 @@ impl AssetVideo {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_type: Some("rerun.components.MediaType".into()),
+            archetype: Some("rerun.archetypes.AssetVideo".into()),
             component: "AssetVideo:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -168,9 +168,9 @@ impl AssetVideo {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.AssetVideoIndicator".into(),
+            component_type: None,
         }
     }
 }

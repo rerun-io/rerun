@@ -77,9 +77,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_line_strings() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_type: Some("rerun.components.GeoLineString".into()),
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
             component: "GeoLineStrings:line_strings".into(),
+            component_type: Some("rerun.components.GeoLineString".into()),
         }
     }
 
@@ -89,9 +89,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
             component: "GeoLineStrings:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -101,9 +101,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
             component: "GeoLineStrings:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -111,9 +111,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.GeoLineStringsIndicator".into(),
+            component_type: None,
         }
     }
 }

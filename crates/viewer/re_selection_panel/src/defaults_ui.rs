@@ -30,7 +30,7 @@ impl DefaultOverrideEntry {
         ComponentDescriptor {
             component_type: Some(self.component_type),
             component: self.component,
-            archetype_name: Some(archetype_name),
+            archetype: Some(archetype_name),
         }
     }
 }
@@ -119,10 +119,10 @@ fn active_default_ui(
         let mut previous_archetype_name = None;
 
         for (component_descr, default_value) in active_defaults {
-            if previous_archetype_name != component_descr.archetype_name {
+            if previous_archetype_name != component_descr.archetype {
                 // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
                 // so we can just check if the previous archetype name is different from the current one.
-                if let Some(archetype_name) = component_descr.archetype_name {
+                if let Some(archetype_name) = component_descr.archetype {
                     ui.add_space(4.0);
                     ui.label(archetype_name.syntax_highlighted(ui.style()));
                     previous_archetype_name = Some(archetype_name);
@@ -184,7 +184,7 @@ fn visualized_components_by_archetype(
     for (id, vis) in visualizers.iter_with_identifiers() {
         for descr in vis.visualizer_query_info().queried.iter() {
             let (Some(archetype_name), Some(component_type)) =
-                (descr.archetype_name, descr.component_type)
+                (descr.archetype, descr.component_type)
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.

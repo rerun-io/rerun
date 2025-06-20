@@ -52,9 +52,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.ViewClass".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component: "ViewBlueprint:class_identifier".into(),
+            component_type: Some("rerun.blueprint.components.ViewClass".into()),
         }
     }
 
@@ -64,9 +64,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_type: Some("rerun.components.Name".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component: "ViewBlueprint:display_name".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -76,9 +76,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component: "ViewBlueprint:space_origin".into(),
+            component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
         }
     }
 
@@ -88,9 +88,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_type: Some("rerun.components.Visible".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component: "ViewBlueprint:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -98,9 +98,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
+            component_type: None,
         }
     }
 }

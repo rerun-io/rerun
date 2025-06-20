@@ -260,7 +260,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .add_component(
                                 re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
-                                    archetype_name: descr.archetype_name,
+                                    archetype: descr.archetype,
                                     component: descr.component,
                                 },
                                 re_arrow_util::new_list_array_of_empties(
@@ -449,7 +449,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 usize::MAX,
                                 ColumnDescriptor::Component(ComponentColumnDescriptor {
                                     entity_path: selected_column.entity_path.clone(),
-                                    archetype_name: None,
+                                    archetype: None,
                                     component: selected_column.component.as_str().into(),
                                     component_type: None,
                                     store_datatype: ArrowDataType::Null,
@@ -1064,7 +1064,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let component_descriptor = store
                         .entity_component_descriptor(
                             &descr.entity_path,
-                            descr.archetype_name,
+                            descr.archetype,
                             descr.component,
                         )
                         .into_iter()
@@ -1188,7 +1188,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
                                 Some(re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
-                                    archetype_name: descr.archetype_name,
+                                    archetype: descr.archetype,
                                     component: descr.component,
                                 })
                             } else {

@@ -44,7 +44,7 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
-        archetype_name: archetype_name.map(|s| s.as_ref().into()),
+        archetype: archetype_name.map(|s| s.as_ref().into()),
         component: component.as_ref().into(),
         component_type: component_type.map(|s| s.as_ref().into()),
     };

@@ -102,7 +102,7 @@ impl Verifier {
     ) -> anyhow::Result<()> {
         let re_sdk::ComponentDescriptor {
             component_type,
-            archetype_name,
+            archetype: archetype_name,
             component,
         } = column_descriptor.component_descriptor();
 

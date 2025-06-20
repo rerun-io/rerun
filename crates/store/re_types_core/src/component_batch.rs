@@ -286,7 +286,7 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
         )
         .with_metadata(
             [
-                batch.descriptor.archetype_name.map(|name| {
+                batch.descriptor.archetype.map(|name| {
                     (
                         FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
                         name.to_string(),

@@ -197,7 +197,7 @@ impl PyComponentColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn archetype_name(&self) -> Option<&str> {
-        self.0.archetype_name.map(|c| c.as_str())
+        self.0.archetype.map(|c| c.as_str())
     }
 
     /// Whether the column is static.

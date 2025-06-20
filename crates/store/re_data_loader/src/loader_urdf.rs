@@ -469,7 +469,7 @@ fn log_link(
                     TimePoint::default(),
                     (
                         ComponentDescriptor {
-                            archetype_name: None,
+                            archetype: None,
                             component: "visible".into(),
                             component_type: Some(re_types::components::Visible::name()),
                         },

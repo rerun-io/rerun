@@ -43,9 +43,9 @@ impl VisualBounds2D {
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
+            archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component: "VisualBounds2D:range".into(),
+            component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
         }
     }
 
@@ -53,9 +53,9 @@ impl VisualBounds2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
+            component_type: None,
         }
     }
 }

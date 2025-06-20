@@ -111,7 +111,7 @@ impl ChunkComponents {
     pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
         self.0
             .keys()
-            .any(|desc| desc.archetype_name == Some(archetype_name))
+            .any(|desc| desc.archetype == Some(archetype_name))
     }
 }
 
@@ -283,7 +283,7 @@ impl Chunk {
 
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype: Some("rerun.archetypes.RecordingProperties".into()),
                 component: "RecordingProperties:start_time".into(),
                 component_type: Some("rerun.components.Timestamp".into()),
             };

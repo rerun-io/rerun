@@ -383,7 +383,7 @@ fn rr_register_component_type_impl(
     };
 
     let component_descr = ComponentDescriptor {
-        archetype_name: archetype_name.map(Into::into),
+        archetype: archetype_name.map(Into::into),
         component: component.into(),
         component_type: component_type_descr.map(Into::into),
     };

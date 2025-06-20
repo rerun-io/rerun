@@ -99,9 +99,9 @@ impl Scalars {
     #[inline]
     pub fn descriptor_scalars() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Scalars".into()),
-            component_type: Some("rerun.components.Scalar".into()),
+            archetype: Some("rerun.archetypes.Scalars".into()),
             component: "Scalars:scalars".into(),
+            component_type: Some("rerun.components.Scalar".into()),
         }
     }
 
@@ -109,9 +109,9 @@ impl Scalars {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.ScalarsIndicator".into(),
+            component_type: None,
         }
     }
 }

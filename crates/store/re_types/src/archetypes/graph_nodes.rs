@@ -81,9 +81,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_node_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.GraphNode".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:node_ids".into(),
+            component_type: Some("rerun.components.GraphNode".into()),
         }
     }
 
@@ -93,9 +93,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.Position2D".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:positions".into(),
+            component_type: Some("rerun.components.Position2D".into()),
         }
     }
 
@@ -105,9 +105,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -117,9 +117,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.Text".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -129,9 +129,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.ShowLabels".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -141,9 +141,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
             component: "GraphNodes:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -151,9 +151,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.GraphNodesIndicator".into(),
+            component_type: None,
         }
     }
 }

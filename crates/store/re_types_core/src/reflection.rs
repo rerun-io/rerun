@@ -281,7 +281,7 @@ impl ArchetypeFieldReflection {
         ComponentDescriptor {
             component_type: Some(self.component_type),
             component: format!("{}:{}", archetype_name.short_name(), self.name).into(),
-            archetype_name: Some(archetype_name),
+            archetype: Some(archetype_name),
         }
     }
 }

@@ -48,9 +48,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component_type: Some("rerun.components.Interactive".into()),
+            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
             component: "EntityBehavior:interactive".into(),
+            component_type: Some("rerun.components.Interactive".into()),
         }
     }
 
@@ -60,9 +60,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component_type: Some("rerun.components.Visible".into()),
+            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
             component: "EntityBehavior:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -70,9 +70,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.EntityBehaviorIndicator".into(),
+            component_type: None,
         }
     }
 }

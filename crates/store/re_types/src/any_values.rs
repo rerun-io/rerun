@@ -40,7 +40,7 @@ impl AnyValues {
             SerializedComponentBatch {
                 array,
                 descriptor: ComponentDescriptor {
-                    archetype_name: self.archetype_name,
+                    archetype: self.archetype_name,
                     component_type: None,
                     component,
                 },
@@ -77,7 +77,7 @@ impl AnyValues {
 
         try_serialize_field(
             ComponentDescriptor {
-                archetype_name: self.archetype_name,
+                archetype: self.archetype_name,
                 component,
                 component_type: Some(component_type.into()),
             },

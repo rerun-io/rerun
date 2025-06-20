@@ -74,9 +74,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_type: Some("rerun.components.Blob".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
             component: "EncodedImage:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -86,9 +86,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_type: Some("rerun.components.MediaType".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
             component: "EncodedImage:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -98,9 +98,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_type: Some("rerun.components.Opacity".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
             component: "EncodedImage:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -110,9 +110,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
             component: "EncodedImage:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.EncodedImageIndicator".into(),
+            component_type: None,
         }
     }
 }

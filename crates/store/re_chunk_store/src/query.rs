@@ -282,7 +282,7 @@ impl ChunkStore {
         identifier: ComponentIdentifier,
     ) -> Option<ComponentDescriptor> {
         let matches = |descr: &&ComponentDescriptor| {
-            descr.component == identifier && descr.archetype_name == archetype_name
+            descr.component == identifier && descr.archetype == archetype_name
         };
 
         let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);

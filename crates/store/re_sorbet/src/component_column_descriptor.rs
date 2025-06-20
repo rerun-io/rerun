@@ -36,7 +36,7 @@ pub struct ComponentColumnDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `rerun.archetypes.Points3D`.
-    pub archetype_name: Option<ArchetypeName>,
+    pub archetype: Option<ArchetypeName>,
 
     /// Identifier of the field associated with this data.
     ///
@@ -72,7 +72,7 @@ impl Ord for ComponentColumnDescriptor {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let Self {
             entity_path,
-            archetype_name,
+            archetype: archetype_name,
             component,
             component_type,
             store_datatype: _,
@@ -84,7 +84,7 @@ impl Ord for ComponentColumnDescriptor {
 
         entity_path
             .cmp(&other.entity_path)
-            .then_with(|| archetype_name.cmp(&other.archetype_name))
+            .then_with(|| archetype_name.cmp(&other.archetype))
             .then_with(|| component.cmp(&other.component))
             .then_with(|| component_type.cmp(&other.component_type))
     }
@@ -96,7 +96,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 
         let Self {
             entity_path,
-            archetype_name: _,
+            archetype: _,
             component: _,
             component_type: _,
             store_datatype: _,
@@ -121,7 +121,7 @@ impl From<ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     fn from(descr: ComponentColumnDescriptor) -> Self {
         descr.sanity_check();
         Self {
-            archetype_name: descr.archetype_name,
+            archetype: descr.archetype,
             component: descr.component,
             component_type: descr.component_type,
         }
@@ -133,7 +133,7 @@ impl From<&ComponentColumnDescriptor> for re_types_core::ComponentDescriptor {
     fn from(descr: &ComponentColumnDescriptor) -> Self {
         descr.sanity_check();
         Self {
-            archetype_name: descr.archetype_name,
+            archetype: descr.archetype,
             component: descr.component,
             component_type: descr.component_type,
         }
@@ -148,7 +148,7 @@ impl ComponentColumnDescriptor {
         if let Some(c) = self.component_type {
             c.sanity_check();
         }
-        if let Some(archetype_name) = &self.archetype_name {
+        if let Some(archetype_name) = &self.archetype {
             archetype_name.sanity_check();
         }
     }
@@ -162,7 +162,7 @@ impl ComponentColumnDescriptor {
 
     pub fn component_descriptor(&self) -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: self.archetype_name,
+            archetype: self.archetype,
             component: self.component,
             component_type: self.component_type,
         }
@@ -185,7 +185,7 @@ impl ComponentColumnDescriptor {
 
         let Self {
             entity_path,
-            archetype_name,
+            archetype: archetype_name,
             component,
             component_type,
             store_datatype: _,
@@ -260,7 +260,7 @@ impl ComponentColumnDescriptor {
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
-                match self.archetype_name {
+                match self.archetype {
                     Some(archetype_name) => format!(
                         "{}:{}:{}",
                         self.entity_path,
@@ -320,7 +320,7 @@ impl ComponentColumnDescriptor {
         let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
-            archetype_name: field.get_opt("rerun:archetype").map(Into::into),
+            archetype: field.get_opt("rerun:archetype").map(Into::into),
             component,
             component_type: field.get_opt("rerun:component_type").map(Into::into),
             is_static: field.get_bool("rerun:is_static"),

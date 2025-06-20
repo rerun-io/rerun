@@ -59,9 +59,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_type: Some("rerun.components.Visible".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component: "LineGrid3D:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -71,9 +71,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_type: Some("rerun.blueprint.components.GridSpacing".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component: "LineGrid3D:spacing".into(),
+            component_type: Some("rerun.blueprint.components.GridSpacing".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_type: Some("rerun.components.Plane3D".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component: "LineGrid3D:plane".into(),
+            component_type: Some("rerun.components.Plane3D".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_type: Some("rerun.components.StrokeWidth".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component: "LineGrid3D:stroke_width".into(),
+            component_type: Some("rerun.components.StrokeWidth".into()),
         }
     }
 
@@ -107,9 +107,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
             component: "LineGrid3D:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -117,9 +117,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.LineGrid3DIndicator".into(),
+            component_type: None,
         }
     }
 }

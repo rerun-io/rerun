@@ -92,9 +92,9 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_type: Some("rerun.components.ImageBuffer".into()),
+            archetype: Some("rerun.archetypes.SegmentationImage".into()),
             component: "SegmentationImage:buffer".into(),
+            component_type: Some("rerun.components.ImageBuffer".into()),
         }
     }
 
@@ -104,9 +104,9 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_type: Some("rerun.components.ImageFormat".into()),
+            archetype: Some("rerun.archetypes.SegmentationImage".into()),
             component: "SegmentationImage:format".into(),
+            component_type: Some("rerun.components.ImageFormat".into()),
         }
     }
 
@@ -116,9 +116,9 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_type: Some("rerun.components.Opacity".into()),
+            archetype: Some("rerun.archetypes.SegmentationImage".into()),
             component: "SegmentationImage:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -128,9 +128,9 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.SegmentationImage".into()),
             component: "SegmentationImage:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -138,9 +138,9 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.SegmentationImageIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -73,9 +73,9 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_type: Some("rerun.components.LatLon".into()),
+            archetype: Some("rerun.archetypes.GeoPoints".into()),
             component: "GeoPoints:positions".into(),
+            component_type: Some("rerun.components.LatLon".into()),
         }
     }
 
@@ -85,9 +85,9 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.GeoPoints".into()),
             component: "GeoPoints:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -97,9 +97,9 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.GeoPoints".into()),
             component: "GeoPoints:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -109,9 +109,9 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_type: Some("rerun.components.ClassId".into()),
+            archetype: Some("rerun.archetypes.GeoPoints".into()),
             component: "GeoPoints:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 
@@ -119,9 +119,9 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.GeoPointsIndicator".into(),
+            component_type: None,
         }
     }
 }

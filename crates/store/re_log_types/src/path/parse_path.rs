@@ -151,7 +151,7 @@ impl std::str::FromStr for DataPath {
                     .as_ref()
                     .map(|archetype_name| archetype_name.with_field(&field))
                     .unwrap_or_else(|| field.into()),
-                archetype_name,
+                archetype: archetype_name,
                 component_type: component_type.map(ComponentType::from),
             });
 

@@ -45,9 +45,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component: "ForceLink:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,9 +57,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_distance() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_type: Some("rerun.blueprint.components.ForceDistance".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component: "ForceLink:distance".into(),
+            component_type: Some("rerun.blueprint.components.ForceDistance".into()),
         }
     }
 
@@ -69,9 +69,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
             component: "ForceLink:iterations".into(),
+            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
         }
     }
 
@@ -79,9 +79,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.blueprint.components.ForceLinkIndicator".into(),
+            component_type: None,
         }
     }
 }

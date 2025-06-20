@@ -42,7 +42,7 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
         .into_iter()
         .filter(|d| !d.is_indicator_component())
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
-            acc.entry(descriptor.archetype_name)
+            acc.entry(descriptor.archetype)
                 .or_default()
                 .push(descriptor.clone());
             acc

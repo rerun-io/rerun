@@ -86,7 +86,7 @@ impl Chunk {
                 .map(|(component_desc, list_array)| {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
-                        archetype_name,
+                        archetype: archetype_name,
                         component,
                         component_type,
                     } = *component_desc;
@@ -99,7 +99,7 @@ impl Chunk {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
-                        archetype_name,
+                        archetype: archetype_name,
                         component,
                         component_type,
 
@@ -202,7 +202,7 @@ impl Chunk {
                     })?;
 
                 let component_desc = ComponentDescriptor {
-                    archetype_name: schema.archetype_name,
+                    archetype: schema.archetype,
                     component: schema.component,
                     component_type: schema.component_type,
                 };

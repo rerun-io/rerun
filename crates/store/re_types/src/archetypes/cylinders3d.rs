@@ -129,9 +129,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_lengths() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.Length".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:lengths".into(),
+            component_type: Some("rerun.components.Length".into()),
         }
     }
 
@@ -141,9 +141,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -153,9 +153,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.PoseTranslation3D".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:centers".into(),
+            component_type: Some("rerun.components.PoseTranslation3D".into()),
         }
     }
 
@@ -165,9 +165,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:rotation_axis_angles".into(),
+            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
         }
     }
 
@@ -177,9 +177,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.PoseRotationQuat".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:quaternions".into(),
+            component_type: Some("rerun.components.PoseRotationQuat".into()),
         }
     }
 
@@ -189,9 +189,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -201,9 +201,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_line_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:line_radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -213,9 +213,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.FillMode".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:fill_mode".into(),
+            component_type: Some("rerun.components.FillMode".into()),
         }
     }
 
@@ -225,9 +225,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.Text".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -237,9 +237,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.ShowLabels".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -249,9 +249,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Cylinders3D".into()),
-            component_type: Some("rerun.components.ClassId".into()),
+            archetype: Some("rerun.archetypes.Cylinders3D".into()),
             component: "Cylinders3D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 
@@ -259,9 +259,9 @@ impl Cylinders3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.Cylinders3DIndicator".into(),
+            component_type: None,
         }
     }
 }

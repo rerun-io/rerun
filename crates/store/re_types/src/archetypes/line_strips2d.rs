@@ -128,9 +128,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_strips() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.LineStrip2D".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:strips".into(),
+            component_type: Some("rerun.components.LineStrip2D".into()),
         }
     }
 
@@ -140,9 +140,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.Radius".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -152,9 +152,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.Color".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -164,9 +164,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.Text".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -176,9 +176,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.ShowLabels".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -188,9 +188,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -200,9 +200,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-            component_type: Some("rerun.components.ClassId".into()),
+            archetype: Some("rerun.archetypes.LineStrips2D".into()),
             component: "LineStrips2D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 
@@ -210,9 +210,9 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.LineStrips2DIndicator".into(),
+            component_type: None,
         }
     }
 }

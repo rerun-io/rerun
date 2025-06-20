@@ -48,9 +48,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2001() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer1".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2001".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer1".into()),
         }
     }
 
@@ -60,9 +60,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2002() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer2".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2002".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer2".into()),
         }
     }
 
@@ -72,9 +72,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2003() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer3".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2003".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer3".into()),
         }
     }
 
@@ -84,9 +84,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2004() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer4".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2004".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer4".into()),
         }
     }
 
@@ -96,9 +96,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2005() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer5".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2005".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer5".into()),
         }
     }
 
@@ -108,9 +108,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2006() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer6".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2006".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer6".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2007() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer7".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2007".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer7".into()),
         }
     }
 
@@ -132,9 +132,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2008() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer8".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2008".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer8".into()),
         }
     }
 
@@ -144,9 +144,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2009() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer9".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2009".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer9".into()),
         }
     }
 
@@ -156,9 +156,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2010() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer10".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2010".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer10".into()),
         }
     }
 
@@ -168,9 +168,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2011() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer11".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2011".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer11".into()),
         }
     }
 
@@ -180,9 +180,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2012() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer12".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2012".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer12".into()),
         }
     }
 
@@ -192,9 +192,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2013() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer13".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2013".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer13".into()),
         }
     }
 
@@ -204,9 +204,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2014() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer14".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2014".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer14".into()),
         }
     }
 
@@ -216,9 +216,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2015() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer15".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2015".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer15".into()),
         }
     }
 
@@ -228,9 +228,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2016() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer16".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2016".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer16".into()),
         }
     }
 
@@ -240,9 +240,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2017() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer17".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2017".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer17".into()),
         }
     }
 
@@ -252,9 +252,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_fuzz2018() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_type: Some("rerun.testing.components.AffixFuzzer18".into()),
+            archetype: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
             component: "AffixFuzzer3:fuzz2018".into(),
+            component_type: Some("rerun.testing.components.AffixFuzzer18".into()),
         }
     }
 
@@ -262,9 +262,9 @@ impl AffixFuzzer3 {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.testing.components.AffixFuzzer3Indicator".into(),
+            component_type: None,
         }
     }
 }

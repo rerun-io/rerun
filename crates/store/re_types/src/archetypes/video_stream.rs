@@ -71,9 +71,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_codec() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_type: Some("rerun.components.VideoCodec".into()),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
             component: "VideoStream:codec".into(),
+            component_type: Some("rerun.components.VideoCodec".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_sample() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_type: Some("rerun.components.VideoSample".into()),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
             component: "VideoStream:sample".into(),
+            component_type: Some("rerun.components.VideoSample".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_type: Some("rerun.components.DrawOrder".into()),
+            archetype: Some("rerun.archetypes.VideoStream".into()),
             component: "VideoStream:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -105,9 +105,9 @@ impl VideoStream {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_type: None,
+            archetype: None,
             component: "rerun.components.VideoStreamIndicator".into(),
+            component_type: None,
         }
     }
 }
