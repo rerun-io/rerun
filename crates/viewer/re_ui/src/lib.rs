@@ -1,5 +1,6 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+pub mod alert;
 mod color_table;
 mod command;
 mod command_palette;
