@@ -175,8 +175,6 @@ impl WireframeCache {
         key: ProcMeshKey,
         render_ctx: &RenderContext,
     ) -> Option<Arc<WireframeMesh>> {
-        re_tracing::profile_function!();
-
         self.0
             .entry(key)
             .or_insert_with(|| {
@@ -458,8 +456,6 @@ pub struct SolidCache(ahash::HashMap<ProcMeshKey, Option<SolidMesh>>);
 
 impl SolidCache {
     pub fn entry(&mut self, key: ProcMeshKey, render_ctx: &RenderContext) -> Option<SolidMesh> {
-        re_tracing::profile_function!();
-
         self.0
             .entry(key)
             .or_insert_with(|| {

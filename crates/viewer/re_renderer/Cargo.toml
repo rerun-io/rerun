@@ -53,7 +53,6 @@ serde = ["dep:serde"]
 [dependencies]
 re_error.workspace = true
 re_log.workspace = true
-macaw.workspace = true
 re_tracing.workspace = true
 re_video = { workspace = true, default-features = true }
 
@@ -68,6 +67,7 @@ enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools.workspace = true
+macaw.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
