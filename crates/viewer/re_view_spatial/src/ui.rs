@@ -1,4 +1,5 @@
-use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
+use egui::{NumExt as _, Slider, WidgetText, emath::OrderedFloat, text::TextWrapping};
+use web_time::Instant;
 
 use macaw::BoundingBox;
 use re_format::format_f32;
@@ -158,6 +159,17 @@ impl SpatialViewState {
                 ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
                 ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
                 eye.set_mode(mode);
+            });
+
+            ui.horizontal(|ui| {
+                let previous_speed = eye.speed(&self.bounding_boxes);
+                let mut speed = eye.speed(&self.bounding_boxes);
+                ui.label("Translation speed");
+                ui.add(Slider::new(&mut speed, 0.001..=1_000_000.0).logarithmic(true));
+                if previous_speed != speed {
+                    eye.set_speed(speed);
+                    self.state_3d.last_eye_interaction = Some(Instant::now());
+                }
             });
         }
     }
