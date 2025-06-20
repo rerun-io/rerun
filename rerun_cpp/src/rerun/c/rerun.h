@@ -129,6 +129,14 @@ typedef struct rr_spawn_options {
     /// Defaults to `75%` if null.
     rr_string memory_limit;
 
+    /// An upper limit on how much memory the gRPC server running
+    /// in the same process as the Rerun Viewer should use.
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `0B` if null.
+    rr_string server_memory_limit;
+
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
