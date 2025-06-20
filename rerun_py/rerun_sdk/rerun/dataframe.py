@@ -60,7 +60,7 @@ class RawComponentBatchLike(ComponentColumn):
     def component_descriptor(self) -> ComponentDescriptor:
         kwargs = {}
         if SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype_name"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
+            kwargs["archetype"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
         if SORBET_COMPONENT_TYPE in self.metadata:
             kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
         if SORBET_COMPONENT in self.metadata:

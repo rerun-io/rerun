@@ -21,7 +21,7 @@ class ComponentDescriptor:
     Every component is uniquely identified by its `ComponentDescriptor`.
     """
 
-    archetype_name: str | None
+    archetype: str | None
     """
     Optional name of the `Archetype` associated with this data.
 
@@ -52,18 +52,16 @@ class ComponentDescriptor:
         self,
         component: str,
         *,
-        archetype_name: str | None = None,
+        archetype: str | None = None,
         component_type: str | None = None,
     ) -> None:
         assert component_type is None or not component_type.startswith("rerun.components.rerun.components."), (
             f"Bad component type: {component_type}'"
         )
-        if archetype_name is not None:
-            assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
-                f"Bad archetype name '{archetype_name}'"
-            )
+        if archetype is not None:
+            assert not archetype.startswith("rerun.archetypes.rerun.archetypes."), f"Bad archetype name '{archetype}'"
 
-        self.archetype_name = archetype_name
+        self.archetype = archetype
         self.component = component
         self.component_type = component_type
 
@@ -71,47 +69,47 @@ class ComponentDescriptor:
         if not isinstance(other, ComponentDescriptor):
             return NotImplemented
         return (
-            self.archetype_name == other.archetype_name
+            self.archetype == other.archetype
             and self.component == other.component
             and self.component_type == other.component_type
         )
 
     def __hash__(self) -> int:
-        return hash((self.archetype_name, self.component, self.component_type))
+        return hash((self.archetype, self.component, self.component_type))
 
     def __str__(self) -> str:
-        archetype_name = self.archetype_name
+        archetype = self.archetype
         component = self.component
         component_type = self.component_type
 
-        if archetype_name is not None and component_type is None:
-            return f"{archetype_name}:{component}"
-        elif archetype_name is None and component_type is not None:
+        if archetype is not None and component_type is None:
+            return f"{archetype}:{component}"
+        elif archetype is None and component_type is not None:
             return f"{component}#{component_type}"
-        elif archetype_name is not None and component_type is not None:
-            return f"{archetype_name}:{component}#{component_type}"
+        elif archetype is not None and component_type is not None:
+            return f"{archetype}:{component}#{component_type}"
 
         return component
 
-    def with_overrides(self, *, archetype_name: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Unconditionally sets `archetype_name` & `component_type` to the given ones (if specified)."""
+    def with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+        """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
         component = self.component
-        archetype_name = archetype_name if archetype_name is not None else self.archetype_name
+        archetype = archetype if archetype is not None else self.archetype
         component_type = component_type if component_type is not None else self.component_type
         return ComponentDescriptor(
             component,
             component_type=component_type,
-            archetype_name=archetype_name,
+            archetype=archetype,
         )
 
-    def or_with_overrides(self, *, archetype_name: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Sets `archetype_name` & `component_type` to the given one iff it's not already set."""
+    def or_with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+        """Sets `archetype` & `component_type` to the given one iff it's not already set."""
         component = self.component
-        archetype_name = self.archetype_name if self.archetype_name is not None else archetype_name
+        archetype = self.archetype if self.archetype is not None else archetype
         component_type = self.component_type if self.component_type is not None else component_type
         return ComponentDescriptor(
             component,
-            archetype_name=archetype_name,
+            archetype=archetype,
             component_type=component_type,
         )
 
@@ -222,12 +220,12 @@ class Archetype(AsComponents):
             return f"rr.{cls.__name__}()"
 
     @classmethod
-    def archetype_name(cls) -> str:
+    def archetype(cls) -> str:
         return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
 
     @classmethod
     def archetype_short_name(cls) -> str:
-        return cls.archetype_name().rsplit(".", 1)[-1]
+        return cls.archetype().rsplit(".", 1)[-1]
 
     @classmethod
     def indicator(cls) -> DescribedComponentBatch:
@@ -238,7 +236,7 @@ class Archetype(AsComponents):
         """
         from ._log import IndicatorComponentBatch
 
-        indicator = IndicatorComponentBatch(cls.archetype_name())
+        indicator = IndicatorComponentBatch(cls.archetype())
         return DescribedComponentBatch(indicator, indicator.component_descriptor())
 
     def as_component_batches(self, *, include_indicators: bool = True) -> list[DescribedComponentBatch]:
@@ -259,7 +257,7 @@ class Archetype(AsComponents):
                     descr = ComponentDescriptor(
                         self.archetype_short_name() + ":" + fld.name,
                         component_type=comp._COMPONENT_TYPE,
-                        archetype_name=self.archetype_name(),
+                        archetype=self.archetype(),
                     )
                     batches.append(DescribedComponentBatch(comp, descr))
 

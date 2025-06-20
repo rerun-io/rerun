@@ -196,7 +196,7 @@ impl PyComponentColumnDescriptor {
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_name(&self) -> Option<&str> {
+    fn archetype(&self) -> Option<&str> {
         self.0.archetype.map(|c| c.as_str())
     }
 

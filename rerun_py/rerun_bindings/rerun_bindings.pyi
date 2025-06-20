@@ -95,7 +95,7 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype_name(self) -> str:
+    def archetype(self) -> str:
         """
         The archetype name, if any.
 

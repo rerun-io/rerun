@@ -26,9 +26,9 @@ use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher:
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
     let py = component_descr.py();
 
-    let archetype_name = component_descr.getattr(pyo3::intern!(py, "archetype_name"))?;
-    let archetype_name: Option<Cow<'_, str>> = if !archetype_name.is_none() {
-        Some(archetype_name.extract()?)
+    let archetype = component_descr.getattr(pyo3::intern!(py, "archetype"))?;
+    let archetype: Option<Cow<'_, str>> = if !archetype.is_none() {
+        Some(archetype.extract()?)
     } else {
         None
     };
@@ -44,7 +44,7 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
-        archetype: archetype_name.map(|s| s.as_ref().into()),
+        archetype: archetype.map(|s| s.as_ref().into()),
         component: component.as_ref().into(),
         component_type: component_type.map(|s| s.as_ref().into()),
     };

@@ -46,7 +46,7 @@ struct rerun::AsComponents<CustomPoints3D> {
         if (archetype.confidences) {
             auto descriptor =
                 rerun::ComponentDescriptor("confidences")
-                    .or_with_archetype_name("user.CustomPoints3D")
+                    .or_with_archetype("user.CustomPoints3D")
                     .or_with_component_type(rerun::Loggable<Confidence>::ComponentType);
             batches.push_back(
                 ComponentBatch::from_loggable(*archetype.confidences, descriptor).value_or_throw()

@@ -193,7 +193,7 @@ typedef struct rr_component_descriptor {
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `rerun.archetypes.Points3D`.
-    rr_string archetype_name;
+    rr_string archetype;
 
     /// Optional name of the field within `Archetype` associated with this data.
     ///
