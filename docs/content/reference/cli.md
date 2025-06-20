@@ -60,7 +60,7 @@ The Rerun command-line interface:
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
 >
-> [Default: `25%`]
+> [Default: `0B`]
 
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
