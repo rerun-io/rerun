@@ -1,4 +1,5 @@
 use re_log_types::EntryId;
+use std::fmt::Display;
 
 use crate::catalog::v1alpha1::EntryKind;
 use crate::v1alpha1::rerun_common_v1alpha1_ext::{DatasetHandle, PartitionId};
@@ -460,5 +461,24 @@ impl ProviderDetails for SystemTable {
     fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
         let as_proto = any.to_msg::<crate::catalog::v1alpha1::SystemTable>()?;
         Ok(as_proto.try_into()?)
+    }
+}
+
+impl EntryKind {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            EntryKind::Dataset => "Dataset",
+            EntryKind::Table => "Table",
+            EntryKind::Unspecified => "Unspecified",
+            EntryKind::DatasetView => "Dataset View",
+            EntryKind::TableView => "Table View",
+            EntryKind::BlueprintDataset => "Blueprint Dataset",
+        }
+    }
+}
+
+impl Display for EntryKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.display_name())
     }
 }
