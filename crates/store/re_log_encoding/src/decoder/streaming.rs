@@ -91,7 +91,8 @@ impl StreamingLogMsg {
     /// This will only decode at the transport-layer (Protobuf), Arrow data is left untouched.
     ///
     /// Compute cost:
-    /// * If [`StreamingDecoderOptions::keep_decoded_protobuf`] was set, this is free.
+    /// * If [`StreamingDecoderOptions::keep_decoded_protobuf`] was set on the [`StreamingDecoder`]
+    ///   when producing the `StreamingLogMsg`, this is free.
     /// * Otherwise, if [`StreamingDecoderOptions::keep_encoded_protobuf`] was set, this has to
     ///   perform Protobuf decoding.
     /// * Otherwise, if neither are set, this just returns `None`.

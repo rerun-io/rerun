@@ -72,6 +72,9 @@ pub(crate) fn encode_arrow(
     })
 }
 
+// TODO(cmc): can we use the File-oriented APIs in order to re-use the transport buffer as backing
+// storage for the final RecordBatch?
+// See e.g. https://github.com/apache/arrow-rs/blob/main/arrow/examples/zero_copy_ipc.rs
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn decode_arrow(

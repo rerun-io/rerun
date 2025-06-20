@@ -218,9 +218,11 @@ pub(crate) async fn client(
 }
 
 /// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
-//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-//TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
-//the `Chunk` conversion. The chunks should instead include that information.
+//
+// TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
+// TODO(cmc): we should compute contiguous runs of the same partition here, and return a `(String, Vec<Chunk>)`
+// instead. Because of how the server performs the computation, this will very likely work out well
+// in practice.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,

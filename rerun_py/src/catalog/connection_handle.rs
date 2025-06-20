@@ -486,7 +486,10 @@ impl ConnectionHandle {
                     // not going to make this one single pipeline any faster, but it will prevent starvation of
                     // the Tokio runtime (which would slow down every other futures currently scheduled!).
                     stores = tokio::task::spawn_blocking({
-                        let mut stores = stores.clone(); // just cloning handles
+                        // Clone the stores for mutabillity within the spawned task.
+                        // Note at the end of this task we return the mutated stores and assign
+                        // it back to the outer stores variable.
+                        let mut stores = stores.clone();
                         move || {
                             let chunks_and_partition_ids =
                                 chunks_and_partition_ids.map_err(to_py_err)?;
