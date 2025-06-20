@@ -4,9 +4,9 @@ import numpy as np
 import rerun as rr
 
 # Initialize the SDK and give our recording a unique name
-rec = rr.RecordingStream("rerun_example_tee")
+rr.init("rerun_example_tee")
 
-rec.tee(
+rr.attach_sinks(
     # Connect to a local viewer using the default URL
     rr.GrpcSink(),
     # Write data to a `data.rrd` file in the current directory
