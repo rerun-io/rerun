@@ -664,6 +664,7 @@ def print_version(
     target: Target | None,
     finalize: bool = False,
     pre_id: bool = False,
+    build_metadata: bool = False,
     skip_prerelease: bool = False,
 ) -> None:
     current_version = get_version(target, skip_prerelease)
@@ -674,6 +675,10 @@ def print_version(
     if pre_id:
         sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
         sys.stdout.flush()
+    elif build_metadata:
+        if current_version.build:
+            sys.stdout.write(str(current_version.build))
+            sys.stdout.flush()
     else:
         sys.stdout.write(str(current_version))
         sys.stdout.flush()
@@ -730,7 +735,10 @@ def main() -> None:
         action="store_true",
         help="Return version finalized if it is a pre-release",
     )
-    get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    partial_version_parser = get_version_parser.add_mutually_exclusive_group()
+    partial_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    partial_version_parser.add_argument("--build-metadata", action="store_true", help="Retrieve only the build metadata")
+
     get_version_parser.add_argument(
         "--from",
         type=Target,
@@ -755,7 +763,7 @@ def main() -> None:
     if args.cmd == "check-publish-flags":
         check_publish_flags()
     if args.cmd == "get-version":
-        print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
+        print_version(args.target, args.finalize, args.pre_id, args.build_metadata, args.skip_prerelease)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
