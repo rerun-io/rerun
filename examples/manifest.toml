@@ -147,6 +147,7 @@ examples = [
   "clock",
   "dna",
   "graphs",
+  "camera_video_stream",
   "log_file",
   "openstreetmap_data",
   "minimal",
