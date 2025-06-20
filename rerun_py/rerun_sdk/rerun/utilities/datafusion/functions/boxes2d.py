@@ -3,7 +3,8 @@ from __future__ import annotations
 import rerun_bindings
 from datafusion import DataFrame, Expr, ScalarUDF, col, udf
 
-from .columns import column_for_component, column_for_index
+from .columns import column_for_component
+
 
 def intersection_over_union_by_path(
     df: DataFrame,

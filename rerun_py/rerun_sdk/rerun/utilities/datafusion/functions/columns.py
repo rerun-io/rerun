@@ -60,7 +60,7 @@ def column_for_component(
                 if field.metadata[b"rerun.component"].decode("utf-8") == f"rerun.components.{component}":
                     valid_component = True
         if valid_path and valid_archetype and valid_component:
-            return field.name
+            return str(field.name)
 
     return None
 
@@ -89,7 +89,7 @@ def column_for_index(schema: pa.Schema | DataFrame, index: str) -> str | None:
     for field in schema:
         if b"rerun.index_name" in field.metadata.keys():
             if field.metadata[b"rerun.index_name"].decode("utf-8") == index:
-                return field.name
+                return str(field.name)
     return None
 
 
