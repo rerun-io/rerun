@@ -183,6 +183,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
         helper(ctx, crates, name, output, visited)
     return output
 
+
 class Bump(Enum):
     MAJOR = "major"
     """Bump the major version, e.g. `0.9.0-alpha.5+dev` -> `1.0.0`"""
@@ -239,6 +240,7 @@ class Bump(Enum):
                 # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
                 return version.bump_prerelease(token="alpha").replace(build=build_metadata())
 
+
 def build_metadata(ctx: Context | None = None, dev: str | None = None) -> str:
     """
     Returns a string to be used as build metadata for dev versions.
@@ -262,13 +264,15 @@ def build_metadata(ctx: Context | None = None, dev: str | None = None) -> str:
         if ctx:
             ctx.error(f"failed to get commit sha: {e}")
         else:
-            print(f"failed to get commit sha, falling back to \"dev\": {e}", file=sys.stderr)
+            print(f'failed to get commit sha, falling back to "dev": {e}', file=sys.stderr)
         return "dev"
 
     return commit_sha
 
+
 def is_pinned(version: str) -> bool:
     return version.startswith("=")
+
 
 class Context:
     ops: list[str] = []
@@ -577,7 +581,6 @@ def get_release_version_from_git_branch() -> str:
     return git.Repo().active_branch.name.removeprefix("release-")
 
 
-
 def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
     if target is Target.Git:
         branch_name = get_release_version_from_git_branch()
@@ -737,7 +740,9 @@ def main() -> None:
     )
     partial_version_parser = get_version_parser.add_mutually_exclusive_group()
     partial_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
-    partial_version_parser.add_argument("--build-metadata", action="store_true", help="Retrieve only the build metadata")
+    partial_version_parser.add_argument(
+        "--build-metadata", action="store_true", help="Retrieve only the build metadata"
+    )
 
     get_version_parser.add_argument(
         "--from",
