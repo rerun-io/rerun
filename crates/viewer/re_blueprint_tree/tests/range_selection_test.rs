@@ -1,7 +1,7 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-use egui_kittest::kittest::{Key, Queryable as _};
+use egui::{Modifiers, Vec2};
+use egui_kittest::kittest::Queryable as _;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -83,23 +83,15 @@ fn test_range_selection_in_blueprint_tree() {
 
     harness.run();
     let node2 = harness.get_by_label("entity2");
-    node2.key_down(Key::Shift);
-    node2.click();
-    node2.key_up(Key::Shift);
+    node2.click_modifiers(Modifiers::SHIFT);
     harness.run();
 
     let node5 = harness.get_by_label("entity5");
-    node5.key_down(Key::Command);
-    node5.click();
-    node5.key_up(Key::Command);
+    node5.click_modifiers(Modifiers::COMMAND);
     harness.run();
 
     let node10 = harness.get_by_label("entity10");
-    node10.key_down(Key::Command);
-    node10.key_down(Key::Shift);
-    node10.click();
-    node10.key_up(Key::Command);
-    node10.key_up(Key::Shift);
+    node10.click_modifiers(Modifiers::SHIFT | Modifiers::COMMAND);
 
     harness.run();
 

@@ -12,8 +12,6 @@ To learn more about video support in Rerun, check the [video reference](https://
 All components except `sample` are typically logged statically once per entity.
 `sample` is then logged repeatedly for each frame on the timeline.
 
-TODO(#7484): Add snippet.
-
 ## Fields
 ### Required
 * `codec`: [`VideoCodec`](../components/video_codec.md)
@@ -34,4 +32,18 @@ TODO(#7484): Add snippet.
  * 🌊 [C++ API docs for `VideoStream`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoStream.html?speculative-link)
  * 🐍 [Python API docs for `VideoStream`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.VideoStream)
  * 🦀 [Rust API docs for `VideoStream`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoStream.html?speculative-link)
+
+## Example
+
+### Live streaming of on-the-fly encoded video
+
+snippet: archetypes/video_stream_synthetic
+
+<picture data-inline-viewer="snippets/video_stream_synthetic">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png">
+  <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png">
+</picture>
 

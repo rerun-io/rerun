@@ -538,6 +538,11 @@ impl DesignTokens {
         32.0
     }
 
+    /// Line height - margin
+    pub fn table_content_height(&self) -> f32 {
+        self.table_line_height() - self.table_cell_margin().sum().y
+    }
+
     // TODO(lucasmerlin): Update all tables to the new design
     pub fn deprecated_table_line_height(&self) -> f32 {
         20.0

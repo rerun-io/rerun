@@ -385,7 +385,7 @@ fn show_notification(
                     ui.horizontal_top(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
-                        ui.label(egui::RichText::new(notification.text.clone()).weak());
+                        ui.label(egui::RichText::new(notification.text.clone()));
                     });
 
                     ui.add_space(4.0);

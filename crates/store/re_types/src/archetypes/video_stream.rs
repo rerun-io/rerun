@@ -27,8 +27,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.
 ///
-/// TODO(#7484): Add snippet.
-///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct VideoStream {
@@ -51,6 +49,10 @@ pub struct VideoStream {
     /// The samples are expected to be encoded using the `codec` field.
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
+    ///
+    /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
+    /// never log this component as static data as this means that you loose all information of
+    /// previous samples which may be required to decode an image.
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     pub sample: Option<SerializedComponentBatch>,
@@ -356,6 +358,10 @@ impl VideoStream {
     /// The samples are expected to be encoded using the `codec` field.
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
+    ///
+    /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
+    /// never log this component as static data as this means that you loose all information of
+    /// previous samples which may be required to decode an image.
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     #[inline]

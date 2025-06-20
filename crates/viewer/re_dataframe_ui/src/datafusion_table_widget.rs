@@ -15,7 +15,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
-    ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+    ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
 use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::{DisplayRecordBatch, default_display_name_for_column};
@@ -172,6 +172,26 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    pub fn generate_entry_links(
+        mut self,
+        column_name: impl Into<String>,
+        entry_id_column_name: impl Into<String>,
+        origin: re_uri::Origin,
+    ) -> Self {
+        self.initial_blueprint.entry_links = Some(EntryLinksSpec {
+            column_name: column_name.into(),
+            entry_id_column_name: entry_id_column_name.into(),
+            origin,
+        });
+
+        self
+    }
+
+    pub fn filter(mut self, filter: datafusion::prelude::Expr) -> Self {
+        self.initial_blueprint.filter = Some(filter);
+        self
+    }
+
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,
@@ -202,14 +222,16 @@ impl<'a> DataFusionTableWidget<'a> {
             return;
         }
 
-        let id = id_from_session_context_and_table(&session_ctx, &table_ref);
+        // The TableConfig should be persisted across sessions, so we also need a static id.
+        let static_id = Id::new(&table_ref);
+        let session_id = id_from_session_context_and_table(&session_ctx, &table_ref);
 
         let table_state = DataFusionAdapter::get(
             runtime,
             ui,
             &session_ctx,
             table_ref.clone(),
-            id,
+            session_id,
             initial_blueprint,
         );
 
@@ -289,10 +311,12 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        let mut sorted_columns = columns.iter().collect::<Vec<_>>();
+        sorted_columns.sort_by_key(|c| c.blueprint.sort_key);
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
-            id,
-            columns.iter().map(|column| {
+            static_id,
+            sorted_columns.iter().map(|column| {
                 ColumnConfig::new_with_visible(
                     column.id,
                     column.display_name(),
@@ -320,7 +344,7 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         egui_table::Table::new()
-            .id_salt(id)
+            .id_salt(session_id)
             .columns(
                 table_delegate
                     .table_config
@@ -407,6 +431,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     .show(
                         ui,
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             let response = ui.label(
                                 egui::RichText::new(column_display_name)
                                     .strong()
@@ -422,6 +447,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             response
                         },
                         |ui| {
+                            ui.set_height(ui.tokens().table_content_height());
                             egui::containers::menu::MenuButton::from_button(
                                 ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
