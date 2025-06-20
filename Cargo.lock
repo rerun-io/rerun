@@ -7717,7 +7717,6 @@ name = "re_sorbet"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "arrow",
- "futures",
  "itertools 0.14.0",
  "nohash-hasher",
  "re_arrow_util",

@@ -29,7 +29,6 @@ re_tuid.workspace = true
 re_types_core.workspace = true
 
 arrow.workspace = true
-futures.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 tracing.workspace = true
