@@ -6868,7 +6868,6 @@ dependencies = [
  "anyhow",
  "arrow",
  "document-features",
- "futures",
  "indent",
  "insta",
  "itertools 0.14.0",

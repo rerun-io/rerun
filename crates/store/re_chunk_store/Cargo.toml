@@ -44,7 +44,6 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 document-features.workspace = true
-futures.workspace = true
 indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
