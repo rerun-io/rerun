@@ -43,13 +43,13 @@ pub(crate) use self::store::ColumnMetadataState;
 
 // Re-exports
 #[doc(no_inline)]
-pub use re_chunk::{
-    Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId,
-    UnitChunkShared,
+pub use {
+    re_chunk::{
+        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, URange,
+        UnitChunkShared,
+    },
+    re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline},
 };
-
-#[doc(no_inline)]
-pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
     pub use arrow;

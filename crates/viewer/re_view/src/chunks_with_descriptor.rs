@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use re_chunk_store::{
-    Chunk,
+    Chunk, URange,
     external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
@@ -63,7 +63,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + 'chunk + use<'chunk, C>> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = URange<usize>> + 'chunk + use<'chunk, C>> {
         self.chunk.iter_component::<C>(self.descriptor)
     }
 

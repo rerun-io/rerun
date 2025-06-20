@@ -6855,6 +6855,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "re_urange",
  "similar-asserts",
  "thiserror 1.0.65",
 ]
@@ -7932,6 +7933,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_urange"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "re_uri"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
@@ -7966,6 +7974,7 @@ dependencies = [
  "re_mp4",
  "re_rav1d",
  "re_tracing",
+ "re_urange",
  "serde",
  "thiserror 1.0.65",
  "wasm-bindgen",

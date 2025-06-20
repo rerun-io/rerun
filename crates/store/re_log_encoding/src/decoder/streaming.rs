@@ -1,11 +1,13 @@
 use std::pin::Pin;
 
 use bytes::{Buf as _, BytesMut};
-use re_build_info::CrateVersion;
-use re_log::external::log::warn;
-use re_log_types::LogMsg;
 use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
+
+use re_build_info::CrateVersion;
+use re_chunk::URange;
+use re_log::external::log::warn;
+use re_log_types::LogMsg;
 
 use crate::{
     EncodingOptions,
@@ -22,16 +24,12 @@ pub struct StreamingLogMsg {
     /// The decoded [`LogMsg`].
     pub inner: LogMsg,
 
-    /// How many bytes does one have to go through in the underlying storage resource in order to
-    /// find the start of this message?
+    /// Where in the underlying storage resource is this message (in bytes)?
     ///
-    /// Specifically, this points to the beginning of the message's **header**.
-    pub byte_offset: u64,
-
-    /// How many bytes does this message take in the underlying storage resource?
+    /// Specifically, the start of this range points to the beginning of the message's **header**.
     ///
-    /// This covers both the size of the message's header _and_ its body.
-    pub byte_len: u64,
+    /// The full range covers both the message's header _and_ its body.
+    pub byte_range: URange<u64>,
 }
 
 impl std::ops::Deref for StreamingLogMsg {
@@ -240,8 +238,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
             let msg = StreamingLogMsg {
                 inner: msg,
-                byte_offset: self.num_bytes_read,
-                byte_len: processed_length as _,
+                byte_range: URange {
+                    start: self.num_bytes_read,
+                    len: processed_length as _,
+                },
             };
 
             self.num_bytes_read += processed_length as u64;
@@ -367,11 +367,7 @@ mod tests {
             let decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
 
             for msg_expected in &decoded_messages {
-                let (offset, len) = (
-                    msg_expected.byte_offset as usize,
-                    msg_expected.byte_len as usize,
-                );
-                let data = &data[offset..offset + len];
+                let data = &data[msg_expected.byte_range.try_cast::<usize>().unwrap().range()];
 
                 {
                     use crate::codec::file;

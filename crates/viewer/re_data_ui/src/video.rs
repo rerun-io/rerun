@@ -242,8 +242,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         presentation_timestamp,
                         duration,
                         buffer_index: _,
-                        byte_offset: _,
-                        byte_length,
+                        byte_range,
                     } = *sample;
 
                     row.col(|ui| {
@@ -283,7 +282,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         }
                     });
                     row.col(|ui| {
-                        ui.monospace(re_format::format_bytes(byte_length as _));
+                        ui.monospace(re_format::format_bytes(byte_range.len as _));
                     });
                 },
             );

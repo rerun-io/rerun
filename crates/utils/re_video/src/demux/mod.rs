@@ -11,6 +11,7 @@ use std::{collections::BTreeMap, ops::Range};
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
+use re_urange::URange;
 
 use super::{Time, Timescale};
 
@@ -657,11 +658,8 @@ pub struct SampleMetadata {
     /// Index of the data buffer in which this sample is stored.
     pub buffer_index: usize,
 
-    /// Offset within the data buffer addressed by [`SampleMetadata::buffer_index`].
-    pub byte_offset: u32,
-
-    /// Length of sample starting at [`SampleMetadata::byte_offset`].
-    pub byte_length: u32,
+    /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
+    pub byte_range: URange<u32>,
 }
 
 impl SampleMetadata {
@@ -676,9 +674,7 @@ impl SampleMetadata {
     /// if `data` is not the original video data.
     pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
         let buffer = *buffers.get(self.buffer_index)?;
-        let data = buffer
-            .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
-            .to_vec();
+        let data = buffer.get(self.byte_range.range_usize())?.to_vec();
 
         Some(Chunk {
             data,
@@ -785,8 +781,7 @@ mod tests {
                 presentation_timestamp: Time(pts),
                 duration: Some(Time(1)),
                 buffer_index: 0,
-                byte_offset: 0,
-                byte_length: 0,
+                byte_range: Default::default(),
             })
             .collect::<StableIndexDeque<_>>();
 

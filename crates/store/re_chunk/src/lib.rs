@@ -37,11 +37,12 @@ pub use self::batcher::{
 // Re-exports
 
 #[doc(no_inline)]
-pub use arrow::array::Array as ArrowArray;
-#[doc(no_inline)]
-pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
-#[doc(no_inline)]
-pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId};
+pub use {
+    arrow::array::Array as ArrowArray,
+    re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName},
+    re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId},
+    re_urange::URange,
+};
 
 pub mod external {
     pub use arrow;
