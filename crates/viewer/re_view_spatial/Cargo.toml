@@ -32,6 +32,7 @@ re_renderer = { workspace = true, features = [
   "import-gltf",
   "import-obj",
   "import-stl",
+  "import-dae",
 ] }
 re_view.workspace = true
 re_tracing.workspace = true
