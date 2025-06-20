@@ -596,10 +596,21 @@ fn send_mem_sink_as_default_blueprint(
 
 /// Spawn a new viewer.
 #[pyfunction]
-#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, detach_process = true, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
+#[pyo3(signature = (
+    port = 9876,
+    memory_limit = "75%".to_owned(),
+    server_memory_limit = "0B".to_owned(),
+    hide_welcome_screen = false,
+    detach_process = true,
+    executable_name = "rerun".to_owned(),
+    executable_path = None,
+    extra_args = vec![],
+    extra_env = vec![],
+))]
 fn spawn(
     port: u16,
     memory_limit: String,
+    server_memory_limit: String,
     hide_welcome_screen: bool,
     detach_process: bool,
     executable_name: String,
@@ -611,6 +622,7 @@ fn spawn(
         port,
         wait_for_bind: true,
         memory_limit,
+        server_memory_limit,
         hide_welcome_screen,
         detach_process,
         executable_name,
