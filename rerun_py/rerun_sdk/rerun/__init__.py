@@ -176,6 +176,7 @@ from .script_helpers import (
 from .sinks import (
     FileSink as FileSink,
     GrpcSink as GrpcSink,
+    attach_sinks as attach_sinks,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
     save as save,

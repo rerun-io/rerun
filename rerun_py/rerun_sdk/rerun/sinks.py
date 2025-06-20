@@ -32,7 +32,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 LogSinkLike = Union[GrpcSink, FileSink]
 
 
-def _tee(
+def attach_sinks(
     *sinks: LogSinkLike,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
@@ -40,8 +40,36 @@ def _tee(
     """
     Stream data to multiple different sinks.
 
-    Duplicate sinks are not allowed. For example, two [`GrpcSink`]s that
+    Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
     use the same `url`.
+
+    Parameters
+    ----------
+    sinks:
+        A list of sinks to wrap.
+
+        See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+    default_blueprint:
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Example
+    -------
+    ```py
+    rr.init("rerun_example_tee")
+    rr.attach_sinks(
+        rr.GrpcSink(),
+        rr.FileSink("data.rrd")
+    )
+    rr.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+    ```
+
     """
 
     # Check for duplicates
@@ -56,7 +84,7 @@ def _tee(
         raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
 
     if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - tee() call ignored")
+        logging.warning("Rerun is disabled - attach_sinks() call ignored")
         return
 
     application_id = get_application_id(recording)  # NOLINT
@@ -73,7 +101,7 @@ def _tee(
             blueprint=default_blueprint,
         ).storage
 
-    bindings.tee(
+    bindings.attach_sinks(
         [*sinks],
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
