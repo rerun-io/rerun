@@ -57,6 +57,13 @@ impl ChunkBatch {
 
 impl ChunkBatch {
     /// The parsed rerun schema of this chunk.
+    ///
+    /// *IMPORTANT*: the returned `ChunkSchema` has potentially incorrect metadata, since it can
+    /// only be derived from an entire chunk store (e.g. a column is static if _any_ chunk
+    /// containing that column is static).
+    ///
+    /// See `re_chunk_store::ChunkStore::schema` or `re_chunk_store::SchemaBuilder` to compute
+    /// schemas with accurate metadata.
     #[inline]
     pub fn chunk_schema(&self) -> &ChunkSchema {
         &self.schema
