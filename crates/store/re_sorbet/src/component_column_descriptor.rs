@@ -196,13 +196,13 @@ impl ComponentColumnDescriptor {
         } = self;
 
         let mut metadata = std::collections::HashMap::from([
-            ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
-            ("rerun.component".to_owned(), component.to_string()),
+            ("rerun:kind".to_owned(), ColumnKind::Component.to_string()),
+            ("rerun:component".to_owned(), component.to_string()),
         ]);
 
         match batch_type {
             BatchType::Dataframe => {
-                metadata.insert("rerun.entity_path".to_owned(), entity_path.to_string());
+                metadata.insert("rerun:entity_path".to_owned(), entity_path.to_string());
             }
             BatchType::Chunk => {
                 // The whole chhunk is for the same entity, which is set in the record batch metadata.
@@ -212,29 +212,29 @@ impl ComponentColumnDescriptor {
 
         if let Some(archetype_name) = archetype_name {
             metadata.insert(
-                "rerun.archetype".to_owned(),
+                "rerun:archetype".to_owned(),
                 archetype_name.full_name().to_owned(),
             );
         }
 
         if let Some(component_type) = component_type {
             metadata.insert(
-                "rerun.component_type".to_owned(),
+                "rerun:component_type".to_owned(),
                 component_type.full_name().to_owned(),
             );
         }
 
         if *is_static {
-            metadata.insert("rerun.is_static".to_owned(), "true".to_owned());
+            metadata.insert("rerun:is_static".to_owned(), "true".to_owned());
         }
         if *is_indicator {
-            metadata.insert("rerun.is_indicator".to_owned(), "true".to_owned());
+            metadata.insert("rerun:is_indicator".to_owned(), "true".to_owned());
         }
         if *is_tombstone {
-            metadata.insert("rerun.is_tombstone".to_owned(), "true".to_owned());
+            metadata.insert("rerun:is_tombstone".to_owned(), "true".to_owned());
         }
         if *is_semantically_empty {
-            metadata.insert("rerun.is_semantically_empty".to_owned(), "true".to_owned());
+            metadata.insert("rerun:is_semantically_empty".to_owned(), "true".to_owned());
         }
 
         metadata
@@ -303,7 +303,7 @@ impl ComponentColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
     /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
     pub fn from_arrow_field(chunk_entity_path: Option<&EntityPath>, field: &ArrowField) -> Self {
-        let entity_path = if let Some(entity_path) = field.get_opt("rerun.entity_path") {
+        let entity_path = if let Some(entity_path) = field.get_opt("rerun:entity_path") {
             EntityPath::parse_forgiving(entity_path)
         } else if let Some(chunk_entity_path) = chunk_entity_path {
             chunk_entity_path.clone()
@@ -311,7 +311,7 @@ impl ComponentColumnDescriptor {
             EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
-        let component = if let Some(component) = field.get_opt("rerun.archetype_field") {
+        let component = if let Some(component) = field.get_opt("rerun:component") {
             ComponentIdentifier::from(component)
         } else {
             ComponentIdentifier::new(field.name()) // fallback
@@ -320,13 +320,13 @@ impl ComponentColumnDescriptor {
         let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
-            archetype_name: field.get_opt("rerun.archetype").map(Into::into),
+            archetype_name: field.get_opt("rerun:archetype").map(Into::into),
             component,
-            component_type: field.get_opt("rerun.component").map(Into::into),
-            is_static: field.get_bool("rerun.is_static"),
-            is_indicator: field.get_bool("rerun.is_indicator"),
-            is_tombstone: field.get_bool("rerun.is_tombstone"),
-            is_semantically_empty: field.get_bool("rerun.is_semantically_empty"),
+            component_type: field.get_opt("rerun:component_type").map(Into::into),
+            is_static: field.get_bool("rerun:is_static"),
+            is_indicator: field.get_bool("rerun:is_indicator"),
+            is_tombstone: field.get_bool("rerun:is_tombstone"),
+            is_semantically_empty: field.get_bool("rerun:is_semantically_empty"),
         };
 
         schema.sanity_check();

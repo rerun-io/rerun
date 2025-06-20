@@ -27,12 +27,12 @@ from ._log import IndicatorComponentBatch
 from ._send_columns import TimeColumnLike, send_columns
 from .recording_stream import RecordingStream
 
-SORBET_INDEX_NAME = b"rerun.index_name"
-SORBET_ENTITY_PATH = b"rerun.entity_path"
-SORBET_ARCHETYPE_NAME = b"rerun.archetype"
-SORBET_COMPONENT = b"rerun.component"
-SORBET_COMPONENT_TYPE = b"rerun.component_type"
-RERUN_KIND = b"rerun.kind"
+SORBET_INDEX_NAME = b"rerun:index_name"
+SORBET_ENTITY_PATH = b"rerun:entity_path"
+SORBET_ARCHETYPE_NAME = b"rerun:archetype"
+SORBET_COMPONENT = b"rerun:component"
+SORBET_COMPONENT_TYPE = b"rerun:component_type"
+RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
 

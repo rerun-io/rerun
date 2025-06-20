@@ -1,18 +1,18 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
-snapshot_kind: text
 ---
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
 │ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AFieldThatDoesntE ┆ /this/that:example.MyPoints: │
 │ points                       ┆ points                       ┆ .MyPoints:points             ┆ xist                         ┆ xist                         ┆ points                       │
 │ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          │
 │ type: List[Struct[2]]        ┆ type: List[Struct[2]]        ┆ type: null                   ┆ type: null                   ┆ type: null                   ┆ type: List[Struct[2]]        │
-│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ archetype_field:             ┆ archetype_field:             ┆ archetype_field:             ┆ archetype: example.MyPoints  │
-│ archetype_field:             ┆ archetype_field:             ┆ example.MyPoints:points      ┆ AFieldThatDoesntExist        ┆ AFieldThatDoesntExist        ┆ archetype_field:             │
+│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ component:                   ┆ component:                   ┆ component:                   ┆ archetype: example.MyPoints  │
+│ component:                   ┆ component:                   ┆ example.MyPoints:points      ┆ AFieldThatDoesntExist        ┆ AFieldThatDoesntExist        ┆ component:                   │
 │ example.MyPoints:points      ┆ example.MyPoints:points      ┆ entity_path:                 ┆ entity_path: /this/that      ┆ entity_path: /this/that      ┆ example.MyPoints:points      │
-│ component: example.MyPoint   ┆ component: example.MyPoint   ┆ /non_existing_entity         ┆ kind: data                   ┆ kind: data                   ┆ component: example.MyPoint   │
-│ entity_path: /this/that      ┆ entity_path: /this/that      ┆ kind: data                   ┆                              ┆                              ┆ entity_path: /this/that      │
+│ component_type:              ┆ component_type:              ┆ /non_existing_entity         ┆ kind: data                   ┆ kind: data                   ┆ component_type:              │
+│ example.MyPoint              ┆ example.MyPoint              ┆ kind: data                   ┆                              ┆                              ┆ example.MyPoint              │
+│ entity_path: /this/that      ┆ entity_path: /this/that      ┆                              ┆                              ┆                              ┆ entity_path: /this/that      │
 │ kind: data                   ┆ kind: data                   ┆                              ┆                              ┆                              ┆ kind: data                   │
 ╞══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡
 │ [{x: 0.0, y: 0.0}]           ┆ [{x: 0.0, y: 0.0}]           ┆ null                         ┆ null                         ┆ null                         ┆ [{x: 0.0, y: 0.0}]           │

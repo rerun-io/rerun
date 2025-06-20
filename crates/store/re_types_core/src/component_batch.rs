@@ -268,13 +268,13 @@ impl SerializedComponentBatch {
 // TODO(cmc): we really shouldn't be duplicating these.
 
 /// The key used to identify the [`ArchetypeName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype";
+const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun:archetype";
 
-/// The [`ComponentIdentifier`] in field-level metadata.
-const FIELD_METADATA_KEY_COMPONENT: &str = "rerun.component";
+/// The [`re_types_core::ComponentIdentifier`] in field-level metadata.
+const FIELD_METADATA_KEY_COMPONENT: &str = "rerun:component";
 
 /// The key used to identify the [`ComponentType`] in field-level metadata.
-const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun.component_type";
+const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun:component_type";
 
 impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     #[inline]

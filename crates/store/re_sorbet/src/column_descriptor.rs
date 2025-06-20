@@ -20,7 +20,7 @@ pub enum ColumnError {
     #[error(transparent)]
     UnknownColumnKind(#[from] crate::UnknownColumnKind),
 
-    #[error("Unsupported column rerun.kind: {kind:?}. Expected one of: index, data")]
+    #[error("Unsupported column rerun:kind: {kind:?}. Expected one of: index, data")]
     UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
