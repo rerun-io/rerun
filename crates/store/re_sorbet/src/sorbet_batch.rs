@@ -13,8 +13,8 @@ use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptor, ColumnDescriptorRef, ColumnKind,
-    ComponentColumnDescriptor, IndexColumnDescriptor, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnDescriptorRef, ComponentColumnDescriptor,
+    IndexColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -216,7 +216,7 @@ impl SorbetBatch {
 #[tracing::instrument(level = "trace", skip_all)]
 fn make_all_data_columns_list_arrays(
     batch: &ArrowRecordBatch,
-    is_component_column: impl FnMut(&&ArrowFieldRef) -> bool,
+    is_component_column: impl Fn(&&ArrowFieldRef) -> bool,
 ) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
@@ -224,7 +224,7 @@ fn make_all_data_columns_list_arrays(
         .schema_ref()
         .fields()
         .iter()
-        .filter(is_component_column)
+        .filter(|f| is_component_column(f))
         .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
     if !needs_migration {
         return batch.clone();
@@ -236,8 +236,7 @@ fn make_all_data_columns_list_arrays(
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let is_list_array = array.downcast_array_ref::<ArrowListArray>().is_some();
-        let is_data_column =
-            ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component);
+        let is_data_column = is_component_column(&field);
         if is_data_column && !is_list_array {
             let (field, array) = re_arrow_util::wrap_in_list_array(field, array.clone());
             fields.push(field.into());
