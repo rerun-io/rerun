@@ -1894,6 +1894,7 @@ mod tests {
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
+                    // Duplication
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component: component.to_string(),
@@ -1902,13 +1903,15 @@ mod tests {
                         entity_path: entity_path.clone(),
                         component: component.to_string(),
                     }),
+                    // Non-existing entity
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: "non_existing_entity".into(),
                         component: component.to_string(),
                     }),
+                    // Non-existing components
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component: "AFieldThatDoesntExist".into(),
+                        component: "MyPoints:AFieldThatDoesntExist".into(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
@@ -1916,7 +1919,7 @@ mod tests {
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component: component.to_string(),
+                        component: "AArchetypeNameThatDoesNotExist:positions".into(),
                     }),
                 ]),
                 ..Default::default()
