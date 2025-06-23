@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::Chunk;
-use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, SorbetColumnDescriptors};
 use re_types_core::Archetype as _;
+
+use crate::{ChunkBatch, ColumnDescriptor, ComponentColumnDescriptor, SorbetColumnDescriptors};
 
 /// Helper to track static-ness ("any" semantics) and emptiness ("all" semantics) of columns across
 /// a collection of chunks.
@@ -36,8 +36,7 @@ impl SchemaBuilder {
 
     /// Add a chunk to the builder.
     #[tracing::instrument(level = "trace")]
-    pub fn add_chunk(&mut self, chunk: &Chunk) -> Result<(), re_chunk::ChunkError> {
-        let chunk_batch = chunk.to_chunk_batch()?;
+    pub fn add_chunk(&mut self, chunk_batch: &ChunkBatch) {
         let chunk_schema = chunk_batch.chunk_schema();
 
         for (column_descriptor, array_ref) in
@@ -50,7 +49,7 @@ impl SchemaBuilder {
                 },
 
                 ColumnDescriptor::Component(_) => ColumnMetadata {
-                    is_static: chunk.is_static(),
+                    is_static: chunk_batch.is_static(),
                     is_semantically_empty: {
                         array_ref.downcast_array_ref().is_some_and(|list_array| {
                             re_arrow_util::is_list_array_semantically_empty(list_array)
@@ -64,8 +63,6 @@ impl SchemaBuilder {
                 .and_modify(|metadata: &mut ColumnMetadata| metadata.merge_with(this_metadata))
                 .or_insert(this_metadata);
         }
-
-        Ok(())
     }
 
     /// Return the completed schema.
