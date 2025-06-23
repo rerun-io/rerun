@@ -1,4 +1,4 @@
-use egui::{NumExt as _, Slider, WidgetText, emath::OrderedFloat, text::TextWrapping};
+use egui::{DragValue, NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 use web_time::Instant;
 
 use macaw::BoundingBox;
@@ -165,8 +165,9 @@ impl SpatialViewState {
                 let previous_speed = eye.speed(&self.bounding_boxes);
                 let mut speed = eye.speed(&self.bounding_boxes);
                 ui.label("Translation speed");
-                ui.add(Slider::new(&mut speed, 0.001..=1_000_000.0).logarithmic(true));
+                ui.add(DragValue::new(&mut speed));
                 if previous_speed != speed {
+                    let speed = speed.at_least(0.001);
                     eye.set_speed(speed);
                     self.state_3d.last_eye_interaction = Some(Instant::now());
                 }
