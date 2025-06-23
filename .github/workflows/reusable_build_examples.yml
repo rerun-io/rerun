@@ -12,6 +12,10 @@ on:
       CHANNEL: # `nightly`/`main`/`pr`
         required: true
         type: string
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-examples
@@ -51,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
           lfs: true
 
       - name: Set up Rust
@@ -86,7 +90,7 @@ jobs:
       - name: Get sha
         id: get-sha
         run: |
-          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: Build examples

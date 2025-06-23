@@ -206,14 +206,6 @@ jobs:
           --platform ${{ inputs.PLATFORM }} \
           --dest rerun_py/rerun_sdk/rerun_cli
 
-      - name: Update versioning
-        id: versioning
-        run: |
-          # Update the version with the current commit sha if we are building a dev version
-          if [ -n $(pixi run python scripts/ci/crates.py get-version --build-metadata) ]; then
-            pixi run python scripts/ci/crates.py version --dev sha
-          fi
-
       - name: Build
         run: |
           pixi run python scripts/ci/build_and_upload_wheels.py \

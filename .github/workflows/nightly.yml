@@ -20,6 +20,39 @@ permissions:
   pull-requests: "write"
 
 jobs:
+  branch:
+    name: Checkout on branch, and update versioning
+    runs-on: ubuntu-latest
+    outputs:
+      TEMP_BRANCH: ${{ steps.create-branch.outputs.branch_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          pixi-version: v0.41.4
+
+      - name: Create temporary branch
+        id: create-branch
+        run: |
+          BRANCH_NAME="nightly-build-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Use commit sha for build metadata
+        run: |
+          pixi run python scripts/ci/crates.py version --dev sha
+
+      - name: Commit and push branch
+        run: |
+          git config --local user.email "bot@rerun.io"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "update nightly build version" || exit 0
+          git push origin ${{ steps.create-branch.outputs.branch_name }}
+
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
@@ -68,10 +101,12 @@ jobs:
 
   build-web:
     name: "Build web viewer"
+    needs: [branch]
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: nightly
       CHANNEL: nightly
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   upload-web:
@@ -81,13 +116,16 @@ jobs:
     with:
       CONCURRENCY: nightly
       NIGHTLY: true
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-js:
     name: "Build JS"
+    needs: [branch]
     uses: ./.github/workflows/reusable_build_js.yml
     with:
       CONCURRENCY: nightly
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   upload-js:
@@ -97,109 +135,120 @@ jobs:
     with:
       CONCURRENCY: nightly
       NIGHTLY: true
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
   # Build rerun_c library binaries:
 
   build-rerun_c-and-upload-linux-arm64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Linux-Arm64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun_c-and-upload-linux-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun_c-and-upload-macos-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Mac-Intel: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun_c-and-upload-macos-arm64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Mac-Arm64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun_c-and-upload-windows-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Windows-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
   # Build rerun-cli (rerun binaries):
 
   build-rerun-cli-and-upload-linux-arm64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Linux-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun-cli-and-upload-linux-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Mac-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-arm64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Mac-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-rerun-cli-and-upload-windows-x64:
-    needs: [checks]
+    needs: [branch, checks]
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # ---------------------------------------------------------------------------
   # Build wheels:
 
   build-wheel-linux-arm64:
-    needs: [checks, build-rerun-cli-and-upload-linux-arm64]
+    needs: [branch, checks, build-rerun-cli-and-upload-linux-arm64]
     name: "Linux-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -207,10 +256,11 @@ jobs:
       PLATFORM: linux-arm64
       WHEEL_ARTIFACT_NAME: linux-arm64-wheel
       MODE: "pypi"
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-wheel-linux-x64:
-    needs: [checks, build-rerun-cli-and-upload-linux-x64]
+    needs: [branch, checks, build-rerun-cli-and-upload-linux-x64]
     name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -218,10 +268,11 @@ jobs:
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pypi"
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-wheel-macos-arm64:
-    needs: [checks, build-rerun-cli-and-upload-macos-arm64]
+    needs: [branch, checks, build-rerun-cli-and-upload-macos-arm64]
     name: "Macos-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -229,10 +280,11 @@ jobs:
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
       MODE: "pypi"
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-wheel-macos-x64:
-    needs: [checks, build-rerun-cli-and-upload-macos-x64]
+    needs: [branch, checks, build-rerun-cli-and-upload-macos-x64]
     name: "Macos-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -240,10 +292,11 @@ jobs:
       PLATFORM: macos-x64
       WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
       MODE: "pypi"
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   build-wheel-windows-x64:
-    needs: [checks, build-rerun-cli-and-upload-windows-x64]
+    needs: [branch, checks, build-rerun-cli-and-upload-windows-x64]
     name: "Windows-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -251,39 +304,43 @@ jobs:
       PLATFORM: windows-x64
       WHEEL_ARTIFACT_NAME: windows-x64-wheel
       MODE: "pypi"
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # ---------------------------------------------------------------------------
   # Test wheels:
 
   test-wheel-linux-arm64:
-    needs: [checks, build-wheel-linux-arm64]
+    needs: [branch, checks, build-wheel-linux-arm64]
     name: "linux-arm64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
       WHEEL_ARTIFACT_NAME: linux-arm64-wheel
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   test-wheel-linux-x64:
-    needs: [checks, build-wheel-linux-x64]
+    needs: [branch, checks, build-wheel-linux-x64]
     name: "Linux-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   test-wheel-macos-arm64:
-    needs: [checks, build-wheel-macos-arm64]
+    needs: [branch, checks, build-wheel-macos-arm64]
     name: "macos-arm64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # TODO(#9108): Test macos wheels
@@ -298,13 +355,14 @@ jobs:
   #    secrets: inherit
 
   test-wheel-windows-x64:
-    needs: [checks, build-wheel-windows-x64]
+    needs: [branch, checks, build-wheel-windows-x64]
     name: "Windows-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
       WHEEL_ARTIFACT_NAME: windows-x64-wheel
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # ---------------------------------------------------------------------------
@@ -321,12 +379,13 @@ jobs:
 
   build-examples:
     name: "Build Examples"
-    needs: [build-wheel-linux-x64]
+    needs: [branch, build-wheel-linux-x64]
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: nightly
       CHANNEL: nightly
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   upload-examples:
@@ -336,16 +395,19 @@ jobs:
     with:
       CONCURRENCY: nightly
       NIGHTLY: true
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   benches:
     name: Benchmarks
+    needs: [branch]
     uses: ./.github/workflows/reusable_bench.yml
     with:
       CONCURRENCY: nightly
       SAVE_BENCHES: true
       BENCH_NAME: main # We currently only run benches nightly, but we used to run them on main
       COMPARE_TO: main # We currently only run benches nightly, but we used to run them on main
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   # --------------------------------------------------------------------------
@@ -355,6 +417,7 @@ jobs:
     name: "Generate Pip Index"
     needs:
       [
+        branch,
         build-wheel-linux-arm64,
         build-wheel-linux-x64,
         build-wheel-macos-arm64,
@@ -364,12 +427,14 @@ jobs:
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
       CONCURRENCY: nightly
+      COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp_sdk.zip"
     needs:
       [
+        branch,
         build-rerun_c-and-upload-linux-arm64,
         build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-macos-arm64,
@@ -379,6 +444,7 @@ jobs:
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
       CONCURRENCY: nightly
+      RELEASE_COMMIT: ${{ needs.branch.outputs.TEMP_BRANCH }}
     secrets: inherit
 
   pre-release:
@@ -386,6 +452,7 @@ jobs:
     concurrency: nightly
     needs:
       [
+        branch,
         build-rerun-cli-and-upload-linux-arm64,
         build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-macos-arm64,
@@ -403,7 +470,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Add SHORT_SHA env property with commit short sha
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+        run: echo "SHORT_SHA =`echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7`" >> $GITHUB_ENV
 
       # First delete the old prerelease. If we don't do this, we don't get things like
       # proper source-archives and changelog info.
