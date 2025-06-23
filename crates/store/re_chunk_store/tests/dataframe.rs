@@ -49,7 +49,7 @@ fn schema() -> anyhow::Result<()> {
             .iter()
             .map(|column| column.component_descriptor())
             .collect::<Vec<_>>(),
-        // The following should be in lexicographical order!
+        // The following should be in the lexicographical order defined by `ComponentDescriptor`.
         vec![
             MyPoints::descriptor_indicator(),
             MyPoints::descriptor_colors(),

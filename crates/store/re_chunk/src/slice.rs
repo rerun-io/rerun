@@ -16,7 +16,7 @@ use crate::{Chunk, RowId, TimeColumn};
 // Most of them are indirectly stressed by our higher-level query tests anyhow.
 
 impl Chunk {
-    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentType`].
+    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentDescriptor`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
     ///
@@ -1181,11 +1181,11 @@ mod tests {
                 (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component_descr, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component_descr} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_descr));
             }
         }
 

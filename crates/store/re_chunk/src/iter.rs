@@ -72,7 +72,7 @@ impl Chunk {
     /// If the chunk is static, `timeline` will be ignored.
     ///
     /// This is different than [`Self::iter_indices`] in that it will only yield indices for rows
-    /// at which there is data for the specified `component_type`.
+    /// at which there is data for the specified component.
     ///
     /// See also [`Self::iter_indices`].
     pub fn iter_component_indices(
@@ -139,7 +139,7 @@ impl Chunk {
     /// Returns an iterator over the [`TimePoint`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::iter_timepoints`] in that it will only yield timepoints for rows
-    /// at which there is data for the specified `component_type`.
+    /// at which there is data for the specified component.
     ///
     /// See also [`Self::iter_timepoints`].
     pub fn iter_component_timepoints(
