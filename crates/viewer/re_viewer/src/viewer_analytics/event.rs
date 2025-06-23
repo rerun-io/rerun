@@ -41,6 +41,7 @@ pub fn viewer_started(
         url: app_env.url().cloned(),
         app_env: app_env.name(),
         runtime_info: ViewerRuntimeInformation {
+            is_docker: crate::docker_detection::is_docker(),
             is_wsl: super::wsl::is_wsl(),
             graphics_adapter_backend: adapter_backend.to_string(),
             re_renderer_device_tier: device_tier.to_string(),

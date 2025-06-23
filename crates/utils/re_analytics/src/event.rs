@@ -61,6 +61,9 @@ pub struct ViewerStarted {
 
 /// Some sparse information about the runtime environment the viewer is running in.
 pub struct ViewerRuntimeInformation {
+    /// Does it look like the viewer is running inside a Docker container?
+    pub is_docker: bool,
+
     /// Whether the viewer is started directly from within Windows Subsystem for Linux (WSL).
     pub is_wsl: bool,
 
@@ -82,11 +85,13 @@ pub struct ViewerRuntimeInformation {
 impl Properties for ViewerRuntimeInformation {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            is_docker,
             is_wsl,
             graphics_adapter_backend,
             re_renderer_device_tier,
         } = self;
 
+        event.insert("is_docker", is_docker);
         event.insert("is_wsl", is_wsl);
         event.insert("graphics_adapter_backend", graphics_adapter_backend);
         event.insert("re_renderer_device_tier", re_renderer_device_tier);
