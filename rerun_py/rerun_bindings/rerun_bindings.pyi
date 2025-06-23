@@ -187,7 +187,7 @@ class Schema:
         entity_path : str
             The entity path to look up.
         component : str
-            The component to look up.
+            The component to look up. Example: `Points3D:positions`.
 
         Returns
         -------
