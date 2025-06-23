@@ -11,17 +11,11 @@ struct Input {
     centers: Vec<glam::Vec3>,
 }
 
-// TODO: use emath::remap instead (when I'm not on an airplane…).
-fn remap(from: f32, from_range: RangeInclusive<f32>, to_range: RangeInclusive<f32>) -> f32 {
-    let normalized = (from - *from_range.start()) / (from_range.end() - from_range.start());
-    *to_range.start() + (to_range.end() - to_range.start()) * normalized
-}
-
 fn prepare() -> Input {
     let mut centers = vec![];
     for x in 0..W {
         for y in 0..H {
-            let height = remap(
+            let height = emath::remap(
                 ((x + y) as f32 * 0.1).sin(),
                 -1.0..=1.0,
                 MIN_Z as f32..=MAX_Z as f32,
