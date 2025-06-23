@@ -175,6 +175,9 @@ impl SorbetBatch {
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
+        let _span = tracing::trace_span!("extend_metadata").entered();
+
+        #[cfg(debug_assertions)]
         for (field, column) in itertools::izip!(
             sorbet_schema.columns.arrow_fields(batch_type),
             batch.columns()
