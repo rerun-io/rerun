@@ -353,7 +353,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "Schema",
             "AnyColumn",
             "AnyComponentColumn",
-            "ComponentLike",
             "ViewContentsLike",
         ],
         show_tables=True,

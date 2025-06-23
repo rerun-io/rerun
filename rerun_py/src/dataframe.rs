@@ -223,7 +223,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 /// ----------
 /// entity_path : str
 ///     The entity path to select.
-/// component : ComponentLike
+/// component : str
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
@@ -1172,7 +1172,7 @@ impl PyRecording {
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```python
-    /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+    /// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
     /// ```
     ///
     /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -1226,7 +1226,7 @@ impl PyRecording {
                     components.into_iter().map(Into::into).collect()
                 } else {
                     return Err(PyTypeError::new_err(format!(
-                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a str or Sequence[str]."
                     )));
                 };
 
