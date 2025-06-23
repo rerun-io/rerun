@@ -170,10 +170,16 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         // Migrations to `0.23` below.
-        let batch =
-            make_all_data_columns_list_arrays(batch, crate::migrations::v0_23::is_component_column);
-        let batch = crate::migrations::v0_23::migrate_tuids(&batch);
-        let batch = crate::migrations::v0_23::migrate_record_batch(&batch);
+        let batch = if !crate::migrations::v0_24::matches_schema(batch) {
+            let batch = make_all_data_columns_list_arrays(
+                batch,
+                crate::migrations::v0_23::is_component_column,
+            );
+            let batch = crate::migrations::v0_23::migrate_tuids(&batch);
+            crate::migrations::v0_23::migrate_record_batch(&batch)
+        } else {
+            batch.clone()
+        };
 
         // Migrations to `0.24` below.
         let batch = make_all_data_columns_list_arrays(

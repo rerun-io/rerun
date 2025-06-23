@@ -15,6 +15,16 @@ fn trim_archetype_prefix(name: &str) -> &str {
         .trim_start_matches("rerun.blueprint.archetypes.")
 }
 
+/// Returns `true`, if `batch` satisfies the `0.24` schema.
+// TODO(grtlr): We really should use version numbers to determine this!
+pub fn matches_schema(batch: &ArrowRecordBatch) -> bool {
+    !batch
+        .schema()
+        .metadata()
+        .keys()
+        .any(|key| key.starts_with("rerun."))
+}
+
 pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
     ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
 }
@@ -24,12 +34,7 @@ pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
 pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
-    let needs_rewiring = batch
-        .schema()
-        .fields()
-        .iter()
-        .flat_map(|field| field.metadata().keys())
-        .any(|key| key.starts_with("rerun."));
+    let needs_rewiring = matches_schema(batch);
     if !needs_rewiring {
         return batch.clone();
     }
@@ -118,10 +123,19 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         })
         .collect::<Fields>();
 
-    let schema = Arc::new(ArrowSchema::new_with_metadata(
-        fields,
-        batch.schema().metadata.clone(),
-    ));
+    let metadata = batch
+        .schema()
+        .metadata()
+        .iter()
+        .map(|(key, value)| {
+            if key.starts_with("rerun.") {
+                re_log::debug_once!("Migrating batch metadata key {key}");
+            }
+            (key.replace("rerun.", "rerun:"), value.clone())
+        })
+        .collect();
+
+    let schema = Arc::new(ArrowSchema::new_with_metadata(fields, metadata));
 
     ArrowRecordBatch::try_new_with_options(
         schema.clone(),

@@ -10,7 +10,7 @@ use arrow::{
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 use re_tuid::Tuid;
-use re_types_core::{Loggable as _, arrow_helpers::as_array_ref};
+use re_types_core::arrow_helpers::as_array_ref;
 
 use crate::MetadataExt as _;
 
@@ -143,8 +143,12 @@ fn migrate_tuid_column(
             .map(|(&nanos, &inc)| Tuid::from_nanos_and_inc(nanos, inc))
             .collect();
 
-        let new_field = ArrowField::new(field.name(), Tuid::arrow_datatype(), false)
-            .with_metadata(field.metadata().clone());
+        let new_field = ArrowField::new(
+            field.name(),
+            <Tuid as re_types_core::Loggable>::arrow_datatype(),
+            false,
+        )
+        .with_metadata(field.metadata().clone());
         let new_array = re_types_core::tuids_to_arrow(&tuids);
 
         re_log::debug_once!("Migrated legacy TUID encoding of column {}", field.name());

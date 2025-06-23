@@ -146,7 +146,11 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
         re_tracing::profile_function!();
 
         // Migrations to `0.23` below.
-        let batch = crate::migrations::v0_23::reorder_columns(batch);
+        let batch = if !crate::migrations::v0_24::matches_schema(batch) {
+            crate::migrations::v0_23::reorder_columns(batch)
+        } else {
+            batch.clone()
+        };
 
         // Migrations to `0.24` below.
         let batch = crate::migrations::v0_24::rewire_tagged_components(&batch);
