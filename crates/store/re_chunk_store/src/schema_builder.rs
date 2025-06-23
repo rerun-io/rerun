@@ -35,6 +35,7 @@ impl SchemaBuilder {
     }
 
     /// Add a chunk to the builder.
+    #[tracing::instrument(level = "trace")]
     pub fn add_chunk(&mut self, chunk: &Chunk) -> Result<(), re_chunk::ChunkError> {
         let chunk_batch = chunk.to_chunk_batch()?;
         let chunk_schema = chunk_batch.chunk_schema();
