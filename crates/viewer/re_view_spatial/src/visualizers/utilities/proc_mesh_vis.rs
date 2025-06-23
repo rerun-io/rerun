@@ -109,7 +109,11 @@ where
         let reference_from_instances = ent_context
             .transform_info
             .reference_from_instances(archetype_name);
+
         let num_instances = batch.half_sizes.len().max(reference_from_instances.len());
+
+        re_tracing::profile_function_if!(10_000 < num_instances);
+
         let half_sizes = clamped_or_nothing(batch.half_sizes, num_instances);
 
         let annotation_infos = process_annotation_slices(

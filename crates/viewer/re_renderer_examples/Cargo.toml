@@ -42,7 +42,6 @@ path = "world_grid.rs"
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-macaw.workspace = true
 re_renderer = { workspace = true, features = ["import-obj", "import-gltf"] }
 
 ahash.workspace = true
@@ -51,6 +50,7 @@ bytemuck.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
+macaw.workspace = true
 pollster.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 web-time.workspace = true
