@@ -114,6 +114,7 @@ impl SorbetSchema {
 impl TryFrom<&ArrowSchema> for SorbetSchema {
     type Error = SorbetError;
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
         let ArrowSchema { metadata, fields } = arrow_schema;
 

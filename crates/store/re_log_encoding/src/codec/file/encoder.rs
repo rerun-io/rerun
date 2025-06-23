@@ -28,13 +28,14 @@ pub(crate) fn encode(
             let payload = encode_arrow(&arrow_msg.batch, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.clone().into()),
+                chunk_id: Some(arrow_msg.chunk_id.into()),
                 compression: match compression {
                     Compression::Off => proto::Compression::None as i32,
                     Compression::LZ4 => proto::Compression::Lz4 as i32,
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: Encoding::ArrowIpc as i32,
-                payload: payload.data,
+                payload: payload.data.into(),
             };
             let header = MessageHeader {
                 kind: MessageKind::ArrowMsg,

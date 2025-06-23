@@ -19,6 +19,7 @@ from rerun.memory import MemoryRecording
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike
 
@@ -484,6 +485,46 @@ class RecordingStream:
     get_application_id = get_application_id
     get_recording_id = get_recording_id
     is_enabled = is_enabled
+
+    def tee(
+        self,
+        *sinks: LogSinkLike,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Stream data to multiple different sinks.
+
+        Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
+        use the same `url`.
+
+        Parameters
+        ----------
+        sinks:
+            A list of sinks to wrap.
+
+            See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        Example
+        -------
+        ```py
+        rec = rr.RecordingStream("rerun_example_tee")
+        rec.tee(
+            rr.GrpcSink(),
+            rr.FileSink("data.rrd")
+        )
+        rec.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+        ```
+
+        """
+
+        from .sinks import _tee
+
+        _tee(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,

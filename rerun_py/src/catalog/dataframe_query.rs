@@ -10,10 +10,9 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+use tracing::instrument;
 
-use re_chunk_store::{
-    ChunkStoreHandle, ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector,
-};
+use re_chunk_store::{ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
@@ -38,7 +37,7 @@ pub struct PyDataframeQueryView {
 }
 
 impl PyDataframeQueryView {
-    #[expect(clippy::fn_params_excessive_bools)]
+    #[instrument(skip(dataset, contents, py))]
     pub fn new(
         dataset: Py<PyDatasetEntry>,
         index: String,
@@ -399,6 +398,7 @@ impl PyDataframeQueryView {
     }
 
     /// Returns a DataFusion table provider capsule.
+    #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
@@ -423,8 +423,7 @@ impl PyDataframeQueryView {
 
         let query_engines = chunk_stores
             .into_iter()
-            .map(|(partition_id, chunk_store)| {
-                let store_handle = ChunkStoreHandle::new(chunk_store);
+            .map(|(partition_id, store_handle)| {
                 let query_engine = QueryEngine::new(
                     store_handle.clone(),
                     QueryCache::new_handle(store_handle.clone()),
@@ -449,6 +448,7 @@ impl PyDataframeQueryView {
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.
+    #[instrument(skip_all)]
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
