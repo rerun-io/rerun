@@ -343,11 +343,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component type.
                         let component_descriptor = store
-                            .entity_component_descriptors_with_type(
+                            .entity_component_descriptor(
                                 &descr.entity_path,
-                                descr.component_type?,
+                                descr.archetype,
+                                descr.component,
                             )
                             .into_iter()
                             .next()?;
