@@ -1,5 +1,3 @@
-use std::ops::RangeInclusive;
-
 use rerun::external::re_log;
 
 const W: usize = 200;
