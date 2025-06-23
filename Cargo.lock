@@ -4974,6 +4974,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "emath",
  "glam",
  "re_tracing",
  "rerun",

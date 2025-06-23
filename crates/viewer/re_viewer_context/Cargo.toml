@@ -39,7 +39,6 @@ re_format.workspace = true
 re_global_context.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
-macaw.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, features = ["serde"] }
 re_smart_channel.workspace = true
@@ -69,6 +68,7 @@ image = { workspace = true, features = ["jpeg", "png"] }
 indexmap = { workspace = true, features = ["std", "serde"] }
 itertools.workspace = true
 linked-hash-map.workspace = true
+macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
