@@ -12,9 +12,18 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     re_tracing::profile_function!();
 
     let schema = batch.schema_ref().as_ref();
-    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, schema)
-        .map_err(CodecError::ArrowSerialization)?;
-    sw.write(batch).map_err(CodecError::ArrowSerialization)?;
+
+    let mut sw = {
+        let _span = tracing::trace_span!("schema").entered();
+        arrow::ipc::writer::StreamWriter::try_new(writer, schema)
+            .map_err(CodecError::ArrowSerialization)?
+    };
+
+    {
+        let _span = tracing::trace_span!("data").entered();
+        sw.write(batch).map_err(CodecError::ArrowSerialization)?;
+    }
+
     sw.finish().map_err(CodecError::ArrowSerialization)?;
 
     Ok(())
@@ -30,9 +39,13 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 ) -> Result<ArrowRecordBatch, CodecError> {
     re_tracing::profile_function!();
 
-    let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
-        .map_err(CodecError::ArrowDeserialization)?;
+    let mut stream = {
+        let _span = tracing::trace_span!("schema").entered();
+        arrow::ipc::reader::StreamReader::try_new(reader, None)
+            .map_err(CodecError::ArrowDeserialization)?
+    };
 
+    let _span = tracing::trace_span!("data").entered();
     stream
         .next()
         .ok_or(CodecError::MissingRecordBatch)?
