@@ -158,6 +158,7 @@ fn migrate_tuid_column(
         (field, array)
     }
 }
+
 /// Migrate old renamed types to new types.
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {

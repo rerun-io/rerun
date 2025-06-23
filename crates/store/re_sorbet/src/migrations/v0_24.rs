@@ -6,7 +6,7 @@ use arrow::{
 };
 use re_log::ResultExt as _;
 
-// We might have to move the defintions here, if we ever change the metadata key again.
+// We might have to move the definitions here, if we ever change the metadata key again.
 use crate::ColumnKind;
 
 fn trim_archetype_prefix(name: &str) -> &str {

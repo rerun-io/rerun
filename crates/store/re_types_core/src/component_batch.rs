@@ -270,7 +270,7 @@ impl SerializedComponentBatch {
 /// The key used to identify the [`ArchetypeName`] in field-level metadata.
 const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun:archetype";
 
-/// The [`re_types_core::ComponentIdentifier`] in field-level metadata.
+/// The [`crate::ComponentIdentifier`] in field-level metadata.
 const FIELD_METADATA_KEY_COMPONENT: &str = "rerun:component";
 
 /// The key used to identify the [`ComponentType`] in field-level metadata.
