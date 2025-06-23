@@ -57,6 +57,13 @@ impl ChunkBatch {
 
 impl ChunkBatch {
     /// The parsed rerun schema of this chunk.
+    ///
+    /// *IMPORTANT*: the returned `ChunkSchema` has potentially incorrect metadata, since it can
+    /// only be derived from an entire chunk store (e.g. a column is static if _any_ chunk
+    /// containing that column is static).
+    ///
+    /// See `re_chunk_store::ChunkStore::schema` or [`crate::SchemaBuilder`] to compute
+    /// schemas with accurate metadata.
     #[inline]
     pub fn chunk_schema(&self) -> &ChunkSchema {
         &self.schema
@@ -72,6 +79,12 @@ impl ChunkBatch {
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         self.schema.entity_path()
+    }
+
+    /// Is this chunk static?
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.schema.is_static()
     }
 
     #[inline]

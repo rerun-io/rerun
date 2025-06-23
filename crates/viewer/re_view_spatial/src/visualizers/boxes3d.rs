@@ -39,6 +39,8 @@ impl Boxes3DVisualizer {
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Boxes3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
         // `ProcMeshKey::Cube` is scaled to side length of 1, i.e. a half-size of 0.5.
