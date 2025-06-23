@@ -329,7 +329,7 @@ tonic-web = "0.13.1"
 tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
 tower-http = "0.6"
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
