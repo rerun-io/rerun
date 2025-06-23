@@ -24,6 +24,7 @@ mod ipc;
 mod metadata;
 mod migrations;
 mod row_id_column_descriptor;
+mod schema_builder;
 mod selectors;
 mod sorbet_batch;
 mod sorbet_columns;
@@ -46,6 +47,7 @@ pub use self::{
         MissingMetadataKey,
     },
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
+    schema_builder::SchemaBuilder,
     selectors::{
         ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
     },

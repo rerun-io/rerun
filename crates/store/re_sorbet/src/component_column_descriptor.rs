@@ -46,17 +46,29 @@ pub struct ComponentColumnDescriptor {
     pub component: ComponentIdentifier,
 
     /// Whether this column represents static data.
+    ///
+    /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
+    //TODO(#10315): fix this footgun
     pub is_static: bool,
 
     /// Whether this column represents an indicator component.
+    ///
+    /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
+    //TODO(#10315): fix this footgun
     pub is_indicator: bool,
 
     /// Whether this column represents a [`Clear`]-related components.
     ///
     /// [`Clear`]: re_types_core::archetypes::Clear
+    ///
+    /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
+    //TODO(#10315): fix this footgun
     pub is_tombstone: bool,
 
     /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
+    ///
+    /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
+    //TODO(#10315): fix this footgun
     pub is_semantically_empty: bool,
 }
 
