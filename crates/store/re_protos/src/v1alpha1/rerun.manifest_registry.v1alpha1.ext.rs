@@ -690,7 +690,7 @@ impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::Ind
             entity_path: Some(value.entity_path.into()),
 
             component: Some(ComponentDescriptor {
-                archetype_name: value.archetype.map(|n| n.full_name().to_owned()),
+                archetype: value.archetype.map(|n| n.full_name().to_owned()),
                 component: Some(value.component.to_string()),
                 component_type: value.component_type.map(|c| c.full_name().to_owned()),
             }),

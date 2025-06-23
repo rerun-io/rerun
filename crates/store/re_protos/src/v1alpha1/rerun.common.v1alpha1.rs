@@ -343,15 +343,15 @@ impl ::prost::Name for PartitionId {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentDescriptor {
-    /// Optional name of the `Archetype` associated with this data.
-    #[prost(string, optional, tag = "1")]
-    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
     /// Optional semantic name associated with this data.
     #[prost(string, optional, tag = "4")]
     pub component_type: ::core::option::Option<::prost::alloc::string::String>,
     /// Identifier of the field within `Archetype` associated with this data.
     #[prost(string, optional, tag = "5")]
     pub component: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "6")]
+    pub archetype: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ComponentDescriptor {
     const NAME: &'static str = "ComponentDescriptor";

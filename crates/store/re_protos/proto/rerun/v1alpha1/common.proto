@@ -190,8 +190,8 @@ message PartitionId {
 }
 
 message ComponentDescriptor {
-  // Optional name of the `Archetype` associated with this data.
-  optional string archetype_name = 1;
+  reserved 1;
+  reserved "archetype_name";
 
   reserved 2;
   reserved "archetype_field_name";
@@ -204,6 +204,9 @@ message ComponentDescriptor {
 
   // Identifier of the field within `Archetype` associated with this data.
   optional string component = 5;
+
+  // Optional name of the `Archetype` associated with this data.
+  optional string archetype = 6;
 }
 
 // Unique identifier of a task submitted in the redap

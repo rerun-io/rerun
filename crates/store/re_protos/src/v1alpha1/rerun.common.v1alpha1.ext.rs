@@ -883,7 +883,7 @@ impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior 
 impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
     fn from(value: ComponentDescriptor) -> Self {
         Self {
-            archetype_name: value.archetype.map(|n| n.full_name().to_owned()),
+            archetype: value.archetype.map(|n| n.full_name().to_owned()),
             component: Some(value.component.to_string()),
             component_type: value.component_type.map(|c| c.full_name().to_owned()),
         }
@@ -895,7 +895,7 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
         let crate::common::v1alpha1::ComponentDescriptor {
-            archetype_name,
+            archetype,
             component,
             component_type,
         } = value;
@@ -905,8 +905,8 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
             "component"
         ))?);
 
-        if let Some(archetype_name) = archetype_name {
-            descriptor = descriptor.with_archetype(archetype_name.into());
+        if let Some(archetype) = archetype {
+            descriptor = descriptor.with_archetype(archetype.into());
         }
 
         if let Some(component_type) = component_type {
