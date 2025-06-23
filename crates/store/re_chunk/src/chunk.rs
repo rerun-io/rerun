@@ -1162,7 +1162,7 @@ impl Chunk {
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
-    /// there is data for the specified `component_type`.
+    /// there is data for the specified `component_descriptor`.
     #[inline]
     pub fn component_row_ids(
         &self,

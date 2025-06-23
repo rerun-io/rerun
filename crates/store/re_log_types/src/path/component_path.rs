@@ -4,14 +4,14 @@ use crate::path::EntityPath;
 
 /// A [`EntityPath`] plus a [`ComponentDescriptor`].
 ///
-/// Example: `camera/left/points:Points3D:color#Color`
+/// Example: `camera/left/points:Points3D:color`
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ComponentPath {
     /// `camera / "left" / points / #42`
     pub entity_path: EntityPath,
 
-    /// e.g. `Points3D:color#Color`
+    /// e.g. `Points3D:color`
     pub component_descriptor: ComponentDescriptor,
 }
 

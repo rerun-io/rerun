@@ -626,7 +626,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .components
             .into_iter()
             .next()
-            .map(|(_component_type, chunks)| {
+            .map(|(_component_descr, chunks)| {
                 chunks
                     .into_iter()
                     .map(|chunk| {
