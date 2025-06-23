@@ -59,7 +59,7 @@ def publish_notebook_asset() -> None:
                 file_base = "extracted/rerun_notebook/static"
                 blobs = [
                     (bucket.blob(f"{blob_base}/widget.js"), f"{file_base}/widget.js"),
-                    (bucket.blob(f"{blob_base}/re_viewer_bg.wasm", f"{file_base}/re_viewer_bg.wasm")),
+                    (bucket.blob(f"{blob_base}/re_viewer_bg.wasm"), f"{file_base}/re_viewer_bg.wasm"),
                 ]
                 for blob, filename in blobs:
                     blob.upload_from_filename(filename)
