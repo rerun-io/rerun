@@ -66,7 +66,7 @@ impl<Idx: Unsigned + Copy> From<Span<Idx>> for Range<Idx> {
     }
 }
 
-/// urange * scalar
+/// span * scalar
 impl<Idx: Unsigned + Copy + Mul> Mul<Idx> for Span<Idx> {
     type Output = Self;
 

@@ -368,7 +368,7 @@ macro_rules! impl_native_type {
             fn slice<'a>(
                 component_descriptor: ComponentDescriptor,
                 array: &'a dyn ArrowArray,
-                component_spans: impl Iterator<Item = URange<usize>> + 'a,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_native::<$arrow_primitive_type, $native_type>(
                     component_descriptor,
@@ -432,7 +432,7 @@ where
 
     // NOTE: No need for validity checks here, `component_spans` already takes care of that.
     Either::Right(
-        component_spans.map(move |urange| bytemuck::cast_slice(&values[(urange * size).range()])),
+        component_spans.map(move |span| bytemuck::cast_slice(&values[(span * size).range()])),
     )
 }
 
@@ -448,7 +448,7 @@ macro_rules! impl_array_native_type {
             fn slice<'a>(
                 component_descriptor: ComponentDescriptor,
                 array: &'a dyn ArrowArray,
-                component_spans: impl Iterator<Item = URange<usize>> + 'a,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_array_native::<N, $arrow_primitive_type, $native_type>(
                     component_descriptor,
@@ -511,9 +511,9 @@ where
     let lengths = offsets_lengths(inner_list_array.offsets()).collect_vec();
 
     // NOTE: No need for validity checks here, `component_spans` already takes care of that.
-    Either::Right(component_spans.map(move |urange| {
-        let offsets = &offsets[urange.range()];
-        let lengths = &lengths[urange.range()];
+    Either::Right(component_spans.map(move |span| {
+        let offsets = &offsets[span.range()];
+        let lengths = &lengths[span.range()];
         izip!(offsets, lengths)
             // NOTE: Not an actual clone, just a refbump of the underlying buffer.
             .map(|(&idx, &len)| values.clone().slice(idx as _, len))
@@ -530,7 +530,7 @@ macro_rules! impl_buffer_native_type {
             fn slice<'a>(
                 component_descriptor: ComponentDescriptor,
                 array: &'a dyn ArrowArray,
-                component_spans: impl Iterator<Item = URange<usize>> + 'a,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_buffer_native::<$primitive_type, $native_type>(
                     component_descriptor,
@@ -608,9 +608,9 @@ where
     let values = values.values();
 
     // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
-    Either::Right(component_spans.map(move |urange| {
-        let inner_offsets = &inner_offsets[urange.range()];
-        let inner_lengths = &inner_lengths[urange.range()];
+    Either::Right(component_spans.map(move |span| {
+        let inner_offsets = &inner_offsets[span.range()];
+        let inner_lengths = &inner_lengths[span.range()];
         izip!(inner_offsets, inner_lengths)
             .map(|(&idx, &len)| {
                 let idx = idx as usize;
@@ -632,7 +632,7 @@ macro_rules! impl_array_list_native_type {
             fn slice<'a>(
                 component_descriptor: ComponentDescriptor,
                 array: &'a dyn ArrowArray,
-                component_spans: impl Iterator<Item = URange<usize>> + 'a,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_array_list_native::<N, $primitive_type, $native_type>(
                     component_descriptor,
