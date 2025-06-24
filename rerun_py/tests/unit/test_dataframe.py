@@ -461,7 +461,7 @@ def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording
         rec.save(rrd_path)
         rec.log(
             "/test",
-            # Note: defensive parameter names to avoid ANY_VALUE_TYPE_REGISTRY collisions
+            # Note: defensive parameter names to avoid collision with `AnyValues` tracking of per-component types.
             rr.AnyValues(test_dataframe_yak="yuk", test_dataframe_foo="bar", test_dataframe_baz=42),
             static=True,
         )
@@ -501,7 +501,12 @@ def mixed_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
 
     with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
         rec.save(rrd_path)
-        rec.log("/test", rr.AnyValues(yak="yuk", foo="bar", baz=42), static=True)
+        rec.log(
+            "/test",
+            # Note: defensive parameter names to avoid collision with `AnyValues` tracking of per-component types.
+            rr.AnyValues(test_dataframe_yak="yuk", test_dataframe_foo="bar", test_dataframe_baz=42),
+            static=True,
+        )
         rec.log("/test2", rr.Points3D([1, 2, 3], radii=5), static=True)
 
     recording = rr.dataframe.load_recording(rrd_path)
