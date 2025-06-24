@@ -48,7 +48,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration as i64);
 
-                let byte_range = Span {
+                let byte_span = Span {
                     start: sample.offset as u32,
                     len: sample.size as u32,
                 };
@@ -61,7 +61,7 @@ impl VideoDataDescription {
                     duration: Some(duration),
                     // There's only a single buffer, which is the raw mp4 video data.
                     buffer_index: 0,
-                    byte_range,
+                    byte_span,
                 });
             }
         }

@@ -659,7 +659,7 @@ pub struct SampleMetadata {
     pub buffer_index: usize,
 
     /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
-    pub byte_range: Span<u32>,
+    pub byte_span: Span<u32>,
 }
 
 impl SampleMetadata {
@@ -674,7 +674,7 @@ impl SampleMetadata {
     /// if `data` is not the original video data.
     pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
         let buffer = *buffers.get(self.buffer_index)?;
-        let data = buffer.get(self.byte_range.range_usize())?.to_vec();
+        let data = buffer.get(self.byte_span.range_usize())?.to_vec();
 
         Some(Chunk {
             data,
@@ -781,7 +781,7 @@ mod tests {
                 presentation_timestamp: Time(pts),
                 duration: Some(Time(1)),
                 buffer_index: 0,
-                byte_range: Default::default(),
+                byte_span: Default::default(),
             })
             .collect::<StableIndexDeque<_>>();
 
