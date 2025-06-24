@@ -1081,6 +1081,9 @@ pub trait UiExt {
     /// Until the user has interacted with a help button (any help button), we
     /// highlight the button extra to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        // The help menu appears when clicked and/or hovered
+        let mut help_ui: Option<_> = Some(help_ui);
+
         let ui = self.ui_mut();
 
         // Have we ever shown any help UI anywhere?
@@ -1104,26 +1107,27 @@ pub trait UiExt {
                 ui.small_icon_button_widget(&icons::HELP, "Help"),
             );
 
-            let response = menu_button
+            let button_response = menu_button
                 .ui(ui, |ui| {
-                    help_ui(ui);
-                    if !user_has_clicked_any_help_button {
-                        // Remember that the user has found and used the help button at least once,
-                        // to stop it from animating in the future:
-                        ui.data_mut(|d| {
-                            d.insert_persisted(has_shown_help_id, true);
-                        });
+                    if let Some(help_ui) = help_ui.take() {
+                        help_ui(ui);
+                        if !user_has_clicked_any_help_button {
+                            // Remember that the user has found and used the help button at least once,
+                            // to stop it from animating in the future:
+                            ui.data_mut(|d| {
+                                d.insert_persisted(has_shown_help_id, true);
+                            });
+                        }
                     }
                 })
-                .0
-                .on_hover_text("Click for help");
+                .0;
 
             if let Some(where_to_paint_background) = where_to_paint_background {
-                if !response.hovered() {
+                if !button_response.hovered() {
                     ui.painter().set(
                         where_to_paint_background,
                         egui::Shape::rect_filled(
-                            response.rect.expand(2.0),
+                            button_response.rect.expand(2.0),
                             4.0,
                             ui.tokens().highlight_color,
                         ),
@@ -1131,7 +1135,11 @@ pub trait UiExt {
                 }
             }
 
-            response
+            if let Some(help_ui) = help_ui.take() {
+                button_response.on_hover_ui(help_ui)
+            } else {
+                button_response
+            }
         })
         .inner
     }
