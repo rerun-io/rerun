@@ -1122,9 +1122,9 @@ pub trait UiExt {
                 if !response.hovered() {
                     ui.painter().set(
                         where_to_paint_background,
-                        egui::Shape::circle_filled(
-                            response.rect.center(),
-                            12.0,
+                        egui::Shape::rect_filled(
+                            response.rect.expand(2.0),
+                            4.0,
                             ui.tokens().highlight_color,
                         ),
                     );
