@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use datafusion::prelude::{col, lit};
-use egui::{Frame, Margin, RichText, Widget as _};
+use egui::Widget as _;
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -11,7 +11,7 @@ use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::list_item::{ItemActionButton, ItemButton as _, ItemMenuButton};
-use re_ui::{UiExt as _, list_item};
+use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
     ViewerContext,
