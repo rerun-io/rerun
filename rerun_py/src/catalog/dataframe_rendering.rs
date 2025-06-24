@@ -1,5 +1,5 @@
 use arrow::datatypes::Schema;
-use arrow::pyarrow::FromPyArrow;
+use arrow::pyarrow::FromPyArrow as _;
 use arrow::record_batch::RecordBatch;
 use comfy_table::Table;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
@@ -17,31 +17,30 @@ impl PyRerunHtmlTable {
     fn build_table_container_start(&self) -> String {
         let max_width = self
             .max_width
-            .map(|mw| format!("max-width: {}px;", mw))
+            .map(|mw| format!("max-width: {mw}px;"))
             .unwrap_or_default();
         let max_height = self
             .max_height
-            .map(|mh| format!("max-height: {}px;", mh))
+            .map(|mh| format!("max-height: {mh}px;"))
             .unwrap_or_default();
 
         format!(
             r#"
-            <div style="width: 100%; {} {} overflow: auto; border: 1px solid #ccc;">
+            <div style="width: 100%; {max_width} {max_height} overflow: auto; border: 1px solid #ccc;">
             <table style="border-collapse: collapse; min-width: 100%">
-            "#,
-            max_width, max_height
+            "#
         )
     }
 
-    fn build_table_container_end(&self) -> String {
+    fn build_table_container_end() -> String {
         r#"
         </table>
         </div>
         "#
-        .to_string()
+        .to_owned()
     }
 
-    fn build_table_header(&self, schema: &Schema) -> String {
+    fn build_table_header(schema: &Schema) -> String {
         let cells = schema
             .fields()
             .iter()
@@ -57,8 +56,8 @@ impl PyRerunHtmlTable {
         format!("<thead><tr>{}</tr></thead>", cells.join(""))
     }
 
-    fn build_table_body(&self, tables: Vec<Table>) -> Vec<String> {
-        let mut results = vec!["<tbody".to_string()];
+    fn build_table_body(tables: Vec<Table>) -> Vec<String> {
+        let mut results = vec!["<tbody".to_owned()];
 
         for table in tables {
             let rows = table
@@ -66,17 +65,17 @@ impl PyRerunHtmlTable {
                 .map(|row| {
                     let cells = row
                         .cell_iter()
-                        .map(|cell| format!("<td>{}</td>", cell.content().replace("\n", "<br>")))
+                        .map(|cell| format!("<td>{}</td>", cell.content().replace('\n', "<br>")))
                         .collect::<Vec<_>>()
                         .join("");
 
-                    format!("<tr>{}</tr>\n", cells)
+                    format!("<tr>{cells}</tr>\n")
                 })
                 .collect::<Vec<_>>();
             results.extend(rows);
         }
 
-        results.push("</tbody>".to_string());
+        results.push("</tbody>".to_owned());
 
         results
     }
@@ -88,8 +87,8 @@ impl PyRerunHtmlTable {
     #[pyo3(signature = (max_width=None, max_height=None))]
     pub fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
         Self {
-            max_height: max_height,
-            max_width: max_width,
+            max_height,
+            max_width,
         }
     }
 
@@ -116,18 +115,18 @@ impl PyRerunHtmlTable {
         let schema = Schema::from_pyarrow_bound(schema)?;
 
         if tables.is_empty() {
-            return Ok("No data to display.".to_string());
+            return Ok("No data to display.".to_owned());
         }
 
         let mut html_result = Vec::default();
 
         html_result.push(self.build_table_container_start());
-        html_result.push(self.build_table_header(&schema));
-        html_result.extend(self.build_table_body(tables));
-        html_result.push(self.build_table_container_end());
+        html_result.push(Self::build_table_header(&schema));
+        html_result.extend(Self::build_table_body(tables));
+        html_result.push(Self::build_table_container_end());
 
         if has_more {
-            html_result.push("<div>Data truncated due to size.</div>".to_string());
+            html_result.push("<div>Data truncated due to size.</div>".to_owned());
         }
 
         Ok(html_result.join("\n"))
