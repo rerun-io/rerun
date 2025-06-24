@@ -4,7 +4,7 @@ use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new `RecordingStream` which sends data over gRPC to the viewer process.
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_attach_sinks").attach_sinks((
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_attach_sinks").set_sinks((
         rerun::sink::GrpcSink::default(),
         rerun::sink::FileSink::new("data.rrd")?,
     ))?;

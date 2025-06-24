@@ -351,7 +351,7 @@ impl RecordingStreamBuilder {
     /// use the same `url`.
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
-    pub fn attach_sinks(
+    pub fn set_sinks(
         self,
         sinks: impl crate::sink::IntoMultiSink,
     ) -> RecordingStreamResult<RecordingStream> {
@@ -364,7 +364,7 @@ impl RecordingStreamBuilder {
                 Box::new(sinks.into_multi_sink()),
             )
         } else {
-            re_log::debug!("Rerun disabled - call to attach_sinks() ignored");
+            re_log::debug!("Rerun disabled - call to set_sinks() ignored");
             Ok(RecordingStream::disabled())
         }
     }
@@ -1893,7 +1893,7 @@ impl RecordingStream {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
-    pub fn attach_sinks(
+    pub fn set_sinks(
         &self,
         sinks: impl crate::log_sink::IntoMultiSink,
     ) -> RecordingStreamResult<()> {
