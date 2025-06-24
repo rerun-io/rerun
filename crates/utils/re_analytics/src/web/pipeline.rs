@@ -86,4 +86,8 @@ impl Pipeline {
             },
         );
     }
+
+    pub fn flush_blocking(&self) {
+        // Nothing to do - we send all events immediately.
+    }
 }
