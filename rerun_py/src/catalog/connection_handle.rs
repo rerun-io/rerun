@@ -548,7 +548,7 @@ impl ConnectionHandle {
 
         // Useful for debugging purposes.
         #[expect(clippy::unwrap_used)]
-        if true {
+        if false {
             let num_chunks: usize = stores.values().map(|store| store.read().num_chunks()).sum();
 
             use itertools::Itertools as _;
