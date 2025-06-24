@@ -14,8 +14,8 @@ use itertools::{Either, Itertools as _, izip};
 
 use re_arrow_util::{ArrowArrayDowncastRef as _, offsets_lengths};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
+use re_span::Span;
 use re_types_core::{ArrowString, Component, ComponentDescriptor};
-use re_urange::Span;
 
 use crate::{Chunk, RowId, TimeColumn};
 

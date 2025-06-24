@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, ops::Range};
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
-use re_urange::Span;
+use re_span::Span;
 
 use super::{Time, Timescale};
 

@@ -26,7 +26,7 @@ pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmp
 #[doc(no_inline)]
 pub use {
     re_mp4::{TrackId, TrackKind},
-    re_urange::Span,
+    re_span::Span,
     stable_index_deque::StableIndexDeque,
     time::{Time, Timescale},
 };

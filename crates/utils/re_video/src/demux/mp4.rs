@@ -1,6 +1,6 @@
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
-use re_urange::Span;
+use re_span::Span;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 

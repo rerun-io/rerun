@@ -40,8 +40,8 @@ pub use self::batcher::{
 pub use {
     arrow::array::Array as ArrowArray,
     re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName},
+    re_span::Span,
     re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId},
-    re_urange::Span,
 };
 
 pub mod external {

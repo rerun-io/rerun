@@ -1,5 +1,5 @@
 [package]
-name = "re_urange"
+name = "re_span"
 authors.workspace = true
 description = "An integer range that is never negatively long"
 edition.workspace = true
