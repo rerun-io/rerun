@@ -47,6 +47,8 @@ def set_sinks(
     `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
     the sinks passed to `set_sinks` remaining active.
 
+    Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
+
     Parameters
     ----------
     sinks:
