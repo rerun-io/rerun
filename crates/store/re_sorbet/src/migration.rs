@@ -136,6 +136,15 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let mut metadata = field.metadata().clone();
+
+        // Migrage old metadata key names:
+        if let Some(archetype) = metadata.remove("rerun.archetype_name") {
+            metadata.insert("rerun.archetype".to_owned(), archetype);
+        }
+        if let Some(archetype_field) = metadata.remove("rerun.archetype_field_name") {
+            metadata.insert("rerun.archetype_field".to_owned(), archetype_field);
+        }
+
         if let Some(archetype) = metadata.get_mut("rerun.archetype") {
             if let Some(archetype_rename) = archetype_renames.get(archetype.as_str()) {
                 re_log::debug_once!(

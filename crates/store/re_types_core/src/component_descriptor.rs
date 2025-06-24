@@ -196,10 +196,10 @@ impl ComponentDescriptor {
 // TODO(cmc): we really shouldn't be duplicating these.
 
 /// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
+const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype";
 
 /// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field_name";
+const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field";
 
 impl From<arrow::datatypes::Field> for ComponentDescriptor {
     #[inline]

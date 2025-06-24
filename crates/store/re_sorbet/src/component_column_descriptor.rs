@@ -306,8 +306,14 @@ impl ComponentColumnDescriptor {
         let schema = Self {
             store_datatype: field.data_type().clone(),
             entity_path,
-            archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
-            archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
+            archetype_name: field
+                .get_opt("rerun.archetype")
+                .or(field.get_opt("rerun.archetype_name")) // Old name
+                .map(|x| x.into()),
+            archetype_field_name: field
+                .get_opt("rerun.archetype_field")
+                .or(field.get_opt("rerun.archetype_field_name")) // Old name
+                .map(|x| x.into()),
             component_name,
             is_static: field.get_bool("rerun.is_static"),
             is_indicator: field.get_bool("rerun.is_indicator"),
