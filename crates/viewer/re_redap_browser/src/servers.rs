@@ -118,46 +118,6 @@ impl Server {
         });
     }
 
-    /*
-
-        [crates/viewer/re_redap_browser/src/servers.rs:125:13] &err = TonicError(
-            Status {
-                code: Unauthenticated,
-                message: "missing credentials",
-                metadata: MetadataMap {
-                    headers: {
-                        "content-type": "application/grpc",
-                        "date": "Thu, 19 Jun 2025 16:02:32 GMT",
-                        "access-control-expose-headers": "*",
-                        "vary": "origin, access-control-request-method, access-control-request-headers",
-                        "access-control-allow-origin": "*",
-                    },
-                },
-                source: None,
-            },
-        )
-
-
-    [crates/viewer/re_redap_browser/src/servers.rs:125:13] &err = TonicError(
-        Status {
-            code: Unauthenticated,
-            message: "invalid credentials",
-            metadata: MetadataMap {
-                headers: {
-                    "content-type": "application/grpc",
-                    "date": "Thu, 19 Jun 2025 16:03:31 GMT",
-                    "access-control-expose-headers": "*",
-                    "vary": "origin, access-control-request-method, access-control-request-headers",
-                    "access-control-allow-origin": "*",
-                },
-            },
-            source: None,
-        },
-    )
-
-
-             */
-
     /// Central panel UI for when a server is selected.
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
@@ -186,18 +146,8 @@ impl Server {
                             }
                         });
                     });
-                }
-
-                match err {
-                    EntryError::TonicError(status) => match status.code() {
-                        Code::Unauthenticated => {}
-                        _ => {
-                            ui.error_label(err.to_string());
-                        }
-                    },
-                    _ => {
-                        ui.error_label(err.to_string());
-                    }
+                } else {
+                    ui.error_label(err.to_string());
                 }
             });
             return;
