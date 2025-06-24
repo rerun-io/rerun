@@ -133,7 +133,9 @@ impl AddServerModal {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let (Ok(origin), Ok(token)) = (origin, token) {
-                        if ui.button("Add").clicked() {
+                        if ui.button("Add").clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
                             ui.close();
 
                             if let Some(token) = token {
