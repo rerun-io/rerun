@@ -1,10 +1,12 @@
-use crate::context::Context;
-use crate::servers::Command;
+use std::str::FromStr as _;
+
 use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
+
+use crate::{context::Context, servers::Command};
 
 pub struct AddServerModal {
     modal: ModalHandler,
@@ -68,7 +70,27 @@ impl AddServerModal {
                 ui.add_space(14.0);
 
                 ui.label("Host name:");
-                let host = url::Host::parse(&self.host);
+                let mut host = url::Host::parse(&self.host);
+
+                if host.is_err() {
+                    if let Ok(url) = url::Url::parse(&self.host) {
+                        // Maybe the user pasted a full URL, with scheme and port?
+                        // Then handle that gracefully!
+                        if let Ok(scheme) = Scheme::from_str(url.scheme()) {
+                            self.scheme = scheme;
+                        }
+
+                        if let Some(url_host) = url.host_str() {
+                            self.host = url_host.to_owned();
+                            host = url::Host::parse(&self.host);
+                        }
+
+                        if let Some(port) = url.port() {
+                            self.port = port;
+                        }
+                    }
+                }
+
                 ui.scope(|ui| {
                     // make field red if host is invalid
                     if host.is_err() {
