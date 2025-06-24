@@ -38,6 +38,13 @@ pub trait UiExt {
         Alert::success().show_text(self.ui_mut(), success_text.into(), None)
     }
 
+    /// Shows a info label with a large border.
+    ///
+    /// If you don't want a border, use [`crate::ContextExt::info_text`].
+    fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
+        Alert::info().show_text(self.ui_mut(), info_text.into(), None)
+    }
+
     /// Shows a warning label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
