@@ -5,13 +5,10 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::{
-    channel::{self, RecvError},
-    select,
-};
+use crossbeam::{channel, select};
 
-use super::AbortSignal;
-use super::sink::PostHogSink;
+use super::{AbortSignal, sink::PostHogSink};
+
 use crate::{AnalyticsEvent, Config};
 
 #[derive(thiserror::Error, Debug)]
@@ -28,7 +25,7 @@ pub enum PipelineError {
 /// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
 pub struct Pipeline {
-    event_tx: channel::Sender<Result<AnalyticsEvent, RecvError>>,
+    event_tx: channel::Sender<AnalyticsEvent>,
 }
 
 impl Pipeline {
@@ -122,11 +119,8 @@ impl Pipeline {
 
 // ---
 
-fn try_send_event(
-    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
-    event: AnalyticsEvent,
-) {
-    match event_tx.try_send(Ok(event)) {
+fn try_send_event(event_tx: &channel::Sender<AnalyticsEvent>, event: AnalyticsEvent) {
+    match event_tx.try_send(event) {
         Ok(_) => {}
         Err(channel::TrySendError::Full(_)) => {
             re_log::trace!("dropped event, analytics channel is full");
@@ -214,8 +208,8 @@ fn realtime_pipeline(
     sink: &PostHogSink,
     mut session_file: File,
     tick: Duration,
-    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
-    event_rx: &channel::Receiver<Result<AnalyticsEvent, RecvError>>,
+    event_tx: &channel::Sender<AnalyticsEvent>,
+    event_rx: &channel::Receiver<AnalyticsEvent>,
     abort_signal: &AbortSignal,
 ) {
     let analytics_id: Arc<str> = config.analytics_id.clone().into();
@@ -272,7 +266,6 @@ fn realtime_pipeline(
         select! {
             recv(ticker_rx) -> elapsed => on_tick(&mut session_file, elapsed),
             recv(event_rx) -> event => {
-                let Ok(event) = event else { break };
                 let Ok(event) = event else { break };
                 on_event(&mut session_file, event);
             },
