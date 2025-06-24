@@ -6853,6 +6853,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_sorbet",
+ "re_span",
  "re_tracing",
  "re_tuid",
  "re_types_core",
@@ -7732,6 +7733,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_span"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "re_string_interner"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
@@ -7970,6 +7978,7 @@ dependencies = [
  "re_log",
  "re_mp4",
  "re_rav1d",
+ "re_span",
  "re_tracing",
  "serde",
  "thiserror 1.0.65",
