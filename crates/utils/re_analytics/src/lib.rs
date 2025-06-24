@@ -35,11 +35,16 @@ pub mod event;
 
 // ----------------------------------------------------------------------------
 
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::Error as IoError;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::Error as IoError,
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Duration,
+};
 
 use time::OffsetDateTime;
 
@@ -258,8 +263,36 @@ fn load_config() -> Result<Config, ConfigError> {
     }
 }
 
+static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
+
 impl Analytics {
+    /// Get the global analytics instance, initializing it if it's not already initialized.
+    ///
+    /// Return `None` if analytics is disabled or some error occurred.
+    pub fn global_or_init() -> Option<&'static Self> {
+        GLOBAL_ANALYTICS
+            .get_or_init(|| match Self::new(Duration::from_secs(2)) {
+                Ok(analytics) => Some(analytics),
+                Err(err) => {
+                    re_log::error!("Failed to initialize analytics: {err}");
+                    None
+                }
+            })
+            .as_ref()
+    }
+
+    /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_get_or_init`].
+    ///
+    /// Return `None` if analytics is disabled or some error occurred during initialization.
+    pub fn global_get() -> Option<&'static Self> {
+        GLOBAL_ANALYTICS.get()?.as_ref()
+    }
+
     /// Initialize an analytics pipeline which flushes events every `tick`.
+    ///
+    /// Usually it is better to use [`Self::global_or_init`] instead of calling this directly,
+    /// but there are cases where you might want to create a separate instance,
+    /// e.g. for testing purposes, or when you want to use a different tick duration.
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = load_config()?;
         let pipeline = Pipeline::new(&config, tick)?;
