@@ -86,13 +86,15 @@ impl PyRerunHtmlTable {
 impl PyRerunHtmlTable {
     #[new]
     #[pyo3(signature = (max_width=None, max_height=None))]
-    fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
+    pub fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
         Self {
             max_height: max_height,
             max_width: max_width,
         }
     }
 
+    // The keyword arguments must match the expected overrides
+    #[expect(unused_variables)]
     fn format_html<'py>(
         &self,
         batches: Vec<Bound<'py, PyAny>>,
