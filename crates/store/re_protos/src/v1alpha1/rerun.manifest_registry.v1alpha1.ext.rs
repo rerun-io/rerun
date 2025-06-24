@@ -100,10 +100,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
                     index: latest_at
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
-                        .ok_or_else(|| {
-                            tonic::Status::invalid_argument("index is required for latest_at query")
-                        })?,
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name)),
                     at: latest_at
                         .at
                         .ok_or_else(|| tonic::Status::invalid_argument("at is required"))?,
@@ -173,8 +170,8 @@ impl From<Query> for crate::manifest_registry::v1alpha1::Query {
         crate::manifest_registry::v1alpha1::Query {
             latest_at: value.latest_at.map(|latest_at| {
                 crate::manifest_registry::v1alpha1::QueryLatestAt {
-                    index: Some({
-                        let timeline: TimelineName = latest_at.index.into();
+                    index: latest_at.index.map(|index| {
+                        let timeline: TimelineName = index.into();
                         timeline.into()
                     }),
                     at: Some(latest_at.at),
@@ -266,7 +263,7 @@ pub struct FuzzyComponentDescriptor {
 
 #[derive(Debug, Clone)]
 pub struct QueryLatestAt {
-    pub index: String,
+    pub index: Option<String>,
     pub at: i64,
     pub fuzzy_descriptors: Vec<String>,
     // TODO(cmc): I shall bring that back into a more structured form later.

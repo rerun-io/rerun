@@ -259,6 +259,10 @@ pub struct QueryExpression {
 }
 
 impl QueryExpression {
+    pub fn is_static(&self) -> bool {
+        self.filtered_index.is_none()
+    }
+
     pub fn min_latest_at(&self) -> Option<LatestAtQuery> {
         let index = self.filtered_index?;
 
