@@ -37,9 +37,12 @@ enum ColumnKind {
     Component,
 }
 
-/// Returns `true`, if `batch` satisfies the expected schema.
 pub fn matches_schema(batch: &ArrowRecordBatch) -> bool {
-    batch.schema().metadata().get("rerun.version").is_some()
+    batch
+        .schema()
+        .metadata()
+        .keys()
+        .any(|key| key.starts_with("rerun."))
 }
 
 impl std::fmt::Display for ColumnKind {

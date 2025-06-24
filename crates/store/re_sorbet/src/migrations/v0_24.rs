@@ -15,12 +15,6 @@ fn trim_archetype_prefix(name: &str) -> &str {
         .trim_start_matches("rerun.blueprint.archetypes.")
 }
 
-/// Returns `true`, if `batch` satisfies the expected schema.
-pub fn matches_schema(batch: &ArrowRecordBatch) -> bool {
-    // TODO(#10322): This should additionally check for the correct version.
-    batch.schema().metadata().get("rerun:version").is_some()
-}
-
 pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
     ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
 }
@@ -30,7 +24,12 @@ pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
 pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
-    let needs_rewiring = matches_schema(batch);
+    let needs_rewiring = batch
+        .schema()
+        .metadata()
+        .keys()
+        .any(|key| key.starts_with("rerun."));
+
     if !needs_rewiring {
         return batch.clone();
     }

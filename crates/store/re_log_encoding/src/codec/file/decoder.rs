@@ -109,11 +109,23 @@ pub fn decode_transport_to_app(
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .into();
 
-            let sorbet_schema = re_sorbet::ChunkSchema::try_from(batch.schema_ref().as_ref())?;
+            // TODO(grtlr): In the future, we should be able to rely on the `chunk_id` to be present in the
+            // protobuf defintions. For now we have to extract it from the `batch`.
+            //
+            // let chunk_id = arrow_msg
+            //     .chunk_id
+            //     .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "chunk_id"))?
+            //     .try_from()?;
+
+            // This also ensures that we perform all required migrations from `re_sorbet`.
+            // TODO(#10343): Would it make sense to change `re_types_core::ArrowMsg` to contain the
+            // `ChunkBatch` directly?
+            let chunk_batch = re_sorbet::ChunkBatch::try_from(&batch)?;
 
             let arrow_msg = re_log_types::ArrowMsg {
-                chunk_id: sorbet_schema.chunk_id().as_tuid(),
-                batch,
+                chunk_id: chunk_batch.chunk_schema().chunk_id().as_tuid(),
+
+                batch: chunk_batch.into(),
                 on_release: None,
             };
 
