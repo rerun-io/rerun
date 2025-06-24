@@ -1,7 +1,7 @@
 //! These are the migrations that were introduced for each version.
 //!
 //! For example [`v0_24`] contains the migrations that are needed
-//! to go from [`v0_23`] to [`v_24`].
+//! to go from [`v0_23`] to [`v0_24`].
 
 pub mod v0_23;
 pub mod v0_24;

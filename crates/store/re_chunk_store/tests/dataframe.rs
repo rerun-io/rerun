@@ -52,7 +52,7 @@ fn schema() -> anyhow::Result<()> {
         // It's important that the returned descriptors are in lexicographical order, as we
         // want the schema to be deterministic between calls.
         //
-        // The lexicographical order is defined by the component descriptors. Note the the
+        // The lexicographical order is defined by the component descriptors. Note that the
         // indicator plays a special role here, because it has the archetype field set to
         // `None`. Also, indicators will be removed soon anyways.
         vec![
