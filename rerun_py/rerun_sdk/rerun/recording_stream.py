@@ -486,7 +486,7 @@ class RecordingStream:
     get_recording_id = get_recording_id
     is_enabled = is_enabled
 
-    def tee(
+    def set_sinks(
         self,
         *sinks: LogSinkLike,
         default_blueprint: BlueprintLike | None = None,
@@ -495,7 +495,13 @@ class RecordingStream:
         Stream data to multiple different sinks.
 
         Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
-        use the same `url`.
+        use the same `url` will cause this function to throw a `ValueError`.
+
+        This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+        `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+        the sinks passed to `set_sinks` remaining active.
+
+        Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
 
         Parameters
         ----------
@@ -513,7 +519,7 @@ class RecordingStream:
         -------
         ```py
         rec = rr.RecordingStream("rerun_example_tee")
-        rec.tee(
+        rec.set_sinks(
             rr.GrpcSink(),
             rr.FileSink("data.rrd")
         )
@@ -522,9 +528,9 @@ class RecordingStream:
 
         """
 
-        from .sinks import _tee
+        from .sinks import set_sinks
 
-        _tee(*sinks, default_blueprint=default_blueprint, recording=self)
+        set_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,

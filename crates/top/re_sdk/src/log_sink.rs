@@ -118,6 +118,51 @@ impl LogSink for MultiSink {
     }
 }
 
+mod private {
+    pub trait Sealed {}
+}
+
+/// Marker trait for [`LogSink`] implementors which may be added
+/// to a [`MultiSink`].
+pub trait MultiSinkCompatible: private::Sealed {}
+
+/// Conversion trait implemented for tuples of sinks.
+pub trait IntoMultiSink {
+    /// Convert self into a [`MultiSink`].
+    fn into_multi_sink(self) -> MultiSink;
+}
+
+macro_rules! impl_multi_sink_tuple {
+    ($($T:ident),*) => {
+        impl<$($T),*> IntoMultiSink for ($($T,)*)
+        where
+            $($T: LogSink + MultiSinkCompatible,)*
+        {
+            #[allow(non_snake_case)] // so that we only need one metavar
+            #[inline]
+            fn into_multi_sink(self) -> MultiSink {
+                let ($($T,)*) = self;
+                MultiSink::new(vec![$(Box::new($T)),*])
+            }
+        }
+    };
+}
+
+impl_multi_sink_tuple!(A);
+impl_multi_sink_tuple!(A, B);
+impl_multi_sink_tuple!(A, B, C);
+impl_multi_sink_tuple!(A, B, C, D);
+impl_multi_sink_tuple!(A, B, C, D, E);
+impl_multi_sink_tuple!(A, B, C, D, E, F);
+
+impl private::Sealed for crate::sink::FileSink {}
+
+impl MultiSinkCompatible for crate::sink::FileSink {}
+
+impl private::Sealed for crate::sink::GrpcSink {}
+
+impl MultiSinkCompatible for crate::sink::GrpcSink {}
+
 // ----------------------------------------------------------------------------
 
 /// Store log messages in memory until you call [`LogSink::drain_backlog`].
@@ -405,6 +450,16 @@ impl GrpcSink {
         Self {
             client: MessageProxyClient::new(uri, options),
         }
+    }
+}
+
+impl Default for GrpcSink {
+    fn default() -> Self {
+        use std::str::FromStr as _;
+        Self::new(
+            re_uri::ProxyUri::from_str(crate::DEFAULT_CONNECT_URL).expect("failed to parse uri"),
+            crate::default_flush_timeout(),
+        )
     }
 }
 

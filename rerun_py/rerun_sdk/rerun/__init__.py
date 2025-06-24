@@ -183,6 +183,7 @@ from .sinks import (
     send_recording as send_recording,
     serve_grpc as serve_grpc,
     serve_web as serve_web,
+    set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
 )
