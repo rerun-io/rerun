@@ -40,7 +40,7 @@ impl PyDataframeQueryView {
     #[instrument(skip(dataset, contents, py))]
     pub fn new(
         dataset: Py<PyDatasetEntry>,
-        index: String,
+        index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
@@ -50,7 +50,7 @@ impl PyDataframeQueryView {
         // Static only implies:
         // - we include only static columns in the contents
         // - we only return one row per partition, with the static data
-        let static_only = index.as_str() == crate::dataframe::STATIC_INDEX;
+        let static_only = index.is_none();
 
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
@@ -73,7 +73,7 @@ impl PyDataframeQueryView {
                 } else {
                     re_chunk_store::StaticColumnSelection::Both
                 },
-                filtered_index: (!static_only).then(move || index.into()),
+                filtered_index: index.map(Into::into),
                 filtered_index_range: None,
                 filtered_index_values: None,
                 using_index_values: None,

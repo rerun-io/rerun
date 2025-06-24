@@ -37,9 +37,6 @@ RERUN_KIND = b"rerun.kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
 
-STATIC_INDEX = "__STATIC_INDEX"
-"""Special index name for static data."""
-
 
 class RawIndexColumn(TimeColumnLike):
     def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:

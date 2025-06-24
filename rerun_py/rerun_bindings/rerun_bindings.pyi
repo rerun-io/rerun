@@ -436,7 +436,7 @@ class RecordingView:
         """
 
     @deprecated(
-        """Use `view(index=rr.dataframe.STATIC_INDEX` instead.
+        """Use `view(index=None)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
     )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
@@ -487,7 +487,7 @@ class Recording:
     def view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: ViewContentsLike,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
@@ -496,8 +496,8 @@ class Recording:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
 
-        The only type of index currently supported is the name of a timeline, or the special index
-        `rr.dataframe.STATIC_INDEX` (see below for details).
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
 
         The view will only contain a single row for each unique value of the index
         that is associated with a component column that was included in the view.
@@ -508,14 +508,13 @@ class Recording:
         generally be the last value logged, as row_ids are guaranteed to be
         monotonically increasing when data is sent from a single process.
 
-        If `rr.dataframe.STATIC_INDEX` is used as the index, the view will
-        contain only static columns (among those specified) and no index columns. It will also
-        contain a single row with the static values.
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
 
         Parameters
         ----------
-        index : str
-            The index to use for the view. This is typically a timeline name.
+        index : str, optional
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
 
@@ -1181,7 +1180,7 @@ class DatasetEntry(Entry):
     def dataframe_query_view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: Any,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
@@ -1190,8 +1189,8 @@ class DatasetEntry(Entry):
         """
         Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
 
-        The only type of index currently supported is the name of a timeline, or the special index
-        `rr.dataframe.STATIC_INDEX` (see below for details).
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
 
         The view will only contain a single row for each unique value of the index
         that is associated with a component column that was included in the view.
@@ -1202,14 +1201,13 @@ class DatasetEntry(Entry):
         generally be the last value logged, as row_ids are guaranteed to be
         monotonically increasing when data is sent from a single process.
 
-        If `rr.dataframe.STATIC_INDEX` is used as the index, the view will
-        contain only static columns (among those specified) and no index columns. It will also
-        contain a single row per partition.
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
 
         Parameters
         ----------
-        index : str
-            The index to use for the view. This is typically a timeline name.
+        index : str, optional
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
 

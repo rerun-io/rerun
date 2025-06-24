@@ -474,19 +474,19 @@ def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording
 
 
 def test_dataframe_static(any_value_static_recording: rr.dataframe.Recording) -> None:
-    view = any_value_static_recording.view(
-        index=rr.dataframe.STATIC_INDEX,
-        contents="/**",
-    )
+    view = any_value_static_recording.view(index=None, contents="/**")
 
-    # TODO(#10327): This would make the test pass
-    # view = view.fill_latest_at()
-
-    table = view.select_static().read_all()
+    table = view.select().read_all()
 
     assert table.column(0).to_pylist()[0] is not None
     assert table.column(1).to_pylist()[0] is not None
     assert table.column(1).to_pylist()[0] is not None
+
+
+def test_dataframe_index_no_default(any_value_static_recording: rr.dataframe.Recording) -> None:
+    """We specifically want index to not default None. This must be explicitly set to indicate a static query."""
+    with pytest.raises(TypeError, match="missing 1 required keyword argument"):
+        any_value_static_recording.view(contents="/**")  # type: ignore[call-arg]
 
 
 @pytest.fixture
@@ -507,9 +507,9 @@ def mixed_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
 
 # TODO(#10335): remove when `select_static` is removed.
 def test_dataframe_static_new_vs_deprecated(mixed_static_recording: rr.dataframe.Recording) -> None:
-    """Assert that the new `STATIC_INDEX` method yields the same results as the deprecated `select_static` method."""
+    """Assert that the new `index=None` method yields the same results as the deprecated `select_static` method."""
     view1 = mixed_static_recording.view(
-        index=rr.dataframe.STATIC_INDEX,
+        index=None,
         contents="/**",
     )
     table1 = view1.select().read_all()
