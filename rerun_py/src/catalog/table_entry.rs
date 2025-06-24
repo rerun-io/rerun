@@ -8,6 +8,7 @@ use pyo3::{
     pyclass, pymethods,
     types::{PyAnyMethods as _, PyCapsule},
 };
+use tracing::instrument;
 
 use re_datafusion::TableEntryTableProvider;
 
@@ -29,6 +30,7 @@ pub struct PyTableEntry {
 #[pymethods]
 impl PyTableEntry {
     /// Returns a DataFusion table provider capsule.
+    #[instrument(skip_all)]
     fn __datafusion_table_provider__(
         mut self_: PyRefMut<'_, Self>,
     ) -> PyResult<Bound<'_, PyCapsule>> {

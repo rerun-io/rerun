@@ -138,6 +138,7 @@ impl Chunk {
         )?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -147,6 +148,7 @@ impl Chunk {
         Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",

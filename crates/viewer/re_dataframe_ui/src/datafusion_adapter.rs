@@ -1,16 +1,15 @@
-use std::sync::Arc;
-
+use arrow::datatypes::DataType;
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{col as datafusion_col, lit};
-use datafusion::prelude::SessionContext;
+use datafusion::prelude::{SessionContext, cast, encode};
 use parking_lot::Mutex;
-
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
+use std::sync::Arc;
 
 use crate::RequestedObject;
-use crate::table_blueprint::{PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -33,6 +32,8 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
 struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
+    pub entry_links: Option<EntryLinksSpec>,
+    pub filter: Option<datafusion::prelude::Expr>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
@@ -40,11 +41,15 @@ impl From<&TableBlueprint> for DataFusionQueryData {
         let TableBlueprint {
             sort_by,
             partition_links,
+            entry_links,
+            filter,
         } = value;
 
         Self {
             sort_by: sort_by.clone(),
             partition_links: partition_links.clone(),
+            entry_links: entry_links.clone(),
+            filter: filter.clone(),
         }
     }
 }
@@ -81,6 +86,8 @@ impl DataFusionQuery {
         let DataFusionQueryData {
             sort_by,
             partition_links,
+            entry_links,
+            filter,
         } = &self.query_data;
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
@@ -99,6 +106,23 @@ impl DataFusionQuery {
                     col(&partition_links.partition_id_column_name),
                 ]),
             )?;
+        }
+
+        if let Some(entry_links) = entry_links {
+            let uri = format!("{}/entry/", entry_links.origin);
+
+            let column = concat(vec![
+                lit(uri),
+                encode(
+                    cast(col(&entry_links.entry_id_column_name), DataType::Binary),
+                    lit("hex"),
+                ),
+            ]);
+            dataframe = dataframe.with_column(&entry_links.column_name, column)?;
+        }
+
+        if let Some(filter) = filter {
+            dataframe = dataframe.filter(filter.clone())?;
         }
 
         if let Some(sort_by) = sort_by {

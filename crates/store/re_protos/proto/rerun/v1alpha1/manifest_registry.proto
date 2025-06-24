@@ -3,6 +3,7 @@ syntax = "proto3";
 package rerun.manifest_registry.v1alpha1;
 
 import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/log_msg.proto";
 
 service ManifestRegistryService {
   // --- Write data ---
@@ -449,7 +450,9 @@ message GetChunksRequest {
 }
 
 message GetChunksResponse {
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
 // --- Developer/Debug APIs ---

@@ -33,6 +33,7 @@
 use clap::{Parser as _, ValueEnum as _};
 use rerun::external::re_log;
 
+mod boxes3d_batch;
 mod image;
 mod points3d_large_batch;
 mod points3d_many_individual;
@@ -57,6 +58,9 @@ enum Benchmark {
 
     #[value(name("points3d_many_individual"))]
     Points3DManyIndividual,
+
+    #[value(name("boxes3d"))]
+    Boxes3D,
 
     #[value(name("image"))]
     Image,
@@ -113,6 +117,7 @@ fn main() -> anyhow::Result<()> {
         match benchmark {
             Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
             Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
+            Benchmark::Boxes3D => boxes3d_batch::run(&rec)?,
             Benchmark::Image => image::run(&rec)?,
         }
     }

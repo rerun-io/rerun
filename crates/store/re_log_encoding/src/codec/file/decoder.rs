@@ -1,9 +1,13 @@
-use super::{MessageHeader, MessageKind};
+use re_log_types::LogMsg;
+use re_protos::missing_field;
+
 use crate::codec::CodecError;
 use crate::codec::arrow::decode_arrow;
 use crate::decoder::DecodeError;
-use re_log_types::LogMsg;
-use re_protos::missing_field;
+
+use super::{MessageHeader, MessageKind};
+
+// ---
 
 pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMsg>), DecodeError> {
     let mut read_bytes = 0u64;
@@ -13,28 +17,83 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
 
-    let msg = decode_bytes(header.kind, &buf)?;
+    let msg = decode_bytes_to_app(header.kind, &buf)?;
 
     Ok((read_bytes, msg))
 }
 
 /// Decode a message of kind `message_kind` from `buf`.
 ///
+/// This decodes all the way from raw bytes to application-level types (i.e. even Arrow layers are
+/// decoded). For more fine-grained control, see:
+/// * [`decode_bytes_to_transport`]
+/// * [`decode_transport_to_app`]
+///
 /// `Ok(None)` returned from this function marks the end of the file stream.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogMsg>, DecodeError> {
+pub fn decode_bytes_to_app(
+    message_kind: MessageKind,
+    buf: &[u8],
+) -> Result<Option<LogMsg>, DecodeError> {
+    let decoded = decode_bytes_to_transport(message_kind, buf)?;
+    let decoded = decoded.map(decode_transport_to_app);
+    decoded.transpose()
+}
+
+/// Decode a message of kind `message_kind` from `buf`.
+///
+/// This only decodes from raw bytes up to transport-level types (i.e. Protobuf payloads are
+/// decoded, but Arrow data is never touched).
+///
+/// `Ok(None)` returned from this function marks the end of the file stream.
+#[tracing::instrument(level = "trace", skip_all)]
+pub fn decode_bytes_to_transport(
+    message_kind: MessageKind,
+    buf: &[u8],
+) -> Result<Option<re_protos::log_msg::v1alpha1::log_msg::Msg>, DecodeError> {
     use re_protos::external::prost::Message as _;
-    use re_protos::log_msg::v1alpha1::{
-        ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
-    };
+    use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo};
 
     let msg = match message_kind {
         MessageKind::SetStoreInfo => {
-            let set_store_info = SetStoreInfo::decode(buf)?;
-            Some(LogMsg::SetStoreInfo(set_store_info.try_into()?))
+            let msg = SetStoreInfo::decode(buf)?;
+            Some(re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
+                msg,
+            ))
         }
+
         MessageKind::ArrowMsg => {
-            let arrow_msg = ArrowMsg::decode(buf)?;
+            let msg = ArrowMsg::decode(buf)?;
+            Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg))
+        }
+
+        MessageKind::BlueprintActivationCommand => {
+            let msg = BlueprintActivationCommand::decode(buf)?;
+            Some(re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(msg))
+        }
+
+        MessageKind::End => None,
+    };
+
+    Ok(msg)
+}
+
+/// Decode a transport-level message.
+///
+/// This decodes a message from the transport layer (Protobuf) all the way to app layer, i.e. this
+/// is where all Arrow data will be decoded.
+#[tracing::instrument(level = "trace", skip_all)]
+pub fn decode_transport_to_app(
+    msg: re_protos::log_msg::v1alpha1::log_msg::Msg,
+) -> Result<LogMsg, DecodeError> {
+    use re_protos::log_msg::v1alpha1::Encoding;
+
+    let msg = match msg {
+        re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(set_store_info) => {
+            LogMsg::SetStoreInfo(set_store_info.try_into()?)
+        }
+
+        re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg) => {
             if arrow_msg.encoding() != Encoding::ArrowIpc {
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
             }
@@ -58,15 +117,12 @@ pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogM
                 on_release: None,
             };
 
-            Some(LogMsg::ArrowMsg(store_id, arrow_msg))
+            LogMsg::ArrowMsg(store_id, arrow_msg)
         }
-        MessageKind::BlueprintActivationCommand => {
-            let blueprint_activation_command = BlueprintActivationCommand::decode(buf)?;
-            Some(LogMsg::BlueprintActivationCommand(
-                blueprint_activation_command.try_into()?,
-            ))
-        }
-        MessageKind::End => None,
+
+        re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
+            blueprint_activation_command,
+        ) => LogMsg::BlueprintActivationCommand(blueprint_activation_command.try_into()?),
     };
 
     Ok(msg)

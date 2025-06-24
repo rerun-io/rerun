@@ -15,6 +15,12 @@ pub(crate) fn get_tokio_runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"))
 }
 
+/// `f` should do very little work besides spawning tasks and awaiting them.
+///
+/// See [this] for more information.
+///
+/// [this]: https://docs.rs/tokio/latest/tokio/runtime/struct.Runtime.html#non-worker-future
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn wait_for_future<F>(py: Python<'_>, f: F) -> F::Output
 where
     F: Future + Send,
