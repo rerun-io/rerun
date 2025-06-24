@@ -49,7 +49,12 @@ fn schema() -> anyhow::Result<()> {
             .iter()
             .map(|column| column.component_descriptor())
             .collect::<Vec<_>>(),
-        // The following should be in the lexicographical order defined by `ComponentDescriptor`.
+        // It's important that the returned descriptors are in lexicographical order, as we
+        // want the schema to be deterministic between calls.
+        //
+        // The lexicographical order is defined by the component descriptors. Note the the
+        // indicator plays a special role here, because it has the archetype field set to
+        // `None`. Also, indicators will be removed soon anyways.
         vec![
             MyPoints::descriptor_indicator(),
             MyPoints::descriptor_colors(),
