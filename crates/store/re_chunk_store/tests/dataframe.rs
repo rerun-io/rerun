@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnIdentifier, QueryExpression, TimeInt, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ColumnIdentifier, QueryExpression, StaticColumnSelection,
+    TimeInt, ViewContentsSelector,
 };
 use re_log_types::{
     EntityPath, build_frame_nr,
@@ -114,6 +115,7 @@ fn schema_for_query() -> anyhow::Result<()> {
         include_semantically_empty_columns: false,
         include_indicator_columns: false,
         include_tombstone_columns: false,
+        include_static_columns: StaticColumnSelection::Both,
         filtered_index: Some(TimelineName::new("frame_nr")),
         filtered_index_range: None,
         filtered_index_values: None,

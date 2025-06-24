@@ -449,3 +449,41 @@ class TestDataframe:
         print()
 
         assert df == df_round_trip
+
+
+@pytest.fixture
+def any_value_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+    rrd_path = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID) as rec:
+        rec.save(rrd_path)
+        rec.log("/test", rr.AnyValues(yak="yuk", foo="bar", baz=42), static=True)
+
+    # Use this to exfiltrate the RRD file for debugging purposes:
+    if False:
+        import shutil
+
+        shutil.copy(rrd_path, "/tmp/exfiltrated.rrd")
+
+    recording = rr.dataframe.load_recording(rrd_path)
+    assert recording is not None
+
+    return recording
+
+
+# TODO(#10327): this test is currently expected to fail
+@pytest.mark.xfail
+def test_dataframe_static(any_value_recording: rr.dataframe.Recording) -> None:
+    view = any_value_recording.view(
+        index=rr.dataframe.STATIC_INDEX,
+        contents="/**",
+    )
+
+    # TODO(#10327): This would make the test pass
+    # view = view.fill_latest_at()
+
+    table = view.select_static().read_all()
+
+    assert table.column(0).to_pylist()[0] is not None
+    assert table.column(1).to_pylist()[0] is not None
+    assert table.column(1).to_pylist()[0] is not None

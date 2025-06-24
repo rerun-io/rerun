@@ -27,7 +27,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnIdentifier,
     ComponentColumnDescriptor, IndexColumnDescriptor, QueryExpression, SparseFillStrategy,
-    ViewContentsSelector,
+    StaticColumnSelection, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
@@ -39,6 +39,8 @@ use re_sorbet::{
 use super::utils::py_rerun_warn_cstr;
 use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
+
+pub const STATIC_INDEX: &str = "__STATIC_INDEX";
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -1365,12 +1367,16 @@ impl PyRecording {
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
+        let static_only = index == STATIC_INDEX;
+
         let borrowed_self = slf.borrow();
 
         // Look up the type of the timeline
-        let selector = TimeColumnSelector::from(index);
-
-        let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
+        let filtered_index = (!static_only).then(|| {
+            let selector = TimeColumnSelector::from(index);
+            let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
+            *time_column.timeline().name()
+        });
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
@@ -1379,7 +1385,12 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(*time_column.timeline().name()),
+            include_static_columns: if static_only {
+                StaticColumnSelection::StaticOnly
+            } else {
+                StaticColumnSelection::Both
+            },
+            filtered_index,
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,

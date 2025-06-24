@@ -23,8 +23,6 @@ use crate::catalog::{PyDatasetEntry, to_py_err};
 use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
-const STATIC_INDEX: &str = "__STATIC_INDEX";
-
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
@@ -52,7 +50,7 @@ impl PyDataframeQueryView {
         // Static only implies:
         // - we include only static columns in the contents
         // - we only return one row per partition, with the static data
-        let static_only = index.as_str() == STATIC_INDEX;
+        let static_only = index.as_str() == crate::dataframe::STATIC_INDEX;
 
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
@@ -60,7 +58,7 @@ impl PyDataframeQueryView {
 
         // TODO(jleibs): Check schema for the index name
 
-        let view_contents = extract_contents_expr(contents.bind(py), &schema, static_only)?;
+        let view_contents = extract_contents_expr(contents.bind(py), &schema)?;
 
         Ok(Self {
             dataset,
@@ -70,6 +68,11 @@ impl PyDataframeQueryView {
                 include_semantically_empty_columns,
                 include_indicator_columns,
                 include_tombstone_columns,
+                include_static_columns: if static_only {
+                    re_chunk_store::StaticColumnSelection::StaticOnly
+                } else {
+                    re_chunk_store::StaticColumnSelection::Both
+                },
                 filtered_index: (!static_only).then(move || index.into()),
                 filtered_index_range: None,
                 filtered_index_values: None,
@@ -507,17 +510,12 @@ impl PyDataframeQueryView {
 fn extract_contents_expr(
     expr: &Bound<'_, PyAny>,
     schema: &Schema,
-    static_only: bool,
 ) -> PyResult<re_chunk_store::ViewContentsSelector> {
     let descriptors = schema
         .fields()
         .iter()
         .map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()))
         .filter_map(Result::ok)
-        .filter(|descriptor| {
-            // If `static_only` is true, we only want static columns
-            !static_only || descriptor.is_static()
-        })
         .collect::<Vec<_>>();
 
     let component_descriptors = descriptors

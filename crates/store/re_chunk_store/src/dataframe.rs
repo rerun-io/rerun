@@ -102,6 +102,20 @@ pub type IndexValue = TimeInt;
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
 pub type IndexRange = ResolvedTimeRange;
 
+/// Specifies whether static columns should be included in the query.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StaticColumnSelection {
+    /// Both static and non-static columns should be included in the query.
+    #[default]
+    Both,
+
+    /// Only static columns should be included in the query.
+    StaticOnly,
+
+    /// Only non-static columns should be included in the query.
+    NonStaticOnly,
+}
+
 /// Describes a complete query for Rerun's dataframe API.
 ///
 /// ## Terminology: view vs. selection vs. filtering vs. sampling
@@ -163,6 +177,11 @@ pub struct QueryExpression {
     /// `view_contents`: [`QueryExpression::view_contents`]
     /// `Clear`: [`re_types_core::archetypes::Clear`]
     pub include_tombstone_columns: bool,
+
+    /// Whether the `view_contents` should include static columns.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_static_columns: StaticColumnSelection,
 
     /// The index used to filter out _rows_ from the view contents.
     ///
@@ -456,6 +475,7 @@ impl ChunkStore {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
+            include_static_columns,
             filtered_index: _,
             filtered_index_range: _,
             filtered_index_values: _,
@@ -493,10 +513,17 @@ impl ChunkStore {
 
             let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
 
+            let passes_static_check = || match include_static_columns {
+                StaticColumnSelection::Both => true,
+                StaticColumnSelection::StaticOnly => column.is_static,
+                StaticColumnSelection::NonStaticOnly => !column.is_static,
+            };
+
             is_part_of_view_contents()
                 && passes_semantically_empty_check()
                 && passes_indicator_check()
                 && passes_tombstone_check()
+                && passes_static_check()
         };
 
         self.schema().filter_components(filter)

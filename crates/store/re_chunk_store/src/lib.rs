@@ -26,7 +26,8 @@ mod writes;
 
 pub use self::{
     dataframe::{
-        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, ViewContentsSelector,
+        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
+        ViewContentsSelector,
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},

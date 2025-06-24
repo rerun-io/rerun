@@ -17,9 +17,6 @@ from rerun_bindings import (
 if TYPE_CHECKING:
     import datafusion
 
-STATIC_INDEX = "__STATIC_INDEX"
-"""Special index name for static data, see [DatasetEntry.dataframe_query_view] for more details."""
-
 
 class CatalogClient:
     """
