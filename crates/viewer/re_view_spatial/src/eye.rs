@@ -159,6 +159,16 @@ pub enum EyeMode {
     Orbital,
 }
 
+/// The speed of a [`ViewEye`] can be computed automatically or set manually.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+enum CameraTranslationSpeed {
+    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`ViewEye::fallback_speed_for_mode`]
+    Auto,
+
+    /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
+    Override(f32),
+}
+
 /// An eye (camera) in 3D space, controlled by the user.
 ///
 /// This is either a first person camera or an orbital camera,
@@ -196,6 +206,7 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
+    speed: CameraTranslationSpeed,
     velocity: Vec3,
 }
 
@@ -216,6 +227,7 @@ impl ViewEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
+            speed: CameraTranslationSpeed::Auto,
             velocity: Vec3::ZERO,
         }
     }
@@ -276,6 +288,32 @@ impl ViewEye {
         }
     }
 
+    /// Compute the actual speed depending on the [`EyeMode`].
+    fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+        match self.mode {
+            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
+            EyeMode::Orbital => self.orbit_radius,
+        }
+    }
+
+    /// Returns the actual speed (float) of [`ViewEye`].
+    pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+        match self.speed {
+            CameraTranslationSpeed::Auto => self.fallback_speed_for_mode(bounding_boxes),
+            CameraTranslationSpeed::Override(speed) => speed,
+        }
+    }
+
+    /// Set the speed to a specific value set by the user via the UI.
+    ///
+    /// `None` resets speed to the default.
+    pub fn set_speed(&mut self, new_speed: Option<f32>) {
+        match new_speed {
+            Some(speed) => self.speed = CameraTranslationSpeed::Override(speed),
+            None => self.speed = CameraTranslationSpeed::Auto,
+        }
+    }
+
     /// The local up-axis, if set
     pub fn eye_up(&self) -> Option<Vec3> {
         self.eye_up.try_normalize()
@@ -311,6 +349,7 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
+        self.speed = CameraTranslationSpeed::Auto;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
@@ -330,6 +369,7 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
+                speed: other.speed,
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
@@ -359,11 +399,7 @@ impl ViewEye {
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
-        let mut speed = match self.mode {
-            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
-            EyeMode::Orbital => self.orbit_radius,
-        };
-
+        let mut speed = self.speed(bounding_boxes);
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
