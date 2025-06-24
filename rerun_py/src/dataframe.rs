@@ -1301,11 +1301,11 @@ impl PyRecording {
         }
     }
 
-    #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    #[expect(rustdoc::private_doc_tests)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline, or the special index
-    /// [`STATIC_INDEX`][rerun.dataframe.STATIC_INDEX] (see below for details).
+    /// `rr.dataframe.STATIC_INDEX` (see below for details).
     ///
     /// The view will only contain a single row for each unique value of the index
     /// that is associated with a component column that was included in the view.
@@ -1316,7 +1316,7 @@ impl PyRecording {
     /// generally be the last value logged, as row_ids are guaranteed to be
     /// monotonically increasing when data is sent from a single process.
     ///
-    /// If [`STATIC_INDEX`][rerun.dataframe.STATIC_INDEX] is used as the index, the view will
+    /// If `rr.dataframe.STATIC_INDEX` is used as the index, the view will
     /// contain only static columns (among those specified) and no index columns. It will also
     /// contain a single row with the static values.
     ///
