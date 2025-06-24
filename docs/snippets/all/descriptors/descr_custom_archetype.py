@@ -12,13 +12,13 @@ class CustomPoints3D(rr.AsComponents):
     def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
         self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(
-                "custom_positions",
+                "user.CustomPoints3D:custom_positions",
                 archetype="user.CustomPoints3D",
                 component_type="user.CustomPosition3D",
             ),
         )
         self.colors = rr.components.ColorBatch(colors).described(
-            rr.ComponentDescriptor("colors").with_overrides(
+            rr.ComponentDescriptor("user.CustomPoints3D:colors").with_overrides(
                 archetype="user.CustomPoints3D",
                 component_type=rr.components.ColorBatch._COMPONENT_TYPE,
             )
