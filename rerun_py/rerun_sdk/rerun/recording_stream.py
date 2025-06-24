@@ -497,6 +497,10 @@ class RecordingStream:
         Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
         use the same `url` will cause this function to throw a `ValueError`.
 
+        This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+        `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+        the sinks passed to `set_sinks` remaining active.
+
         Parameters
         ----------
         sinks:
