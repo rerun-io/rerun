@@ -4,7 +4,7 @@ fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error
     let positions =
         rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized(ComponentDescriptor {
             archetype: Some("user.CustomArchetype".into()),
-            component: "custom_positions".into(),
+            component: "user.CustomArchetype:custom_positions".into(),
             component_type: Some("user.CustomPosition3D".into()),
         })?;
     rec.log_serialized_batches("data", true, [positions])?;
@@ -54,7 +54,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
         let expected = vec![
             ComponentDescriptor {
                 archetype: Some("user.CustomArchetype".into()),
-                component: "custom_positions".into(),
+                component: "user.CustomArchetype:custom_positions".into(),
                 component_type: Some("user.CustomPosition3D".into()),
             }, //
         ];
