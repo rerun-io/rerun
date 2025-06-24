@@ -231,7 +231,7 @@ impl Server {
             .with_buttons(|ui| {
                 Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
                     if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh server")
+                        .as_button_with_label(ui.tokens(), "Refresh")
                         .ui(ui)
                         .clicked()
                     {
@@ -240,7 +240,7 @@ impl Server {
                             .ok();
                     }
                     if icons::EDIT
-                        .as_button_with_label(ui.tokens(), "Edit server")
+                        .as_button_with_label(ui.tokens(), "Edit")
                         .ui(ui)
                         .clicked()
                     {
@@ -353,10 +353,6 @@ pub enum Command {
     OpenAddServerModal,
     OpenEditServerModal(re_uri::Origin),
     AddServer(re_uri::Origin),
-    UpdateServer {
-        previous_origin: re_uri::Origin,
-        new_origin: re_uri::Origin,
-    },
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
@@ -414,22 +410,6 @@ impl RedapServers {
             Command::OpenEditServerModal(origin) => {
                 self.server_modal_ui
                     .open(ServerModalMode::Edit(origin), connection_registry);
-            }
-
-            Command::UpdateServer {
-                previous_origin,
-                new_origin,
-            } => {
-                self.servers.remove(&previous_origin);
-                self.servers.insert(
-                    new_origin.clone(),
-                    Server::new(
-                        connection_registry.clone(),
-                        runtime.clone(),
-                        egui_ctx,
-                        new_origin,
-                    ),
-                );
             }
 
             Command::AddServer(origin) => {

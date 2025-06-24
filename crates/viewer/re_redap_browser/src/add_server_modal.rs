@@ -6,8 +6,12 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
+/// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
+    /// Show an empty modal to add a new server.
     Add,
+
+    /// Show a modal to edit an existing server.
     Edit(re_uri::Origin),
 }
 
@@ -40,7 +44,7 @@ impl ServerModal {
             ServerModalMode::Add => Default::default(),
             ServerModalMode::Edit(origin) => {
                 let token = connection_registry
-                    .get_token(&origin)
+                    .token(&origin)
                     .map(|t| t.to_string())
                     .unwrap_or_default();
                 let re_uri::Origin { scheme, host, port } = origin.clone();
@@ -154,21 +158,14 @@ impl ServerModal {
                                 connection_registry.set_token(&origin, token);
                             }
 
-                            match &self.mode {
-                                ServerModalMode::Add => {
-                                    ctx.command_sender
-                                        .send(Command::AddServer(origin.clone()))
-                                        .ok();
-                                }
-                                ServerModalMode::Edit(old_origin) => {
-                                    ctx.command_sender
-                                        .send(Command::UpdateServer {
-                                            previous_origin: old_origin.clone(),
-                                            new_origin: origin.clone(),
-                                        })
-                                        .ok();
-                                }
+                            if let ServerModalMode::Edit(old_origin) = &self.mode {
+                                ctx.command_sender
+                                    .send(Command::RemoveServer(old_origin.clone()))
+                                    .ok();
                             }
+                            ctx.command_sender
+                                .send(Command::AddServer(origin.clone()))
+                                .ok();
                             global_ctx.command_sender.send_system(
                                 SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),
                             );
