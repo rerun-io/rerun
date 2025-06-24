@@ -17,4 +17,5 @@ rerun = { path = "../../../crates/top/rerun" }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
+emath.workspace = true
 glam.workspace = true

@@ -912,7 +912,7 @@ fn nanos_grid_spacer(
 
 fn round_nanos_to_start_of_day(ns: i64) -> i64 {
     let nanos_per_day = 24 * 60 * 60 * 1_000_000_000;
-    (ns + nanos_per_day / 2) / nanos_per_day * nanos_per_day
+    (ns.saturating_add(nanos_per_day / 2)) / nanos_per_day * nanos_per_day
 }
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {

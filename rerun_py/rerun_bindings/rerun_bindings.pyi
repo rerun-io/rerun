@@ -750,6 +750,58 @@ def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
 def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
     """Create a new binary stream sink, and return the associated binary stream."""
 
+class GrpcSink:
+    """
+    Used in [`rerun.RecordingStream.tee`][].
+
+    Connect the recording stream to a remote Rerun Viewer on the given URL.
+    """
+
+    def __init__(self, url: str | None = None, flush_timeout_sec: float | None = None) -> None:
+        """
+        Initialize a gRPC sink.
+
+        Parameters
+        ----------
+        url:
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
+        flush_timeout_sec:
+            The minimum time the SDK will wait during a flush before potentially
+            dropping data if progress is not being made. Passing `None` indicates no timeout,
+            and can cause a call to `flush` to block indefinitely.
+
+        """
+
+class FileSink:
+    """
+    Used in [`rerun.RecordingStream.tee`][].
+
+    Save the recording stream to a file.
+    """
+
+    def __init__(self, path: str | os.PathLike[str]) -> None:
+        """
+        Initialize a file sink.
+
+        Parameters
+        ----------
+        path:
+            Path to write to. The file will be overwritten.
+
+        """
+
+def tee(
+    sinks: list[Any],
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Stream data to multiple sinks."""
+
 def connect_grpc(
     url: Optional[str],
     flush_timeout_sec: Optional[float] = ...,

@@ -726,8 +726,10 @@ impl ::prost::Name for GetChunksRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetChunksResponse {
-    #[prost(message, optional, tag = "1")]
-    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
+    /// Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+    /// cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+    #[prost(message, repeated, tag = "1")]
+    pub chunks: ::prost::alloc::vec::Vec<super::super::log_msg::v1alpha1::ArrowMsg>,
 }
 impl ::prost::Name for GetChunksResponse {
     const NAME: &'static str = "GetChunksResponse";
