@@ -473,8 +473,6 @@ def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording
     return recording
 
 
-# TODO(#10327): this test is currently expected to fail
-@pytest.mark.xfail
 def test_dataframe_static(any_value_static_recording: rr.dataframe.Recording) -> None:
     view = any_value_static_recording.view(
         index=rr.dataframe.STATIC_INDEX,
