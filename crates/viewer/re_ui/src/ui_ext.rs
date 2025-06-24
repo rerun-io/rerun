@@ -1078,29 +1078,36 @@ pub trait UiExt {
 
     /// Shows a `?` help button that will show a help UI when clicked.
     ///
-    /// The help buttons will all blink periodically until the user has clicked _any_ help button at least once.
-    /// This is to teach users where they can find help.
+    /// Until the user has interacted with a help button (any help button), we
+    /// highlight the button extra to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
         let ui = self.ui_mut();
 
         // Have we ever shown any help UI anywhere?
         let has_shown_help_id = egui::Id::new("has_shown_help");
-        let has_been_shown: bool =
+        let user_has_clicked_any_help_button: bool =
             ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
+        // Draw attention to the help button by highlighting it when the user hovers
+        // over its container (e.g. the tab bar of a view).
+        let is_hovering_container = ui.rect_contains_pointer(ui.max_rect());
+
         ui.scope(|ui| {
-            if !has_been_shown {
-                blink_inactive_buttons(ui);
-            }
+            let where_to_paint_background =
+                if !user_has_clicked_any_help_button && is_hovering_container {
+                    Some(ui.painter().add(egui::Shape::Noop))
+                } else {
+                    None
+                };
 
             let menu_button = egui::containers::menu::MenuButton::from_button(
                 ui.small_icon_button_widget(&icons::HELP, "Help"),
             );
 
-            menu_button
+            let response = menu_button
                 .ui(ui, |ui| {
                     help_ui(ui);
-                    if !has_been_shown {
+                    if !user_has_clicked_any_help_button {
                         // Remember that the user has found and used the help button at least once,
                         // to stop it from animating in the future:
                         ui.data_mut(|d| {
@@ -1109,6 +1116,22 @@ pub trait UiExt {
                     }
                 })
                 .0
+                .on_hover_text("Click for help");
+
+            if let Some(where_to_paint_background) = where_to_paint_background {
+                if !response.hovered() {
+                    ui.painter().set(
+                        where_to_paint_background,
+                        egui::Shape::circle_filled(
+                            response.rect.center(),
+                            12.0,
+                            ui.tokens().highlight_color,
+                        ),
+                    );
+                }
+            }
+
+            response
         })
         .inner
     }
@@ -1251,45 +1274,6 @@ pub trait UiExt {
         } else {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
-    }
-}
-
-/// Draw attention to buttons by blinking them periodically:
-fn blink_inactive_buttons(ui: &mut egui::Ui) {
-    let time = ui.input(|i| i.time);
-
-    // When there are many buttons, animate them as a wave going diagonally through app:
-    let pos = ui.next_widget_position();
-    let time = time - 0.0002 * (pos.x + pos.y) as f64;
-
-    let num_blinks = 2; // blink this many times
-    let num_quiet = 20; // then wait this much (measured in blinks)
-    let blink_duration = 0.3; // seconds
-
-    let blink_cycle = ((time / blink_duration) % (num_blinks + num_quiet) as f64) as f32;
-
-    if blink_cycle < num_blinks as f32 {
-        let shinyness = (blink_cycle * std::f32::consts::PI).sin().abs();
-
-        let (blink_bg_color, blink_fg_color) = if ui.visuals().dark_mode {
-            (egui::Color32::DARK_GRAY, egui::Color32::WHITE)
-        } else {
-            (egui::Color32::LIGHT_GRAY, egui::Color32::BLACK)
-        };
-
-        let visuals = ui.visuals_mut();
-        let widget = &mut visuals.widgets.inactive;
-        widget.bg_fill = widget.bg_fill.lerp_to_gamma(blink_bg_color, shinyness);
-        widget.weak_bg_fill = widget.weak_bg_fill.lerp_to_gamma(blink_bg_color, shinyness);
-        widget.fg_stroke.color = widget
-            .fg_stroke
-            .color
-            .lerp_to_gamma(blink_fg_color, shinyness);
-        ui.ctx().request_repaint();
-    } else {
-        let time_to_next_blink =
-            blink_duration as f32 * ((num_blinks + num_quiet) as f32 - blink_cycle);
-        ui.ctx().request_repaint_after_secs(time_to_next_blink);
     }
 }
 

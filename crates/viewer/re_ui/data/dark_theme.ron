@@ -46,6 +46,11 @@
       "color": "{Blue.700}"
     },
 
+    "highlight_color": {
+      // Background color for widgets that should catch the user's attention
+      "color": "{Green.500}"
+    },
+
     "label_button_icon_color": {
       "color": "{Gray.500}"
     },
