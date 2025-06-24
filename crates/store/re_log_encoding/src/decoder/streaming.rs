@@ -39,7 +39,7 @@ pub struct StreamingLogMsg {
 
     /// Where in the underlying storage resource is this message (in bytes)?
     ///
-    /// Specifically, the start of this range points to the beginning of the [`file::MessageHeader`].
+    /// Specifically, the start of this range points to the beginning of the `MessageHeader`.
     ///
     /// The full range covers both the message's header _and_ its body.
     pub byte_span: Span<u64>,
