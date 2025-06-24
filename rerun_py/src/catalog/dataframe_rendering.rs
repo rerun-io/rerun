@@ -131,4 +131,35 @@ impl PyRerunHtmlTable {
 
         Ok(html_result.join("\n"))
     }
+
+    #[expect(unused_variables)]
+    fn format_str<'py>(
+        &self,
+        batches: Vec<Bound<'py, PyAny>>,
+        schema: &Bound<'py, PyAny>,
+        has_more: bool,
+        table_uuid: &str,
+    ) -> PyResult<String> {
+        let batch_opts = RecordBatchFormatOpts::default();
+
+        let mut tables = batches
+            .into_iter()
+            .map(|batch| RecordBatch::from_pyarrow_bound(&batch))
+            .collect::<PyResult<Vec<RecordBatch>>>()?
+            .into_iter()
+            .map(|batch| format_record_batch_opts(&batch, &batch_opts))
+            .filter(|table| !table.is_empty())
+            .map(|table| table.to_string())
+            .collect::<Vec<_>>();
+
+        if tables.is_empty() {
+            return Ok("No data to display.".to_owned());
+        }
+
+        if has_more {
+            tables.push("Data truncated due to size.".to_owned());
+        }
+
+        Ok(tables.join("\n"))
+    }
 }
