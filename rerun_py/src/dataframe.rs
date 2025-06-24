@@ -808,6 +808,7 @@ impl PyRecordingView {
                 if self.query_expression.using_index_values.is_none()
                     && all_contents_are_static
                     && any_selected_data_is_static
+                    && self.query_expression.filtered_index.is_some()
                 {
                     py_rerun_warn_cstr(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
@@ -844,6 +845,7 @@ impl PyRecordingView {
     /// -------
     /// pa.RecordBatchReader
     ///     A reader that can be used to read out the selected data.
+    //TODO(#10335): remove deprecated method
     #[pyo3(signature = (
         *args,
         columns = None
@@ -1299,7 +1301,8 @@ impl PyRecording {
     #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
-    /// The only type of index currently supported is the name of a timeline.
+    /// The only type of index currently supported is the name of a timeline, or the special index
+    /// [`STATIC_INDEX`][rerun.dataframe.STATIC_INDEX] (see below for details).
     ///
     /// The view will only contain a single row for each unique value of the index
     /// that is associated with a component column that was included in the view.
@@ -1309,6 +1312,10 @@ impl PyRecording {
     /// included in the view, as determined by the `row_id` column. This will
     /// generally be the last value logged, as row_ids are guaranteed to be
     /// monotonically increasing when data is sent from a single process.
+    ///
+    /// If [`STATIC_INDEX`][rerun.dataframe.STATIC_INDEX] is used as the index, the view will
+    /// contain only static columns (among those specified) and no index columns. It will also
+    /// contain a single row with the static values.
     ///
     /// Parameters
     /// ----------

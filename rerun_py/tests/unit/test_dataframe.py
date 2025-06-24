@@ -452,10 +452,12 @@ class TestDataframe:
 
 
 @pytest.fixture
-def any_value_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+    """A recording with just a static AnyValues archetype."""
+
     rrd_path = tmp_path / "tmp.rrd"
 
-    with rr.RecordingStream(APP_ID) as rec:
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
         rec.save(rrd_path)
         rec.log("/test", rr.AnyValues(yak="yuk", foo="bar", baz=42), static=True)
 
@@ -473,8 +475,8 @@ def any_value_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
 
 # TODO(#10327): this test is currently expected to fail
 @pytest.mark.xfail
-def test_dataframe_static(any_value_recording: rr.dataframe.Recording) -> None:
-    view = any_value_recording.view(
+def test_dataframe_static(any_value_static_recording: rr.dataframe.Recording) -> None:
+    view = any_value_static_recording.view(
         index=rr.dataframe.STATIC_INDEX,
         contents="/**",
     )
@@ -487,3 +489,37 @@ def test_dataframe_static(any_value_recording: rr.dataframe.Recording) -> None:
     assert table.column(0).to_pylist()[0] is not None
     assert table.column(1).to_pylist()[0] is not None
     assert table.column(1).to_pylist()[0] is not None
+
+
+@pytest.fixture
+def mixed_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+    """A recording with a mix of regular and AnyValues static archetypes."""
+    rrd_path = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd_path)
+        rec.log("/test", rr.AnyValues(yak="yuk", foo="bar", baz=42), static=True)
+        rec.log("/test2", rr.Points3D([1, 2, 3], radii=5), static=True)
+
+    recording = rr.dataframe.load_recording(rrd_path)
+    assert recording is not None
+
+    return recording
+
+
+# TODO(#10335): remove when `select_static` is removed.
+def test_dataframe_static_new_vs_deprecated(mixed_static_recording: rr.dataframe.Recording) -> None:
+    """Assert that the new `STATIC_INDEX` method yields the same results as the deprecated `select_static` method."""
+    view1 = mixed_static_recording.view(
+        index=rr.dataframe.STATIC_INDEX,
+        contents="/**",
+    )
+    table1 = view1.select().read_all()
+
+    view2 = mixed_static_recording.view(
+        index="log_time",
+        contents="/**",
+    )
+    table2 = view2.select_static().read_all()
+
+    assert table1 == table2
