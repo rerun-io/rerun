@@ -345,6 +345,30 @@ impl RecordingStreamBuilder {
         Ok((rec, storage))
     }
 
+    /// Stream data to multiple different sinks.
+    ///
+    /// Duplicate sinks are not allowed. For example, two [`GrpcSink`][grpc_sink]s that
+    /// use the same `url`.
+    ///
+    /// [grpc_sink]: crate::sink::GrpcSink
+    pub fn attach_sinks(
+        self,
+        sinks: impl crate::sink::IntoMultiSink,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                properties,
+                batcher_config,
+                Box::new(sinks.into_multi_sink()),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to attach_sinks() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
@@ -1860,6 +1884,30 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
+    /// Stream data to multiple different sinks.
+    ///
+    /// Duplicate sinks are not allowed. For example, two [`GrpcSink`][crate::sink::GrpcSink]s that
+    /// use the same `url`.
+    ///
+    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    ///
+    /// [grpc_sink]: crate::sink::GrpcSink
+    /// [file_sink]: crate::sink::FileSink
+    pub fn attach_sinks(
+        &self,
+        sinks: impl crate::log_sink::IntoMultiSink,
+    ) -> RecordingStreamResult<()> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new MultiSink since {ENV_FORCE_SAVE} is set");
+            return Ok(());
+        }
+
+        let sink = sinks.into_multi_sink();
+
+        self.set_sink(Box::new(sink));
+        Ok(())
+    }
+
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
     /// the specified address.
     ///
