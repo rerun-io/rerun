@@ -305,8 +305,13 @@ impl ViewEye {
     }
 
     /// Set the speed to a specific value set by the user via the UI.
-    pub fn set_speed(&mut self, new_speed: f32) {
-        self.speed = CameraTranslationSpeed::Override(new_speed);
+    ///
+    /// `None` resets speed to the default.
+    pub fn set_speed(&mut self, new_speed: Option<f32>) {
+        match new_speed {
+            Some(speed) => self.speed = CameraTranslationSpeed::Override(speed),
+            None => self.speed = CameraTranslationSpeed::Auto,
+        }
     }
 
     /// The local up-axis, if set
