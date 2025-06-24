@@ -486,7 +486,7 @@ class RecordingStream:
     get_recording_id = get_recording_id
     is_enabled = is_enabled
 
-    def attach_sinks(
+    def set_sinks(
         self,
         *sinks: LogSinkLike,
         default_blueprint: BlueprintLike | None = None,
@@ -513,7 +513,7 @@ class RecordingStream:
         -------
         ```py
         rec = rr.RecordingStream("rerun_example_tee")
-        rec.attach_sinks(
+        rec.set_sinks(
             rr.GrpcSink(),
             rr.FileSink("data.rrd")
         )
@@ -522,9 +522,9 @@ class RecordingStream:
 
         """
 
-        from .sinks import attach_sinks
+        from .sinks import set_sinks
 
-        attach_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
+        set_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,

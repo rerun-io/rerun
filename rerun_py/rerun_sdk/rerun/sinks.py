@@ -32,7 +32,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 LogSinkLike = Union[GrpcSink, FileSink]
 
 
-def attach_sinks(
+def set_sinks(
     *sinks: LogSinkLike,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
@@ -63,7 +63,7 @@ def attach_sinks(
     -------
     ```py
     rr.init("rerun_example_tee")
-    rr.attach_sinks(
+    rr.set_sinks(
         rr.GrpcSink(),
         rr.FileSink("data.rrd")
     )
@@ -84,7 +84,7 @@ def attach_sinks(
         raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
 
     if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - attach_sinks() call ignored")
+        logging.warning("Rerun is disabled - set_sinks() call ignored")
         return
 
     application_id = get_application_id(recording)  # NOLINT
@@ -101,7 +101,7 @@ def attach_sinks(
             blueprint=default_blueprint,
         ).storage
 
-    bindings.attach_sinks(
+    bindings.set_sinks(
         [*sinks],
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,

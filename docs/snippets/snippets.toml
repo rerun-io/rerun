@@ -154,7 +154,7 @@ features = [
   "cpp",  # Doesn't exist
   "rust", # Doesn't exist
 ]
-"howto/attach_sinks" = [
+"howto/set_sinks" = [
   "py",   # Requires a server to connect to
   "cpp",  # Doesn't exist
   "rust", # Doesn't exist

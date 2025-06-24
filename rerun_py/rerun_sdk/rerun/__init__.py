@@ -176,7 +176,6 @@ from .script_helpers import (
 from .sinks import (
     FileSink as FileSink,
     GrpcSink as GrpcSink,
-    attach_sinks as attach_sinks,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
     save as save,
@@ -184,6 +183,7 @@ from .sinks import (
     send_recording as send_recording,
     serve_grpc as serve_grpc,
     serve_web as serve_web,
+    set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
 )

@@ -6,7 +6,7 @@ import rerun as rr
 # Initialize the SDK and give our recording a unique name
 rr.init("rerun_example_tee")
 
-rr.attach_sinks(
+rr.set_sinks(
     # Connect to a local viewer using the default URL
     rr.GrpcSink(),
     # Write data to a `data.rrd` file in the current directory
