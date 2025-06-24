@@ -1,5 +1,6 @@
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
+use re_span::Span;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
@@ -47,8 +48,10 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration as i64);
 
-                let byte_offset = sample.offset as u32;
-                let byte_length = sample.size as u32;
+                let byte_span = Span {
+                    start: sample.offset as u32,
+                    len: sample.size as u32,
+                };
 
                 samples.push_back(SampleMetadata {
                     is_sync: sample.is_sync,
@@ -58,8 +61,7 @@ impl VideoDataDescription {
                     duration: Some(duration),
                     // There's only a single buffer, which is the raw mp4 video data.
                     buffer_index: 0,
-                    byte_offset,
-                    byte_length,
+                    byte_span,
                 });
             }
         }
