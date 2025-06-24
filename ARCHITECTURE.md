@@ -227,6 +227,7 @@ Update instructions:
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
+| re_span            | An integer range that always has a non-negative length                               |
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |

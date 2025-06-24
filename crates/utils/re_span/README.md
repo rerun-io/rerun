@@ -7,4 +7,9 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-An integer range that is never negatively long
+An integer range that always has a non-negative length.
+
+The standard `std::ops::Range` can have `start > end`.
+Taking a `Range` by argument thus means the callee must check for this eventuality and return an error.
+
+In contrast, `Span` always has a non-negative length, i.e. `len >= 0`.

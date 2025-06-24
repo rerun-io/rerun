@@ -1,3 +1,10 @@
+//! An integer range that always has a non-negative length.
+//!
+//! The standard [`std::ops::Range`] can have `start > end`
+//! Taking a `Range` by argument thus means the callee must check for this eventuality and return an error.
+//!
+//! In contrast, [`Span`] always has a non-negative length, i.e. `len >= 0`.
+
 use std::ops::{Mul, Range};
 
 use num_traits::Unsigned;

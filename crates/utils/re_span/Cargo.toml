@@ -1,7 +1,7 @@
 [package]
 name = "re_span"
 authors.workspace = true
-description = "An integer range that is never negatively long"
+description = "An integer range that always has a non-negative length"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
