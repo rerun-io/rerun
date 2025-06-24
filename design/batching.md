@@ -429,13 +429,13 @@ impl DataCell {
 
     /// Builds a new `DataCell` from an arrow array.
     //
-    // TODO(cmc): We shouldn't have to specify the component type separately, this should be part of the
+    // TODO(cmc): We shouldn't have to specify the component name separately, this should be part of the
     // metadata by using an extension.
     pub fn from_arrow(name: ComponentName, values: Box<dyn arrow2::Array>) -> Self  { /* … */ }
 
     /// Builds an empty `DataCell` from an arrow datatype.
     //
-    // TODO(cmc): We shouldn't have to specify the component type separately, this should be part of the
+    // TODO(cmc): We shouldn't have to specify the component name separately, this should be part of the
     // metadata by using an extension.
     pub fn from_datatype(name: ComponentName, datatype: DataType) -> Self  { /* … */ }
 
