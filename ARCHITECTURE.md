@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/1200w.png">
+  <img src="https://static.rerun.io/crates/087dcf1003897305755afe633cf304d20d6437c2/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/087dcf1003897305755afe633cf304d20d6437c2/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/087dcf1003897305755afe633cf304d20d6437c2/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/087dcf1003897305755afe633cf304d20d6437c2/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/087dcf1003897305755afe633cf304d20d6437c2/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -227,6 +227,7 @@ Update instructions:
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
+| re_span            | An integer range that always has a non-negative length                               |
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |

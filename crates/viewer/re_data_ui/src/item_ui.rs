@@ -819,7 +819,7 @@ pub fn table_id_button_ui(
     let mut list_item = ui
         .list_item()
         .selected(ctx.selection().contains_item(&item))
-        .active(ctx.active_table_id == Some(table_id));
+        .active(ctx.active_table_id() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);

@@ -211,7 +211,6 @@ impl AppState {
                     blueprint_tree,
                     welcome_screen,
                     redap_servers,
-                    navigation,
                     view_states,
                     selection_state,
                     focused_item,
@@ -311,6 +310,7 @@ impl AppState {
 
                 let rec_cfg = recording_config_entry(recording_configs, recording);
                 let egui_ctx = ui.ctx().clone();
+                let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
                         app_options,
@@ -321,6 +321,7 @@ impl AppState {
                         command_sender,
 
                         connection_registry,
+                        display_mode,
                     },
                     component_ui_registry,
                     view_class_registry,
@@ -336,14 +337,6 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
-                    active_table_id: match navigation.peek() {
-                        DisplayMode::LocalTable(name) => Some(name),
-                        _ => None,
-                    },
-                    active_redap_entry: match navigation.peek() {
-                        DisplayMode::RedapEntry(id) => Some(id),
-                        _ => None,
-                    },
                 };
 
                 // enable the heuristics if we must this frame
@@ -406,6 +399,7 @@ impl AppState {
                         command_sender,
 
                         connection_registry,
+                        display_mode,
                     },
                     component_ui_registry,
                     view_class_registry,
@@ -421,21 +415,11 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
-                    active_table_id: match self.navigation.peek() {
-                        DisplayMode::LocalTable(name) => Some(name),
-                        _ => None,
-                    },
-                    active_redap_entry: match self.navigation.peek() {
-                        DisplayMode::RedapEntry(id) => Some(id),
-                        _ => None,
-                    },
                 };
 
                 //
                 // Blueprint time panel
                 //
-
-                let display_mode = self.navigation.peek();
 
                 if app_options.inspect_blueprint_timeline
                     && *display_mode == DisplayMode::LocalRecordings

@@ -751,7 +751,7 @@ def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyB
 
 class GrpcSink:
     """
-    Used in [`rerun.RecordingStream.tee`][].
+    Used in [`rerun.RecordingStream.set_sinks`][].
 
     Connect the recording stream to a remote Rerun Viewer on the given URL.
     """
@@ -778,7 +778,7 @@ class GrpcSink:
 
 class FileSink:
     """
-    Used in [`rerun.RecordingStream.tee`][].
+    Used in [`rerun.RecordingStream.set_sinks`][].
 
     Save the recording stream to a file.
     """
@@ -794,7 +794,7 @@ class FileSink:
 
         """
 
-def tee(
+def set_sinks(
     sinks: list[Any],
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
