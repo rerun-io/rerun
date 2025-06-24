@@ -65,6 +65,9 @@ pub enum StreamError {
     TonicStatus(#[from] TonicStatusError),
 
     #[error(transparent)]
+    Tokio(#[from] tokio::task::JoinError),
+
+    #[error(transparent)]
     CodecError(#[from] re_log_encoding::codec::CodecError),
 
     #[error(transparent)]

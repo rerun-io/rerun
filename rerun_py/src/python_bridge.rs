@@ -4,6 +4,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
+use std::path::PathBuf;
 use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
@@ -117,6 +118,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
     m.add_class::<PyBinarySinkStorage>()?;
+    m.add_class::<PyFileSink>()?;
+    m.add_class::<PyGrpcSink>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -149,6 +152,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
+    m.add_function(wrap_pyfunction!(tee, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
@@ -618,6 +622,114 @@ fn spawn(
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
+#[pyclass(frozen, eq, hash, name = "GrpcSink")]
+struct PyGrpcSink {
+    uri: re_uri::ProxyUri,
+    flush_timeout_sec: Option<f32>,
+}
+
+impl PartialEq for PyGrpcSink {
+    fn eq(&self, other: &Self) -> bool {
+        self.uri == other.uri
+    }
+}
+
+impl std::hash::Hash for PyGrpcSink {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.uri.hash(state);
+    }
+}
+
+#[pymethods]
+impl PyGrpcSink {
+    #[new]
+    #[pyo3(signature = (url=None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32()))]
+    #[pyo3(text_signature = "(self, url=None, flush_timeout_sec=None)")]
+    fn new(url: Option<String>, flush_timeout_sec: Option<f32>) -> PyResult<Self> {
+        let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
+        let uri = url
+            .parse::<re_uri::ProxyUri>()
+            .map_err(|err| PyRuntimeError::wrap(err, format!("invalid endpoint {url:?}")))?;
+
+        Ok(Self {
+            uri,
+            flush_timeout_sec,
+        })
+    }
+}
+
+#[pyclass(frozen, eq, hash, name = "FileSink")]
+#[derive(PartialEq, Hash)]
+struct PyFileSink {
+    path: PathBuf,
+}
+
+#[pymethods]
+impl PyFileSink {
+    #[new]
+    #[pyo3(signature = (path))]
+    #[pyo3(text_signature = "(self, path)")]
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+/// Stream data to multiple sinks.
+#[pyfunction]
+#[pyo3(signature = (sinks, default_blueprint=None, recording=None))]
+fn tee(
+    sinks: Vec<PyObject>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    if re_sdk::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `tee()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
+    let mut resolved_sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::new();
+    for sink in sinks {
+        if let Ok(sink) = sink.downcast_bound::<PyGrpcSink>(py) {
+            let sink = sink.get();
+            let sink = re_sdk::sink::GrpcSink::new(
+                sink.uri.clone(),
+                sink.flush_timeout_sec
+                    .map(std::time::Duration::from_secs_f32),
+            );
+            resolved_sinks.push(Box::new(sink));
+        } else if let Ok(sink) = sink.downcast_bound::<PyFileSink>(py) {
+            let sink = sink.get();
+            let sink = re_sdk::sink::FileSink::new(sink.path.clone())
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            resolved_sinks.push(Box::new(sink));
+        } else {
+            let type_name = sink.bind(py).get_type().name()?;
+            return Err(PyRuntimeError::new_err(format!(
+                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink"
+            )));
+        }
+    }
+
+    py.allow_threads(|| {
+        let sink = re_sdk::sink::MultiSink::new(resolved_sinks);
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
+        flush_garbage_queue();
+    });
+
+    Ok(())
+}
+
 /// Connect the recording stream to a remote Rerun Viewer on the given URL.
 #[pyfunction]
 #[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
@@ -672,7 +784,7 @@ fn connect_grpc_blueprint(
 ) -> PyResult<()> {
     let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
 
-    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+    if let Some(blueprint_id) = blueprint_stream.store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {

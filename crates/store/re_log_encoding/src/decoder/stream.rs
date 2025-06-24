@@ -113,7 +113,8 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
-                    let message = crate::codec::file::decoder::decode_bytes(header.kind, bytes)?;
+                    let message =
+                        crate::codec::file::decoder::decode_bytes_to_app(header.kind, bytes)?;
                     if let Some(mut message) = message {
                         propagate_version(&mut message, self.version);
                         self.state = State::MessageHeader;

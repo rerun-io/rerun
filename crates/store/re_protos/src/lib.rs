@@ -317,7 +317,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self { payload } = self;
 
-            payload.heap_size_bytes()
+            payload.len() as _
         }
     }
 
@@ -335,6 +335,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self {
                 store_id,
+                chunk_id,
                 compression,
                 uncompressed_size,
                 encoding,
@@ -342,10 +343,11 @@ mod sizes {
             } = self;
 
             store_id.heap_size_bytes()
+                + chunk_id.heap_size_bytes()
                 + compression.heap_size_bytes()
                 + uncompressed_size.heap_size_bytes()
                 + encoding.heap_size_bytes()
-                + payload.heap_size_bytes()
+                + payload.len() as u64
         }
     }
 
@@ -372,7 +374,8 @@ mod sizes {
                 payload,
             } = self;
 
-            encoder_version.heap_size_bytes() + payload.heap_size_bytes()
+            encoder_version.heap_size_bytes()
+                + payload.as_ref().map_or(0, |payload| payload.len() as u64)
         }
     }
 }
