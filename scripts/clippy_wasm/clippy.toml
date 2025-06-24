@@ -86,6 +86,7 @@ disallowed-methods = [
   { path = "std::sync::mpsc::Receiver::iter", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::recv_timeout", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::recv", reason = "Cannot block on Web" },
+  { path = "std::thread::sleep", reason = "Can't block on web" },
   { path = "std::thread::spawn", reason = "Cannot spawn threads on wasm" },
   { path = "std::time::Duration::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::Instant::now", reason = "use `web-time` crate instead for wasm/web compatibility" },
