@@ -292,6 +292,8 @@ impl Analytics {
     /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_get_or_init`].
     ///
     /// Return `None` if analytics is disabled or some error occurred during initialization.
+    ///
+    /// Usually it is better to use [`Self::global_or_init`] instead.
     pub fn global_get() -> Option<&'static Self> {
         GLOBAL_ANALYTICS.get()?.as_ref()
     }
