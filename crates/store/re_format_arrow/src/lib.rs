@@ -88,11 +88,15 @@ impl std::fmt::Display for DisplayMetadata {
         f.write_str(
             &metadata
                 .iter()
-                .map(|(key, value)| format!("{prefix}{}: {}", trim_name(key), trim_name(value)))
+                .map(|(key, value)| format!("{prefix}{}: {}", trim_key(key), trim_name(value)))
                 .collect_vec()
                 .join("\n"),
         )
     }
+}
+
+fn trim_key(name: &str) -> &str {
+    name.trim().trim_start_matches("rerun:")
 }
 
 fn trim_name(name: &str) -> &str {

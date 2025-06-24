@@ -25,18 +25,18 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> state;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.PanelBlueprintIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PanelBlueprint";
 
         /// `ComponentDescriptor` for the `state` field.
         static constexpr auto Descriptor_state = ComponentDescriptor(
-            ArchetypeName, "state",
-            Loggable<rerun::blueprint::components::PanelState>::ComponentName
+            ArchetypeName, "PanelBlueprint:state",
+            Loggable<rerun::blueprint::components::PanelState>::ComponentType
         );
 
       public:

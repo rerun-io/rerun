@@ -24,7 +24,7 @@ class LatLon(datatypes.DVec2D, ComponentMixin):
 
 
 class LatLonBatch(datatypes.DVec2DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.LatLon"
+    _COMPONENT_TYPE: str = "rerun.components.LatLon"
 
 
 # This is patched in late to avoid circular dependencies.

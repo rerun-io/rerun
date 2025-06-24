@@ -23,7 +23,7 @@ class AffixFuzzer23(datatypes.MultiEnum, ComponentMixin):
 
 
 class AffixFuzzer23Batch(datatypes.MultiEnumBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer23"
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer23"
 
 
 # This is patched in late to avoid circular dependencies.

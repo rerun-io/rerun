@@ -8,7 +8,7 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
-use re_types_core::{ArchetypeName, ComponentName};
+use re_types_core::{ArchetypeName, ComponentType};
 
 use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
@@ -20,7 +20,7 @@ pub enum ColumnError {
     #[error(transparent)]
     UnknownColumnKind(#[from] crate::UnknownColumnKind),
 
-    #[error("Unsupported column rerun.kind: {kind:?}. Expected one of: index, data")]
+    #[error("Unsupported column rerun:kind: {kind:?}. Expected one of: index, data")]
     UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
@@ -67,10 +67,10 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn component_name(&self) -> Option<&ComponentName> {
+    pub fn component_type(&self) -> Option<&ComponentType> {
         match self {
             Self::RowId(_) | Self::Time(_) => None,
-            Self::Component(descr) => descr.component_name.as_ref(),
+            Self::Component(descr) => descr.component_type.as_ref(),
         }
     }
 
@@ -80,7 +80,7 @@ impl ColumnDescriptor {
         match self {
             Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.display_name(),
+            Self::Component(descr) => descr.display_name().to_owned(),
         }
     }
 
@@ -132,7 +132,7 @@ impl ColumnDescriptor {
 
     pub fn archetype_name(&self) -> Option<ArchetypeName> {
         match self {
-            Self::Component(component) => component.archetype_name,
+            Self::Component(component) => component.archetype,
             _ => None,
         }
     }
@@ -170,9 +170,9 @@ fn test_schema_over_ipc() {
         )),
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
-            archetype_name: Some("archetype".to_owned().into()),
-            archetype_field_name: "field".to_owned().into(),
-            component_name: Some(re_types_core::ComponentName::new("component")),
+            archetype: Some("archetype".to_owned().into()),
+            component: "component".to_owned().into(),
+            component_type: Some(re_types_core::ComponentType::new("component_type")),
             store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,
             is_tombstone: false,

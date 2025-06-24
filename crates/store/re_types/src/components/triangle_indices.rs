@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The three indices of a triangle in a triangle mesh.
@@ -26,7 +26,7 @@ pub struct TriangleIndices(pub crate::datatypes::UVec3D);
 
 impl ::re_types_core::Component for TriangleIndices {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.TriangleIndices".into()
     }
 }

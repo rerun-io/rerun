@@ -51,7 +51,7 @@ class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin)
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.components.GeoLineString"
+    _COMPONENT_TYPE: str = "rerun.components.GeoLineString"
 
     @staticmethod
     def _native_to_pa_array(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:

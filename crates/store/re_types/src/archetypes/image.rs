@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A monochrome or color image.
@@ -158,9 +158,9 @@ impl Image {
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: Some("rerun.components.ImageBuffer".into()),
-            archetype_field_name: "buffer".into(),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:buffer".into(),
+            component_type: Some("rerun.components.ImageBuffer".into()),
         }
     }
 
@@ -170,9 +170,9 @@ impl Image {
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: Some("rerun.components.ImageFormat".into()),
-            archetype_field_name: "format".into(),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:format".into(),
+            component_type: Some("rerun.components.ImageFormat".into()),
         }
     }
 
@@ -182,9 +182,9 @@ impl Image {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: Some("rerun.components.Opacity".into()),
-            archetype_field_name: "opacity".into(),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -194,9 +194,9 @@ impl Image {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -204,9 +204,9 @@ impl Image {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.ImageIndicator".into(),
+            archetype: None,
+            component: "rerun.components.ImageIndicator".into(),
+            component_type: None,
         }
     }
 }

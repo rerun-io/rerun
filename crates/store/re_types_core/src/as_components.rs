@@ -216,9 +216,9 @@ mod tests {
     impl MyColor {
         fn descriptor() -> ComponentDescriptor {
             ComponentDescriptor {
-                archetype_name: Some("test".into()),
-                archetype_field_name: "color".into(),
-                component_name: Some(Self::name()),
+                archetype: Some("test".into()),
+                component: "color".into(),
+                component_type: Some(Self::name()),
             }
         }
     }
@@ -263,7 +263,7 @@ mod tests {
     }
 
     impl crate::Component for MyColor {
-        fn name() -> crate::ComponentName {
+        fn name() -> crate::ComponentType {
             "example.MyColor".into()
         }
     }

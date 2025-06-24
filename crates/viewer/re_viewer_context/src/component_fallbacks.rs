@@ -1,6 +1,6 @@
 use arrow::array::{ArrayRef, NullArray};
 
-use re_types::{ComponentDescriptor, ComponentName};
+use re_types::{ComponentDescriptor, ComponentType};
 
 use crate::QueryContext;
 
@@ -50,7 +50,7 @@ pub trait ComponentFallbackProvider {
     fn try_provide_fallback(
         &self,
         ctx: &QueryContext<'_>,
-        component: ComponentName,
+        component: ComponentType,
     ) -> ComponentFallbackProviderResult;
 
     /// Provides a fallback value for a given component, first trying the provider and
@@ -60,14 +60,14 @@ pub trait ComponentFallbackProvider {
         ctx: &QueryContext<'_>,
         component_descr: &ComponentDescriptor,
     ) -> ArrayRef {
-        let Some(component_name) = component_descr.component_name else {
+        let Some(component_type) = component_descr.component_type else {
             re_log::warn!(
-                "Requested fallback for component descr {component_descr} without component name"
+                "Requested fallback for component descr {component_descr} without component type"
             );
             return std::sync::Arc::new(NullArray::new(0));
         };
 
-        match self.try_provide_fallback(ctx, component_name) {
+        match self.try_provide_fallback(ctx, component_type) {
             ComponentFallbackProviderResult::Value(value) => {
                 return value;
             }
@@ -77,13 +77,13 @@ pub trait ComponentFallbackProvider {
                 // Giving out _both_ the error and the fallback value gets messy,
                 // so given that this should be a rare bug, we log it and return the fallback value as success.
                 re_log::error_once!(
-                    "Arrow serialization failed trying to provide a fallback for {component_name}. Using base fallback instead: {err}"
+                    "Arrow serialization failed trying to provide a fallback for {component_type}. Using base fallback instead: {err}"
                 );
             }
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        ctx.viewer_ctx().placeholder_for(component_name)
+        ctx.viewer_ctx().placeholder_for(component_type)
     }
 }
 
@@ -109,10 +109,10 @@ macro_rules! impl_component_fallback_provider {
             fn try_provide_fallback(
                 &self,
                 _ctx: &$crate::QueryContext<'_>,
-                _component_name: re_types::ComponentName,
+                _component_type: re_types::ComponentType,
             ) -> $crate::ComponentFallbackProviderResult {
                 $(
-                    if _component_name == <$component as re_types::Component>::name() {
+                    if _component_type == <$component as re_types::Component>::name() {
                         return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, _ctx).into();
                     }
                 )*

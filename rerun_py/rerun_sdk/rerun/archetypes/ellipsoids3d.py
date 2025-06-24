@@ -260,16 +260,16 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "line_radii": line_radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Ellipsoids3D:half_sizes": half_sizes,
+            "Ellipsoids3D:centers": centers,
+            "Ellipsoids3D:rotation_axis_angles": rotation_axis_angles,
+            "Ellipsoids3D:quaternions": quaternions,
+            "Ellipsoids3D:colors": colors,
+            "Ellipsoids3D:line_radii": line_radii,
+            "Ellipsoids3D:fill_mode": fill_mode,
+            "Ellipsoids3D:labels": labels,
+            "Ellipsoids3D:show_labels": show_labels,
+            "Ellipsoids3D:class_ids": class_ids,
         }
         columns = []
 
@@ -278,7 +278,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

@@ -12,7 +12,8 @@ use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
-use re_chunk_store::{ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk::ComponentIdentifier;
+use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
@@ -20,7 +21,6 @@ use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
 use crate::catalog::{PyDatasetEntry, to_py_err};
-use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
 /// View into a remote dataset acting as DataFusion table provider.
@@ -499,7 +499,7 @@ impl PyDataframeQueryView {
 /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
 ///
 /// ```python
-/// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+/// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
 /// ```
 ///
 /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -530,7 +530,7 @@ fn extract_contents_expr(
     let mut known_components = BTreeMap::<EntityPath, BTreeSet<ComponentDescriptor>>::new();
 
     for component in &component_descriptors {
-        // We need to resolve the component name to the best one in the schema
+        // We need to resolve the component type to the best one in the schema
         // (e.g. "color" -> "rerun.color")
         known_components
             .entry(component.entity_path.clone())
@@ -559,7 +559,7 @@ fn extract_contents_expr(
 
         Ok(contents)
     } else if let Ok(dict) = expr.downcast::<PyDict>() {
-        // `Union[ComponentLike, Sequence[ComponentLike]]]`
+        // `Union[str, Sequence[str]]]`
 
         let mut contents = ViewContentsSelector::default();
 
@@ -576,15 +576,15 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
-                value.extract::<ComponentLike>()
+            let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
+                value.extract::<String>()
             {
                 std::iter::once(component.into()).collect()
-            } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+            } else if let Ok(components) = value.extract::<Vec<String>>() {
                 components.into_iter().map(Into::into).collect()
             } else {
                 return Err(PyTypeError::new_err(format!(
-                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a `str` or Sequence[str]."
                 )));
             };
 

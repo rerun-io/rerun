@@ -73,7 +73,7 @@ impl Chunk {
     /// If the chunk is static, `timeline` will be ignored.
     ///
     /// This is different than [`Self::iter_indices`] in that it will only yield indices for rows
-    /// at which there is data for the specified `component_name`.
+    /// at which there is data for the specified component.
     ///
     /// See also [`Self::iter_indices`].
     pub fn iter_component_indices(
@@ -140,7 +140,7 @@ impl Chunk {
     /// Returns an iterator over the [`TimePoint`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::iter_timepoints`] in that it will only yield timepoints for rows
-    /// at which there is data for the specified `component_name`.
+    /// at which there is data for the specified component.
     ///
     /// See also [`Self::iter_timepoints`].
     pub fn iter_component_timepoints(
@@ -872,9 +872,9 @@ impl Chunk {
         component_descriptor: &ComponentDescriptor,
     ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_ + use<'_, C>> {
         debug_assert_eq!(
-            component_descriptor.component_name,
+            component_descriptor.component_type,
             Some(C::name()),
-            "component name mismatch"
+            "component type mismatch"
         );
 
         let Some(list_array) = self.components.get(component_descriptor) else {
