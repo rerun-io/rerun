@@ -5,7 +5,7 @@ use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
 use re_build_info::CrateVersion;
-use re_chunk::URange;
+use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
@@ -42,7 +42,7 @@ pub struct StreamingLogMsg {
     /// Specifically, the start of this range points to the beginning of the [`file::MessageHeader`].
     ///
     /// The full range covers both the message's header _and_ its body.
-    pub byte_range: URange<u64>,
+    pub byte_range: Span<u64>,
 }
 
 impl StreamingLogMsg {
@@ -78,7 +78,7 @@ impl StreamingLogMsg {
             version: CrateVersion::LOCAL,
             encoded: Some(log_msg_encoded.into()),
             decoded: log_msg_proto.msg,
-            byte_range: URange {
+            byte_range: Span {
                 start: 0,
                 len: byte_len,
             },
@@ -352,7 +352,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 version,
                 encoded,
                 decoded,
-                byte_range: URange {
+                byte_range: Span {
                     start: self.num_bytes_read,
                     len: processed_length as _,
                 },

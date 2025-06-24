@@ -15,7 +15,7 @@ use itertools::{Either, Itertools as _, izip};
 use re_arrow_util::{ArrowArrayDowncastRef as _, offsets_lengths};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types_core::{ArrowString, Component, ComponentDescriptor};
-use re_urange::URange;
+use re_urange::Span;
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -199,7 +199,7 @@ impl Chunk {
     pub fn iter_component_offsets<'a>(
         &'a self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = URange<usize>> + 'a + use<'a> {
+    ) -> impl Iterator<Item = Span<usize>> + 'a + use<'a> {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
@@ -212,11 +212,11 @@ impl Chunk {
                 izip!(offsets, lengths)
                     .enumerate()
                     .filter_map(|(i, o)| validity.is_valid(i).then_some(o))
-                    .map(|(start, len)| URange { start, len }),
+                    .map(|(start, len)| Span { start, len }),
             ))
         } else {
             Either::Right(Either::Right(
-                izip!(offsets, lengths).map(|(start, len)| URange { start, len }),
+                izip!(offsets, lengths).map(|(start, len)| Span { start, len }),
             ))
         }
     }
@@ -330,7 +330,7 @@ pub trait ChunkComponentSlicer {
         // However, I wasn't able to get this idea across to the borrow checker.
         component_descriptor: ComponentDescriptor,
         array: &'a dyn ArrowArray,
-        component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+        component_offsets: impl Iterator<Item = Span<usize>> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a;
 }
 
@@ -339,7 +339,7 @@ pub trait ChunkComponentSlicer {
 fn slice_as_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
-    component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+    component_offsets: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = &'a [T]> + 'a
 where
     P: ArrowPrimitiveType<Native = T>,
@@ -399,7 +399,7 @@ impl_native_type!(arrow::array::types::Float64Type, f64);
 fn slice_as_array_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
-    component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+    component_offsets: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = &'a [[T; N]]> + 'a
 where
     [T; N]: bytemuck::Pod,
@@ -479,7 +479,7 @@ impl_array_native_type!(arrow::array::types::Float64Type, f64);
 fn slice_as_buffer_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
-    component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+    component_offsets: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = Vec<ArrowScalarBuffer<T>>> + 'a
 where
     P: ArrowPrimitiveType<Native = T>,
@@ -561,7 +561,7 @@ impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 fn slice_as_array_list_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
-    component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+    component_offsets: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = Vec<&'a [[T; N]]>> + 'a
 where
     [T; N]: bytemuck::Pod,
@@ -664,7 +664,7 @@ impl ChunkComponentSlicer for String {
     fn slice<'a>(
         component_descriptor: ComponentDescriptor,
         array: &'a dyn ArrowArray,
-        component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+        component_offsets: impl Iterator<Item = Span<usize>> + 'a,
     ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
         let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
             if cfg!(debug_assertions) {
@@ -696,7 +696,7 @@ impl ChunkComponentSlicer for bool {
     fn slice<'a>(
         component_descriptor: ComponentDescriptor,
         array: &'a dyn ArrowArray,
-        component_offsets: impl Iterator<Item = URange<usize>> + 'a,
+        component_offsets: impl Iterator<Item = Span<usize>> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
         let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
             if cfg!(debug_assertions) {
@@ -710,7 +710,7 @@ impl ChunkComponentSlicer for bool {
 
         // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
         Either::Right(
-            component_offsets.map(move |URange { start, len }| values.clone().slice(start, len)),
+            component_offsets.map(move |Span { start, len }| values.clone().slice(start, len)),
         )
     }
 }
@@ -795,7 +795,7 @@ pub struct ChunkComponentIter<C, IO> {
 #[derive(Clone, PartialEq)]
 pub struct ChunkComponentIterItem<C> {
     values: Arc<Vec<C>>,
-    range: URange<usize>,
+    range: Span<usize>,
 }
 
 impl<C: PartialEq> PartialEq<[C]> for ChunkComponentIterItem<C> {
@@ -818,7 +818,7 @@ impl<C> Default for ChunkComponentIterItem<C> {
     fn default() -> Self {
         Self {
             values: Arc::new(Vec::new()),
-            range: URange::default(),
+            range: Span::default(),
         }
     }
 }
@@ -839,7 +839,7 @@ impl<C> std::ops::Deref for ChunkComponentIterItem<C> {
     }
 }
 
-impl<C: Component, IO: Iterator<Item = URange<usize>>> Iterator for ChunkComponentIter<C, IO> {
+impl<C: Component, IO: Iterator<Item = Span<usize>>> Iterator for ChunkComponentIter<C, IO> {
     type Item = ChunkComponentIterItem<C>;
 
     #[inline]
@@ -872,7 +872,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
         component_descriptor: &ComponentDescriptor,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = URange<usize>> + '_ + use<'_, C>> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_ + use<'_, C>> {
         debug_assert_eq!(
             component_descriptor.component_name,
             Some(C::name()),

@@ -4,7 +4,7 @@ use num_traits::Unsigned;
 
 /// An integer range who's length is always at least zero.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct URange<Idx: Unsigned + Copy> {
+pub struct Span<Idx: Unsigned + Copy> {
     /// The index of the first element.
     pub start: Idx,
 
@@ -12,7 +12,7 @@ pub struct URange<Idx: Unsigned + Copy> {
     pub len: Idx,
 }
 
-impl<Idx: Unsigned + Copy> URange<Idx> {
+impl<Idx: Unsigned + Copy> Span<Idx> {
     /// The next element, just outside the range.
     #[inline]
     pub fn end(&self) -> Idx {
@@ -29,18 +29,18 @@ impl<Idx: Unsigned + Copy> URange<Idx> {
         }
     }
 
-    pub fn try_cast<Narrow>(self) -> Option<URange<Narrow>>
+    pub fn try_cast<Narrow>(self) -> Option<Span<Narrow>>
     where
         Narrow: TryFrom<Idx> + Unsigned + Copy,
     {
-        Some(URange {
+        Some(Span {
             start: self.start.try_into().ok()?,
             len: self.len.try_into().ok()?,
         })
     }
 }
 
-impl URange<u32> {
+impl Span<u32> {
     /// Widening cast; useful for indexing.
     #[inline]
     pub fn range_usize(self) -> Range<usize> {
@@ -52,15 +52,15 @@ impl URange<u32> {
     }
 }
 
-impl<Idx: Unsigned + Copy> From<URange<Idx>> for Range<Idx> {
+impl<Idx: Unsigned + Copy> From<Span<Idx>> for Range<Idx> {
     #[inline]
-    fn from(value: URange<Idx>) -> Self {
+    fn from(value: Span<Idx>) -> Self {
         value.range()
     }
 }
 
 /// urange * scalar
-impl<Idx: Unsigned + Copy + Mul> Mul<Idx> for URange<Idx> {
+impl<Idx: Unsigned + Copy + Mul> Mul<Idx> for Span<Idx> {
     type Output = Self;
 
     fn mul(self, rhs: Idx) -> Self::Output {

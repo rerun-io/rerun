@@ -1,6 +1,6 @@
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
-use re_urange::URange;
+use re_urange::Span;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
 
@@ -48,7 +48,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration as i64);
 
-                let byte_range = URange {
+                let byte_range = Span {
                     start: sample.offset as u32,
                     len: sample.size as u32,
                 };

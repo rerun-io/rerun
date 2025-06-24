@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, ops::Range};
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
-use re_urange::URange;
+use re_urange::Span;
 
 use super::{Time, Timescale};
 
@@ -659,7 +659,7 @@ pub struct SampleMetadata {
     pub buffer_index: usize,
 
     /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
-    pub byte_range: URange<u32>,
+    pub byte_range: Span<u32>,
 }
 
 impl SampleMetadata {

@@ -45,7 +45,7 @@ pub(crate) use self::store::ColumnMetadataState;
 #[doc(no_inline)]
 pub use {
     re_chunk::{
-        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, URange,
+        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
         UnitChunkShared,
     },
     re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline},
