@@ -1076,28 +1076,76 @@ pub trait UiExt {
         }
     }
 
+    /// Shows a `?` help button that will show a help UI when clicked.
+    ///
+    /// Until the user has interacted with a help button (any help button), we
+    /// highlight the button extra to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
         // The help menu appears when clicked and/or hovered
         let mut help_ui: Option<_> = Some(help_ui);
 
         let ui = self.ui_mut();
 
-        let menu_button = egui::containers::menu::MenuButton::from_button(
-            ui.small_icon_button_widget(&icons::HELP, "Help"),
-        );
-        let button_response = menu_button
-            .ui(ui, |ui| {
-                if let Some(help_ui) = help_ui.take() {
-                    help_ui(ui);
-                }
-            })
-            .0;
+        // Have we ever shown any help UI anywhere?
+        let has_shown_help_id = egui::Id::new("has_shown_help");
+        let user_has_clicked_any_help_button: bool =
+            ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
-        if let Some(help_ui) = help_ui.take() {
-            button_response.on_hover_ui(help_ui)
-        } else {
-            button_response
-        }
+        // Draw attention to the help button by highlighting it when the user hovers
+        // over its container (e.g. the tab bar of a view).
+        let is_hovering_container = ui.rect_contains_pointer(ui.max_rect());
+
+        ui.scope(|ui| {
+            let where_to_paint_background =
+                if !user_has_clicked_any_help_button && is_hovering_container {
+                    Some(ui.painter().add(egui::Shape::Noop))
+                } else {
+                    None
+                };
+
+            let menu_button = egui::containers::menu::MenuButton::from_button(
+                ui.small_icon_button_widget(&icons::HELP, "Help"),
+            );
+
+            let button_response = menu_button
+                .ui(ui, |ui| {
+                    if let Some(help_ui) = help_ui.take() {
+                        help_ui(ui);
+                        if !user_has_clicked_any_help_button {
+                            // Remember that the user has found and used the help button at least once,
+                            // to stop it from animating in the future:
+                            ui.data_mut(|d| {
+                                d.insert_persisted(has_shown_help_id, true);
+                            });
+                        }
+                    }
+                })
+                .0;
+
+            if let Some(where_to_paint_background) = where_to_paint_background {
+                if !button_response.hovered() {
+                    let mut bg_rect = button_response.rect.expand(2.0);
+
+                    // Hack: ensure we don't paint outside the lines on the Y-axis.
+                    // Yes, we only do so for the Y axis, because if we do it for the X axis too
+                    // then the background won't be centered behind the help icon.
+                    bg_rect.min.y = bg_rect.min.y.max(ui.max_rect().min.y);
+                    bg_rect.max.y = bg_rect.max.y.min(ui.max_rect().max.y);
+
+                    ui.painter().set(
+                        where_to_paint_background,
+                        egui::Shape::rect_filled(bg_rect, 4.0, ui.tokens().highlight_color),
+                    );
+                }
+            }
+
+            if let Some(help_ui) = help_ui.take() {
+                button_response.on_hover_ui(help_ui)
+            } else {
+                button_response
+            }
+        })
+        .inner
     }
 
     /// Show some markdown
