@@ -457,8 +457,7 @@ impl Default for GrpcSink {
     fn default() -> Self {
         use std::str::FromStr as _;
         Self::new(
-            re_uri::ProxyUri::from_str("rerun+http://127.0.0.1:9876/proxy")
-                .expect("failed to parse uri"),
+            re_uri::ProxyUri::from_str(crate::DEFAULT_CONNECT_URL).expect("failed to parse uri"),
             crate::default_flush_timeout(),
         )
     }

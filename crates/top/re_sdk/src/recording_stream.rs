@@ -345,12 +345,12 @@ impl RecordingStreamBuilder {
         Ok((rec, storage))
     }
 
-    /// Stream data to multiple different sinks.
+    /// Creates a new [`RecordingStream`] pre-configured to stream data to multiple sinks.
     ///
-    /// Duplicate sinks are not allowed. For example, two [`GrpcSink`][grpc_sink]s that
-    /// use the same `url`.
+    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
+    /// [file_sink]: crate::sink::FileSink
     pub fn set_sinks(
         self,
         sinks: impl crate::sink::IntoMultiSink,
@@ -1886,8 +1886,8 @@ impl RecordingStream {
 impl RecordingStream {
     /// Stream data to multiple different sinks.
     ///
-    /// Duplicate sinks are not allowed. For example, two [`GrpcSink`][crate::sink::GrpcSink]s that
-    /// use the same `url`.
+    /// This is semantically the same as calling [`RecordingStream::set_sink`], but the resulting
+    /// [`RecordingStream`] will now stream data to multiple sinks at the same time.
     ///
     /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
     ///
