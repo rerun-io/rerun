@@ -64,19 +64,19 @@
     },
     "border_success":{
         "color": "{Green.500}",
-        "alpha": 75
+        "alpha": 125
     },
     "border_info":{
         "color": "{Blue.500}",
-        "alpha": 75
+        "alpha": 125
     },
     "border_warning":{
         "color": "#DF7700",
-        "alpha": 75
+        "alpha": 125
     },
     "border_error":{
         "color": "{Red.500}",
-        "alpha": 75
+        "alpha": 125
     },
     "icon_content_success":{
         "color": "{Green.500}"
