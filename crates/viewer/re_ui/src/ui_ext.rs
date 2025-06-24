@@ -1124,13 +1124,17 @@ pub trait UiExt {
 
             if let Some(where_to_paint_background) = where_to_paint_background {
                 if !button_response.hovered() {
+                    let mut bg_rect = button_response.rect.expand(2.0);
+
+                    // Hack: ensure we don't paint outside the lines on the Y-axis.
+                    // Yes, we only do so for the Y axis, because if we do it for the X axis too
+                    // then the background won't be centered behind the help icon.
+                    bg_rect.min.y = bg_rect.min.y.max(ui.max_rect().min.y);
+                    bg_rect.max.y = bg_rect.max.y.min(ui.max_rect().max.y);
+
                     ui.painter().set(
                         where_to_paint_background,
-                        egui::Shape::rect_filled(
-                            button_response.rect.expand(2.0),
-                            4.0,
-                            ui.tokens().highlight_color,
-                        ),
+                        egui::Shape::rect_filled(bg_rect, 4.0, ui.tokens().highlight_color),
                     );
                 }
             }
