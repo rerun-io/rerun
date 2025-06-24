@@ -5,6 +5,7 @@ use parking_lot::RwLock;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
+use re_global_context::DisplayMode;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
@@ -66,13 +67,6 @@ pub struct ViewerContext<'a> {
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
 
-    // -- Everything that is concerned with the current active recording/table.
-    /// The current active Redap entry id, if any.
-    pub active_redap_entry: Option<&'a EntryId>,
-
-    /// The current active local table, if any.
-    pub active_table_id: Option<&'a TableId>,
-
     pub store_context: &'a StoreContext<'a>,
 }
 
@@ -123,6 +117,11 @@ impl ViewerContext<'_> {
     pub fn command_sender(&self) -> &CommandSender {
         self.global_context.command_sender
     }
+
+    /// The active display mode
+    pub fn display_mode(&self) -> &crate::DisplayMode {
+        self.global_context.display_mode
+    }
 }
 
 impl ViewerContext<'_> {
@@ -170,7 +169,22 @@ impl ViewerContext<'_> {
         self.selection_state
     }
 
-    /// The current time query, based on the current time control.
+    /// The current active Redap entry id, if any.
+    pub fn active_redap_entry(&self) -> Option<&EntryId> {
+        match self.display_mode() {
+            DisplayMode::RedapEntry(entry_id) => Some(entry_id),
+            _ => None,
+        }
+    }
+
+    /// The current active local table, if any.
+    pub fn active_table_id(&self) -> Option<&TableId> {
+        match self.display_mode() {
+            DisplayMode::LocalTable(table_id) => Some(table_id),
+            _ => None,
+        }
+    }
+
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
     }

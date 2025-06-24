@@ -192,7 +192,7 @@ impl EntryKind {
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            Self::Remote { entry_id, .. } => ctx.active_redap_entry == Some(entry_id),
+            Self::Remote { entry_id, .. } => ctx.active_redap_entry() == Some(entry_id),
             // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
             Self::Local(_) => false,
         }
