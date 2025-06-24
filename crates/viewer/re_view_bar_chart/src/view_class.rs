@@ -203,7 +203,7 @@ impl ViewClass for BarChartView {
                     color: &re_types::components::Color,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();
-                    let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
+                    let fill = color.gamma_multiply(0.75); // make sure overlapping bars are obvious
                     let stroke_color = fill.linear_multiply(0.5);
                     BarChart::new(
                         "bar_chart",
