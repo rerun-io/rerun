@@ -289,7 +289,7 @@ impl Analytics {
             .as_ref()
     }
 
-    /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_get_or_init`].
+    /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_or_init`].
     ///
     /// Return `None` if analytics is disabled or some error occurred during initialization.
     ///
