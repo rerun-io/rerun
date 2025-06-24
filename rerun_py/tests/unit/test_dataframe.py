@@ -459,7 +459,12 @@ def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording
 
     with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
         rec.save(rrd_path)
-        rec.log("/test", rr.AnyValues(yak="yuk", foo="bar", baz=42), static=True)
+        rec.log(
+            "/test",
+            # Note: defensive parameter names to avoid ANY_VALUE_TYPE_REGISTRY collisions
+            rr.AnyValues(test_dataframe_yak="yuk", test_dataframe_foo="bar", test_dataframe_baz=42),
+            static=True,
+        )
 
     # Use this to exfiltrate the RRD file for debugging purposes:
     if False:
