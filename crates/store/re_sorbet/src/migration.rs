@@ -18,8 +18,17 @@ use re_types_core::{Loggable as _, arrow_helpers::as_array_ref};
 use crate::ColumnKind;
 
 /// Migrate TUID:s with the pre-0.23 encoding.
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
+
+    let needs_migration = batch.schema_ref().fields().iter().any(|field| {
+        field.extension_type_name() == Some("rerun.datatypes.TUID")
+            || field.name() == "rerun.controls.RowId"
+    });
+    if !needs_migration {
+        return batch.clone();
+    }
 
     let num_columns = batch.num_columns();
     let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
@@ -53,6 +62,7 @@ pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 }
 
 /// Migrate TUID:s with the pre-0.23 encoding.
+#[tracing::instrument(level = "trace", skip_all)]
 fn migrate_tuid_column(
     field: ArrowFieldRef,
     array: ArrowArrayRef,
@@ -92,6 +102,7 @@ fn migrate_tuid_column(
 }
 
 /// Migrate old renamed types to new types.
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
@@ -130,6 +141,16 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
             },
         ),
     ]);
+
+    let needs_migration = batch.schema_ref().fields().iter().any(|field| {
+        field
+            .metadata()
+            .get("rerun.archetype")
+            .is_some_and(|arch| archetype_renames.contains_key(arch.as_str()))
+    });
+    if !needs_migration {
+        return batch.clone();
+    }
 
     let num_columns = batch.num_columns();
     let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
@@ -181,8 +202,52 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 }
 
 /// Put row-id first, then time columns, and last data columns.
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
+
+    let needs_reordering = 'check: {
+        let mut row_ids = false;
+        let mut indices = false;
+        let mut components = false;
+
+        let has_indices = batch.schema_ref().fields().iter().any(|field| {
+            let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
+            column_kind == ColumnKind::Index
+        });
+
+        for field in batch.schema_ref().fields() {
+            let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
+            match column_kind {
+                ColumnKind::RowId => {
+                    row_ids = true;
+                    if (has_indices && indices) || components {
+                        break 'check true;
+                    }
+                }
+
+                ColumnKind::Index => {
+                    indices = true;
+                    if !row_ids || components {
+                        break 'check true;
+                    }
+                }
+
+                ColumnKind::Component => {
+                    components = true;
+                    if !row_ids || (has_indices && !indices) {
+                        break 'check true;
+                    }
+                }
+            }
+        }
+
+        false
+    };
+
+    if !needs_reordering {
+        return batch.clone();
+    }
 
     let mut row_ids = vec![];
     let mut indices = vec![];
@@ -218,6 +283,11 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 .collect_vec(),
             schema.fields().iter().map(|f| f.name()).collect_vec()
         );
+    } else {
+        debug_assert!(
+            false,
+            "reordered something that didn't need to be reordered"
+        );
     }
 
     ArrowRecordBatch::try_new_with_options(
@@ -231,8 +301,21 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
 /// Move indicator component to archetype field name.
 // TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
+
+    let needs_rewiring = batch.schema_ref().fields().iter().any(|field| {
+        let metadata = field.metadata();
+        metadata
+            .get("rerun.component")
+            .is_some_and(|value| value.ends_with("Indicator"))
+            || (!metadata.contains_key("rerun.archetype")
+                && !metadata.contains_key("rerun.archetype_field"))
+    });
+    if !needs_rewiring {
+        return batch.clone();
+    }
 
     let fields = batch
         .schema()
@@ -260,7 +343,7 @@ pub fn rewire_indicator_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch
                 {
                     // If we don't find the above keys, we likely encountered data that was logged via `AnyValues`.
                     // We do our best effort to convert that.
-                    re_log::debug!("Moving stray component name to archetype field: {value}");
+                    re_log::debug_once!("Moving stray component name {value:?} to archetype field");
                     metadata.insert("rerun.archetype_field".to_owned(), value);
                 } else {
                     metadata.insert("rerun.component".to_owned(), value);

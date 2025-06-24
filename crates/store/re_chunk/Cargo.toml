@@ -52,6 +52,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 thiserror.workspace = true
+tracing.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

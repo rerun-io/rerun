@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
-
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
@@ -104,6 +103,12 @@ impl ChunkSchema {
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
+    }
+
+    /// Is this chunk static?
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.chunk_columns.indices.is_empty()
     }
 
     /// The heap size of this chunk in bytes, if known.

@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, HashSet};
+
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
@@ -6,22 +8,19 @@ use pyo3::{
     PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
     exceptions::PyRuntimeError,
 };
-use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
-use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
-use std::collections::BTreeMap;
-use tokio_stream::StreamExt as _;
+use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
-use re_dataframe::ViewContentsSelector;
-use re_grpc_client::{
-    ConnectionClient, ConnectionRegistryHandle, get_chunks_response_to_chunk_and_partition_id,
-};
+use re_dataframe::{ChunkStoreHandle, ViewContentsSelector};
+use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::DatasetDetails;
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use re_protos::{
     catalog::v1alpha1::{
         EntryFilter, ReadTableEntryRequest,
@@ -275,6 +274,8 @@ impl ConnectionHandle {
         task_ids: &[TaskId],
         timeout: std::time::Duration,
     ) -> PyResult<()> {
+        use futures::StreamExt as _;
+
         wait_for_future(py, async {
             let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
                 PyValueError::new_err(format!(
@@ -366,6 +367,7 @@ impl ConnectionHandle {
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn get_chunks_for_dataframe_query(
         &self,
         py: Python<'_>,
@@ -374,7 +376,9 @@ impl ConnectionHandle {
         latest_at: Option<LatestAtQuery>,
         range: Option<RangeQuery>,
         partition_ids: &[impl AsRef<str> + Sync],
-    ) -> PyResult<BTreeMap<String, ChunkStore>> {
+    ) -> PyResult<BTreeMap<String, ChunkStoreHandle>> {
+        use futures::StreamExt as _;
+
         let entity_paths = contents
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
@@ -401,62 +405,191 @@ impl ConnectionHandle {
             columns_always_include_component_indexes: false,
         };
 
-        let mut stores = BTreeMap::default();
+        let partition_ids = partition_ids
+            .iter()
+            .map(|id| id.as_ref().to_owned().into())
+            .collect();
 
-        wait_for_future(py, async {
-            let get_chunks_response_stream = self
-                .client()
-                .await?
-                .inner()
-                .get_chunks(GetChunksRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: partition_ids
-                        .iter()
-                        .map(|id| id.as_ref().to_owned().into())
-                        .collect(),
-                    chunk_ids: vec![],
-                    entity_paths: entity_paths
-                        .into_iter()
-                        .map(|p| (*p).clone().into())
-                        .collect(),
-                    query: Some(query.into()),
+        let entity_paths = entity_paths
+            .into_iter()
+            .map(|p| (*p).clone().into())
+            .collect();
+
+        // NOTE: Do not ever run complex futures chain directly on top of `block_on`, make sure to
+        // always spawn new tasks instead.
+        //
+        // Refer to [1] for more information.
+        //
+        // [1]: https://docs.rs/tokio/latest/tokio/runtime/struct.Runtime.html#non-worker-future
+        let stores = wait_for_future(
+            py,
+            async {
+                let mut client = self.client().await?;
+
+                // First, we just kickoff the gRPC query. Nothing special here besides making sure
+                // that it runs in a dedicated task, so that it can actually get scheduled properly
+                // when running with `block_on`.
+                let get_chunks_response_stream = tokio::spawn(async move {
+                    let resp = client
+                        .inner()
+                        .get_chunks(GetChunksRequest {
+                            dataset_id: Some(dataset_id.into()),
+                            partition_ids,
+                            chunk_ids: vec![],
+                            entity_paths,
+                            query: Some(query.into()),
+                        })
+                        .instrument(tracing::trace_span!("get_chunks::grpc"))
+                        .await
+                        .map_err(to_py_err)?
+                        .into_inner();
+
+                    Ok::<_, PyErr>(resp)
                 })
                 .await
-                .map_err(to_py_err)?
-                .into_inner();
+                .map_err(Into::<re_grpc_client::StreamError>::into)
+                .map_err(to_py_err)??;
 
-            let mut chunk_stream =
-                get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
+                // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
+                // and the app layer (Arrow).
+                let mut chunk_stream =
+                    re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+                        get_chunks_response_stream,
+                    );
 
-            while let Some(chunk_and_partition_id) = chunk_stream.next().await {
-                let (chunk, partition_id) = chunk_and_partition_id.map_err(to_py_err)?;
+                let (tx, mut rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
 
-                let partition_id = partition_id.ok_or_else(|| {
-                    PyValueError::new_err("Received chunk without a partition id")
-                })?;
+                // We want the underlying HTTP2 client to keep polling on the gRPC stream as fast
+                // as non-blockingly possible, which cannot happen if we just poll once in a while
+                // in-between decoding phases. This results in the stream just sleeping, waiting
+                // for IO to complete, way more frequently that it should.
+                // We resolve that by spawning a dedicated I/O task that just polls the stream as fast as
+                // the stream will allows. This way, whenever the underlying HTTP2 stream is polled, we
+                // will already have pre-fetched a bunch of data for it.
+                tokio::spawn(
+                    async move {
+                        while let Some(chunk_and_partition_id) = chunk_stream.next().await {
+                            // The only possible error is the other end hanging up, which is not our problem.
+                            if tx.send(chunk_and_partition_id).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                    .instrument(tracing::trace_span!("get_chunks::forward"))
+                    .in_current_span(),
+                );
 
-                let store = stores.entry(partition_id.clone()).or_insert_with(|| {
-                    let store_info = StoreInfo {
-                        application_id: ApplicationId::from(partition_id),
-                        store_id: StoreId::random(StoreKind::Recording),
-                        cloned_from: None,
-                        store_source: StoreSource::Unknown,
-                        store_version: None,
+                let mut stores = BTreeMap::default();
+
+                while let Some(chunks_and_partition_ids) = rx.recv().await {
+                    // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
+                    // not going to make this one single pipeline any faster, but it will prevent starvation of
+                    // the Tokio runtime (which would slow down every other futures currently scheduled!).
+                    stores = tokio::task::spawn_blocking({
+                        // Clone the stores for mutabillity within the spawned task.
+                        // Note at the end of this task we return the mutated stores and assign
+                        // it back to the outer stores variable.
+                        let mut stores = stores.clone();
+                        move || {
+                            let chunks_and_partition_ids =
+                                chunks_and_partition_ids.map_err(to_py_err)?;
+
+                            let _span = tracing::trace_span!(
+                                "get_chunks::batch_insert",
+                                num_chunks = chunks_and_partition_ids.len()
+                            )
+                            .entered();
+
+                            for chunk_and_partition_id in chunks_and_partition_ids {
+                                let (chunk, partition_id) = chunk_and_partition_id;
+
+                                let partition_id = partition_id.ok_or_else(|| {
+                                    PyValueError::new_err("Received chunk without a partition id")
+                                })?;
+
+                                let store =
+                                    stores.entry(partition_id.clone()).or_insert_with(|| {
+                                        let store_info = StoreInfo {
+                                            application_id: ApplicationId::from(partition_id),
+                                            store_id: StoreId::random(StoreKind::Recording),
+                                            cloned_from: None,
+                                            store_source: StoreSource::Unknown,
+                                            store_version: None,
+                                        };
+
+                                        let mut store = ChunkStore::new(
+                                            store_info.store_id.clone(),
+                                            Default::default(),
+                                        );
+                                        store.set_info(store_info);
+                                        ChunkStoreHandle::new(store)
+                                    });
+
+                                store
+                                    .write()
+                                    .insert_chunk(&std::sync::Arc::new(chunk))
+                                    .map_err(to_py_err)?;
+                            }
+
+                            Ok::<_, PyErr>(stores)
+                        }
+                    })
+                    .in_current_span()
+                    .await
+                    .map_err(Into::<re_grpc_client::StreamError>::into)
+                    .map_err(to_py_err)??;
+                }
+
+                Ok::<_, PyErr>(stores)
+            }
+            .instrument(tracing::trace_span!("get_chunks"))
+            .in_current_span(),
+        )?;
+
+        // Useful for debugging purposes.
+        #[expect(clippy::unwrap_used)]
+        if false {
+            let num_chunks: usize = stores.values().map(|store| store.read().num_chunks()).sum();
+
+            use itertools::Itertools as _;
+            let stores = stores.values().map(|store| store.read()).collect_vec();
+            let schemas: HashSet<_> = stores
+                .iter()
+                .flat_map(|store| {
+                    store
+                        .iter_chunks()
+                        .map(|chunk| chunk.to_record_batch().unwrap().schema())
+                })
+                .map(|schema| {
+                    // NOTE: otherwise they all would be unique, since there's the chunk ID stored in there.
+                    let schema =
+                        std::sync::Arc::unwrap_or_clone(schema).with_metadata(Default::default());
+
+                    let schema_ipc = {
+                        let mut schema_ipc = Vec::new();
+                        arrow::ipc::writer::StreamWriter::try_new(&mut schema_ipc, &schema)
+                            .unwrap();
+                        schema_ipc
                     };
 
-                    let mut store =
-                        ChunkStore::new(store_info.store_id.clone(), Default::default());
-                    store.set_info(store_info);
-                    store
-                });
+                    {
+                        use std::hash::DefaultHasher;
+                        use std::hash::Hash as _;
+                        use std::hash::Hasher as _;
+                        let mut hasher = DefaultHasher::new();
+                        schema_ipc.hash(&mut hasher);
+                        hasher.finish()
+                    }
+                })
+                .collect();
 
-                store
-                    .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(to_py_err)?;
-            }
-
-            Ok::<_, PyErr>(())
-        })?;
+            eprintln!(
+                "num_partitions={} num_chunks={} num_unique_schemas={}",
+                stores.len(),
+                num_chunks,
+                schemas.len()
+            );
+        }
 
         Ok(stores)
     }
@@ -471,6 +604,8 @@ impl ConnectionHandle {
         range: Option<RangeQuery>,
         partition_ids: &[impl AsRef<str> + Sync],
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        use tokio_stream::StreamExt as _;
+
         let entity_paths = contents
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());

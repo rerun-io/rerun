@@ -4974,6 +4974,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "emath",
  "glam",
  "re_tracing",
  "rerun",
@@ -6857,6 +6858,7 @@ dependencies = [
  "re_types_core",
  "similar-asserts",
  "thiserror 1.0.65",
+ "tracing",
 ]
 
 [[package]]
@@ -7131,6 +7133,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
+ "tracing",
  "wasm-bindgen-futures",
 ]
 
@@ -7278,6 +7281,7 @@ dependencies = [
  "tonic",
  "tonic-web-wasm-client",
  "tower",
+ "tracing",
  "url",
  "wasm-bindgen-futures",
 ]
@@ -7723,6 +7727,7 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "thiserror 1.0.65",
+ "tracing",
  "web-time",
 ]
 
@@ -8688,6 +8693,7 @@ dependencies = [
  "datafusion",
  "datafusion-ffi",
  "document-features",
+ "futures",
  "infer",
  "itertools 0.14.0",
  "mimalloc",
@@ -8726,6 +8732,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
+ "tracing",
  "url",
  "uuid",
 ]
