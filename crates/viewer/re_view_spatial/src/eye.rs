@@ -162,7 +162,7 @@ pub enum EyeMode {
 /// The speed of a [`ViewEye`] can be computed automatically or set manually.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 enum CameraTranslationSpeed {
-    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`fallback_speed_for_mode`]
+    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`ViewEye::fallback_speed_for_mode`]
     Auto,
 
     /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
