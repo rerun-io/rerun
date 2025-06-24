@@ -110,7 +110,7 @@ pub fn decode_transport_to_app(
                 .into();
 
             // TODO(grtlr): In the future, we should be able to rely on the `chunk_id` to be present in the
-            // protobuf defintions. For now we have to extract it from the `batch`.
+            // protobuf definitions. For now we have to extract it from the `batch`.
             //
             // let chunk_id = arrow_msg
             //     .chunk_id
