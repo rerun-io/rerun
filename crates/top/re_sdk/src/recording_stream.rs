@@ -1893,19 +1893,15 @@ impl RecordingStream {
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
-    pub fn set_sinks(
-        &self,
-        sinks: impl crate::log_sink::IntoMultiSink,
-    ) -> RecordingStreamResult<()> {
+    pub fn set_sinks(&self, sinks: impl crate::log_sink::IntoMultiSink) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new MultiSink since {ENV_FORCE_SAVE} is set");
-            return Ok(());
+            return;
         }
 
         let sink = sinks.into_multi_sink();
 
         self.set_sink(Box::new(sink));
-        Ok(())
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
