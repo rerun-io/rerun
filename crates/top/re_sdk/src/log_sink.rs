@@ -122,7 +122,7 @@ mod private {
     pub trait Sealed {}
 }
 
-/// Marker trait for [`LogSink`] implementors which may be addded
+/// Marker trait for [`LogSink`] implementors which may be added
 /// to a [`MultiSink`].
 pub trait MultiSinkCompatible: private::Sealed {}
 
@@ -156,9 +156,11 @@ impl_multi_sink_tuple!(A, B, C, D, E);
 impl_multi_sink_tuple!(A, B, C, D, E, F);
 
 impl private::Sealed for crate::sink::FileSink {}
+
 impl MultiSinkCompatible for crate::sink::FileSink {}
 
 impl private::Sealed for crate::sink::GrpcSink {}
+
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
 // ----------------------------------------------------------------------------
