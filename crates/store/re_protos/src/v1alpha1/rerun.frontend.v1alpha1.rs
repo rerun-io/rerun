@@ -183,6 +183,14 @@ pub struct QueryDatasetRequest {
     /// Which entity paths are we interested in? Leave empty to query all of them.
     #[prost(message, repeated, tag = "4")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
+    /// Which indices (i.e. values of an index, e.g. timestamps) are we interested in?
+    ///
+    /// The server will make sure to filter out all chunks that cannot possibly contain any of these
+    /// values from the response.
+    ///
+    /// This is particularly useful in conjunction with range queries.
+    #[prost(int64, repeated, tag = "7")]
+    pub indices_of_interest: ::prost::alloc::vec::Vec<i64>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
@@ -214,6 +222,14 @@ pub struct GetChunksRequest {
     /// Which entity paths are we interested in? Leave empty to query all of them.
     #[prost(message, repeated, tag = "4")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
+    /// Which indices (i.e. values of an index, e.g. timestamps) are we interested in?
+    ///
+    /// The server will make sure to filter out all chunks that cannot possibly contain any of these
+    /// values from the response.
+    ///
+    /// This is particularly useful in conjunction with range queries.
+    #[prost(int64, repeated, tag = "6")]
+    pub indices_of_interest: ::prost::alloc::vec::Vec<i64>,
     /// Query details
     #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,

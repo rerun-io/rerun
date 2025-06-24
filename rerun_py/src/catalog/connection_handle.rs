@@ -437,6 +437,7 @@ impl ConnectionHandle {
                             partition_ids,
                             chunk_ids: vec![],
                             entity_paths,
+                            indices_of_interest: vec![],
                             query: Some(query.into()),
                         })
                         .instrument(tracing::trace_span!("get_chunks::grpc"))
@@ -648,6 +649,7 @@ impl ConnectionHandle {
                         .into_iter()
                         .map(|p| (*p).clone().into())
                         .collect(),
+                    indices_of_interest: vec![],
                     query: Some(query.into()),
                     scan_parameters: Some(
                         ScanParameters {

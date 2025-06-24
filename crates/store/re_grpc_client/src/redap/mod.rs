@@ -423,6 +423,7 @@ async fn stream_partition_from_server(
             partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
             entity_paths: vec![],
+            indices_of_interest: vec![],
             query: None,
         })
         .await?
