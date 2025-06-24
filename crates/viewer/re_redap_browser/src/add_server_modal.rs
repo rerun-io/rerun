@@ -6,6 +6,8 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
+use crate::{context::Context, servers::Command};
+
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
     /// Show an empty modal to add a new server.
