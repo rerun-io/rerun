@@ -495,7 +495,7 @@ class RecordingStream:
         Stream data to multiple different sinks.
 
         Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
-        use the same `url`.
+        use the same `url` will cause this function to throw a `ValueError`.
 
         Parameters
         ----------
