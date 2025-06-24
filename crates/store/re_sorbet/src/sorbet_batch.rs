@@ -169,8 +169,8 @@ impl SorbetBatch {
     ) -> Result<Self, SorbetError> {
         re_tracing::profile_function!();
 
-        // Migrations to `0.23` below.
-        let batch = if !crate::migrations::v0_24::matches_schema(batch) {
+        // Migrations from pre-`v0.23` to `v0.23`.
+        let batch = if crate::migrations::v0_23::matches_schema(batch) {
             let batch = make_all_data_columns_list_arrays(
                 batch,
                 crate::migrations::v0_23::is_component_column,
@@ -181,7 +181,7 @@ impl SorbetBatch {
             batch.clone()
         };
 
-        // Migrations to `0.24` below.
+        // Migrations from `v0.23` to `v0.24`.
         let batch = make_all_data_columns_list_arrays(
             &batch,
             crate::migrations::v0_24::is_component_column,

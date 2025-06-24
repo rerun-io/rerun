@@ -15,14 +15,10 @@ fn trim_archetype_prefix(name: &str) -> &str {
         .trim_start_matches("rerun.blueprint.archetypes.")
 }
 
-/// Returns `true`, if `batch` satisfies the `0.24` schema.
-// TODO(grtlr): We really should use version numbers to determine this!
+/// Returns `true`, if `batch` satisfies the expected schema.
 pub fn matches_schema(batch: &ArrowRecordBatch) -> bool {
-    !batch
-        .schema()
-        .metadata()
-        .keys()
-        .any(|key| key.starts_with("rerun."))
+    // TODO(#10322): This should additionally check for the correct version.
+    batch.schema().metadata().get("rerun:version").is_some()
 }
 
 pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
