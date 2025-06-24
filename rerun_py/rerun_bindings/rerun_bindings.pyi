@@ -5,10 +5,10 @@ from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Optional, Self
-from warnings import deprecated
 
 import pyarrow as pa
 from rerun.catalog import CatalogClient
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
     AnyColumn,
