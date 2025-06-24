@@ -41,10 +41,13 @@ impl Pinhole {
         )
     }
 
-    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
+    /// Field of View, i.e. the angle between top and bottom as well as left and right (in radians).
     #[inline]
-    pub fn fov_y(&self) -> f32 {
-        2.0 * (0.5 * self.resolution[1] / self.image_from_camera.col(1)[1]).atan()
+    pub fn fov(&self) -> glam::Vec2 {
+        glam::vec2(
+            2.0 * (0.5 * self.resolution[0] / self.image_from_camera.col(0)[0]).atan(),
+            2.0 * (0.5 * self.resolution[1] / self.image_from_camera.col(1)[1]).atan(),
+        )
     }
 
     /// The pinhole sensor rectangle: [0, 0] - [width, height],

@@ -335,8 +335,6 @@ fn setup_target_config(
     // * a perspective camera *at the origin* for 3D rendering
     // Both share the same view-builder and the same viewport transformation but are independent otherwise.
 
-    // TODO(andreas): Support anamorphic pinhole cameras properly.
-
     let pinhole = if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
@@ -363,17 +361,23 @@ fn setup_target_config(
     );
 
     let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
+    let mean_focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
-        vertical_fov: pinhole.fov_y(),
-        near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
+        vertical_fov: pinhole.fov().y,
+        near_plane_distance: near_clip_plane * mean_focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
         aspect_ratio: pinhole.aspect_ratio(),
     };
 
+    // let projection_from_view = re_renderer::view_builder::Projection::PerspectiveAnamorphic {
+    //     fov: pinhole.fov(),
+    //     near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
+    //     aspect_ratio: pinhole.aspect_ratio(),
+    // };
+
     // Position the camera looking straight at the principal point:
     let view_from_world = macaw::IsoTransform::look_at_rh(
-        pinhole.principal_point().extend(-focal_length),
+        pinhole.principal_point().extend(-mean_focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
     )

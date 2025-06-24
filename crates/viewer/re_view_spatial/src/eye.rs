@@ -30,7 +30,7 @@ impl Eye {
         let fov_y = space_cameras
             .pinhole
             .as_ref()
-            .map_or(Self::DEFAULT_FOV_Y, |pinhole| pinhole.fov_y());
+            .map_or(Self::DEFAULT_FOV_Y, |pinhole| pinhole.fov().y); // TODO: not quite right. use vec2 and compute full fov.
 
         Some(Self {
             world_from_rub_view: space_cameras.world_from_rub_view()?,

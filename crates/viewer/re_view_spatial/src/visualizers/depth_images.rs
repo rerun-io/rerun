@@ -195,8 +195,10 @@ impl DepthImageVisualizer {
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
-        let fov_y = pinhole.fov_y();
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
+        // We don't want to stretch points for anamorphic lenses, so we use the geometric mean of the x/y fovs.
+        let fov = pinhole.fov();
+        let fov_geometric_mean = (fov.x * fov.y).sqrt();
+        let pixel_width_from_depth = (0.5 * fov_geometric_mean).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
         let min_max_depth_in_world = [

@@ -107,6 +107,19 @@ pub enum Projection {
         aspect_ratio: f32,
     },
 
+    // TODO: details
+    // TODO: merge this with Perspective again and provide a utility for creating with vertical fov only. this is only separate for rapid experimentation.
+    PerspectiveAnamorphic {
+        fov: glam::Vec2,
+        near_plane_distance: f32,
+
+        /// Aspect ratio of the perspective transformation.
+        ///
+        /// This is typically just resolution.y / resolution.x.
+        /// Setting this to anything else is mostly useful when panning & zooming within a fixed transformation.
+        aspect_ratio: f32,
+    },
+
     /// Orthographic projection with the camera position at the near plane's center,
     /// looking along the negative z view space axis.
     Orthographic {
@@ -137,6 +150,21 @@ impl Projection {
                     near_plane_distance,
                 )
             }
+            Self::PerspectiveAnamorphic {
+                fov,
+                near_plane_distance,
+                aspect_ratio,
+            } => {
+                let fx = 1.0 / (0.5 * fov.x).tan();
+                let fy = 1.0 / (0.5 * fov.y).tan();
+                glam::Mat4::from_cols(
+                    glam::Vec4::new(fx / aspect_ratio, 0.0, 0.0, 0.0),
+                    glam::Vec4::new(0.0, fy, 0.0, 0.0),
+                    glam::Vec4::new(0.0, 0.0, 0.0, -1.0),
+                    glam::Vec4::new(0.0, 0.0, near_plane_distance, 0.0),
+                )
+            }
+
             Self::Orthographic {
                 camera_mode,
                 vertical_world_size,
@@ -168,7 +196,7 @@ impl Projection {
         }
     }
 
-    fn tan_half_fov(&self) -> glam::Vec2 {
+    pub fn tan_half_fov(&self) -> glam::Vec2 {
         match self {
             Self::Perspective {
                 vertical_fov,
@@ -183,6 +211,9 @@ impl Projection {
                     (vertical_fov * 0.5).tan(),
                 )
             }
+            Self::PerspectiveAnamorphic {
+                fov, aspect_ratio, ..
+            } => glam::vec2((fov.x * 0.5).tan() * aspect_ratio, (fov.y * 0.5).tan()),
             Self::Orthographic { .. } => glam::vec2(f32::MAX, f32::MAX), // Can't use infinity in shaders
         }
     }
@@ -434,7 +465,7 @@ impl ViewBuilder {
             config.resolution_in_pixel[1] as f32,
         );
         let pixel_world_size_from_camera_distance = match config.projection_from_view {
-            Projection::Perspective { .. } => {
+            Projection::PerspectiveAnamorphic { .. } | Projection::Perspective { .. } => {
                 // Determine how wide a pixel is in world space at unit distance from the camera.
                 //
                 // derivation:
@@ -483,7 +514,7 @@ impl ViewBuilder {
                 }
                 OrthographicCameraMode::NearPlaneCenter => {}
             },
-            Projection::Perspective { .. } => {}
+            Projection::PerspectiveAnamorphic { .. } | Projection::Perspective { .. } => {}
         };
 
         let camera_position = config.view_from_world.inverse().translation();
