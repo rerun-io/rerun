@@ -777,7 +777,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
             let alpha = alpha
                 .as_u8()
                 .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
-            color = color.linear_multiply(alpha as f32 / 255.0);
+            color = color.gamma_multiply_u8(alpha);
         }
         Ok(color)
     } else if color.starts_with('{') {
@@ -797,7 +797,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
             let alpha = alpha
                 .as_u8()
                 .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
-            color = color.linear_multiply(alpha as f32 / 255.0);
+            color = color.gamma_multiply_u8(alpha);
         }
         Ok(color)
     } else {
