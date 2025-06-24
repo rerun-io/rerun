@@ -3,6 +3,7 @@
 mod catalog_client;
 mod connection_handle;
 mod dataframe_query;
+mod dataframe_rendering;
 mod dataset_entry;
 mod entry;
 mod errors;
@@ -21,6 +22,7 @@ use crate::catalog::dataframe_query::PyDataframeQueryView;
 
 pub(crate) use catalog_client::PyCatalogClientInternal;
 pub(crate) use connection_handle::ConnectionHandle;
+pub(crate) use dataframe_rendering::PyRerunHtmlTable;
 pub(crate) use dataset_entry::PyDatasetEntry;
 pub(crate) use entry::{PyEntry, PyEntryId, PyEntryKind};
 pub(crate) use errors::to_py_err;
@@ -42,6 +44,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyDataframeQueryView>()?;
 
     m.add_class::<PyVectorDistanceMetric>()?;
+    m.add_class::<PyRerunHtmlTable>()?;
 
     Ok(())
 }
