@@ -219,6 +219,14 @@ pub struct Analytics {
     event_id: AtomicU64,
 }
 
+impl Drop for Analytics {
+    fn drop(&mut self) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            pipeline.flush_blocking();
+        }
+    }
+}
+
 fn load_config() -> Result<Config, ConfigError> {
     let config = match Config::load() {
         Ok(config) => config,
@@ -293,7 +301,7 @@ impl Analytics {
     /// Usually it is better to use [`Self::global_or_init`] instead of calling this directly,
     /// but there are cases where you might want to create a separate instance,
     /// e.g. for testing purposes, or when you want to use a different tick duration.
-    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
+    fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = load_config()?;
         let pipeline = Pipeline::new(&config, tick)?;
         re_log::trace!("initialized analytics pipeline");
@@ -322,6 +330,15 @@ impl Analytics {
         let mut e = AnalyticsEvent::new(E::NAME, E::KIND);
         event.serialize(&mut e);
         self.record_raw(e);
+    }
+
+    /// Tries to flush all pending events to the sink.
+    ///
+    /// It blocks until either the flush completed, or it failed.
+    pub fn flush_blocking(&self) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            pipeline.flush_blocking();
+        }
     }
 
     /// Record an event.
