@@ -161,7 +161,6 @@ impl Server {
     /// Central panel UI for when a server is selected.
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
-            dbg!(&err);
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
                 if err.is_missing_token() || err.is_wrong_token() {
                     let message = if err.is_missing_token() {

@@ -1,4 +1,4 @@
-use crate::{Icon, UiExt, icons};
+use crate::{Icon, UiExt as _, icons};
 use egui::{Color32, InnerResponse, Response, Ui, Vec2};
 
 enum AlertKind {
@@ -11,37 +11,37 @@ enum AlertKind {
 impl AlertKind {
     fn stroke_color(&self, ui: &Ui) -> Color32 {
         match self {
-            AlertKind::Info => ui.tokens().border_info,
-            AlertKind::Success => ui.tokens().border_success,
-            AlertKind::Warning => ui.tokens().border_warning,
-            AlertKind::Error => ui.tokens().border_error,
+            Self::Info => ui.tokens().border_info,
+            Self::Success => ui.tokens().border_success,
+            Self::Warning => ui.tokens().border_warning,
+            Self::Error => ui.tokens().border_error,
         }
     }
 
     fn fill_color(&self, ui: &Ui) -> Color32 {
         match self {
-            AlertKind::Info => ui.tokens().surface_info,
-            AlertKind::Success => ui.tokens().surface_success,
-            AlertKind::Warning => ui.tokens().surface_warning,
-            AlertKind::Error => ui.tokens().surface_error,
+            Self::Info => ui.tokens().surface_info,
+            Self::Success => ui.tokens().surface_success,
+            Self::Warning => ui.tokens().surface_warning,
+            Self::Error => ui.tokens().surface_error,
         }
     }
 
     fn icon_color(&self, ui: &Ui) -> Color32 {
         match self {
-            AlertKind::Info => ui.tokens().icon_content_info,
-            AlertKind::Success => ui.tokens().icon_content_success,
-            AlertKind::Warning => ui.tokens().icon_content_warning,
-            AlertKind::Error => ui.tokens().icon_content_error,
+            Self::Info => ui.tokens().icon_content_info,
+            Self::Success => ui.tokens().icon_content_success,
+            Self::Warning => ui.tokens().icon_content_warning,
+            Self::Error => ui.tokens().icon_content_error,
         }
     }
 
     fn icon(&self) -> Icon {
         match self {
-            AlertKind::Info => icons::INFO,
-            AlertKind::Success => icons::SUCCESS,
-            AlertKind::Warning => icons::WARNING,
-            AlertKind::Error => icons::ERROR,
+            Self::Info => icons::INFO,
+            Self::Success => icons::SUCCESS,
+            Self::Warning => icons::WARNING,
+            Self::Error => icons::ERROR,
         }
     }
 }
@@ -87,7 +87,7 @@ impl Alert {
         self.frame(ui).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(4.0);
-                ui.small_icon(&self.kind.icon(), Some(self.kind.icon_color(&ui)));
+                ui.small_icon(&self.kind.icon(), Some(self.kind.icon_color(ui)));
                 content(ui)
             })
             .inner
