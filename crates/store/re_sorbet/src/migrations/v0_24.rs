@@ -109,6 +109,14 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 }
             }
 
+            if field.name().ends_with("Indicator") {
+                // TODO(#8129): Remove indicator components
+                if let Some(archetype) = metadata.remove("rerun.archetype") {
+                    metadata.insert("rerun:component".to_owned(), format!("{archetype}Indicator"));
+                }
+                metadata.remove("rerun.archetype_field");
+            }
+
             for (key, value) in &metadata {
                 debug_assert!(!key.starts_with("rerun."), "Metadata `{key}` (with value `{value}`) was not migrated to colon syntax.");
             }
