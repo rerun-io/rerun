@@ -129,6 +129,14 @@ typedef struct rr_spawn_options {
     /// Defaults to `75%` if null.
     rr_string memory_limit;
 
+    /// An upper limit on how much memory the gRPC server running
+    /// in the same process as the Rerun Viewer should use.
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `0B` if null.
+    rr_string server_memory_limit;
+
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
@@ -501,6 +509,9 @@ extern void rr_recording_stream_connect_grpc(
 /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
 /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+///
+/// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+/// on the same machine, otherwise you're potentially doubling your memory usage!
 extern void rr_recording_stream_serve_grpc(
     rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
     rr_error* error

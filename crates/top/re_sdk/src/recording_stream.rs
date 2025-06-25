@@ -441,11 +441,15 @@ impl RecordingStreamBuilder {
     /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`],
     /// with the `server_memory_limit` argument. Once the memory limit is reached, the earliest logged data
     /// will be dropped. Static data is never dropped.
+    ///
+    /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
+    /// if both the server and client are running on the same machine, otherwise you're potentially
+    /// doubling your memory usage!
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.serve_grpc_opts(
             "0.0.0.0",
             crate::DEFAULT_SERVER_PORT,
-            re_memory::MemoryLimit::from_fraction_of_total(0.75),
+            re_memory::MemoryLimit::from_fraction_of_total(0.25),
         )
     }
 
@@ -461,6 +465,9 @@ impl RecordingStreamBuilder {
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+    ///
+    /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+    /// on the same machine, otherwise you're potentially doubling your memory usage!
     pub fn serve_grpc_opts(
         self,
         bind_ip: impl AsRef<str>,
