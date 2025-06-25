@@ -9,6 +9,7 @@ use arrow::{
     error::ArrowError,
 };
 
+use itertools::Itertools as _;
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_log::ResultExt as _;
 
@@ -23,6 +24,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SorbetBatch {
     schema: SorbetSchema,
+
+    /// This record batch contains has all the meta-data
+    /// required by a [`SorbetBatch`].
+    ///
+    /// It also has all non-Rerun metadata intact from wherever it was created from.
     batch: ArrowRecordBatch,
 }
 
@@ -160,6 +166,9 @@ impl SorbetBatch {
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
     ///
     /// Will also migrate old types to new types.
+    ///
+    /// Non-Rerun metadata will be preserved (both at batch-level and column-level).
+    /// Rerun metadata will be updated and added to the batch if needed.
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,
@@ -173,20 +182,27 @@ impl SorbetBatch {
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
-        for (field, column) in itertools::izip!(
+        let new_fields = itertools::izip!(
+            batch.schema_ref().fields(),
             sorbet_schema.columns.arrow_fields(batch_type),
             batch.columns()
-        ) {
-            debug_assert_eq!(field.data_type(), column.data_type());
-        }
+        )
+        .map(|(old_field, mut new_field, column)| {
+            debug_assert_eq!(new_field.data_type(), column.data_type());
 
-        // Extend with any metadata that might have been missing:
-        let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());
-        arrow_schema
-            .metadata
-            .extend(sorbet_schema.arrow_batch_metadata());
+            let mut metadata = old_field.metadata().clone();
+            metadata.extend(new_field.metadata().clone()); // overwrite old with new
+            new_field.set_metadata(metadata);
 
-        let arrow_schema = Arc::new(arrow_schema);
+            Arc::new(new_field)
+        })
+        .collect_vec();
+
+        let mut batch_metadata = batch.schema_ref().metadata.clone();
+        batch_metadata.extend(sorbet_schema.arrow_batch_metadata()); // overwrite old with new
+
+        let arrow_schema = Arc::new(ArrowSchema::new_with_metadata(new_fields, batch_metadata));
+
         let batch = ArrowRecordBatch::try_new_with_options(
             arrow_schema.clone(),
             batch.columns().to_vec(),
