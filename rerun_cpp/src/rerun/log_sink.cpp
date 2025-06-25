@@ -1,6 +1,6 @@
 #include "log_sink.hpp"
-#include "string_utils.hpp"
 #include "c/rerun.h"
+#include "string_utils.hpp"
 
 #include <cassert>
 
@@ -25,5 +25,5 @@ namespace rerun {
             }
             return out;
         }
-    }
-}
+    } // namespace detail
+} // namespace rerun

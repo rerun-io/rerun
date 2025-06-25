@@ -11,9 +11,9 @@
 #include "as_components.hpp"
 #include "component_column.hpp"
 #include "error.hpp"
+#include "log_sink.hpp"
 #include "spawn_options.hpp"
 #include "time_column.hpp"
-#include "log_sink.hpp"
 
 namespace rerun {
     struct ComponentBatch;
@@ -156,9 +156,9 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        template<typename... Ts>
+        template <typename... Ts>
         Error set_sinks(const Ts&... sinks) const {
-            LogSink out_sinks[] = { sinks... };
+            LogSink out_sinks[] = {sinks...};
             uint32_t num_sinks = sizeof...(Ts);
             return try_set_sinks(out_sinks, num_sinks);
         }

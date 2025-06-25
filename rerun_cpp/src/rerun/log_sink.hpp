@@ -8,9 +8,9 @@ namespace rerun {
     struct LogSink;
 
     // TODO: document
-    
+
     struct GrpcSink {
-        std::string_view url  = "rerun+http://127.0.0.1:9876/proxy";
+        std::string_view url = "rerun+http://127.0.0.1:9876/proxy";
         float flush_timeout_sec = 3.0;
 
         inline operator LogSink() const;
@@ -29,12 +29,12 @@ namespace rerun {
         };
 
         Kind kind;
+
         union {
             GrpcSink grpc;
             FileSink file;
         };
     };
-
 
     inline GrpcSink::operator LogSink() const {
         LogSink sink{};
@@ -53,4 +53,4 @@ namespace rerun {
     namespace detail {
         rr_log_sink to_rr_log_sink(LogSink sink);
     };
-};
+}; // namespace rerun

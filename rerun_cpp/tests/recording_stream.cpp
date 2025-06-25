@@ -354,16 +354,13 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
                 fs::create_directory(test_rrd0);
                 THEN("set_sinks(FileSink) call fails") {
                     CHECK(
-                          stream.set_sinks(rerun::FileSink{test_rrd0}).code ==
-                          rerun::ErrorCode::RecordingStreamSaveFailure
+                        stream.set_sinks(rerun::FileSink{test_rrd0}).code ==
+                        rerun::ErrorCode::RecordingStreamSaveFailure
                     );
                 }
             }
             THEN("set_sinks(FileSink) call returns no error") {
-                CHECK(
-                      stream.set_sinks(rerun::FileSink{test_rrd0}).code ==
-                      rerun::ErrorCode::Ok
-                );
+                CHECK(stream.set_sinks(rerun::FileSink{test_rrd0}).code == rerun::ErrorCode::Ok);
             }
         }
 
@@ -377,10 +374,7 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
         }
         AND_GIVEN("a valid url" << url) {
             THEN("set_sinks(GrpcSink) call returns no error") {
-                CHECK(
-                    stream.set_sinks(rerun::GrpcSink{url}).code ==
-                    rerun::ErrorCode::Ok
-                );
+                CHECK(stream.set_sinks(rerun::GrpcSink{url}).code == rerun::ErrorCode::Ok);
             }
         }
 
