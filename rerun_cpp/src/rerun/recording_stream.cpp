@@ -3,6 +3,7 @@
 #include "c/rerun.h"
 #include "component_batch.hpp"
 #include "config.hpp"
+#include "log_sink.hpp"
 #include "sdk_info.hpp"
 #include "string_utils.hpp"
 
@@ -104,6 +105,19 @@ namespace rerun {
                 return current_recording;
             }
         }
+    }
+
+    Error RecordingStream::try_set_sinks(const LogSink* sinks, uint32_t num_sinks) const {
+        rr_error status = {};
+
+        std::vector<rr_log_sink> c_sinks;
+        c_sinks.reserve(num_sinks);
+        for (uint32_t i = 0; i < num_sinks; i++) {
+            c_sinks.push_back(detail::to_rr_log_sink(sinks[i]));
+        }
+        rr_recording_stream_set_sinks(_id, c_sinks.data(), c_sinks.size(), &status);
+
+        return status;
     }
 
     Error RecordingStream::connect_grpc(std::string_view url, float flush_timeout_sec) const {

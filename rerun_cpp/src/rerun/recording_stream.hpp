@@ -13,6 +13,7 @@
 #include "error.hpp"
 #include "spawn_options.hpp"
 #include "time_column.hpp"
+#include "log_sink.hpp"
 
 namespace rerun {
     struct ComponentBatch;
@@ -138,6 +139,29 @@ namespace rerun {
         /// \name Directing the recording stream.
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
+
+        /// Connect to a remote Rerun Viewer on the given URL.
+        ///
+        /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+        ///
+        /// url:
+        /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        /// and the pathname must be `/proxy`.
+        ///
+        /// The default is `rerun+http://127.0.0.1:9876/proxy`.
+        ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// This function returns immediately.
+        template<typename... Ts>
+        Error set_sinks(const Ts&... sinks) const {
+            LogSink out_sinks[] = { sinks... };
+            uint32_t num_sinks = sizeof...(Ts);
+            return try_set_sinks(out_sinks, num_sinks);
+        }
 
         /// Connect to a remote Rerun Viewer on the given URL.
         ///
@@ -936,6 +960,8 @@ namespace rerun {
         /// @}
 
       private:
+        Error try_set_sinks(const LogSink* sinks, uint32_t num_sinks) const;
+
         // Utility function to implement `try_send_columns` variadic template.
         static void push_back_columns(
             std::vector<ComponentColumn>& component_columns, Collection<ComponentColumn> new_columns
