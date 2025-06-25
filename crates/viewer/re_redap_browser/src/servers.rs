@@ -4,7 +4,6 @@ use std::task::Poll;
 
 use datafusion::prelude::{col, lit};
 use egui::{Frame, Margin, RichText, Widget as _};
-use tonic::Code;
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -22,7 +21,7 @@ use re_viewer_context::{
 
 use crate::add_server_modal::{ServerModal, ServerModalMode};
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, EntryError};
+use crate::entries::{Dataset, Entries};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {

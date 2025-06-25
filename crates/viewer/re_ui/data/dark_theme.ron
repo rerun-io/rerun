@@ -46,51 +46,6 @@
       "color": "{Blue.700}"
     },
 
-    "surface_success":{
-        "color": "{Green.500}",
-        "alpha": 50
-    },
-    "surface_info":{
-        "color": "{Blue.500}",
-        "alpha": 50
-    },
-    "surface_warning":{
-        "color": "#DF7700",
-        "alpha": 50
-    },
-    "surface_error":{
-        "color": "{Red.500}",
-        "alpha": 50
-    },
-    "border_success":{
-        "color": "{Green.500}",
-        "alpha": 125
-    },
-    "border_info":{
-        "color": "{Blue.500}",
-        "alpha": 125
-    },
-    "border_warning":{
-        "color": "#DF7700",
-        "alpha": 125
-    },
-    "border_error":{
-        "color": "{Red.500}",
-        "alpha": 125
-    },
-    "icon_content_success":{
-        "color": "{Green.500}"
-    },
-    "icon_content_info":{
-        "color": "{Blue.500}"
-    },
-    "icon_content_warning":{
-        "color": "#DF7700"
-    },
-    "icon_content_error":{
-        "color": "{Red.500}"
-    },
-
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.500}",
@@ -318,6 +273,60 @@
       "color": "{Gray.700}"
     },
   },
+
+  "success": {
+    "fill": {
+       "color": "{Green.500}",
+       "alpha": 50,
+    },
+    "stroke": {
+       "color": "{Green.500}",
+       "alpha": 125,
+    },
+    "icon": {
+       "color": "{Green.500}"
+    },
+  },
+  "info": {
+    "fill": {
+       "color": "{Blue.500}",
+       "alpha": 50,
+    },
+    "stroke": {
+       "color": "{Blue.500}",
+       "alpha": 125,
+    },
+    "icon": {
+       "color": "{Blue.500}"
+    },
+  },
+  "warning": {
+    "fill": {
+       "color": "#DF7700",
+       "alpha": 50,
+    },
+    "stroke": {
+       "color": "#DF7700",
+       "alpha": 125,
+    },
+    "icon": {
+       "color": "#DF7700"
+    },
+  },
+  "error": {
+    "fill": {
+       "color": "{Red.500}",
+       "alpha": 50,
+    },
+    "stroke": {
+       "color": "{Red.500}",
+       "alpha": 125,
+    },
+    "icon": {
+       "color": "{Red.500}"
+    },
+  },
+
   "Global": {
     "Typography": {
       "Default": {

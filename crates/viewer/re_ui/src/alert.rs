@@ -1,5 +1,6 @@
+use crate::design_tokens::AlertVisuals;
 use crate::{Icon, UiExt as _, icons};
-use egui::{Color32, InnerResponse, Response, Ui, Vec2};
+use egui::{InnerResponse, Response, Ui, Vec2};
 
 enum AlertKind {
     Info,
@@ -9,30 +10,12 @@ enum AlertKind {
 }
 
 impl AlertKind {
-    fn stroke_color(&self, ui: &Ui) -> Color32 {
+    fn colors(&self, ui: &Ui) -> &AlertVisuals {
         match self {
-            Self::Info => ui.tokens().border_info,
-            Self::Success => ui.tokens().border_success,
-            Self::Warning => ui.tokens().border_warning,
-            Self::Error => ui.tokens().border_error,
-        }
-    }
-
-    fn fill_color(&self, ui: &Ui) -> Color32 {
-        match self {
-            Self::Info => ui.tokens().surface_info,
-            Self::Success => ui.tokens().surface_success,
-            Self::Warning => ui.tokens().surface_warning,
-            Self::Error => ui.tokens().surface_error,
-        }
-    }
-
-    fn icon_color(&self, ui: &Ui) -> Color32 {
-        match self {
-            Self::Info => ui.tokens().icon_content_info,
-            Self::Success => ui.tokens().icon_content_success,
-            Self::Warning => ui.tokens().icon_content_warning,
-            Self::Error => ui.tokens().icon_content_error,
+            Self::Info => &ui.tokens().info,
+            Self::Success => &ui.tokens().success,
+            Self::Warning => &ui.tokens().warning,
+            Self::Error => &ui.tokens().error,
         }
     }
 
@@ -72,12 +55,11 @@ impl Alert {
     }
 
     fn frame(&self, ui: &Ui) -> egui::Frame {
-        let stroke_color = self.kind.stroke_color(ui);
-        let fill_color = self.kind.fill_color(ui);
+        let colors = self.kind.colors(ui);
 
         egui::Frame::new()
-            .stroke((1.0, stroke_color))
-            .fill(fill_color)
+            .stroke((1.0, colors.stroke))
+            .fill(colors.fill)
             .corner_radius(6)
             .inner_margin(6.0)
             .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
@@ -87,7 +69,7 @@ impl Alert {
         self.frame(ui).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(4.0);
-                ui.small_icon(&self.kind.icon(), Some(self.kind.icon_color(ui)));
+                ui.small_icon(&self.kind.icon(), Some(self.kind.colors(ui).icon));
                 content(ui)
             })
             .inner

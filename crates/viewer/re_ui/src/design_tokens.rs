@@ -10,6 +10,29 @@ use crate::{
     format_with_decimals_in_range,
 };
 
+#[derive(Debug)]
+pub struct AlertVisuals {
+    pub fill: Color32,
+    pub stroke: Color32,
+    pub icon: Color32,
+}
+
+impl AlertVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(AlertVisuals {
+            fill: color_from_json(color_table, value.get("fill")?)?,
+            stroke: color_from_json(color_table, value.get("stroke")?)?,
+            icon: color_from_json(color_table, value.get("icon")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse AlertVisuals")
+    }
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -142,18 +165,11 @@ pub struct DesignTokens {
     pub error_fg_color: Color32,
     pub warn_fg_color: Color32,
     pub popup_shadow_color: Color32,
-    pub surface_success: Color32,
-    pub surface_info: Color32,
-    pub surface_warning: Color32,
-    pub surface_error: Color32,
-    pub border_success: Color32,
-    pub border_info: Color32,
-    pub border_warning: Color32,
-    pub border_error: Color32,
-    pub icon_content_success: Color32,
-    pub icon_content_info: Color32,
-    pub icon_content_warning: Color32,
-    pub icon_content_error: Color32,
+
+    pub success: AlertVisuals,
+    pub info: AlertVisuals,
+    pub warning: AlertVisuals,
+    pub error: AlertVisuals,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -279,18 +295,10 @@ impl DesignTokens {
             error_fg_color: get_color("error_fg_color"),
             warn_fg_color: get_color("warn_fg_color"),
 
-            surface_success: get_color("surface_success"),
-            surface_info: get_color("surface_info"),
-            surface_warning: get_color("surface_warning"),
-            surface_error: get_color("surface_error"),
-            border_success: get_color("border_success"),
-            border_info: get_color("border_info"),
-            border_warning: get_color("border_warning"),
-            border_error: get_color("border_error"),
-            icon_content_success: get_color("icon_content_success"),
-            icon_content_info: get_color("icon_content_info"),
-            icon_content_warning: get_color("icon_content_warning"),
-            icon_content_error: get_color("icon_content_error"),
+            success: AlertVisuals::get(&colors, &theme_json, "success"),
+            info: AlertVisuals::get(&colors, &theme_json, "info"),
+            warning: AlertVisuals::get(&colors, &theme_json, "warning"),
+            error: AlertVisuals::get(&colors, &theme_json, "error"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
