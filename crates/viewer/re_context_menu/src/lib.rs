@@ -1,5 +1,7 @@
 //! Support crate for context menu and actions.
 
+use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::{Popup, UiKind, UiStackInfo};
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
@@ -25,7 +27,7 @@ use actions::{
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
 };
-
+use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
 
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
@@ -86,55 +88,63 @@ fn context_menu_ui_for_item_with_context_impl(
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
-    item_response.context_menu(|ui| {
-        if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            ui.close();
-            return;
-        }
+    Popup::context_menu(item_response)
+        .info(UiStackInfo::new(UiKind::Menu).with_tag_value(
+            MenuConfig::MENU_CONFIG_TAG,
+            MenuConfig::new().style(menu_style()),
+        ))
+        .style(menu_style())
+        .show(|ui| {
+            if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+                ui.close();
+                return;
+            }
 
-        let mut show_context_menu = |selection: &ItemCollection| {
-            let context_menu_ctx = ContextMenuContext {
-                viewer_context: ctx,
-                viewport_blueprint,
-                selection,
-                clicked_item: item,
+            let mut show_context_menu = |selection: &ItemCollection| {
+                let context_menu_ctx = ContextMenuContext {
+                    viewer_context: ctx,
+                    viewport_blueprint,
+                    selection,
+                    clicked_item: item,
+                };
+                show_context_menu_for_selection(&context_menu_ctx, ui);
             };
-            show_context_menu_for_selection(&context_menu_ctx, ui);
-        };
 
-        let item_collection =
-            ItemCollection::from_items_and_context(std::iter::once((item.clone(), item_context)));
+            let item_collection = ItemCollection::from_items_and_context(std::iter::once((
+                item.clone(),
+                item_context,
+            )));
 
-        // handle selection
-        match selection_update_behavior {
-            SelectionUpdateBehavior::UseSelection => {
-                if !ctx.selection().contains_item(item) {
-                    // When the context menu is triggered open, we check if we're part of the selection,
-                    // and, if not, we update the selection to include only the item that was clicked.
-                    if item_response.hovered() && item_response.secondary_clicked() {
-                        show_context_menu(&item_collection);
-                        ctx.selection_state().set_selection(item_collection);
+            // handle selection
+            match selection_update_behavior {
+                SelectionUpdateBehavior::UseSelection => {
+                    if !ctx.selection().contains_item(item) {
+                        // When the context menu is triggered open, we check if we're part of the selection,
+                        // and, if not, we update the selection to include only the item that was clicked.
+                        if item_response.hovered() && item_response.secondary_clicked() {
+                            show_context_menu(&item_collection);
+                            ctx.selection_state().set_selection(item_collection);
+                        } else {
+                            show_context_menu(ctx.selection());
+                        }
                     } else {
                         show_context_menu(ctx.selection());
                     }
-                } else {
-                    show_context_menu(ctx.selection());
                 }
-            }
 
-            SelectionUpdateBehavior::OverrideSelection => {
-                show_context_menu(&item_collection);
+                SelectionUpdateBehavior::OverrideSelection => {
+                    show_context_menu(&item_collection);
 
-                if item_response.secondary_clicked() {
-                    ctx.selection_state().set_selection(item_collection);
+                    if item_response.secondary_clicked() {
+                        ctx.selection_state().set_selection(item_collection);
+                    }
                 }
-            }
 
-            SelectionUpdateBehavior::Ignore => {
-                show_context_menu(&item_collection);
-            }
-        };
-    });
+                SelectionUpdateBehavior::Ignore => {
+                    show_context_menu(&item_collection);
+                }
+            };
+        });
 }
 
 /// Returns the (statically-defined) list of action, grouped in sections.

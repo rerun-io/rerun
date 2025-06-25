@@ -1,9 +1,10 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::NumExt as _;
 #[cfg(debug_assertions)]
 use egui::containers::menu;
-
+use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::{Button, NumExt as _};
+use re_ui::menu::{align_non_button_menu_items, menu_style};
 use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
@@ -27,9 +28,11 @@ impl App {
             .max_height(desired_icon_height)
             .tint(ui.tokens().strong_fg_color);
 
-        ui.menu_image_button(image, |ui| {
-            self.rerun_menu_ui(ui, render_state, _store_context);
-        });
+        MenuButton::from_button(Button::image(image))
+            .config(MenuConfig::new().style(menu_style()))
+            .ui(ui, |ui| {
+                self.rerun_menu_ui(ui, render_state, _store_context);
+            });
     }
 
     fn rerun_menu_ui(
@@ -67,8 +70,12 @@ impl App {
         {
             // On the web the browser controls the zoom
             let zoom_factor = ui.ctx().zoom_factor();
-            ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
-                .on_hover_text("The UI zoom level on top of the operating system's default value");
+            align_non_button_menu_items(ui, |ui| {
+                ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
+                    .on_hover_text(
+                        "The UI zoom level on top of the operating system's default value",
+                    );
+            });
             UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
             UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
             ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
@@ -104,7 +111,8 @@ impl App {
         menu::SubMenuButton::new("Debug")
             .config(
                 menu::MenuConfig::new()
-                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                    .style(menu_style()),
             )
             .ui(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
