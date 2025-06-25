@@ -109,8 +109,8 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 }
             }
 
-            for key in metadata.keys() {
-                debug_assert!(!key.starts_with("rerun."), "Found metadata key that was not migrated to colon syntax: {key}");
+            for (key, value) in &metadata {
+                debug_assert!(!key.starts_with("rerun."), "Metadata `{key}` (with value `{value}`) was not migrated to colon syntax.");
             }
 
             field.set_metadata(metadata);
