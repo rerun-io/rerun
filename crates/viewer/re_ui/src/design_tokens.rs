@@ -43,6 +43,9 @@ pub struct DesignTokens {
     pub success_text_color: Color32,
     pub info_text_color: Color32,
 
+    /// Background color for widgets that should catch the user's attention.
+    pub highlight_color: Color32,
+
     /// Color of an icon next to a label
     pub label_button_icon_color: Color32,
 
@@ -204,6 +207,8 @@ impl DesignTokens {
 
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
+
+            highlight_color: get_color("highlight_color"),
 
             label_button_icon_color: get_color("label_button_icon_color"),
             section_collapsing_header_color: get_color("section_collapsing_header_color"),

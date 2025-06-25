@@ -84,6 +84,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization functions",
         func_list=[
             "init",
+            "set_sinks",
             "connect_grpc",
             "disconnect",
             "save",
@@ -353,7 +354,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "Schema",
             "AnyColumn",
             "AnyComponentColumn",
-            "ComponentLike",
             "ViewContentsLike",
         ],
         show_tables=True,

@@ -54,7 +54,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
         }
         if (!data.has_value()) {
             return Error(
-                ErrorCode::InvalidArchetypeField,
+                ErrorCode::InvalidComponent,
                 "Can't set names on a tensor that doesn't have any data"
             );
         }
@@ -66,17 +66,17 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
         auto data_struct_array = std::dynamic_pointer_cast<arrow::StructArray>(data.value().array);
         if (!data_struct_array) {
-            return Error(ErrorCode::InvalidArchetypeField, "Tensor data is not a struct array");
+            return Error(ErrorCode::InvalidComponent, "Tensor data is not a struct array");
         }
         if (data_struct_array->length() == 0) {
             return Error(
-                ErrorCode::InvalidArchetypeField,
+                ErrorCode::InvalidComponent,
                 "Can't set names on a tensor that doesn't have any data"
             );
         }
         if (data_struct_array->length() > 1) {
             return Error(
-                ErrorCode::InvalidArchetypeField,
+                ErrorCode::InvalidComponent,
                 "Can't set dimension names on a tensor archetype with multiple tensor data instances."
             );
         }
@@ -84,7 +84,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
         auto buffer_array = data_struct_array->GetFieldByName("buffer");
         if (!buffer_array) {
             return Error(
-                ErrorCode::InvalidArchetypeField,
+                ErrorCode::InvalidComponent,
                 "Tensor's data array doesn't have a buffer field"
             );
         }
@@ -92,7 +92,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
             std::dynamic_pointer_cast<arrow::ListArray>(data_struct_array->GetFieldByName("shape"));
         if (!shape_list_array) {
             return Error(
-                ErrorCode::InvalidArchetypeField,
+                ErrorCode::InvalidComponent,
                 "Tensor's data array doesn't have a shape list array field"
             );
         }

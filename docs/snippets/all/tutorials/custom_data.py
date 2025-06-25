@@ -29,9 +29,9 @@ class CustomPoints3D(rr.AsComponents):
         self.points3d = rr.Points3D(positions)
         self.confidences = ConfidenceBatch(confidences).described(
             rr.ComponentDescriptor(
-                "confidences",
-                archetype_name="user.CustomPoints3D",
-                component_name="user.Confidence",
+                "user.CustomPoints3D:confidences",
+                archetype="user.CustomPoints3D",
+                component_type="user.Confidence",
             )
         )
 

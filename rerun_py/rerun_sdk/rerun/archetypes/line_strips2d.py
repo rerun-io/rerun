@@ -318,13 +318,13 @@ class LineStrips2D(Archetype):
             return ComponentColumnList([])
 
         kwargs = {
-            "strips": strips,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "draw_order": draw_order,
-            "class_ids": class_ids,
+            "LineStrips2D:strips": strips,
+            "LineStrips2D:radii": radii,
+            "LineStrips2D:colors": colors,
+            "LineStrips2D:labels": labels,
+            "LineStrips2D:show_labels": show_labels,
+            "LineStrips2D:draw_order": draw_order,
+            "LineStrips2D:class_ids": class_ids,
         }
         columns = []
 
@@ -333,7 +333,7 @@ class LineStrips2D(Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

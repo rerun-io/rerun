@@ -12,7 +12,7 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
-    Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentName,
+    Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentType,
     archetypes::{self, InstancePoses3D},
     components::{self},
 };
@@ -36,13 +36,13 @@ use vec1::smallvec_v1::SmallVec1;
 /// It then (in [`TransformCacheStoreSubscriber::apply_all_updates`]) performs those queries and derives transforms from them.
 pub struct TransformCacheStoreSubscriber {
     /// All components of [`archetypes::Transform3D`]
-    transform_components: IntSet<ComponentName>,
+    transform_components: IntSet<ComponentType>,
 
     /// All components of [`archetypes::InstancePoses3D`]
-    pose_components: IntSet<ComponentName>,
+    pose_components: IntSet<ComponentType>,
 
     /// All components related to pinholes (i.e. [`components::PinholeProjection`] and [`components::ViewCoordinates`]).
-    pinhole_components: IntSet<ComponentName>,
+    pinhole_components: IntSet<ComponentType>,
 
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
@@ -56,11 +56,11 @@ impl Default for TransformCacheStoreSubscriber {
         Self {
             transform_components: archetypes::Transform3D::all_components()
                 .iter()
-                .filter_map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
             pose_components: archetypes::InstancePoses3D::all_components()
                 .iter()
-                .filter_map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
             pinhole_components: [
                 components::PinholeProjection::name(),
@@ -784,21 +784,21 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
             // But that's fairly rare, so a few false positive entries here are fine.
             let mut aspects = TransformAspect::empty();
-            for component_name in event
+            for component_type in event
                 .chunk
                 .component_descriptors()
-                .filter_map(|c| c.component_name)
+                .filter_map(|c| c.component_type)
             {
-                if self.transform_components.contains(&component_name) {
+                if self.transform_components.contains(&component_type) {
                     aspects |= TransformAspect::Tree;
                 }
-                if self.pose_components.contains(&component_name) {
+                if self.pose_components.contains(&component_type) {
                     aspects |= TransformAspect::Pose;
                 }
-                if self.pinhole_components.contains(&component_name) {
+                if self.pinhole_components.contains(&component_type) {
                     aspects |= TransformAspect::PinholeOrViewCoordinates;
                 }
-                if component_name == re_types::components::ClearIsRecursive::name() {
+                if component_type == re_types::components::ClearIsRecursive::name() {
                     aspects |= TransformAspect::Clear;
                 }
             }
@@ -1001,7 +1001,7 @@ fn query_and_resolve_instance_poses_at_entity(
 
 /// Queries pose transforms for a specific archetype.
 ///
-/// Note that the archetype field name for translation specifically may vary.
+/// Note that the component for translation specifically may vary.
 /// (this is technical debt, we should fix this)
 fn query_and_resolve_instance_from_pose_for_archetype_name(
     entity_path: &EntityPath,
@@ -1011,18 +1011,16 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     descriptor_translations: &ComponentDescriptor,
 ) -> Vec<Affine3A> {
     debug_assert_eq!(
-        descriptor_translations.component_name,
+        descriptor_translations.component_type,
         Some(components::PoseTranslation3D::name())
     );
-    debug_assert_eq!(descriptor_translations.archetype_name, Some(archetype_name));
+    debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
     let descriptor_rotation_axis_angles =
-        InstancePoses3D::descriptor_rotation_axis_angles().with_archetype_name(archetype_name);
+        InstancePoses3D::descriptor_rotation_axis_angles().with_archetype(archetype_name);
     let descriptor_quaternions =
-        InstancePoses3D::descriptor_quaternions().with_archetype_name(archetype_name);
-    let descriptor_scales =
-        InstancePoses3D::descriptor_scales().with_archetype_name(archetype_name);
-    let descriptor_mat3x3 =
-        InstancePoses3D::descriptor_mat3x3().with_archetype_name(archetype_name);
+        InstancePoses3D::descriptor_quaternions().with_archetype(archetype_name);
+    let descriptor_scales = InstancePoses3D::descriptor_scales().with_archetype(archetype_name);
+    let descriptor_mat3x3 = InstancePoses3D::descriptor_mat3x3().with_archetype(archetype_name);
 
     let result = entity_db.latest_at(
         query,

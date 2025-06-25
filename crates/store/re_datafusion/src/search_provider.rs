@@ -7,6 +7,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -49,6 +50,7 @@ impl SearchResultsTableProvider {
 impl GrpcStreamToTable for SearchResultsTableProvider {
     type GrpcStreamData = SearchDatasetResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let mut request = self.request.clone();
         request.scan_parameters = Some(ScanParameters {
@@ -86,6 +88,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         Ok(schema)
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {

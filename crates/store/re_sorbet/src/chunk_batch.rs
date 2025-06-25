@@ -57,6 +57,13 @@ impl ChunkBatch {
 
 impl ChunkBatch {
     /// The parsed rerun schema of this chunk.
+    ///
+    /// *IMPORTANT*: the returned `ChunkSchema` has potentially incorrect metadata, since it can
+    /// only be derived from an entire chunk store (e.g. a column is static if _any_ chunk
+    /// containing that column is static).
+    ///
+    /// See `re_chunk_store::ChunkStore::schema` or [`crate::SchemaBuilder`] to compute
+    /// schemas with accurate metadata.
     #[inline]
     pub fn chunk_schema(&self) -> &ChunkSchema {
         &self.schema
@@ -72,6 +79,12 @@ impl ChunkBatch {
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         self.schema.entity_path()
+    }
+
+    /// Is this chunk static?
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.schema.is_static()
     }
 
     #[inline]
@@ -141,12 +154,19 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     /// Will perform some transformations:
     /// * Will automatically wrap data columns in `ListArrays` if they are not already
     /// * Will reorder columns so that Row ID comes before timelines, which come before data
-    /// * Will migrate legacy data to more modern form
+    /// * Will migrate component descriptors to colon-based notation
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        let batch = crate::migration::reorder_columns(batch);
-        let batch = crate::migration::rewire_indicator_components(&batch);
+        // Migrations from pre-`v0.23` to `v0.23`.
+        let batch = if crate::migrations::v0_23::matches_schema(batch) {
+            crate::migrations::v0_23::reorder_columns(batch)
+        } else {
+            batch.clone()
+        };
+
+        // Migrations from `v0.23` to `v0.24`.
+        let batch = crate::migrations::v0_24::rewire_tagged_components(&batch);
 
         Self::try_from(SorbetBatch::try_from_record_batch(
             &batch,
@@ -159,6 +179,7 @@ impl TryFrom<SorbetBatch> for ChunkBatch {
     type Error = SorbetError;
 
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    #[tracing::instrument(level = "trace", skip_all)]
     fn try_from(sorbet_batch: SorbetBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 

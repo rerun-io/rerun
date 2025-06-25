@@ -9,9 +9,9 @@ rr.spawn()
 
 positions = rr.components.Position3DBatch([1, 2, 3]).described(
     rr.ComponentDescriptor(
-        "custom_positions",
-        archetype_name="user.CustomArchetype",
-        component_name="user.CustomPosition3D",
+        "user.CustomArchetype:custom_positions",
+        archetype="user.CustomArchetype",
+        component_type="user.CustomPosition3D",
     ),
 )
 rr.log("data", [positions], static=True)

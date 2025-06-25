@@ -46,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisibleTimeRange> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.VisibleTimeRange";
 
         /// Returns the arrow data type this type corresponds to.

@@ -345,6 +345,30 @@ impl RecordingStreamBuilder {
         Ok((rec, storage))
     }
 
+    /// Creates a new [`RecordingStream`] pre-configured to stream data to multiple sinks.
+    ///
+    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    ///
+    /// [grpc_sink]: crate::sink::GrpcSink
+    /// [file_sink]: crate::sink::FileSink
+    pub fn set_sinks(
+        self,
+        sinks: impl crate::sink::IntoMultiSink,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                properties,
+                batcher_config,
+                Box::new(sinks.into_multi_sink()),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to set_sinks() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
@@ -1867,6 +1891,26 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
+    /// Stream data to multiple different sinks.
+    ///
+    /// This is semantically the same as calling [`RecordingStream::set_sink`], but the resulting
+    /// [`RecordingStream`] will now stream data to multiple sinks at the same time.
+    ///
+    /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    ///
+    /// [grpc_sink]: crate::sink::GrpcSink
+    /// [file_sink]: crate::sink::FileSink
+    pub fn set_sinks(&self, sinks: impl crate::log_sink::IntoMultiSink) {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new MultiSink since {ENV_FORCE_SAVE} is set");
+            return;
+        }
+
+        let sink = sinks.into_multi_sink();
+
+        self.set_sink(Box::new(sink));
+    }
+
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
     /// the specified address.
     ///

@@ -83,7 +83,8 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{
-        BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage, MultiSink,
+        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
+        MultiSink,
     };
 
     pub use crate::log_sink::GrpcSink;
@@ -109,7 +110,7 @@ pub use time::{TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
+    ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, NamedIndicatorComponent, SerializationError,
     SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
 };

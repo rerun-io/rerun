@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
+use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentType};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
@@ -33,7 +33,7 @@ pub enum PathParseError {
     #[error("Found an unexpected trailing component descriptor: {0:?}")]
     UnexpectedComponentDescriptor(ComponentDescriptor),
 
-    #[error("Found no component name")]
+    #[error("Found no component descriptor")]
     MissingComponentDescriptor,
 
     #[error("Found trailing colon (:)")]
@@ -42,8 +42,8 @@ pub enum PathParseError {
     #[error("Found trailing hash (#)")]
     TrailingHash,
 
-    #[error("Component descriptor doesn't have an archetype field name: {0:?}")]
-    ComponentDescriptorMissesArchetypeFieldName(String),
+    #[error("Component descriptor doesn't have a component identifier: {0:?}")]
+    ComponentDescriptorMissesComponentIdentifier(String),
 
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
@@ -115,14 +115,14 @@ impl std::str::FromStr for DataPath {
                 None
             };
 
-            let component_name_delimiter = &component_descriptor_tokens
+            let component_type_delimiter = &component_descriptor_tokens
                 .iter()
                 .position(|&token| token == "#");
-            let component_name = if let Some(component_name_delimiter) = component_name_delimiter {
-                if let Some(component_name) =
-                    component_descriptor_tokens.get(component_name_delimiter + 1)
+            let component_type = if let Some(component_type_delimiter) = component_type_delimiter {
+                if let Some(component_type) =
+                    component_descriptor_tokens.get(component_type_delimiter + 1)
                 {
-                    Some(component_name.to_owned())
+                    Some(component_type.to_owned())
                 } else {
                     return Err(PathParseError::TrailingHash);
                 }
@@ -130,23 +130,29 @@ impl std::str::FromStr for DataPath {
                 None
             };
 
-            let archetype_field_name_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
-            let archetype_field_name_tokens_end =
-                component_name_delimiter.unwrap_or(component_descriptor_tokens.len());
-            if archetype_field_name_tokens_start == archetype_field_name_tokens_end {
-                return Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
-                    join(component_descriptor_tokens),
-                ));
+            let component_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
+            let component_tokens_end =
+                component_type_delimiter.unwrap_or(component_descriptor_tokens.len());
+            if component_tokens_start == component_tokens_end {
+                return Err(
+                    PathParseError::ComponentDescriptorMissesComponentIdentifier(join(
+                        component_descriptor_tokens,
+                    )),
+                );
             }
 
-            let archetype_field_name = join(
-                &component_descriptor_tokens
-                    [archetype_field_name_tokens_start..archetype_field_name_tokens_end],
-            );
+            let field =
+                join(&component_descriptor_tokens[component_tokens_start..component_tokens_end]);
+
+            let archetype_name = archetype_name.map(ArchetypeName::from);
+
             component_descriptor = Some(ComponentDescriptor {
-                archetype_field_name: ArchetypeFieldName::from(archetype_field_name),
-                archetype_name: archetype_name.map(ArchetypeName::from),
-                component_name: component_name.map(ComponentName::from),
+                component: archetype_name
+                    .as_ref()
+                    .map(|archetype_name| archetype_name.with_field(&field))
+                    .unwrap_or_else(|| field.into()),
+                archetype: archetype_name,
+                component_type: component_type.map(ComponentType::from),
             });
 
             tokens.truncate(first_colon);
@@ -186,7 +192,7 @@ impl std::str::FromStr for DataPath {
 /// When parsing a [`DataPath`], it is important that we can distinguish the
 /// component and index from the actual entity path. This requires
 /// us to forbid certain characters in an entity part name.
-/// For instance, in `foo/bar.baz`, is `baz` a component name, or part of the entity path?
+/// For instance, in `foo/bar.baz`, is `baz` a component type, or part of the entity path?
 /// So, when parsing a full [`DataPath`]s we are quite strict with what we allow.
 /// But when parsing [`EntityPath`]s we want to be a bit more forgiving, so we
 /// can accept things like `foo/bar.baz` and transform it into `foo/"bar.baz"`.
@@ -471,7 +477,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("My.Custom.Archetype".into()),
+                    .with_archetype("My.Custom.Archetype".into()),
             })
         );
         assert_eq!(
@@ -479,7 +485,7 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("rerun.archetypes.Points3D".into()),
+                    .with_archetype("rerun.archetypes.Points3D".into()),
             })
         );
         assert_eq!(
@@ -487,8 +493,8 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("My.Custom.Archetype".into())
-                    .with_component_name("colors".into()),
+                    .with_archetype("My.Custom.Archetype".into())
+                    .with_component_type("colors".into()),
             })
         );
         assert_eq!(
@@ -496,8 +502,8 @@ mod tests {
             Ok(ComponentPath {
                 entity_path: EntityPath::from("world/points"),
                 component_descriptor: ComponentDescriptor::partial("colors")
-                    .with_archetype_name("rerun.archetypes.Points3D".into())
-                    .with_component_name("my.custom.colors".into()),
+                    .with_archetype("rerun.archetypes.Points3D".into())
+                    .with_component_type("my.custom.colors".into()),
             })
         );
 
@@ -523,9 +529,11 @@ mod tests {
         );
         assert_eq!(
             ComponentPath::from_str("world/points:Points3D:#colors"),
-            Err(PathParseError::ComponentDescriptorMissesArchetypeFieldName(
-                "Points3D:#colors".to_owned()
-            ))
+            Err(
+                PathParseError::ComponentDescriptorMissesComponentIdentifier(
+                    "Points3D:#colors".to_owned()
+                )
+            )
         );
     }
 
@@ -554,8 +562,8 @@ mod tests {
                 instance: None,
                 component_descriptor: Some(
                     ComponentDescriptor::partial("colors")
-                        .with_archetype_name("rerun.archetypes.Points3D".into())
-                        .with_component_name("my.custom.color".into())
+                        .with_archetype("rerun.archetypes.Points3D".into())
+                        .with_component_type("my.custom.color".into())
                 ),
             })
         );

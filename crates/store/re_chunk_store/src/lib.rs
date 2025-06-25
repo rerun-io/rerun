@@ -31,10 +31,7 @@ pub use self::{
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
     stats::{ChunkStoreChunkStats, ChunkStoreStats},
-    store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnIdentifier,
-        ColumnMetadata,
-    },
+    store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
 pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
@@ -43,13 +40,13 @@ pub(crate) use self::store::ColumnMetadataState;
 
 // Re-exports
 #[doc(no_inline)]
-pub use re_chunk::{
-    Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId,
-    UnitChunkShared,
+pub use {
+    re_chunk::{
+        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
+        UnitChunkShared,
+    },
+    re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline},
 };
-
-#[doc(no_inline)]
-pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
     pub use arrow;

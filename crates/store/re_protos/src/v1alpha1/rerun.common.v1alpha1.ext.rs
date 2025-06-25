@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
+use prost::bytes::Bytes;
 use re_log_types::{StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
@@ -31,7 +32,7 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
     fn try_from(value: &ArrowSchema) -> Result<Self, Self::Error> {
         Ok(Self {
-            arrow_schema: Some(re_sorbet::ipc_from_schema(value)?),
+            arrow_schema: Some(re_sorbet::ipc_from_schema(value)?.into()),
         })
     }
 }
@@ -412,15 +413,17 @@ impl From<re_log_types::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
         let (kind, payload) = match value {
             re_log_types::StoreSource::Unknown => (
                 crate::log_msg::v1alpha1::StoreSourceKind::Unspecified as i32,
-                Vec::new(),
+                Bytes::new(),
             ),
             re_log_types::StoreSource::CSdk => (
                 crate::log_msg::v1alpha1::StoreSourceKind::CSdk as i32,
-                Vec::new(),
+                Bytes::new(),
             ),
             re_log_types::StoreSource::PythonSdk(python_version) => (
                 crate::log_msg::v1alpha1::StoreSourceKind::PythonSdk as i32,
-                crate::log_msg::v1alpha1::PythonVersion::from(python_version).encode_to_vec(),
+                crate::log_msg::v1alpha1::PythonVersion::from(python_version)
+                    .encode_to_vec()
+                    .into(),
             ),
             re_log_types::StoreSource::RustSdk {
                 rustc_version,
@@ -431,19 +434,22 @@ impl From<re_log_types::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
                     rustc_version,
                     llvm_version,
                 }
-                .encode_to_vec(),
+                .encode_to_vec()
+                .into(),
             ),
             re_log_types::StoreSource::File { file_source } => (
                 crate::log_msg::v1alpha1::StoreSourceKind::File as i32,
-                crate::log_msg::v1alpha1::FileSource::from(file_source).encode_to_vec(),
+                crate::log_msg::v1alpha1::FileSource::from(file_source)
+                    .encode_to_vec()
+                    .into(),
             ),
             re_log_types::StoreSource::Viewer => (
                 crate::log_msg::v1alpha1::StoreSourceKind::Viewer as i32,
-                Vec::new(),
+                Bytes::new(),
             ),
             re_log_types::StoreSource::Other(description) => (
                 crate::log_msg::v1alpha1::StoreSourceKind::Other as i32,
-                description.into_bytes(),
+                description.into_bytes().into(),
             ),
         };
 
@@ -505,9 +511,10 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_types::StoreSourc
                     crate::log_msg::v1alpha1::StoreSource,
                     "extra"
                 ))?;
-                let description = String::from_utf8(description.payload).map_err(|err| {
-                    invalid_field!(crate::log_msg::v1alpha1::StoreSource, "extra", err)
-                })?;
+                let description =
+                    String::from_utf8(description.payload.to_vec()).map_err(|err| {
+                        invalid_field!(crate::log_msg::v1alpha1::StoreSource, "extra", err)
+                    })?;
                 Ok(Self::Other(description))
             }
         }
@@ -876,9 +883,9 @@ impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior 
 impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
     fn from(value: ComponentDescriptor) -> Self {
         Self {
-            archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-            archetype_field_name: Some(value.archetype_field_name.to_string()),
-            component_name: value.component_name.map(|c| c.full_name().to_owned()),
+            archetype: value.archetype.map(|n| n.full_name().to_owned()),
+            component: Some(value.component.to_string()),
+            component_type: value.component_type.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -888,22 +895,22 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
         let crate::common::v1alpha1::ComponentDescriptor {
-            archetype_name,
-            archetype_field_name,
-            component_name,
+            archetype,
+            component,
+            component_type,
         } = value;
 
-        let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
+        let mut descriptor = Self::partial(component.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
-            "archetype_field_name"
+            "component"
         ))?);
 
-        if let Some(archetype_name) = archetype_name {
-            descriptor = descriptor.with_archetype_name(archetype_name.into());
+        if let Some(archetype) = archetype {
+            descriptor = descriptor.with_archetype(archetype.into());
         }
 
-        if let Some(component_name) = component_name {
-            descriptor = descriptor.with_component_name(component_name.into());
+        if let Some(component_type) = component_type {
+            descriptor = descriptor.with_component_type(component_type.into());
         }
 
         Ok(descriptor)

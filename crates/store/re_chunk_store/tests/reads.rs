@@ -56,16 +56,16 @@ fn all_components() -> anyhow::Result<()> {
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
             let timeline = TimelineName::new("frame_nr");
 
-            let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
+            let components = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
-            let expected_component_names = expected.map(|expected| {
+            let expected_components = expected.map(|expected| {
                 let expected: ComponentDescriptorSet = expected.iter().cloned().collect();
                 expected
             });
 
             assert_eq!(
-                expected_component_names, component_names,
-                "expected to find {expected_component_names:?}, found {component_names:?} instead\n{store}",
+                expected_components, components,
+                "expected to find {expected_components:?}, found {components:?} instead\n{store}",
             );
         };
 

@@ -100,6 +100,7 @@ re_format = { path = "crates/utils/re_format", version = "=0.24.0-alpha.1", defa
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.24.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.24.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.24.0-alpha.1", default-features = false }
+re_span = { path = "crates/utils/re_span", version = "=0.24.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.24.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.24.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.24.0-alpha.1", default-features = false }
@@ -329,7 +330,9 @@ tonic-web = "0.13.1"
 tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
 tower-http = "0.6"
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = [
+  "attributes",
+] }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"

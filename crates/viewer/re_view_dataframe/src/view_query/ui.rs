@@ -206,12 +206,8 @@ impl Query {
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Component").value_text(
-                        filter
-                            .as_ref()
-                            .map(|f| f.qualified_archetype_field_name())
-                            .unwrap_or_else(|| "-".to_owned()),
-                    ),
+                    list_item::PropertyContent::new("Component")
+                        .value_text(filter.as_ref().map(|f| f.component.as_str()).unwrap_or("-")),
                 )
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
             });
@@ -245,36 +241,17 @@ impl Query {
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
-        // TODO(#10065): This should be cleaned up.
         let all_components = all_components
             .into_iter()
             .map(|descr| ComponentColumnSelector::from_descriptor(filter_entity.clone(), &descr))
             .collect::<BTreeSet<_>>();
 
-        // The list of suggested components is built as follows:
-        // - consider all indicator components
-        // - for the matching archetypes, take all required components
-        // - keep those that are actually present
+        // TODO(#10212): This is very likely still broken.
         let suggested_components = || {
             all_components
                 .iter()
-                .filter_map(|c| {
-                    c.archetype_name.as_ref().and_then(|archetype_name| {
-                        ctx.reflection()
-                            .archetypes
-                            .get(archetype_name)
-                            .map(|archetype_reflection| (archetype_name, archetype_reflection))
-                    })
-                })
-                .flat_map(|(archetype_name, archetype_reflection)| {
-                    archetype_reflection.required_fields().map(|field| {
-                        ComponentColumnSelector::from_descriptor(
-                            filter_entity.clone(),
-                            &field.component_descriptor(*archetype_name),
-                        )
-                    })
-                })
-                .filter(|c| all_components.iter().any(|descr| descr == c))
+                .filter(|c| all_components.iter().any(|descr| &descr == c))
+                .cloned()
                 .collect::<ComponentSelectorSet>()
         };
 
@@ -314,13 +291,16 @@ impl Query {
                         .selected_text(
                             filter_component
                                 .as_ref()
-                                .map(|f| f.qualified_archetype_field_name())
-                                .unwrap_or("-".to_owned()),
+                                .map(|f| f.component.as_str())
+                                .unwrap_or("-"),
                         )
                         .show_ui(ui, |ui| {
                             for descr in all_components {
-                                let label = descr.qualified_archetype_field_name();
-                                ui.selectable_value(&mut filter_component, Some(descr), label);
+                                ui.selectable_value(
+                                    &mut filter_component,
+                                    Some(descr.clone()),
+                                    descr.component.as_str(),
+                                );
                             }
                         });
                 }),
@@ -335,7 +315,7 @@ impl Query {
             let filter_is_not_null = components::FilterIsNotNull::new(
                 active,
                 &filter_entity,
-                filter_component.qualified_archetype_field_name(),
+                filter_component.component,
             );
 
             if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {

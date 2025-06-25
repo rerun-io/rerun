@@ -86,12 +86,12 @@ impl Chunk {
                 .map(|(component_desc, list_array)| {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
-                        archetype_name,
-                        archetype_field_name,
-                        component_name,
+                        archetype: archetype_name,
+                        component,
+                        component_type,
                     } = *component_desc;
 
-                    if let Some(c) = component_name {
+                    if let Some(c) = component_type {
                         c.sanity_check();
                     }
 
@@ -99,9 +99,9 @@ impl Chunk {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
-                        archetype_name,
-                        archetype_field_name,
-                        component_name,
+                        archetype: archetype_name,
+                        component,
+                        component_type,
 
                         // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
                         // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
@@ -138,6 +138,7 @@ impl Chunk {
         )?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -147,6 +148,7 @@ impl Chunk {
         Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -200,9 +202,9 @@ impl Chunk {
                     })?;
 
                 let component_desc = ComponentDescriptor {
-                    archetype_name: schema.archetype_name,
-                    archetype_field_name: schema.archetype_field_name,
-                    component_name: schema.component_name,
+                    archetype: schema.archetype,
+                    component: schema.component,
+                    component_type: schema.component_type,
                 };
 
                 if components.insert(component_desc, column.clone()).is_some() {

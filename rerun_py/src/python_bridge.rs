@@ -152,7 +152,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-    m.add_function(wrap_pyfunction!(tee, m)?)?;
+    m.add_function(wrap_pyfunction!(set_sinks, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
@@ -689,7 +689,7 @@ impl PyFileSink {
 /// Stream data to multiple sinks.
 #[pyfunction]
 #[pyo3(signature = (sinks, default_blueprint=None, recording=None))]
-fn tee(
+fn set_sinks(
     sinks: Vec<PyObject>,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
@@ -700,7 +700,7 @@ fn tee(
     };
 
     if re_sdk::forced_sink_path().is_some() {
-        re_log::debug!("Ignored call to `tee()` since _RERUN_TEST_FORCE_SAVE is set");
+        re_log::debug!("Ignored call to `set_sinks()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
 
@@ -1424,8 +1424,8 @@ fn log_arrow_msg(
 ///     The entity path to log the chunk to.
 /// timelines: `Dict[str, arrow::Int64Array]`
 ///     A dictionary mapping timeline names to their values.
-/// components: `Dict[str, arrow::ListArray]`
-///     A dictionary mapping component names to their values.
+/// components: `Dict[ComponentDescriptor, arrow::ListArray]`
+///     A dictionary mapping component types to their values.
 #[pyfunction]
 #[pyo3(signature = (
     entity_path,

@@ -105,7 +105,7 @@ fn annotation_info(
     let storage_engine = ctx.recording().storage_engine();
     let possible_class_id_descriptors = storage_engine
         .store()
-        .entity_component_descriptors_with_name(entity_path, components::ClassId::name());
+        .entity_component_descriptors_with_type(entity_path, components::ClassId::name());
     let picked_class_id_descriptors = possible_class_id_descriptors.iter().next()?;
 
     let (_, class_id) = ctx

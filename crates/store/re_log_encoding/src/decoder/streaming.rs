@@ -1,58 +1,129 @@
 use std::pin::Pin;
 
-use bytes::{Buf as _, BytesMut};
-use re_build_info::CrateVersion;
-use re_log::external::log::warn;
-use re_log_types::LogMsg;
+use bytes::{Buf as _, Bytes, BytesMut};
 use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
+use re_build_info::CrateVersion;
+use re_chunk::Span;
+use re_log::external::log::warn;
+
 use crate::{
     EncodingOptions,
-    codec::file::{self},
+    codec::file::{self, MessageKind},
 };
 
 use super::{DecodeError, FileHeader, options_from_bytes};
 
-/// A decoded [`LogMsg`] with extra contextual information.
+/// A transport-level `LogMsg` with extra contextual information.
 ///
 /// Yielded by the [`StreamingDecoder`].
 #[derive(Debug, Clone)]
 pub struct StreamingLogMsg {
-    /// The decoded [`LogMsg`].
-    pub inner: LogMsg,
+    pub kind: MessageKind,
 
-    /// How many bytes does one have to go through in the underlying storage resource in order to
-    /// find the start of this message?
-    ///
-    /// Specifically, this points to the beginning of the message's **header**.
-    pub byte_offset: u64,
+    /// The [`CrateVersion`] of the RRD stream from which this `LogMsg` was taken from.
+    pub version: CrateVersion,
 
-    /// How many bytes does this message take in the underlying storage resource?
+    /// The original Protobuf-encoded bytes of this `LogMsg`, *including headers*.
     ///
-    /// This covers both the size of the message's header _and_ its body.
-    pub byte_len: u64,
+    /// Only set if [`StreamingDecoderOptions::keep_encoded_protobuf`] is true.
+    pub encoded: Option<bytes::Bytes>,
+
+    /// The decoded Protobuf `LogMsg`.
+    ///
+    /// Arrow data contained within is never decoded.
+    ///
+    /// Only set if [`StreamingDecoderOptions::keep_decoded_protobuf`] is true.
+    decoded: Option<re_protos::log_msg::v1alpha1::log_msg::Msg>,
+
+    /// Where in the underlying storage resource is this message (in bytes)?
+    ///
+    /// Specifically, the start of this range points to the beginning of the `MessageHeader`.
+    ///
+    /// The full range covers both the message's header _and_ its body.
+    pub byte_span: Span<u64>,
 }
 
-impl std::ops::Deref for StreamingLogMsg {
-    type Target = LogMsg;
+impl StreamingLogMsg {
+    /// Create a new [`StreamingLogMsg`] from a [`Chunk`].
+    ///
+    /// This is only really useful for testing purposes, and makes no effort at all to be efficient.
+    ///
+    /// [`Chunk`]: [`re_chunk::Chunk`]
+    #[cfg(feature = "encoder")]
+    pub fn from_chunk(
+        store_id: re_log_types::StoreId,
+        chunk: &re_chunk::Chunk,
+    ) -> Result<Self, crate::encoder::EncodeError> {
+        let compression = crate::Compression::Off;
 
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.inner
+        let arrow_msg = re_log_types::ArrowMsg {
+            chunk_id: *chunk.id(),
+            batch: chunk.to_record_batch()?,
+            on_release: None,
+        };
+
+        let log_msg = re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg);
+        let log_msg_proto =
+            crate::protobuf_conversions::log_msg_to_proto(log_msg.clone(), compression)?;
+
+        let mut log_msg_encoded = Vec::new();
+        crate::codec::file::encoder::encode(&mut log_msg_encoded, &log_msg, compression)?;
+
+        let byte_len = log_msg_encoded.len() as _;
+
+        Ok(Self {
+            kind: MessageKind::ArrowMsg,
+            version: CrateVersion::LOCAL,
+            encoded: Some(log_msg_encoded.into()),
+            decoded: log_msg_proto.msg,
+            byte_span: Span {
+                start: 0,
+                len: byte_len,
+            },
+        })
     }
-}
 
-impl std::ops::DerefMut for StreamingLogMsg {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
+    /// Returns the decoded transport-level `LogMsg`.
+    ///
+    /// This will only decode at the transport-layer (Protobuf), Arrow data is left untouched.
+    ///
+    /// Compute cost:
+    /// * If [`StreamingDecoderOptions::keep_decoded_protobuf`] was set on the [`StreamingDecoder`]
+    ///   when producing the `StreamingLogMsg`, this is free.
+    /// * Otherwise, if [`StreamingDecoderOptions::keep_encoded_protobuf`] was set, this has to
+    ///   perform Protobuf decoding.
+    /// * Otherwise, if neither are set, this just returns `None`.
+    pub fn decoded_transport(
+        &self,
+    ) -> Result<Option<re_protos::log_msg::v1alpha1::log_msg::Msg>, DecodeError> {
+        if let Some(mut decoded) = self.decoded.clone() {
+            if let re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(msg) = &mut decoded {
+                // Propagate the protocol version from the header into the `StoreInfo` so that all
+                // parts of the app can easily access it.
+                if let Some(info) = msg.info.as_mut() {
+                    info.store_version = Some(re_protos::log_msg::v1alpha1::StoreVersion {
+                        crate_version_bits: i32::from_le_bytes(self.version.to_bytes()),
+                    });
+                }
+            }
+
+            return Ok(Some(decoded.clone()));
+        }
+
+        if let Some(encoded) = self.encoded.as_ref() {
+            return file::decoder::decode_bytes_to_transport(self.kind, encoded);
+        }
+
+        Ok(None)
     }
 }
 
 pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
-    options: EncodingOptions,
+    opts: StreamingDecoderOptions,
+    encoding_opts: EncodingOptions,
     reader: R,
 
     /// internal buffer for unprocessed bytes
@@ -65,8 +136,36 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     num_bytes_read: u64,
 }
 
+#[derive(Default, Clone)]
+pub struct StreamingDecoderOptions {
+    pub keep_encoded_protobuf: bool,
+    pub keep_decoded_protobuf: bool,
+}
+
+impl StreamingDecoderOptions {
+    pub const NONE: Self = Self {
+        keep_encoded_protobuf: false,
+        keep_decoded_protobuf: false,
+    };
+
+    pub const ALL: Self = Self {
+        keep_encoded_protobuf: true,
+        keep_decoded_protobuf: true,
+    };
+
+    pub const ENCODED: Self = Self {
+        keep_encoded_protobuf: true,
+        keep_decoded_protobuf: false,
+    };
+
+    pub const DECODED: Self = Self {
+        keep_encoded_protobuf: false,
+        keep_decoded_protobuf: true,
+    };
+}
+
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
-    pub async fn new(mut reader: R) -> Result<Self, DecodeError> {
+    pub async fn new(opts: StreamingDecoderOptions, mut reader: R) -> Result<Self, DecodeError> {
         let mut data = [0_u8; FileHeader::SIZE];
 
         reader
@@ -74,11 +173,12 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(&data)?;
+        let (version, encoding_opts) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
-            options,
+            opts,
+            encoding_opts,
             reader,
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
@@ -86,10 +186,16 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
         })
     }
 
-    pub fn new_with_options(version: CrateVersion, options: EncodingOptions, reader: R) -> Self {
+    pub fn new_with_options(
+        version: CrateVersion,
+        opts: StreamingDecoderOptions,
+        encoding_opts: EncodingOptions,
+        reader: R,
+    ) -> Self {
         Self {
             version,
-            options,
+            opts,
+            encoding_opts,
             reader,
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
@@ -117,14 +223,15 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     ) -> std::task::Poll<Option<Self::Item>> {
         loop {
             let Self {
-                options,
+                opts,
+                encoding_opts,
                 reader,
                 unprocessed_bytes,
                 expect_more_data,
                 ..
             } = &mut *self;
 
-            let serializer = options.serializer;
+            let serializer = encoding_opts.serializer;
             let mut buf_length = 0;
 
             // poll_fill_buf() implicitly handles the EOF case, so we don't need to check for it
@@ -166,7 +273,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 match options_from_bytes(data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
-                        self.options = options;
+                        self.encoding_opts = options;
 
                         Pin::new(&mut self.reader).consume(buf_length);
                         self.unprocessed_bytes.advance(FileHeader::SIZE);
@@ -178,7 +285,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 }
             }
 
-            let (msg, processed_length) = match serializer {
+            let (kind, encoded, processed_length) = match serializer {
                 crate::Serializer::Protobuf => {
                     let header_size = std::mem::size_of::<file::MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
@@ -201,13 +308,12 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                     // decode the message
                     let data = &unprocessed_bytes[header_size..header_size + header.len as usize];
-                    let msg = file::decoder::decode_bytes(header.kind, data)?;
 
-                    (msg, header.len as usize + header_size)
+                    (header.kind, data, header.len as usize + header_size)
                 }
             };
 
-            let Some(mut msg) = msg else {
+            if kind == MessageKind::End {
                 // we've reached the end of the stream (i.e. read the EoS header), we check if there's another file concatenated
                 if unprocessed_bytes.len() < processed_length + FileHeader::SIZE {
                     return std::task::Poll::Ready(None);
@@ -228,20 +334,28 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 return std::task::Poll::Ready(None);
             };
 
-            if let LogMsg::SetStoreInfo(msg) = &mut msg {
-                // Propagate the protocol version from the header into the `StoreInfo` so that all
-                // parts of the app can easily access it.
-                msg.info.store_version = Some(self.version);
-            }
+            let decoded = if opts.keep_decoded_protobuf {
+                file::decoder::decode_bytes_to_transport(kind, encoded)?
+            } else {
+                None
+            };
+            let encoded: Option<Bytes> =
+                opts.keep_encoded_protobuf.then(|| encoded.to_vec().into());
+            let version = self.version;
 
             Pin::new(&mut self.reader).consume(buf_length);
             self.unprocessed_bytes.advance(processed_length);
             self.expect_more_data = false;
 
             let msg = StreamingLogMsg {
-                inner: msg,
-                byte_offset: self.num_bytes_read,
-                byte_len: processed_length as _,
+                kind,
+                version,
+                encoded,
+                decoded,
+                byte_span: Span {
+                    start: self.num_bytes_read,
+                    len: processed_length as _,
+                },
             };
 
             self.num_bytes_read += processed_length as u64;
@@ -259,7 +373,11 @@ mod tests {
 
     use crate::{
         Compression, EncodingOptions, Serializer,
-        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
+        codec::file,
+        decoder::{
+            streaming::{StreamingDecoder, StreamingDecoderOptions},
+            tests::fake_log_messages,
+        },
     };
 
     #[tokio::test]
@@ -290,13 +408,16 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
-
-            let decoded_messages = decoder
-                .map(|res| res.map(|msg| msg.inner))
-                .collect::<Result<Vec<_>, _>>()
+            let decoder = StreamingDecoder::new(StreamingDecoderOptions::ALL, buf_reader)
                 .await
                 .unwrap();
+
+            let decoded_messages: Vec<re_log_types::LogMsg> = decoder
+                .map(Result::unwrap)
+                .filter_map(|msg| msg.decoded_transport().unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .collect::<Vec<_>>()
+                .await;
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -326,13 +447,16 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
-
-            let decoded_messages = decoder
-                .map(|res| res.map(|msg| msg.inner))
-                .collect::<Result<Vec<_>, _>>()
+            let decoder = StreamingDecoder::new(StreamingDecoderOptions::ALL, buf_reader)
                 .await
                 .unwrap();
+
+            let decoded_messages = decoder
+                .map(Result::unwrap)
+                .filter_map(|msg| msg.decoded_transport().unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .collect::<Vec<_>>()
+                .await;
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -362,16 +486,13 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data.clone()));
 
-            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
+            let decoder = StreamingDecoder::new(StreamingDecoderOptions::ALL, buf_reader)
+                .await
+                .unwrap();
 
-            let decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
-
-            for msg_expected in &decoded_messages {
-                let (offset, len) = (
-                    msg_expected.byte_offset as usize,
-                    msg_expected.byte_len as usize,
-                );
-                let data = &data[offset..offset + len];
+            let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
+            for msg_expected in &mut decoded_messages {
+                let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
                 {
                     use crate::codec::file;
@@ -381,18 +502,22 @@ mod tests {
                     let header = file::MessageHeader::from_bytes(header_data).unwrap();
 
                     let data = &data[header_size..];
-                    let msg = file::decoder::decode_bytes(header.kind, data)
+                    let msg = file::decoder::decode_bytes_to_app(header.kind, data)
                         .unwrap()
                         .unwrap();
 
-                    similar_asserts::assert_eq!(msg_expected.inner, msg);
+                    let msg_expected = file::decoder::decode_transport_to_app(
+                        msg_expected.decoded_transport().unwrap().unwrap(),
+                    )
+                    .unwrap();
+                    similar_asserts::assert_eq!(msg_expected, msg);
                 }
             }
 
             let decoded_messages = decoded_messages
-                .clone()
-                .into_iter()
-                .map(|msg| msg.inner)
+                .iter_mut()
+                .filter_map(|msg| msg.decoded_transport().unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
