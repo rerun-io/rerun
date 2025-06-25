@@ -1,7 +1,6 @@
 //! Support crate for context menu and actions.
 
-use egui::containers::menu::MenuConfig;
-use egui::{Popup, UiKind, UiStackInfo};
+use egui::Popup;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
