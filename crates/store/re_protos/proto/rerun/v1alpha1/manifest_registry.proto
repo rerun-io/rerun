@@ -387,7 +387,7 @@ message QueryLatestAt {
   // Which index column should we perform the query on? E.g. `log_time`.
   //
   // Leave this empty to query for static data.
-  optional rerun.common.v1alpha1.IndexColumnSelector index = 1;
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index value are we looking for?
   //
