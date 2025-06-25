@@ -15,7 +15,7 @@ use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource, TimeInt};
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
@@ -649,17 +649,13 @@ impl ConnectionHandle {
 
 fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
     let latest_at = if query_expression.is_static() {
-        Some(QueryLatestAt {
-            index: None,
-            at: TimeInt::STATIC.as_i64(),
-            fuzzy_descriptors: vec![], // TODO(jleibs): support this
-        })
+        Some(QueryLatestAt::new_static())
     } else {
         query_expression
             .min_latest_at()
             .map(|latest_at| QueryLatestAt {
                 index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at().as_i64(),
+                at: latest_at.at(),
                 fuzzy_descriptors: vec![], // TODO(jleibs): support this
             })
     };
