@@ -89,10 +89,6 @@ fn context_menu_ui_for_item_with_context_impl(
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
     Popup::context_menu(item_response)
-        .info(UiStackInfo::new(UiKind::Menu).with_tag_value(
-            MenuConfig::MENU_CONFIG_TAG,
-            MenuConfig::new().style(menu_style()),
-        ))
         .style(menu_style())
         .show(|ui| {
             if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
