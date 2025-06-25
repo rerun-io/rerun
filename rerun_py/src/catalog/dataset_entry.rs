@@ -298,7 +298,52 @@ impl PyDatasetEntry {
         })
     }
 
-    /// Create a view to run a dataframe query on the dataset.
+    #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    /// Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
+    ///
+    /// The only type of index currently supported is the name of a timeline, or `None` (see below
+    /// for details).
+    ///
+    /// The view will only contain a single row for each unique value of the index
+    /// that is associated with a component column that was included in the view.
+    /// Component columns that are not included via the view contents will not
+    /// impact the rows that make up the view. If the same entity / component pair
+    /// was logged to a given index multiple times, only the most recent row will be
+    /// included in the view, as determined by the `row_id` column. This will
+    /// generally be the last value logged, as row_ids are guaranteed to be
+    /// monotonically increasing when data is sent from a single process.
+    ///
+    /// If `None` is passed as the index, the view will contain only static columns (among those
+    /// specified) and no index columns. It will also contain a single row per partition.
+    ///
+    /// Parameters
+    /// ----------
+    /// index : str | None
+    ///     The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
+    /// contents : ViewContentsLike
+    ///     The content specification for the view.
+    ///
+    ///     This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
+    ///     specifying multiple content-expressions and a respective list of components to select within
+    ///     that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
+    /// include_semantically_empty_columns : bool, optional
+    ///     Whether to include columns that are semantically empty, by default `False`.
+    ///
+    ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
+    /// include_indicator_columns : bool, optional
+    ///     Whether to include indicator columns, by default `False`.
+    ///
+    ///     Indicator columns are components used to represent the presence of an archetype within an entity.
+    /// include_tombstone_columns : bool, optional
+    ///     Whether to include tombstone columns, by default `False`.
+    ///
+    ///     Tombstone columns are components used to represent clears. However, even without the clear
+    ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
+    ///
+    /// Returns
+    /// -------
+    /// DataframeQueryView
+    ///     The view of the dataset.
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
@@ -310,7 +355,7 @@ impl PyDatasetEntry {
     ))]
     fn dataframe_query_view(
         self_: Py<Self>,
-        index: String,
+        index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
@@ -561,7 +606,7 @@ impl PyDatasetEntry {
 }
 
 impl PyDatasetEntry {
-    fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+    pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow_mut(self_.py()).connection().clone();
 
@@ -570,7 +615,7 @@ impl PyDatasetEntry {
         Ok(schema)
     }
 
-    fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
+    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
             let schema =
                 SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())

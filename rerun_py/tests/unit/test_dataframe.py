@@ -447,3 +447,85 @@ class TestDataframe:
         print()
 
         assert df == df_round_trip
+
+
+@pytest.fixture
+def any_value_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+    """A recording with just a static AnyValues archetype."""
+
+    rrd_path = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd_path)
+        rec.log(
+            "/test",
+            # Note: defensive parameter names to avoid collision with `AnyValues` tracking of per-component types.
+            rr.AnyValues(test_dataframe_yak="yuk", test_dataframe_foo="bar", test_dataframe_baz=42),
+            static=True,
+        )
+
+    # Use this to exfiltrate the RRD file for debugging purposes:
+    if False:
+        import shutil
+
+        shutil.copy(rrd_path, "/tmp/exfiltrated.rrd")
+
+    recording = rr.dataframe.load_recording(rrd_path)
+    assert recording is not None
+
+    return recording
+
+
+def test_dataframe_static(any_value_static_recording: rr.dataframe.Recording) -> None:
+    view = any_value_static_recording.view(index=None, contents="/**")
+
+    table = view.select().read_all()
+
+    assert table.column(0).to_pylist()[0] is not None
+    assert table.column(1).to_pylist()[0] is not None
+    assert table.column(1).to_pylist()[0] is not None
+
+
+def test_dataframe_index_no_default(any_value_static_recording: rr.dataframe.Recording) -> None:
+    """We specifically want index to not default None. This must be explicitly set to indicate a static query."""
+    with pytest.raises(TypeError, match="missing 1 required keyword argument"):
+        any_value_static_recording.view(contents="/**")  # type: ignore[call-arg]
+
+
+@pytest.fixture
+def mixed_static_recording(tmp_path: pathlib.Path) -> rr.dataframe.Recording:
+    """A recording with a mix of regular and AnyValues static archetypes."""
+    rrd_path = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd_path)
+        rec.log(
+            "/test",
+            # Note: defensive parameter names to avoid collision with `AnyValues` tracking of per-component types.
+            rr.AnyValues(test_dataframe_yak="yuk", test_dataframe_foo="bar", test_dataframe_baz=42),
+            static=True,
+        )
+        rec.log("/test2", rr.Points3D([1, 2, 3], radii=5), static=True)
+
+    recording = rr.dataframe.load_recording(rrd_path)
+    assert recording is not None
+
+    return recording
+
+
+# TODO(#10335): remove when `select_static` is removed.
+def test_dataframe_static_new_vs_deprecated(mixed_static_recording: rr.dataframe.Recording) -> None:
+    """Assert that the new `index=None` method yields the same results as the deprecated `select_static` method."""
+    view1 = mixed_static_recording.view(
+        index=None,
+        contents="/**",
+    )
+    table1 = view1.select().read_all()
+
+    view2 = mixed_static_recording.view(
+        index="log_time",
+        contents="/**",
+    )
+    table2 = view2.select_static().read_all()
+
+    assert table1 == table2

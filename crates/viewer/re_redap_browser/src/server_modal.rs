@@ -8,19 +8,33 @@ use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommand
 
 use crate::{context::Context, servers::Command};
 
-pub struct AddServerModal {
+/// Should the modal edit an existing server or add a new one?
+pub enum ServerModalMode {
+    /// Show an empty modal to add a new server.
+    Add,
+
+    /// Show a modal to edit an existing server.
+    ///
+    /// You should ensure that the [`re_uri::Origin`] exists. (Otherwise, this leads to bad UX,
+    /// since the modal will be titled "Edit server" but for the user it's a new server.)
+    Edit(re_uri::Origin),
+}
+
+pub struct ServerModal {
     modal: ModalHandler,
 
+    mode: ServerModalMode,
     scheme: Scheme,
     host: String,
     token: String,
     port: u16,
 }
 
-impl Default for AddServerModal {
+impl Default for ServerModal {
     fn default() -> Self {
         Self {
             modal: Default::default(),
+            mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
             token: String::new(),
@@ -29,11 +43,27 @@ impl Default for AddServerModal {
     }
 }
 
-impl AddServerModal {
-    pub fn open(&mut self) {
-        self.scheme = Scheme::Rerun;
-        self.port = 443;
-        self.host = String::new();
+impl ServerModal {
+    pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
+        *self = match mode {
+            ServerModalMode::Add => Default::default(),
+            ServerModalMode::Edit(origin) => {
+                let token = connection_registry
+                    .token(&origin)
+                    .map(|t| t.to_string())
+                    .unwrap_or_default();
+                let re_uri::Origin { scheme, host, port } = origin.clone();
+
+                Self {
+                    modal: Default::default(),
+                    mode: ServerModalMode::Edit(origin),
+                    scheme,
+                    host: host.to_string(),
+                    token,
+                    port,
+                }
+            }
+        };
 
         self.modal.open();
     }
@@ -48,7 +78,15 @@ impl AddServerModal {
     ) {
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Add Server"),
+            || {
+                let title = match &self.mode {
+                    ServerModalMode::Add => "Add server".to_owned(),
+                    ServerModalMode::Edit(origin) => {
+                        format!("Edit server: {}", origin.host)
+                    }
+                };
+                ModalWrapper::new(&title)
+            },
             |ui| {
                 ui.warning_label(
                     "The dataplatform is very experimental and not generally \
@@ -131,9 +169,14 @@ impl AddServerModal {
 
                 ui.add_space(24.0);
 
+                let save_text = match &self.mode {
+                    ServerModalMode::Add => "Add",
+                    ServerModalMode::Edit(_) => "Save",
+                };
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let (Ok(origin), Ok(token)) = (origin, token) {
-                        if ui.button("Add").clicked()
+                        if ui.button(save_text).clicked()
                             || ui.input(|i| i.key_pressed(egui::Key::Enter))
                         {
                             ui.close();
@@ -142,6 +185,11 @@ impl AddServerModal {
                                 connection_registry.set_token(&origin, token);
                             }
 
+                            if let ServerModalMode::Edit(old_origin) = &self.mode {
+                                ctx.command_sender
+                                    .send(Command::RemoveServer(old_origin.clone()))
+                                    .ok();
+                            }
                             ctx.command_sender
                                 .send(Command::AddServer(origin.clone()))
                                 .ok();
@@ -150,7 +198,7 @@ impl AddServerModal {
                             );
                         }
                     } else {
-                        ui.add_enabled(false, egui::Button::new("Add"));
+                        ui.add_enabled(false, egui::Button::new(save_text));
                     }
 
                     if ui.button("Cancel").clicked() {

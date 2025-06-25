@@ -40,23 +40,21 @@ impl PyDataframeQueryView {
     #[instrument(skip(dataset, contents, py))]
     pub fn new(
         dataset: Py<PyDatasetEntry>,
-        index: String,
+        index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
+        // Static only implies:
+        // - we include only static columns in the contents
+        // - we only return one row per partition, with the static data
+        let static_only = index.is_none();
+
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
-        let schema = {
-            let dataset_py = dataset.borrow(py);
-            let entry = dataset_py.as_super();
-            let dataset_id = entry.details.id;
-            let connection = entry.client.borrow(py).connection().clone();
-
-            connection.get_dataset_schema(py, dataset_id)?
-        };
+        let schema = PyDatasetEntry::fetch_arrow_schema(&dataset.borrow(py))?;
 
         // TODO(jleibs): Check schema for the index name
 
@@ -70,12 +68,22 @@ impl PyDataframeQueryView {
                 include_semantically_empty_columns,
                 include_indicator_columns,
                 include_tombstone_columns,
-                filtered_index: Some(index.into()),
+                include_static_columns: if static_only {
+                    re_chunk_store::StaticColumnSelection::StaticOnly
+                } else {
+                    re_chunk_store::StaticColumnSelection::Both
+                },
+                filtered_index: index.map(Into::into),
                 filtered_index_range: None,
                 filtered_index_values: None,
                 using_index_values: None,
                 filtered_is_not_null: None,
-                sparse_fill_strategy: SparseFillStrategy::None,
+                //TODO(#10327): this should not be necessary!
+                sparse_fill_strategy: if static_only {
+                    SparseFillStrategy::LatestAtGlobal
+                } else {
+                    SparseFillStrategy::None
+                },
                 selection: None,
             },
             partition_ids: vec![],
