@@ -1,5 +1,10 @@
 # Rerun changelog
 
+
+## [0.23.4](https://github.com/rerun-io/rerun/compare/0.23..3..0.23.4) - 2025-06-25
+- Fix `rerun rrd migrate` tool [#10350](https://github.com/rerun-io/rerun/pull/10350)
+
+
 ## [0.23.3](https://github.com/rerun-io/rerun/compare/0.23.2...0.23.3) - 2025-05-26
 
 ### 🔎 Details
