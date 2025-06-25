@@ -73,7 +73,7 @@ features = [
     ],
   ],
   [
-    "Connect the web viewer to a gRPC server",
+    "Host web viewer and connect it to a gRPC server",
     [
       "howto/serve_web_viewer",
     ],

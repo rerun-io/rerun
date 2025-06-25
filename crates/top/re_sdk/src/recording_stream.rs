@@ -646,7 +646,8 @@ impl RecordingStreamBuilder {
     // # TODO(#5531): keep static data around.
     #[deprecated(
         since = "0.24.0",
-        note = "Use `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead"
+        note = "Use `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details."
     )]
     #[cfg(feature = "web_viewer")]
     pub fn serve_web(

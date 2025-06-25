@@ -1,4 +1,4 @@
-//! Demonstrate how to log data to a gRPC server and connect the web viewer to it.
+//! Demonstrates how to log data to a gRPC server and connect the web viewer to it.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Start a gRPC server and use it as log sink.

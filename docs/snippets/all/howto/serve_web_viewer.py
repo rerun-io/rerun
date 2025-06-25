@@ -1,4 +1,4 @@
-"""Demonstrate how to log data to a gRPC server and connect the web viewer to it."""
+"""Demonstrates how to log data to a gRPC server and connect the web viewer to it."""
 
 import time
 
