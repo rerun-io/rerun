@@ -1,6 +1,6 @@
 [package]
 name = "viewer_callbacks"
-version = "0.23.4-rc.1"
+version = "0.23.4-rc.2"
 edition = "2021"
 rust-version = "1.84"
 license = "MIT OR Apache-2.0"
