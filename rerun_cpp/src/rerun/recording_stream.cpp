@@ -115,7 +115,7 @@ namespace rerun {
         for (uint32_t i = 0; i < num_sinks; i++) {
             c_sinks.push_back(detail::to_rr_log_sink(sinks[i]));
         }
-        rr_recording_stream_set_sinks(_id, c_sinks.data(), c_sinks.size(), &status);
+        rr_recording_stream_set_sinks(_id, c_sinks.data(), num_sinks, &status);
 
         return status;
     }
