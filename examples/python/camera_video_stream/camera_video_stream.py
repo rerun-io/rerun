@@ -88,7 +88,7 @@ def stream_video_to_rerun(input: av.container.InputContainer, output: av.video.V
                 for packet in output.encode(frame):
                     if packet.pts is None:
                         continue
-                    rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
+                    rr.set_time("time", duration=float(packet.pts * packet.time_base))
                     rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
         except av.BlockingIOError:
             pass
