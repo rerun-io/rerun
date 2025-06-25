@@ -316,7 +316,7 @@ pub struct CFileSink {
 /// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
 ///
 /// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
-#[repr(u8)] // Same as `repr(C)`, but forced to an 8-bit tag.
+#[repr(C, u8)]
 pub enum CLogSink {
     GrpcSink { grpc: CGrpcSink } = 0,
     FileSink { file: CFileSink } = 1,
