@@ -6,7 +6,7 @@ pub fn menu_style() -> StyleModifier {
     StyleModifier::new(|style| {
         egui::containers::menu::menu_style(style);
         style.spacing.interact_size.y = 24.0;
-        style.spacing.menu_margin = (4.0).into();
+        style.spacing.menu_margin = 4.0.into();
         style.spacing.icon_spacing = 6.0;
         style.spacing.button_padding.x = DesignTokens::menu_button_padding();
         style.spacing.item_spacing.y = 0.0;
