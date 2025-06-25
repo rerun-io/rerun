@@ -9,7 +9,7 @@ def partition_url(
     dataset: DatasetEntry,
     partition_id_col: str | Expr | None = None,
     timestamp_col: str | Expr | None = None,
-    timeline_name: str = "real_time",
+    timeline_name: str | None = None,
 ) -> Expr:
     """
     Compute the URL for a partition within a dataset.
@@ -33,7 +33,7 @@ def partition_url(
         specific timestamp within the partition.
     timeline_name:
         When used in combination with `timestamp_col`, this specifies which timeline
-        to seek along.
+        to seek along. By default this will use the same string as timestamp_col.
 
     """
     if partition_id_col is None:
@@ -42,6 +42,9 @@ def partition_url(
         partition_id_col = col(partition_id_col)
 
     if timestamp_col is not None:
+        if timeline_name is None:
+            timeline_name = str(timestamp_col)
+
         if isinstance(timestamp_col, str):
             timestamp_col = col(timestamp_col)
 
