@@ -663,9 +663,6 @@ impl ComponentUiRegistry {
         // We use the component type to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
         let Some(ui_identifier) = component_descr.component_type else {
-            re_log::warn_once!(
-                "Cannot show edit ui for descriptors without component type: {component_descr}"
-            );
             return false;
         };
 
