@@ -111,11 +111,17 @@ impl SorbetSchema {
     }
 }
 
-impl TryFrom<&ArrowSchema> for SorbetSchema {
-    type Error = SorbetError;
-
+impl SorbetSchema {
+    /// Parse an already migrated Arrow schema.
     #[tracing::instrument(level = "trace", skip_all)]
-    fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
+    pub(crate) fn try_from_migrated_arrow_schema(
+        arrow_schema: &ArrowSchema,
+    ) -> Result<Self, SorbetError> {
+        debug_assert!(
+            !arrow_schema.metadata.contains_key("rerun.id"),
+            "The schema should not contain the legacy 'rerun.id' key, because it should have already been migrated to 'rerun:id'."
+        );
+
         let ArrowSchema { metadata, fields } = arrow_schema;
 
         let entity_path = metadata
