@@ -121,7 +121,6 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 }
             }
 
-
             for (key, value) in &metadata {
                 debug_assert!(!key.starts_with("rerun."), "Metadata `{key}` (with value `{value}`) was not migrated to colon syntax.");
             }
