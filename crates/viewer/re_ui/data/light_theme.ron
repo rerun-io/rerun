@@ -273,7 +273,7 @@
     },
   },
 
-  "success": {
+  "alert_success": {
     "fill": {
        "color": "{Green.500}",
        "alpha": 25,
@@ -286,7 +286,7 @@
        "color": "{Green.500}"
     },
   },
-  "info": {
+  "alert_info": {
     "fill": {
        "color": "{Blue.500}",
        "alpha": 25,
@@ -299,7 +299,7 @@
        "color": "{Blue.500}"
     },
   },
-  "warning": {
+  "alert_warning": {
     "fill": {
        "color": "#DF7700",
        "alpha": 25,
@@ -312,7 +312,7 @@
        "color": "#DF7700"
     },
   },
-  "error": {
+  "alert_error": {
     "fill": {
        "color": "{Red.500}",
        "alpha": 25,

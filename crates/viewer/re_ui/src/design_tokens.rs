@@ -21,7 +21,7 @@ impl AlertVisuals {
     fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
         let value = ron.get(name)?;
 
-        Ok(AlertVisuals {
+        Ok(Self {
             fill: color_from_json(color_table, value.get("fill")?)?,
             stroke: color_from_json(color_table, value.get("stroke")?)?,
             icon: color_from_json(color_table, value.get("icon")?)?,
@@ -166,10 +166,10 @@ pub struct DesignTokens {
     pub warn_fg_color: Color32,
     pub popup_shadow_color: Color32,
 
-    pub success: AlertVisuals,
-    pub info: AlertVisuals,
-    pub warning: AlertVisuals,
-    pub error: AlertVisuals,
+    pub alert_success: AlertVisuals,
+    pub alert_info: AlertVisuals,
+    pub alert_warning: AlertVisuals,
+    pub alert_error: AlertVisuals,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -295,10 +295,10 @@ impl DesignTokens {
             error_fg_color: get_color("error_fg_color"),
             warn_fg_color: get_color("warn_fg_color"),
 
-            success: AlertVisuals::get(&colors, &theme_json, "success"),
-            info: AlertVisuals::get(&colors, &theme_json, "info"),
-            warning: AlertVisuals::get(&colors, &theme_json, "warning"),
-            error: AlertVisuals::get(&colors, &theme_json, "error"),
+            alert_success: AlertVisuals::get(&colors, &theme_json, "alert_success"),
+            alert_info: AlertVisuals::get(&colors, &theme_json, "alert_info"),
+            alert_warning: AlertVisuals::get(&colors, &theme_json, "alert_warning"),
+            alert_error: AlertVisuals::get(&colors, &theme_json, "alert_error"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 

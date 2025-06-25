@@ -12,10 +12,10 @@ enum AlertKind {
 impl AlertKind {
     fn colors(&self, ui: &Ui) -> &AlertVisuals {
         match self {
-            Self::Info => &ui.tokens().info,
-            Self::Success => &ui.tokens().success,
-            Self::Warning => &ui.tokens().warning,
-            Self::Error => &ui.tokens().error,
+            Self::Info => &ui.tokens().alert_info,
+            Self::Success => &ui.tokens().alert_success,
+            Self::Warning => &ui.tokens().alert_warning,
+            Self::Error => &ui.tokens().alert_error,
         }
     }
 
