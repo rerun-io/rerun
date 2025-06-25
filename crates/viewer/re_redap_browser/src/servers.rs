@@ -110,7 +110,7 @@ impl Server {
             let mut blueprint = ColumnBlueprint::default();
 
             if let ColumnDescriptorRef::Component(component) = desc {
-                if component.archetype_field_name == "entry_kind" {
+                if component.component == "entry_kind" {
                     blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
                 }
             }
@@ -224,6 +224,11 @@ impl Server {
     ) {
         let item = Item::RedapServer(self.origin.clone());
         let is_selected = viewer_ctx.selection().contains_item(&item);
+        let is_active = matches!(
+            viewer_ctx.display_mode(),
+            DisplayMode::RedapServer(origin)
+            if origin == &self.origin
+        );
 
         let content =
             list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
@@ -244,6 +249,7 @@ impl Server {
             .list_item()
             .header()
             .selected(is_selected)
+            .active(is_active)
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),

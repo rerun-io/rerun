@@ -435,7 +435,7 @@ impl LatestAtResults {
         instance_index: usize,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
         self.component_instance_with_log_level(
             re_log::Level::Error,
             instance_index,
@@ -684,7 +684,7 @@ impl LatestAtCache {
         component_descr: &ComponentDescriptor,
     ) -> Option<UnitChunkShared> {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
-        //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
+        //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
         debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 

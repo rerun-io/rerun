@@ -49,7 +49,7 @@ AffixFuzzer9ArrayLike = Union[
 
 class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.utf8()
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer9"
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer9"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:

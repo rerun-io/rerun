@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Specifies a 2D slice of a tensor.
@@ -54,9 +54,9 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: Some("rerun.components.TensorWidthDimension".into()),
-            archetype_field_name: "width".into(),
+            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component: "TensorSliceSelection:width".into(),
+            component_type: Some("rerun.components.TensorWidthDimension".into()),
         }
     }
 
@@ -66,9 +66,9 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_height() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: Some("rerun.components.TensorHeightDimension".into()),
-            archetype_field_name: "height".into(),
+            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component: "TensorSliceSelection:height".into(),
+            component_type: Some("rerun.components.TensorHeightDimension".into()),
         }
     }
 
@@ -78,9 +78,9 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_indices() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: Some("rerun.components.TensorDimensionIndexSelection".into()),
-            archetype_field_name: "indices".into(),
+            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component: "TensorSliceSelection:indices".into(),
+            component_type: Some("rerun.components.TensorDimensionIndexSelection".into()),
         }
     }
 
@@ -90,9 +90,9 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_slider() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: Some("rerun.blueprint.components.TensorDimensionIndexSlider".into()),
-            archetype_field_name: "slider".into(),
+            archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component: "TensorSliceSelection:slider".into(),
+            component_type: Some("rerun.blueprint.components.TensorDimensionIndexSlider".into()),
         }
     }
 
@@ -100,9 +100,9 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
+            component_type: None,
         }
     }
 }

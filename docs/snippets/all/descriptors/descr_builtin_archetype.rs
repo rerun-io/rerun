@@ -51,14 +51,14 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
             let expected = vec![
                 ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: "positions".into(),
-                    component_name: Some("rerun.components.Position3D".into()),
+                    archetype: Some("rerun.archetypes.Points3D".into()),
+                    component: "Points3D:positions".into(),
+                    component_type: Some("rerun.components.Position3D".into()),
                 },
                 ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: "radii".into(),
-                    component_name: Some("rerun.components.Radius".into()),
+                    archetype: Some("rerun.archetypes.Points3D".into()),
+                    component: "Points3D:radii".into(),
+                    component_type: Some("rerun.components.Radius".into()),
                 },
             ];
 
@@ -72,9 +72,9 @@ fn check_tags(rec: &rerun::RecordingStream) {
             descriptors.sort();
 
             let expected = vec![ComponentDescriptor {
-                archetype_name: None,
-                archetype_field_name: "rerun.components.Points3DIndicator".into(),
-                component_name: None,
+                archetype: None,
+                component: "rerun.components.Points3DIndicator".into(),
+                component_type: None,
             }];
 
             similar_asserts::assert_eq!(expected, descriptors);

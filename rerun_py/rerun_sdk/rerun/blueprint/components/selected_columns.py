@@ -28,7 +28,7 @@ class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
 
 
 class SelectedColumnsBatch(blueprint_datatypes.SelectedColumnsBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.SelectedColumns"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.SelectedColumns"
 
 
 # This is patched in late to avoid circular dependencies.

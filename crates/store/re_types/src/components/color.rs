@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -29,7 +29,7 @@ pub struct Color(pub crate::datatypes::Rgba32);
 
 impl ::re_types_core::Component for Color {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.Color".into()
     }
 }

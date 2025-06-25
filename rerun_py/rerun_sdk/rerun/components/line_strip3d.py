@@ -69,7 +69,7 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.components.LineStrip3D"
+    _COMPONENT_TYPE: str = "rerun.components.LineStrip3D"
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:

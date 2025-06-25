@@ -55,7 +55,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::TensorDimensionIndexSlider> {
-        static constexpr std::string_view ComponentName =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.TensorDimensionIndexSlider";
 
         /// Returns the arrow data type this type corresponds to.

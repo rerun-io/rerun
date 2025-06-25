@@ -25,30 +25,30 @@ class IndicatorComponentBatch:
 
     data: pa.Array
 
-    def __init__(self, archetype_name: str) -> None:
+    def __init__(self, archetype: str) -> None:
         """
-        Creates a new indicator component based on a given `archetype_name`.
+        Creates a new indicator component based on a given `archetype`.
 
         Parameters
         ----------
-        archetype_name:
+        archetype:
             The fully qualified name of the Archetype.
 
         """
         self.data = pa.nulls(1, type=pa.null())
-        assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
-            f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
+        assert not archetype.startswith("rerun.archetypes.rerun.archetypes."), (
+            f"Bad archetype name '{archetype}' in IndicatorComponentBatch"
         )
-        self._archetype_name = archetype_name
+        self._archetype = archetype
 
-    def archetype_field_name(self) -> str:
-        return self._archetype_name.replace("archetypes", "components") + "Indicator"
+    def component(self) -> str:
+        return self._archetype.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_array(self) -> pa.Array:
         return self.data
 
     def component_descriptor(self) -> ComponentDescriptor:
-        return ComponentDescriptor(self.archetype_field_name())
+        return ComponentDescriptor(self.component())
 
 
 @catch_and_log_exceptions()

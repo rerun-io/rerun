@@ -24,7 +24,7 @@ class TensorWidthDimension(datatypes.TensorDimensionSelection, ComponentMixin):
 
 
 class TensorWidthDimensionBatch(datatypes.TensorDimensionSelectionBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.TensorWidthDimension"
+    _COMPONENT_TYPE: str = "rerun.components.TensorWidthDimension"
 
 
 # This is patched in late to avoid circular dependencies.

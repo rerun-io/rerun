@@ -13,7 +13,6 @@ from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 from .types import (
     AnyColumn,
     AnyComponentColumn,
-    ComponentLike,
     IndexValuesLike,
     ViewContentsLike,
 )
@@ -89,15 +88,15 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str | None:
+    def component_type(self) -> str | None:
         """
-        The component name, if any.
+        The component type, if any.
 
         This property is read-only.
         """
 
     @property
-    def archetype_name(self) -> str:
+    def archetype(self) -> str:
         """
         The archetype name, if any.
 
@@ -105,9 +104,9 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """
@@ -127,7 +126,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike) -> None:
+    def __init__(self, entity_path: str, component: str) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -135,8 +134,8 @@ class ComponentColumnSelector:
         ----------
         entity_path : str
             The entity path to select.
-        component : ComponentLike
-            The component to select
+        component : str
+            The component to select. Example: `Points3D:positions`.
 
         """
     @property
@@ -148,9 +147,9 @@ class ComponentColumnSelector:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """
@@ -180,7 +179,7 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
 
-    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: str) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -188,8 +187,8 @@ class Schema:
         ----------
         entity_path : str
             The entity path to look up.
-        component : ComponentLike
-            The component to look up.
+        component : str
+            The component to look up. Example: `Points3D:positions`.
 
         Returns
         -------
@@ -210,7 +209,7 @@ class Schema:
             The selector to look up.
 
             String arguments are expected to follow the following format:
-            `"<entity_path>:<component_name>"`
+            `"<entity_path>:<component_type>"`
 
         Returns
         -------
@@ -974,8 +973,8 @@ def send_arrow_chunk(
         The entity path to log the chunk to.
     timelines: `Dict[str, arrow::Int64Array]`
         A dictionary mapping timeline names to their values.
-    components: `Dict[str, arrow::ListArray]`
-        A dictionary mapping component names to their values.
+    components: `Dict[ComponentDescriptor, arrow::ListArray]`
+        A dictionary mapping component types to their values.
     """
 
 def log_file_from_path(

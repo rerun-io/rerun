@@ -154,12 +154,19 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     /// Will perform some transformations:
     /// * Will automatically wrap data columns in `ListArrays` if they are not already
     /// * Will reorder columns so that Row ID comes before timelines, which come before data
-    /// * Will migrate legacy data to more modern form
+    /// * Will migrate component descriptors to colon-based notation
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        let batch = crate::migration::reorder_columns(batch);
-        let batch = crate::migration::rewire_indicator_components(&batch);
+        // Migrations from pre-`v0.23` to `v0.23`.
+        let batch = if crate::migrations::v0_23::matches_schema(batch) {
+            crate::migrations::v0_23::reorder_columns(batch)
+        } else {
+            batch.clone()
+        };
+
+        // Migrations from `v0.23` to `v0.24`.
+        let batch = crate::migrations::v0_24::rewire_tagged_components(&batch);
 
         Self::try_from(SorbetBatch::try_from_record_batch(
             &batch,

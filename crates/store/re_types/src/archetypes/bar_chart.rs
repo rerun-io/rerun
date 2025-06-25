@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A bar chart.
@@ -63,9 +63,9 @@ impl BarChart {
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.BarChart".into()),
-            component_name: Some("rerun.components.TensorData".into()),
-            archetype_field_name: "values".into(),
+            archetype: Some("rerun.archetypes.BarChart".into()),
+            component: "BarChart:values".into(),
+            component_type: Some("rerun.components.TensorData".into()),
         }
     }
 
@@ -75,9 +75,9 @@ impl BarChart {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.BarChart".into()),
-            component_name: Some("rerun.components.Color".into()),
-            archetype_field_name: "color".into(),
+            archetype: Some("rerun.archetypes.BarChart".into()),
+            component: "BarChart:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -85,9 +85,9 @@ impl BarChart {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.BarChartIndicator".into(),
+            archetype: None,
+            component: "rerun.components.BarChartIndicator".into(),
+            component_type: None,
         }
     }
 }

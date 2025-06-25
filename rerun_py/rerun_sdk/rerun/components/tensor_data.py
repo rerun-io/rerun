@@ -33,7 +33,7 @@ class TensorData(datatypes.TensorData, ComponentMixin):
 
 
 class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.TensorData"
+    _COMPONENT_TYPE: str = "rerun.components.TensorData"
 
 
 # This is patched in late to avoid circular dependencies.

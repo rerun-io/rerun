@@ -169,7 +169,11 @@ fn recording_list_ui(
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
         let selected = ctx.selection().contains_item(&item);
-        let list_item = ui.list_item().header().selected(selected);
+        let active = matches!(
+            ctx.display_mode(),
+            DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+        );
+        let list_item = ui.list_item().header().selected(selected).active(active);
         let title = list_item::LabelContent::header("Rerun examples");
         let response = if example_recordings.is_empty() {
             list_item.show_flat(ui, title)

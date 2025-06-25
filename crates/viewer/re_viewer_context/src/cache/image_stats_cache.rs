@@ -35,9 +35,9 @@ impl Cache for ImageStatsCache {
                         event
                             .chunk
                             .component_descriptors()
-                            .filter(|descr| descr.component_name == Some(components::Blob::name()))
+                            .filter(|descr| descr.component_type == Some(components::Blob::name()))
                             .flat_map(|descr| {
-                                let kind = ImageKind::from_archetype_name(descr.archetype_name);
+                                let kind = ImageKind::from_archetype_name(descr.archetype);
                                 event.chunk.row_ids().map(move |row_id| {
                                     (StoredBlobCacheKey::new(row_id, &descr), kind)
                                 })

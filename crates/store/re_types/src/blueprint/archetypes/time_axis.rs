@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the time (Y) axis of a plot.
@@ -35,9 +35,9 @@ impl TimeAxis {
     #[inline]
     pub fn descriptor_link() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TimeAxis".into()),
-            component_name: Some("rerun.blueprint.components.LinkAxis".into()),
-            archetype_field_name: "link".into(),
+            archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+            component: "TimeAxis:link".into(),
+            component_type: Some("rerun.blueprint.components.LinkAxis".into()),
         }
     }
 
@@ -45,9 +45,9 @@ impl TimeAxis {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.TimeAxisIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.TimeAxisIndicator".into(),
+            component_type: None,
         }
     }
 }
