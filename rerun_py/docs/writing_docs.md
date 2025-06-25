@@ -10,6 +10,8 @@ This will watch the contents of the `rerun_py` folder and refresh documentation 
 pixi run py-docs-serve
 ```
 
+TODO(#7913): You may need to delete `rerun_py/rerun_bindings/rerun_bindings.abi3.so`.
+
 ### How versioned docs are generated and served
 Our documentation is versioned with releases and generated via [mkdocs](https://github.com/mkdocs/mkdocs)
 
