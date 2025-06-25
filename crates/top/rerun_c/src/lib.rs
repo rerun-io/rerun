@@ -12,7 +12,7 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::ffi::{CString, c_char, c_uchar};
+use std::ffi::{CString, c_char, c_float, c_uchar};
 
 use arrow::{
     array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
@@ -278,6 +278,48 @@ pub struct CTimeColumn {
 
     /// The sorting order of the times array.
     pub sorting_status: CSortingStatus,
+}
+
+/// Log sink which streams messages to a gRPC server.
+///
+/// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
+///
+/// See `rr_grpc_sink` in the C header.
+#[repr(C)]
+pub struct CGrpcSink {
+    /// A Rerun gRPC URL
+    ///
+    /// Default is `rerun+http://127.0.0.1:9876/proxy`.
+    pub url: CStringView,
+
+    /// The minimum time the SDK will wait during a flush before potentially
+    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+    /// and can cause a call to `flush` to block indefinitely.
+    pub flush_timeout_sec: c_float,
+}
+
+/// Log sink which writes messages to a file.
+///
+/// See `rr_file_sink` in the C header.
+#[repr(C)]
+pub struct CFileSink {
+    /// Path to the output file.
+    pub path: CStringView,
+}
+
+/// A sink for log messages.
+///
+/// See specific log sink types for more information:
+/// * [`CGrpcSink`]
+/// * [`CFileSink`]
+///
+/// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
+///
+/// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
+#[repr(u8)] // Same as `repr(C)`, but forced to an 8-bit tag.
+pub enum CLogSink {
+    GrpcSink { grpc: CGrpcSink } = 0,
+    FileSink { file: CFileSink } = 1,
 }
 
 #[repr(u32)]
@@ -567,6 +609,65 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_sinks_impl(
+    stream: CRecordingStream,
+    raw_sinks: *mut CLogSink,
+    num_sinks: u32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let raw_sinks = unsafe { std::slice::from_raw_parts_mut(raw_sinks, num_sinks as usize) };
+
+    let mut sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::with_capacity(num_sinks as usize);
+    for sink in raw_sinks {
+        match sink {
+            CLogSink::GrpcSink { grpc } => {
+                let uri = grpc
+                    .url
+                    .as_str("url")?
+                    .parse::<re_sdk::external::re_uri::ProxyUri>()
+                    .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
+                let flush_timeout = if grpc.flush_timeout_sec >= 0.0 {
+                    Some(std::time::Duration::from_secs_f32(grpc.flush_timeout_sec))
+                } else {
+                    None
+                };
+                sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri, flush_timeout)));
+            }
+            CLogSink::FileSink { file } => {
+                let path = file.path.as_str("path")?;
+                sinks.push(Box::new(re_sdk::sink::FileSink::new(path).map_err(
+                    |err| {
+                        CError::new(
+                            CErrorCode::RecordingStreamSaveFailure,
+                            &format!("Failed to save recording stream to {path:?}: {err}"),
+                        )
+                    },
+                )?));
+            }
+        }
+    }
+
+    stream.set_sinks(sinks);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_sinks(
+    id: CRecordingStream,
+    sinks: *mut CLogSink,
+    num_sinks: u32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_sinks_impl(id, sinks, num_sinks) {
+        err.write_error(error);
     }
 }
 

@@ -306,6 +306,52 @@ typedef struct rr_time_column {
     rr_sorting_status sorting_status;
 } rr_time_column;
 
+/// Log sink which streams messages to a gRPC server.
+///
+/// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
+typedef struct rr_grpc_sink {
+    /// A Rerun gRPC URL.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
+    rr_string url;
+
+    /// The minimum time the SDK will wait during a flush before potentially
+    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+    /// and can cause a call to `flush` to block indefinitely.
+    float flush_timeout_sec;
+} rr_grpc_sink;
+
+/// Log sink which writes messages to a file.
+typedef struct rr_file_sink {
+    /// Path to the output file.
+    rr_string path;
+} rr_file_sink;
+
+enum {
+    RR_LOG_SINK_KIND_GRPC = 0,
+    RR_LOG_SINK_KIND_FILE = 1,
+};
+
+/// Used to tag the kind of `rr_log_sink`.
+typedef uint8_t rr_log_sink_kind;
+
+/// A sink for log messages.
+///
+/// See specific log sink types for more information:
+/// * `rr_grpc_sink`
+/// * `rr_file_sink`
+typedef struct rr_log_sink {
+    rr_log_sink_kind kind;
+
+    union {
+        rr_grpc_sink grpc;
+        rr_file_sink file;
+    };
+} rr_log_sink;
+
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
 ///
 /// Category codes are used to group errors together, but are never returned directly.
@@ -419,6 +465,15 @@ extern void rr_recording_stream_set_thread_local(
 
 /// Check whether the recording stream is enabled.
 extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
+
+/// Stream data to multiple different sinks.
+///
+/// Any previously active sinks will be dropped.
+///
+/// See `rr_log_sink` for more information about what each sink does.
+extern void rr_recording_stream_set_sinks(
+    rr_recording_stream stream, rr_log_sink* sinks, uint32_t num_sinks, rr_error* error
+);
 
 /// Connect to a remote Rerun Viewer on the given URL.
 ///
