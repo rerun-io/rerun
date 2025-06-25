@@ -4,7 +4,7 @@
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _};
-use re_ui::menu::{align_non_button_menu_items, menu_style};
+use re_ui::menu::menu_style;
 use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
@@ -70,7 +70,7 @@ impl App {
         {
             // On the web the browser controls the zoom
             let zoom_factor = ui.ctx().zoom_factor();
-            align_non_button_menu_items(ui, |ui| {
+            re_ui::menu::align_non_button_menu_items(ui, |ui| {
                 ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
                     .on_hover_text(
                         "The UI zoom level on top of the operating system's default value",
