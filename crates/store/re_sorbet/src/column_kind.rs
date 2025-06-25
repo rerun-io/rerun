@@ -4,7 +4,7 @@ use crate::MetadataExt as _;
 
 #[derive(thiserror::Error, Debug)]
 #[error(
-    "Unknown `rerun.kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`."
+    "Unknown `rerun:kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`."
 )]
 pub struct UnknownColumnKind {
     pub kind: String,
@@ -39,7 +39,7 @@ impl TryFrom<&ArrowField> for ColumnKind {
     type Error = UnknownColumnKind;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        let Some(kind) = field.get_opt("rerun.kind") else {
+        let Some(kind) = field.get_opt("rerun:kind") else {
             return Ok(Self::default());
         };
         match kind {

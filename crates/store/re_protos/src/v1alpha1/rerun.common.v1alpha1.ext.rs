@@ -883,9 +883,9 @@ impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior 
 impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
     fn from(value: ComponentDescriptor) -> Self {
         Self {
-            archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-            archetype_field_name: Some(value.archetype_field_name.to_string()),
-            component_name: value.component_name.map(|c| c.full_name().to_owned()),
+            archetype: value.archetype.map(|n| n.full_name().to_owned()),
+            component: Some(value.component.to_string()),
+            component_type: value.component_type.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -895,22 +895,22 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
         let crate::common::v1alpha1::ComponentDescriptor {
-            archetype_name,
-            archetype_field_name,
-            component_name,
+            archetype,
+            component,
+            component_type,
         } = value;
 
-        let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
+        let mut descriptor = Self::partial(component.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
-            "archetype_field_name"
+            "component"
         ))?);
 
-        if let Some(archetype_name) = archetype_name {
-            descriptor = descriptor.with_archetype_name(archetype_name.into());
+        if let Some(archetype) = archetype {
+            descriptor = descriptor.with_archetype(archetype.into());
         }
 
-        if let Some(component_name) = component_name {
-            descriptor = descriptor.with_component_name(component_name.into());
+        if let Some(component_type) = component_type {
+            descriptor = descriptor.with_component_type(component_type.into());
         }
 
         Ok(descriptor)

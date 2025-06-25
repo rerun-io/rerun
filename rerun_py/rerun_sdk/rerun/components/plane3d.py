@@ -34,7 +34,7 @@ class Plane3D(datatypes.Plane3D, ComponentMixin):
 
 
 class Plane3DBatch(datatypes.Plane3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Plane3D"
+    _COMPONENT_TYPE: str = "rerun.components.Plane3D"
 
 
 # This is patched in late to avoid circular dependencies.

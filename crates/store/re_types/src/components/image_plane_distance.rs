@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
@@ -27,7 +27,7 @@ pub struct ImagePlaneDistance(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for ImagePlaneDistance {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.ImagePlaneDistance".into()
     }
 }

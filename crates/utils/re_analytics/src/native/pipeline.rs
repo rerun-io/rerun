@@ -5,14 +5,16 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::{
-    channel::{self, RecvError},
-    select,
-};
+use crossbeam::{channel, select};
 
-use super::AbortSignal;
-use super::sink::PostHogSink;
+use super::{AbortSignal, sink::PostHogSink};
+
 use crate::{AnalyticsEvent, Config};
+
+pub enum PipelineEvent {
+    Analytics(AnalyticsEvent),
+    Flush,
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
@@ -28,7 +30,8 @@ pub enum PipelineError {
 /// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
 pub struct Pipeline {
-    event_tx: channel::Sender<Result<AnalyticsEvent, RecvError>>,
+    event_tx: channel::Sender<PipelineEvent>,
+    flush_done_rx: channel::Receiver<()>,
 }
 
 impl Pipeline {
@@ -40,6 +43,7 @@ impl Pipeline {
         }
 
         let (event_tx, event_rx) = channel::bounded(2048);
+        let (flush_done_tx, flush_done_rx) = channel::bounded(1);
         let abort_signal = AbortSignal::new();
 
         let data_path = config.data_dir().to_owned();
@@ -104,6 +108,7 @@ impl Pipeline {
                     tick,
                     &event_tx,
                     &event_rx,
+                    &flush_done_tx,
                     &abort_signal,
                 );
                 re_log::trace!(%analytics_id, %session_id, "pipeline thread shut down");
@@ -112,21 +117,30 @@ impl Pipeline {
             re_log::debug!("Failed to spawn analytics thread: {err}");
         }
 
-        Ok(Some(Self { event_tx }))
+        Ok(Some(Self {
+            event_tx,
+            flush_done_rx,
+        }))
     }
 
     pub fn record(&self, event: AnalyticsEvent) {
-        try_send_event(&self.event_tx, event);
+        try_send_event(&self.event_tx, PipelineEvent::Analytics(event));
+    }
+
+    /// Tries to flush all pending events to the sink.
+    ///
+    /// It blocks until either the flush completed, or it failed.
+    pub fn flush_blocking(&self) {
+        re_log::trace!("Flushing analytics events…");
+        try_send_event(&self.event_tx, PipelineEvent::Flush);
+        self.flush_done_rx.recv().ok();
     }
 }
 
 // ---
 
-fn try_send_event(
-    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
-    event: AnalyticsEvent,
-) {
-    match event_tx.try_send(Ok(event)) {
+fn try_send_event(event_tx: &channel::Sender<PipelineEvent>, event: PipelineEvent) {
+    match event_tx.try_send(event) {
         Ok(_) => {}
         Err(channel::TrySendError::Full(_)) => {
             re_log::trace!("dropped event, analytics channel is full");
@@ -208,14 +222,15 @@ fn flush_pending_events(
     Ok(())
 }
 
-#[allow(clippy::unnecessary_wraps, clippy::needless_return)]
+#[expect(clippy::needless_return, clippy::too_many_arguments)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,
     mut session_file: File,
     tick: Duration,
-    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
-    event_rx: &channel::Receiver<Result<AnalyticsEvent, RecvError>>,
+    event_tx: &channel::Sender<PipelineEvent>,
+    event_rx: &channel::Receiver<PipelineEvent>,
+    flush_done_tx: &channel::Sender<()>,
     abort_signal: &AbortSignal,
 ) {
     let analytics_id: Arc<str> = config.analytics_id.clone().into();
@@ -224,7 +239,7 @@ fn realtime_pipeline(
 
     let ticker_rx = crossbeam::channel::tick(tick);
 
-    let on_tick = |session_file: &mut _, _elapsed| {
+    let on_flush = |session_file: &mut _| {
         // A number of things can fail here, in all cases we will stop retrying.
         // The next time the analytics boots up, the catchup thread should handle
         // any remaining events.
@@ -264,20 +279,26 @@ fn realtime_pipeline(
         if let Err(event) = append_event(session_file, &analytics_id, &session_id, event) {
             // We failed to append the event to the current session, so push it back at the end of
             // the queue to be retried later on.
-            try_send_event(event_tx, event);
+            try_send_event(event_tx, PipelineEvent::Analytics(event));
         }
     };
 
     loop {
         select! {
-            recv(ticker_rx) -> elapsed => on_tick(&mut session_file, elapsed),
+            recv(ticker_rx) -> _elapsed => on_flush(&mut session_file),
             recv(event_rx) -> event => {
                 let Ok(event) = event else { break };
-                let Ok(event) = event else { break };
-                on_event(&mut session_file, event);
+                match event {
+                    PipelineEvent::Analytics(event) => on_event(&mut session_file, event),
+                    PipelineEvent::Flush => {
+                        on_flush(&mut session_file);
+                        flush_done_tx.send(()).ok();
+                    },
+                }
+
             },
         }
-        // `on_tick` may have failed and signalled an abort
+        // `on_flush` may have failed and signalled an abort
         // in this case we accept our fate and stop collecting events
         if abort_signal.is_aborted() {
             return;

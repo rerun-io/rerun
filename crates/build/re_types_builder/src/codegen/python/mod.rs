@@ -1949,7 +1949,7 @@ fn quote_arrow_support_from_obj(
             r#"
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_DATATYPE = {datatype}
-                _COMPONENT_NAME: str = "{fqname}"
+                _COMPONENT_TYPE: str = "{fqname}"
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
@@ -1962,7 +1962,7 @@ fn quote_arrow_support_from_obj(
         unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
-                _COMPONENT_NAME: str = "{fqname}"
+                _COMPONENT_TYPE: str = "{fqname}"
             "#
         ))
     }
@@ -2535,6 +2535,17 @@ fn quote_kwargs(obj: &Object) -> String {
         .join(",\n")
 }
 
+fn quote_component_field_mapping(obj: &Object) -> String {
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{}:{field_name}': {field_name}", obj.name)
+        })
+        .collect_vec()
+        .join(",\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -2652,7 +2663,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    let kwargs = quote_kwargs(obj);
+    let kwargs = quote_component_field_mapping(obj);
     let kwargs = indent::indent_by(12, kwargs);
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
@@ -2687,7 +2698,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
                 # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                    param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
+                    param = kwargs[batch.component_descriptor().component] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
                     elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 

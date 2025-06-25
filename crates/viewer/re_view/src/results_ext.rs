@@ -63,7 +63,7 @@ impl HybridLatestAtResults<'_> {
         component_descr: &ComponentDescriptor,
         fallback_provider: &impl TypedComponentFallbackProvider<C>,
     ) -> C {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
         self.get_instance(0, component_descr).unwrap_or_else(|| {
             let query_context = self.ctx.query_context(self.data_result, &self.query);
@@ -96,7 +96,7 @@ impl HybridLatestAtResults<'_> {
         index: usize,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        debug_assert_eq!(component_descr.component_name, Some(C::name()));
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
 
         self.get_required_instance(index, component_descr)
             .or_else(|| {

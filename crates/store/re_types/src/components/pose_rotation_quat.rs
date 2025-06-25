@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
@@ -30,7 +30,7 @@ pub struct PoseRotationQuat(pub crate::datatypes::Quaternion);
 
 impl ::re_types_core::Component for PoseRotationQuat {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.PoseRotationQuat".into()
     }
 }

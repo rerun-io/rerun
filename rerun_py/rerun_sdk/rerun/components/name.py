@@ -24,7 +24,7 @@ class Name(datatypes.Utf8, ComponentMixin):
 
 
 class NameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Name"
+    _COMPONENT_TYPE: str = "rerun.components.Name"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -65,7 +65,7 @@ impl ConnectionRegistryHandle {
         });
     }
 
-    pub fn get_token(&self, origin: &re_uri::Origin) -> Option<Jwt> {
+    pub fn token(&self, origin: &re_uri::Origin) -> Option<Jwt> {
         wrap_blocking_lock(|| {
             let inner = self.inner.blocking_read();
             inner.saved_tokens.get(origin).cloned()

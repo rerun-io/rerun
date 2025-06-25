@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
 use datafusion::prelude::{col, lit};
-use egui::{Frame, Margin, RichText, Widget as _};
+use egui::Widget as _;
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -19,9 +19,9 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::add_server_modal::{ServerModal, ServerModalMode};
 use crate::context::Context;
 use crate::entries::{Dataset, Entries};
+use crate::server_modal::{ServerModal, ServerModalMode};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
@@ -172,7 +172,7 @@ impl Server {
             let mut blueprint = ColumnBlueprint::default();
 
             if let ColumnDescriptorRef::Component(component) = desc {
-                if component.archetype_field_name == "entry_kind" {
+                if component.component == "entry_kind" {
                     blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
                 }
             }
@@ -286,13 +286,18 @@ impl Server {
     ) {
         let item = Item::RedapServer(self.origin.clone());
         let is_selected = viewer_ctx.selection().contains_item(&item);
+        let is_active = matches!(
+            viewer_ctx.display_mode(),
+            DisplayMode::RedapServer(origin)
+            if origin == &self.origin
+        );
 
         let content = list_item::LabelContent::header(self.origin.host.to_string())
             .always_show_buttons(true)
             .with_buttons(|ui| {
                 Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
                     if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh server")
+                        .as_button_with_label(ui.tokens(), "Refresh")
                         .ui(ui)
                         .clicked()
                     {
@@ -300,8 +305,8 @@ impl Server {
                             .send(Command::RefreshCollection(self.origin.clone()))
                             .ok();
                     }
-                    if icons::EDIT
-                        .as_button_with_label(ui.tokens(), "Edit server")
+                    if icons::SETTINGS
+                        .as_button_with_label(ui.tokens(), "Edit")
                         .ui(ui)
                         .clicked()
                     {
@@ -309,7 +314,7 @@ impl Server {
                             .send(Command::OpenEditServerModal(self.origin.clone()))
                             .ok();
                     }
-                    if icons::REMOVE
+                    if icons::TRASH
                         .as_button_with_label(ui.tokens(), "Remove")
                         .ui(ui)
                         .clicked()
@@ -326,6 +331,7 @@ impl Server {
             .list_item()
             .header()
             .selected(is_selected)
+            .active(is_active)
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
@@ -475,22 +481,6 @@ impl RedapServers {
             Command::OpenEditServerModal(origin) => {
                 self.server_modal_ui
                     .open(ServerModalMode::Edit(origin), connection_registry);
-            }
-
-            Command::UpdateServer {
-                previous_origin,
-                new_origin,
-            } => {
-                self.servers.remove(&previous_origin);
-                self.servers.insert(
-                    new_origin.clone(),
-                    Server::new(
-                        connection_registry.clone(),
-                        runtime.clone(),
-                        egui_ctx,
-                        new_origin,
-                    ),
-                );
             }
 
             Command::AddServer(origin) => {

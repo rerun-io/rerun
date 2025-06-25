@@ -24,7 +24,7 @@ class GraphNode(datatypes.Utf8, ComponentMixin):
 
 
 class GraphNodeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.GraphNode"
+    _COMPONENT_TYPE: str = "rerun.components.GraphNode"
 
 
 # This is patched in late to avoid circular dependencies.

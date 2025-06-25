@@ -8,11 +8,11 @@ from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
 from rerun.catalog import CatalogClient
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
     AnyColumn,
     AnyComponentColumn,
-    ComponentLike,
     IndexValuesLike,
     ViewContentsLike,
 )
@@ -88,15 +88,15 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str | None:
+    def component_type(self) -> str | None:
         """
-        The component name, if any.
+        The component type, if any.
 
         This property is read-only.
         """
 
     @property
-    def archetype_name(self) -> str:
+    def archetype(self) -> str:
         """
         The archetype name, if any.
 
@@ -104,9 +104,9 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """
@@ -126,7 +126,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike) -> None:
+    def __init__(self, entity_path: str, component: str) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -134,8 +134,8 @@ class ComponentColumnSelector:
         ----------
         entity_path : str
             The entity path to select.
-        component : ComponentLike
-            The component to select
+        component : str
+            The component to select. Example: `Points3D:positions`.
 
         """
     @property
@@ -147,9 +147,9 @@ class ComponentColumnSelector:
         """
 
     @property
-    def archetype_field_name(self) -> str:
+    def component(self) -> str:
         """
-        The archetype field name.
+        The component.
 
         This property is read-only.
         """
@@ -179,7 +179,7 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
 
-    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: str) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -187,8 +187,8 @@ class Schema:
         ----------
         entity_path : str
             The entity path to look up.
-        component : ComponentLike
-            The component to look up.
+        component : str
+            The component to look up. Example: `Points3D:positions`.
 
         Returns
         -------
@@ -209,7 +209,7 @@ class Schema:
             The selector to look up.
 
             String arguments are expected to follow the following format:
-            `"<entity_path>:<component_name>"`
+            `"<entity_path>:<component_type>"`
 
         Returns
         -------
@@ -434,6 +434,10 @@ class RecordingView:
 
         """
 
+    @deprecated(
+        """Use `view(index=None)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+    )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
@@ -482,7 +486,7 @@ class Recording:
     def view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: ViewContentsLike,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
@@ -491,7 +495,8 @@ class Recording:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
 
-        The only type of index currently supported is the name of a timeline.
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
 
         The view will only contain a single row for each unique value of the index
         that is associated with a component column that was included in the view.
@@ -502,10 +507,13 @@ class Recording:
         generally be the last value logged, as row_ids are guaranteed to be
         monotonically increasing when data is sent from a single process.
 
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
         Parameters
         ----------
-        index : str
-            The index to use for the view. This is typically a timeline name.
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
 
@@ -965,8 +973,8 @@ def send_arrow_chunk(
         The entity path to log the chunk to.
     timelines: `Dict[str, arrow::Int64Array]`
         A dictionary mapping timeline names to their values.
-    components: `Dict[str, arrow::ListArray]`
-        A dictionary mapping component names to their values.
+    components: `Dict[ComponentDescriptor, arrow::ListArray]`
+        A dictionary mapping component types to their values.
     """
 
 def log_file_from_path(
@@ -1171,13 +1179,60 @@ class DatasetEntry(Entry):
     def dataframe_query_view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: Any,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> DataframeQueryView:
-        """Create a view to run a dataframe query on the dataset."""
+        """
+        Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
+
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
+
+        The view will only contain a single row for each unique value of the index
+        that is associated with a component column that was included in the view.
+        Component columns that are not included via the view contents will not
+        impact the rows that make up the view. If the same entity / component pair
+        was logged to a given index multiple times, only the most recent row will be
+        included in the view, as determined by the `row_id` column. This will
+        generally be the last value logged, as row_ids are guaranteed to be
+        monotonically increasing when data is sent from a single process.
+
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
+        Parameters
+        ----------
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
+        contents : ViewContentsLike
+            The content specification for the view.
+
+            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
+            specifying multiple content-expressions and a respective list of components to select within
+            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
+        include_semantically_empty_columns : bool, optional
+            Whether to include columns that are semantically empty, by default `False`.
+
+            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
+        include_indicator_columns : bool, optional
+            Whether to include indicator columns, by default `False`.
+
+            Indicator columns are components used to represent the presence of an archetype within an entity.
+        include_tombstone_columns : bool, optional
+            Whether to include tombstone columns, by default `False`.
+
+            Tombstone columns are components used to represent clears. However, even without the clear
+            tombstone columns, the view will still apply the clear semantics when resolving row contents.
+
+        Returns
+        -------
+        DataframeQueryView
+            The view of the dataset.
+
+        """
 
     def create_fts_index(
         self,

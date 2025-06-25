@@ -193,22 +193,21 @@ typedef struct rr_component_descriptor {
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `rerun.archetypes.Points3D`.
-    rr_string archetype_name;
+    rr_string archetype;
 
     /// Optional name of the field within `Archetype` associated with this data.
     ///
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    rr_string archetype_field_name;
+    rr_string component;
 
-    /// Semantic name associated with this data.
+    /// Semantic type associated with this data.
     ///
-    /// This is fully implied by `archetype_name` and `archetype_field`, but
-    /// included for semantic convenience.
+    /// This is fully implied by the `component`, but included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    rr_string component_name;
+    rr_string component_type;
 } rr_component_descriptor;
 
 /// Definition of a component type that can be registered.

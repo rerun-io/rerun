@@ -1,13 +1,22 @@
-use crate::context::Context;
-use crate::servers::Command;
+use std::str::FromStr as _;
+
 use re_grpc_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
+use crate::{context::Context, servers::Command};
+
+/// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
+    /// Show an empty modal to add a new server.
     Add,
+
+    /// Show a modal to edit an existing server.
+    ///
+    /// You should ensure that the [`re_uri::Origin`] exists. (Otherwise, this leads to bad UX,
+    /// since the modal will be titled "Edit server" but for the user it's a new server.)
     Edit(re_uri::Origin),
 }
 
@@ -40,7 +49,7 @@ impl ServerModal {
             ServerModalMode::Add => Default::default(),
             ServerModalMode::Edit(origin) => {
                 let token = connection_registry
-                    .get_token(&origin)
+                    .token(&origin)
                     .map(|t| t.to_string())
                     .unwrap_or_default();
                 let re_uri::Origin { scheme, host, port } = origin.clone();
@@ -71,9 +80,9 @@ impl ServerModal {
             ui.ctx(),
             || {
                 let title = match &self.mode {
-                    ServerModalMode::Add => "Add Server".to_owned(),
+                    ServerModalMode::Add => "Add server".to_owned(),
                     ServerModalMode::Edit(origin) => {
-                        format!("Edit Server: {}", origin.host)
+                        format!("Edit server: {}", origin.host)
                     }
                 };
                 ModalWrapper::new(&title)
@@ -99,7 +108,27 @@ impl ServerModal {
                 ui.add_space(14.0);
 
                 ui.label("Host name:");
-                let host = url::Host::parse(&self.host);
+                let mut host = url::Host::parse(&self.host);
+
+                if host.is_err() {
+                    if let Ok(url) = url::Url::parse(&self.host) {
+                        // Maybe the user pasted a full URL, with scheme and port?
+                        // Then handle that gracefully!
+                        if let Ok(scheme) = Scheme::from_str(url.scheme()) {
+                            self.scheme = scheme;
+                        }
+
+                        if let Some(url_host) = url.host_str() {
+                            self.host = url_host.to_owned();
+                            host = url::Host::parse(&self.host);
+                        }
+
+                        if let Some(port) = url.port() {
+                            self.port = port;
+                        }
+                    }
+                }
+
                 ui.scope(|ui| {
                     // make field red if host is invalid
                     if host.is_err() {
@@ -147,28 +176,23 @@ impl ServerModal {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let (Ok(origin), Ok(token)) = (origin, token) {
-                        if ui.button(save_text).clicked() {
+                        if ui.button(save_text).clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
                             ui.close();
 
                             if let Some(token) = token {
                                 connection_registry.set_token(&origin, token);
                             }
 
-                            match &self.mode {
-                                ServerModalMode::Add => {
-                                    ctx.command_sender
-                                        .send(Command::AddServer(origin.clone()))
-                                        .ok();
-                                }
-                                ServerModalMode::Edit(old_origin) => {
-                                    ctx.command_sender
-                                        .send(Command::UpdateServer {
-                                            previous_origin: old_origin.clone(),
-                                            new_origin: origin.clone(),
-                                        })
-                                        .ok();
-                                }
+                            if let ServerModalMode::Edit(old_origin) = &self.mode {
+                                ctx.command_sender
+                                    .send(Command::RemoveServer(old_origin.clone()))
+                                    .ok();
                             }
+                            ctx.command_sender
+                                .send(Command::AddServer(origin.clone()))
+                                .ok();
                             global_ctx.command_sender.send_system(
                                 SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),
                             );

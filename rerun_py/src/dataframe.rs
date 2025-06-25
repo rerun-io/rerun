@@ -24,9 +24,10 @@ use pyo3::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnIdentifier,
-    ComponentColumnDescriptor, IndexColumnDescriptor, QueryExpression, SparseFillStrategy,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
+    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
@@ -176,28 +177,28 @@ impl PyComponentColumnDescriptor {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 
-    /// The component name, if any.
+    /// The component type, if any.
     ///
     /// This property is read-only.
     #[getter]
-    fn component_name(&self) -> Option<&str> {
-        self.0.component_name.map(|c| c.as_str())
+    fn component_type(&self) -> Option<&str> {
+        self.0.component_type.map(|c| c.as_str())
     }
 
     /// The archetype name, if any.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_name(&self) -> Option<&str> {
-        self.0.archetype_name.map(|c| c.as_str())
+    fn archetype(&self) -> Option<&str> {
+        self.0.archetype.map(|c| c.as_str())
     }
 
     /// Whether the column is static.
@@ -223,7 +224,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 /// ----------
 /// entity_path : str
 ///     The entity path to select.
-/// component : ComponentLike
+/// component : str
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
@@ -234,12 +235,11 @@ impl PyComponentColumnSelector {
     /// Create a new `ComponentColumnSelector`.
     // Note: the `Parameters` section goes into the class docstring.
     #[new]
-    #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
-    fn new(entity_path: &str, component: ComponentLike) -> Self {
+    #[pyo3(text_signature = "(self, entity_path: str, component: str)")]
+    fn new(entity_path: &str, component: &str) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.to_owned(),
         })
     }
 
@@ -255,12 +255,12 @@ impl PyComponentColumnSelector {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 }
 
@@ -293,7 +293,7 @@ impl AnyColumn {
                     Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
                     let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                        PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                        PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                     })?;
 
                     Ok(ColumnSelector::Component(sel))
@@ -325,7 +325,7 @@ impl AnyComponentColumn {
         match self {
             Self::Name(name) => {
                 let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                    PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                    PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                 })?;
 
                 Ok(sel)
@@ -440,42 +440,6 @@ impl IndexValuesLike<'_> {
     }
 }
 
-pub struct ComponentLike {
-    pub archetype_name: Option<String>,
-    pub archetype_field_name: String,
-}
-
-// TODO(#7699): Avoid interning strings from requests here.
-impl From<ComponentLike> for ColumnIdentifier {
-    fn from(value: ComponentLike) -> Self {
-        Self {
-            archetype_name: value.archetype_name.map(Into::into),
-            archetype_field_name: value.archetype_field_name.into(),
-        }
-    }
-}
-
-impl FromPyObject<'_> for ComponentLike {
-    fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(column_name) = component.extract::<String>() {
-            match column_name.rfind(':') {
-                Some(i) => Ok(Self {
-                    archetype_name: Some(column_name[..i].into()),
-                    archetype_field_name: column_name[(i + 1)..].into(),
-                }),
-                None => Ok(Self {
-                    archetype_field_name: column_name,
-                    archetype_name: None,
-                }),
-            }
-        } else {
-            Err(PyTypeError::new_err(
-                "ComponentLike input must be a string of format [<archetype_name>:]archetype_field_name",
-            ))
-        }
-    }
-}
-
 #[pyclass]
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
@@ -549,8 +513,8 @@ impl PySchema {
     /// ----------
     /// entity_path : str
     ///     The entity path to look up.
-    /// component : ComponentLike
-    ///     The component to look up.
+    /// component : str
+    ///     The component to look up. Example: `Points3D:positions`.
     ///
     /// Returns
     /// -------
@@ -559,18 +523,17 @@ impl PySchema {
     fn column_for(
         &self,
         entity_path: &str,
-        component: ComponentLike,
+        component: &str,
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
         let selector = ComponentColumnSelector {
             entity_path,
-            archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.to_owned(),
         };
 
         self.schema.component_columns().find_map(|col| {
-            if col.matches_weak(&selector) {
+            if col.matches(&selector) {
                 Some(col.clone().into())
             } else {
                 None
@@ -588,7 +551,7 @@ impl PySchema {
     ///     The selector to look up.
     ///
     ///     String arguments are expected to follow the following format:
-    ///     `"<entity_path>:<component_name>"`
+    ///     `"<entity_path>:<component_type>"`
     ///
     /// Returns
     /// -------
@@ -806,6 +769,7 @@ impl PyRecordingView {
                 if self.query_expression.using_index_values.is_none()
                     && all_contents_are_static
                     && any_selected_data_is_static
+                    && self.query_expression.filtered_index.is_some()
                 {
                     py_rerun_warn_cstr(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
@@ -842,6 +806,7 @@ impl PyRecordingView {
     /// -------
     /// pa.RecordBatchReader
     ///     A reader that can be used to read out the selected data.
+    //TODO(#10335): remove deprecated method
     #[pyo3(signature = (
         *args,
         columns = None
@@ -855,6 +820,9 @@ impl PyRecordingView {
         let mut query_expression = self.query_expression.clone();
         // This is a static selection, so we clear the filtered index
         query_expression.filtered_index = None;
+
+        //TODO(#10327): this should not be necessary!
+        query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
 
         // If no columns provided, select all static columns
         let static_columns = Self::select_args(args, columns)
@@ -1210,7 +1178,7 @@ impl PyRecording {
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```python
-    /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+    /// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
     /// ```
     ///
     /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -1239,7 +1207,7 @@ impl PyRecording {
 
             Ok(contents)
         } else if let Ok(dict) = expr.downcast::<PyDict>() {
-            // `Union[ComponentLike, Sequence[ComponentLike]]]`
+            // `Union[str, Sequence[str]]]`
 
             let mut contents = ViewContentsSelector::default();
 
@@ -1256,15 +1224,15 @@ impl PyRecording {
                     ))
                 })?;
 
-                let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
-                    value.extract::<ComponentLike>()
+                let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
+                    value.extract::<String>()
                 {
                     std::iter::once(component.into()).collect()
-                } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+                } else if let Ok(components) = value.extract::<Vec<String>>() {
                     components.into_iter().map(Into::into).collect()
                 } else {
                     return Err(PyTypeError::new_err(format!(
-                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a str or Sequence[str]."
                     )));
                 };
 
@@ -1297,7 +1265,8 @@ impl PyRecording {
     #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
-    /// The only type of index currently supported is the name of a timeline.
+    /// The only type of index currently supported is the name of a timeline, or `None` (see below
+    /// for details).
     ///
     /// The view will only contain a single row for each unique value of the index
     /// that is associated with a component column that was included in the view.
@@ -1308,10 +1277,13 @@ impl PyRecording {
     /// generally be the last value logged, as row_ids are guaranteed to be
     /// monotonically increasing when data is sent from a single process.
     ///
+    /// If `None` is passed as the index, the view will contain only static columns (among those
+    /// specified) and no index columns. It will also contain a single row per partition.
+    ///
     /// Parameters
     /// ----------
-    /// index : str
-    ///     The index to use for the view. This is typically a timeline name.
+    /// index : str | None
+    ///     The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
     /// contents : ViewContentsLike
     ///     The content specification for the view.
     ///
@@ -1359,18 +1331,22 @@ impl PyRecording {
     ))]
     fn view(
         slf: Bound<'_, Self>,
-        index: &str,
+        index: Option<&str>,
         contents: Bound<'_, PyAny>,
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
+        let static_only = index.is_none();
+
         let borrowed_self = slf.borrow();
 
         // Look up the type of the timeline
-        let selector = TimeColumnSelector::from(index);
-
-        let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
+        let filtered_index = index.map(|index| {
+            let selector = TimeColumnSelector::from(index);
+            let time_column = borrowed_self.store.read().resolve_time_selector(&selector);
+            *time_column.timeline().name()
+        });
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
@@ -1379,12 +1355,22 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(*time_column.timeline().name()),
+            include_static_columns: if static_only {
+                StaticColumnSelection::StaticOnly
+            } else {
+                StaticColumnSelection::Both
+            },
+            filtered_index,
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
             filtered_is_not_null: None,
-            sparse_fill_strategy: SparseFillStrategy::None,
+            //TODO(#10327): this should not be necessary!
+            sparse_fill_strategy: if static_only {
+                SparseFillStrategy::LatestAtGlobal
+            } else {
+                SparseFillStrategy::None
+            },
             selection: None,
         };
 

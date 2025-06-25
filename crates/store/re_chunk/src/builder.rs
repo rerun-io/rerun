@@ -79,9 +79,9 @@ impl ChunkBuilder {
                 .with_row(cell.value);
         }
 
-        for (component_name, array) in components {
+        for (component_descr, array) in components {
             self.components
-                .entry(component_name)
+                .entry(component_descr)
                 .or_default()
                 .push(array);
         }

@@ -30,7 +30,7 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
 
 
 class ForceStrengthBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ForceStrength"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceStrength"
 
 
 # This is patched in late to avoid circular dependencies.

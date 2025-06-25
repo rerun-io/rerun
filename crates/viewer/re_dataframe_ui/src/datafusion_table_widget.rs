@@ -548,10 +548,10 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
         ColumnDescriptorRef::Component(desc) => {
             let re_sorbet::ComponentColumnDescriptor {
                 store_datatype,
-                component_name,
+                component_type,
                 entity_path,
-                archetype_name,
-                archetype_field_name,
+                archetype: archetype_name,
+                component: _component,
                 is_static,
                 is_indicator,
                 is_tombstone,
@@ -561,8 +561,8 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(ui, "Type", "component");
             header_property_ui(
                 ui,
-                "Component",
-                component_name.map(|a| a.as_str()).unwrap_or("-"),
+                "Component type",
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
@@ -571,8 +571,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
-            //TODO(#9978): update this if we rename this descriptor field.
-            header_property_ui(ui, "Archetype field", archetype_field_name);
+            header_property_ui(
+                ui,
+                "Archetype field",
+                desc.component_descriptor().archetype_field_name(),
+            );
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

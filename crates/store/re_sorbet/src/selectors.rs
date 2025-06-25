@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, Timeline, TimelineName};
-use re_types_core::{ArchetypeName, ComponentDescriptor};
+use re_types_core::ComponentDescriptor;
 
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
@@ -8,7 +8,7 @@ pub enum ColumnSelectorParseError {
     #[error("Expected column selector, found empty string")]
     EmptyString,
 
-    #[error("Expected string in the form of `entity_path:component_name`, got: {0}")]
+    #[error("Expected string in the form of `entity_path:component_type`, got: {0}")]
     FormatError(String),
 }
 
@@ -101,68 +101,38 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path,
-            archetype_name: desc.archetype_name,
-            archetype_field_name: desc.archetype_field_name.to_string(),
+            component: desc.component.to_string(),
         }
     }
 }
 
-/// Select a component based on its [`ArchetypeName`] and archetype field.
+/// Select a component based on its entity path and identifier.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ComponentColumnSelector {
     /// The path of the entity.
     pub entity_path: EntityPath,
 
-    /// Name of the `Archetype` associated with this data.
-    pub archetype_name: Option<ArchetypeName>,
-
-    /// The field within the `Archetype` associated with this data.
-    pub archetype_field_name: String,
+    /// The string representation of [`re_types_core::ComponentIdentifier`] associated with this data.
+    pub component: String,
 }
 
 impl ComponentColumnSelector {
     pub fn from_descriptor(entity_path: EntityPath, descr: &ComponentDescriptor) -> Self {
         Self {
             entity_path,
-            archetype_name: descr.archetype_name,
-            archetype_field_name: descr.archetype_field_name.to_string(),
-        }
-    }
-
-    pub fn qualified_archetype_field_name(&self) -> String {
-        let Self {
-            archetype_name,
-            archetype_field_name,
-            ..
-        } = self;
-
-        match archetype_name {
-            Some(archetype_name) => {
-                format!("{archetype_name}:{archetype_field_name}")
-            }
-            None => archetype_field_name.to_string(),
+            component: descr.component.to_string(),
         }
     }
 
     pub fn column_name(&self) -> String {
-        // Each column can be of a different entity
-        match self.archetype_name {
-            Some(archetype_name) => format!(
-                "{}:{}:{}",
-                self.entity_path,
-                // Note that we have deliberately decided to use short names here.
-                archetype_name.short_name(),
-                self.archetype_field_name
-            ),
-            None => format!("{}:{}", self.entity_path, self.archetype_field_name),
-        }
+        format!("{}:{}", self.entity_path, self.component)
     }
 }
 
 impl std::str::FromStr for ComponentColumnSelector {
     type Err = ColumnSelectorParseError;
 
-    /// Parses a string in the form of `entity_path:archetype_field_name`.
+    /// Parses a string in the form of `entity_path:component`.
     fn from_str(selector: &str) -> Result<Self, Self::Err> {
         if selector.is_empty() {
             return Err(ColumnSelectorParseError::EmptyString);
@@ -170,16 +140,10 @@ impl std::str::FromStr for ComponentColumnSelector {
 
         let s = selector;
 
-        match (s.find(':'), s.rfind(':')) {
-            (Some(first), Some(last)) if first != last => Ok(Self {
-                entity_path: s[..first].into(),
-                archetype_name: Some(s[first + 1..last].into()),
-                archetype_field_name: s[last + 1..].into(),
-            }),
-            (Some(first), Some(last)) => Ok(Self {
-                entity_path: s[..first].into(),
-                archetype_name: None,
-                archetype_field_name: s[last + 1..].into(),
+        match s.find(':') {
+            Some(i) => Ok(Self {
+                entity_path: s[..i].into(),
+                component: s[i + 1..].into(),
             }),
             _ => Err(ColumnSelectorParseError::FormatError(selector.to_owned())),
         }
@@ -190,16 +154,10 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            archetype_name,
-            archetype_field_name,
+            component,
         } = self;
 
-        match archetype_name {
-            Some(archetype_name) => f.write_fmt(format_args!(
-                "{entity_path}:{archetype_name}:{archetype_field_name}"
-            )),
-            None => f.write_fmt(format_args!("{entity_path}:{archetype_field_name}")),
-        }
+        f.write_fmt(format_args!("{entity_path}:{component}"))
     }
 }
 
@@ -210,8 +168,7 @@ fn parse_component_column_selector() {
         column_name.parse(),
         Ok(ComponentColumnSelector {
             entity_path: "entity_path".into(),
-            archetype_name: Some("Test".into()),
-            archetype_field_name: "abc".into(),
+            component: "Test:abc".into(),
         })
     );
 
@@ -220,8 +177,7 @@ fn parse_component_column_selector() {
         column_name.parse(),
         Ok(ComponentColumnSelector {
             entity_path: "entity_path".into(),
-            archetype_name: Some("TestNamespace:Test".into()),
-            archetype_field_name: "abc".into(),
+            component: "TestNamespace:Test:abc".into(),
         })
     );
 
@@ -230,8 +186,7 @@ fn parse_component_column_selector() {
         column_name.parse(),
         Ok(ComponentColumnSelector {
             entity_path: "entity_path".into(),
-            archetype_name: Some("TestNamespace.Test".into()),
-            archetype_field_name: "abc".into(),
+            component: "TestNamespace.Test:abc".into(),
         })
     );
 
@@ -240,8 +195,7 @@ fn parse_component_column_selector() {
         column_name.parse(),
         Ok(ComponentColumnSelector {
             entity_path: "entity_path".into(),
-            archetype_name: None,
-            archetype_field_name: "abc".into(),
+            component: "abc".into(),
         })
     );
 
@@ -250,8 +204,7 @@ fn parse_component_column_selector() {
         column_name.parse(),
         Ok(ComponentColumnSelector {
             entity_path: EntityPath::root(),
-            archetype_name: None,
-            archetype_field_name: "abc".into(),
+            component: "abc".into(),
         })
     );
 }

@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnIdentifier, QueryExpression, TimeInt, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, QueryExpression, StaticColumnSelection, TimeInt,
+    ViewContentsSelector,
 };
 use re_log_types::{
     EntityPath, build_frame_nr,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
 use re_sorbet::ChunkColumnDescriptors;
-use re_types::Archetype as _;
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.
@@ -50,12 +50,17 @@ fn schema() -> anyhow::Result<()> {
             .iter()
             .map(|column| column.component_descriptor())
             .collect::<Vec<_>>(),
-        // The following should be in lexicographical order!
+        // It's important that the returned descriptors are in lexicographical order, as we
+        // want the schema to be deterministic between calls.
+        //
+        // The lexicographical order is defined by the component descriptors. Note that the
+        // indicator plays a special role here, because it has the archetype field set to
+        // `None`. Also, indicators will be removed soon anyways.
         vec![
+            MyPoints::descriptor_indicator(),
             MyPoints::descriptor_colors(),
             MyPoints::descriptor_labels(),
             MyPoints::descriptor_points(),
-            MyPoints::descriptor_indicator(),
         ]
     );
 
@@ -99,14 +104,8 @@ fn schema_for_query() -> anyhow::Result<()> {
             entity_path,
             Some(
                 [
-                    ColumnIdentifier {
-                        archetype_name: Some(MyPoints::name()),
-                        archetype_field_name: MyPoints::descriptor_colors().archetype_field_name,
-                    },
-                    ColumnIdentifier {
-                        archetype_name: Some(MyPoints::name()),
-                        archetype_field_name: MyPoints::descriptor_labels().archetype_field_name,
-                    },
+                    MyPoints::descriptor_colors().component,
+                    MyPoints::descriptor_labels().component,
                 ]
                 .into(),
             ),
@@ -114,6 +113,7 @@ fn schema_for_query() -> anyhow::Result<()> {
         include_semantically_empty_columns: false,
         include_indicator_columns: false,
         include_tombstone_columns: false,
+        include_static_columns: StaticColumnSelection::Both,
         filtered_index: Some(TimelineName::new("frame_nr")),
         filtered_index_range: None,
         filtered_index_values: None,

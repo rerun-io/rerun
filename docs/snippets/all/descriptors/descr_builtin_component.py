@@ -12,9 +12,9 @@ rr.log(
     [
         rr.components.Position3DBatch([1, 2, 3]).described(
             rr.ComponentDescriptor(
-                "points",
-                archetype_name="user.CustomPoints3D",
-                component_name="rerun.components.Position3D",
+                "user.CustomPoints3D:points",
+                archetype="user.CustomPoints3D",
+                component_type="rerun.components.Position3D",
             )
         )
     ],
