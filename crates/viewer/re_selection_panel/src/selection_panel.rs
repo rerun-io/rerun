@@ -181,7 +181,7 @@ impl SelectionPanel {
                 ));
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Temporality").value_text(if is_static {
+                    PropertyContent::new("Index type").value_text(if is_static {
                         "Static"
                     } else {
                         "Temporal"
