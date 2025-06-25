@@ -695,6 +695,10 @@ class RecordingStream:
             recording=self,
         )
 
+    @deprecated(
+        """Use a combination of `serve_grpc` and `rr.serve_web_viewer` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+    )
     def serve_web(
         self,
         *,
@@ -715,7 +719,11 @@ class RecordingStream:
 
         This function returns immediately.
 
-        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][]:
+        ```
+        server_uri = rec.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+        rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+        ```
 
         Parameters
         ----------
