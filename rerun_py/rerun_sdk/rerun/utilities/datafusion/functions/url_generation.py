@@ -6,7 +6,10 @@ from rerun_bindings import DatasetEntry
 
 
 def partition_url(
-    dataset: DatasetEntry, partition_id_col: str | Expr | None = None, timestamp_col: str | Expr | None = None
+    dataset: DatasetEntry,
+    partition_id_col: str | Expr | None = None,
+    timestamp_col: str | Expr | None = None,
+    timeline_name: str = "real_time",
 ) -> Expr:
     """
     Compute the URL for a partition within a dataset.
@@ -28,6 +31,9 @@ def partition_url(
     timestamp_col:
         If this parameter is passed in, generate a URL that will jump to a
         specific timestamp within the partition.
+    timeline_name:
+        When used in combination with `timestamp_col`, this specifies which timeline
+        to seek along.
 
     """
     if partition_id_col is None:
@@ -39,7 +45,7 @@ def partition_url(
         if isinstance(timestamp_col, str):
             timestamp_col = col(timestamp_col)
 
-        inner_udf = partition_url_with_timeref_udf(dataset)
+        inner_udf = partition_url_with_timeref_udf(dataset, timeline_name)
         return inner_udf(partition_id_col, timestamp_col).alias("partition_url_with_timestamp")
 
     inner_udf = partition_url_udf(dataset)
@@ -64,7 +70,7 @@ def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
     return udf(inner_udf, [pa.string()], pa.string(), "stable")
 
 
-def partition_url_with_timeref_udf(dataset: DatasetEntry) -> ScalarUDF:
+def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
     """
     Create a UDF to the URL for a partition within a Dataset with timestamp.
 
@@ -83,7 +89,7 @@ def partition_url_with_timeref_udf(dataset: DatasetEntry) -> ScalarUDF:
         return pa.compute.binary_join_element_wise(
             dataset.partition_url(""),
             partition_id_arr,
-            "#when=real_time@",
+            f"#when={timeline_name}@",
             timestamp_us,
             "",  # Required for join
         )
