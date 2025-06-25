@@ -26,6 +26,7 @@ namespace rerun {
                 default:
                     assert(false && "unreachable");
             }
+            return {};
         }
     } // namespace detail
 } // namespace rerun
