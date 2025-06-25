@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the legend of a plot.
@@ -42,9 +42,9 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: Some("rerun.blueprint.components.Corner2D".into()),
-            archetype_field_name: "corner".into(),
+            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component: "PlotLegend:corner".into(),
+            component_type: Some("rerun.blueprint.components.Corner2D".into()),
         }
     }
 
@@ -54,9 +54,9 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: Some("rerun.components.Visible".into()),
-            archetype_field_name: "visible".into(),
+            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component: "PlotLegend:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -64,9 +64,9 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.PlotLegendIndicator".into(),
+            component_type: None,
         }
     }
 }

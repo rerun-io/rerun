@@ -179,7 +179,7 @@ fn strip_recording_properties_prefix(name: &str) -> Option<&str> {
         .strip_prefix(&EntityPath::recording_properties().to_string())?
         .strip_prefix(":")?;
     let archetype_name = RecordingProperties::descriptor_name()
-        .archetype_name
+        .archetype
         .expect("Should have an archetype name");
     Option::or(
         name.strip_prefix(archetype_name.short_name()),

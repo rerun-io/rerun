@@ -28,7 +28,7 @@ class Resolution(datatypes.Vec2D, ComponentMixin):
 
 
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Resolution"
+    _COMPONENT_TYPE: str = "rerun.components.Resolution"
 
 
 # This is patched in late to avoid circular dependencies.

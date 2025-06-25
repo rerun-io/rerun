@@ -53,34 +53,35 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.LineGrid3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.LineGrid3D";
 
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentName
+            ArchetypeName, "LineGrid3D:visible", Loggable<rerun::components::Visible>::ComponentType
         );
         /// `ComponentDescriptor` for the `spacing` field.
         static constexpr auto Descriptor_spacing = ComponentDescriptor(
-            ArchetypeName, "spacing",
-            Loggable<rerun::blueprint::components::GridSpacing>::ComponentName
+            ArchetypeName, "LineGrid3D:spacing",
+            Loggable<rerun::blueprint::components::GridSpacing>::ComponentType
         );
         /// `ComponentDescriptor` for the `plane` field.
         static constexpr auto Descriptor_plane = ComponentDescriptor(
-            ArchetypeName, "plane", Loggable<rerun::components::Plane3D>::ComponentName
+            ArchetypeName, "LineGrid3D:plane", Loggable<rerun::components::Plane3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `stroke_width` field.
         static constexpr auto Descriptor_stroke_width = ComponentDescriptor(
-            ArchetypeName, "stroke_width", Loggable<rerun::components::StrokeWidth>::ComponentName
+            ArchetypeName, "LineGrid3D:stroke_width",
+            Loggable<rerun::components::StrokeWidth>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "LineGrid3D:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

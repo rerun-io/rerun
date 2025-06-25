@@ -18,7 +18,7 @@ use re_log_types::{
     EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
+    ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
     SerializationError, SerializedComponentColumn,
 };
 
@@ -70,16 +70,16 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 pub struct ChunkComponents(pub IntMap<ComponentDescriptor, ArrowListArray>);
 
 impl ChunkComponents {
-    /// Returns all list arrays for the given component name.
+    /// Returns all list arrays for the given component type.
     ///
     /// I.e semantically equivalent to `get("MyComponent:*.*")`
     #[inline]
-    pub fn get_by_component_name(
+    pub fn get_by_component_type(
         &self,
-        component_name: ComponentName,
+        component_type: ComponentType,
     ) -> impl Iterator<Item = &ArrowListArray> {
         self.0.iter().filter_map(move |(desc, array)| {
-            (desc.component_name == Some(component_name)).then_some(array)
+            (desc.component_type == Some(component_type)).then_some(array)
         })
     }
 
@@ -108,10 +108,10 @@ impl ChunkComponents {
     }
 
     /// Whether any of the components in this chunk is tagged with the given archetype name.
-    pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
+    pub fn has_component_with_archetype(&self, archetype_name: ArchetypeName) -> bool {
         self.0
             .keys()
-            .any(|desc| desc.archetype_name == Some(archetype_name))
+            .any(|desc| desc.archetype == Some(archetype_name))
     }
 }
 
@@ -283,9 +283,9 @@ impl Chunk {
 
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-                archetype_field_name: "start_time".into(),
-                component_name: Some("rerun.components.Timestamp".into()),
+                archetype: Some("rerun.archetypes.RecordingProperties".into()),
+                component: "RecordingProperties:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
             };
 
             // Filter out the recording time component from both lhs and rhs.
@@ -1162,7 +1162,7 @@ impl Chunk {
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
-    /// there is data for the specified `component_name`.
+    /// there is data for the specified `component_descriptor`.
     #[inline]
     pub fn component_row_ids(
         &self,
@@ -1486,7 +1486,7 @@ impl Chunk {
         // Components
 
         for (component_desc, list_array) in components.iter() {
-            if let Some(c) = component_desc.component_name {
+            if let Some(c) = component_desc.component_type {
                 c.sanity_check();
             }
             // Ensure that each cell is a list (we don't support mono-components yet).

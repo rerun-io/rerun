@@ -25,7 +25,7 @@ class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin
 
 
 class VideoTimestampBatch(datatypes.VideoTimestampBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.VideoTimestamp"
+    _COMPONENT_TYPE: str = "rerun.components.VideoTimestamp"
 
 
 # This is patched in late to avoid circular dependencies.

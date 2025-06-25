@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
@@ -232,9 +232,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.Position3D".into()),
-            archetype_field_name: "positions".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:positions".into(),
+            component_type: Some("rerun.components.Position3D".into()),
         }
     }
 
@@ -244,9 +244,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.Radius".into()),
-            archetype_field_name: "radii".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -256,9 +256,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.Color".into()),
-            archetype_field_name: "colors".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -268,9 +268,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.Text".into()),
-            archetype_field_name: "labels".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -280,9 +280,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.ShowLabels".into()),
-            archetype_field_name: "show_labels".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -292,9 +292,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.ClassId".into()),
-            archetype_field_name: "class_ids".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 
@@ -304,9 +304,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Points3D".into()),
-            component_name: Some("rerun.components.KeypointId".into()),
-            archetype_field_name: "keypoint_ids".into(),
+            archetype: Some("rerun.archetypes.Points3D".into()),
+            component: "Points3D:keypoint_ids".into(),
+            component_type: Some("rerun.components.KeypointId".into()),
         }
     }
 
@@ -314,9 +314,9 @@ impl Points3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.Points3DIndicator".into(),
+            archetype: None,
+            component: "rerun.components.Points3DIndicator".into(),
+            component_type: None,
         }
     }
 }

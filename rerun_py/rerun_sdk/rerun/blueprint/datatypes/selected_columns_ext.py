@@ -25,7 +25,7 @@ class SelectedColumnsExt:
 
         Example:
         ```python
-        SelectedColumns(["timeline", "/entity/path:ComponentName"])
+        SelectedColumns(["timeline", "/entity/path:Component"])
         ```
 
         Parameters
@@ -35,7 +35,7 @@ class SelectedColumnsExt:
 
             The column must be either of the timeline, or component kind. Timeline columns can be specified using a
             `str` without any `:`, or an `Utf8`. Component columns can be specified using either a `str` in the form of
-            `"/entity/path:ComponentName"`, or a `ComponentColumnSelector`.
+            `"/entity/path:Component"`, or a `ComponentColumnSelector`.
 
         """
 

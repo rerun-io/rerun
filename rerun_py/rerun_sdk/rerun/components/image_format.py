@@ -24,7 +24,7 @@ class ImageFormat(datatypes.ImageFormat, ComponentMixin):
 
 
 class ImageFormatBatch(datatypes.ImageFormatBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ImageFormat"
+    _COMPONENT_TYPE: str = "rerun.components.ImageFormat"
 
 
 # This is patched in late to avoid circular dependencies.

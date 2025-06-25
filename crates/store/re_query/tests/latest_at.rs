@@ -74,9 +74,9 @@ fn simple_query_with_differently_tagged_components() {
     let points2 = vec![MyPoint::new(5.0, 6.0)];
     let points2_serialized = points2
         .serialized(re_types::ComponentDescriptor {
-            archetype_name: Some("MyPoints2".into()),
-            archetype_field_name: "points2".into(),
-            component_name: Some(<MyPoint as re_types_core::Component>::name()),
+            archetype: Some("MyPoints2".into()),
+            component: "points2".into(),
+            component_type: Some(<MyPoint as re_types_core::Component>::name()),
         })
         .unwrap();
 

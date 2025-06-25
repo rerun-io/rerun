@@ -28,7 +28,7 @@ class FilterIsNotNull(blueprint_datatypes.FilterIsNotNull, ComponentMixin):
 
 
 class FilterIsNotNullBatch(blueprint_datatypes.FilterIsNotNullBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.FilterIsNotNull"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.FilterIsNotNull"
 
 
 # This is patched in late to avoid circular dependencies.

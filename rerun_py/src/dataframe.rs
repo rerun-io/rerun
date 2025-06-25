@@ -24,10 +24,10 @@ use pyo3::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnIdentifier,
-    ComponentColumnDescriptor, IndexColumnDescriptor, QueryExpression, SparseFillStrategy,
-    ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
+    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
@@ -176,28 +176,28 @@ impl PyComponentColumnDescriptor {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 
-    /// The component name, if any.
+    /// The component type, if any.
     ///
     /// This property is read-only.
     #[getter]
-    fn component_name(&self) -> Option<&str> {
-        self.0.component_name.map(|c| c.as_str())
+    fn component_type(&self) -> Option<&str> {
+        self.0.component_type.map(|c| c.as_str())
     }
 
     /// The archetype name, if any.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_name(&self) -> Option<&str> {
-        self.0.archetype_name.map(|c| c.as_str())
+    fn archetype(&self) -> Option<&str> {
+        self.0.archetype.map(|c| c.as_str())
     }
 
     /// Whether the column is static.
@@ -223,7 +223,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 /// ----------
 /// entity_path : str
 ///     The entity path to select.
-/// component : ComponentLike
+/// component : str
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
@@ -234,12 +234,11 @@ impl PyComponentColumnSelector {
     /// Create a new `ComponentColumnSelector`.
     // Note: the `Parameters` section goes into the class docstring.
     #[new]
-    #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
-    fn new(entity_path: &str, component: ComponentLike) -> Self {
+    #[pyo3(text_signature = "(self, entity_path: str, component: str)")]
+    fn new(entity_path: &str, component: &str) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.to_owned(),
         })
     }
 
@@ -255,12 +254,12 @@ impl PyComponentColumnSelector {
         self.0.entity_path.to_string()
     }
 
-    /// The archetype field name.
+    /// The component.
     ///
     /// This property is read-only.
     #[getter]
-    fn archetype_field_name(&self) -> &str {
-        &self.0.archetype_field_name
+    fn component(&self) -> &str {
+        &self.0.component
     }
 }
 
@@ -293,7 +292,7 @@ impl AnyColumn {
                     Ok(ColumnSelector::Time(TimeColumnSelector::from(name)))
                 } else {
                     let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                        PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                        PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                     })?;
 
                     Ok(ColumnSelector::Component(sel))
@@ -325,7 +324,7 @@ impl AnyComponentColumn {
         match self {
             Self::Name(name) => {
                 let sel = ComponentColumnSelector::from_str(&name).map_err(|err| {
-                    PyValueError::new_err(format!("Invalid component name '{name}': {err}"))
+                    PyValueError::new_err(format!("Invalid component type '{name}': {err}"))
                 })?;
 
                 Ok(sel)
@@ -440,42 +439,6 @@ impl IndexValuesLike<'_> {
     }
 }
 
-pub struct ComponentLike {
-    pub archetype_name: Option<String>,
-    pub archetype_field_name: String,
-}
-
-// TODO(#7699): Avoid interning strings from requests here.
-impl From<ComponentLike> for ColumnIdentifier {
-    fn from(value: ComponentLike) -> Self {
-        Self {
-            archetype_name: value.archetype_name.map(Into::into),
-            archetype_field_name: value.archetype_field_name.into(),
-        }
-    }
-}
-
-impl FromPyObject<'_> for ComponentLike {
-    fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(column_name) = component.extract::<String>() {
-            match column_name.rfind(':') {
-                Some(i) => Ok(Self {
-                    archetype_name: Some(column_name[..i].into()),
-                    archetype_field_name: column_name[(i + 1)..].into(),
-                }),
-                None => Ok(Self {
-                    archetype_field_name: column_name,
-                    archetype_name: None,
-                }),
-            }
-        } else {
-            Err(PyTypeError::new_err(
-                "ComponentLike input must be a string of format [<archetype_name>:]archetype_field_name",
-            ))
-        }
-    }
-}
-
 #[pyclass]
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
@@ -549,8 +512,8 @@ impl PySchema {
     /// ----------
     /// entity_path : str
     ///     The entity path to look up.
-    /// component : ComponentLike
-    ///     The component to look up.
+    /// component : str
+    ///     The component to look up. Example: `Points3D:positions`.
     ///
     /// Returns
     /// -------
@@ -559,18 +522,17 @@ impl PySchema {
     fn column_for(
         &self,
         entity_path: &str,
-        component: ComponentLike,
+        component: &str,
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
         let selector = ComponentColumnSelector {
             entity_path,
-            archetype_name: component.archetype_name.map(Into::into),
-            archetype_field_name: component.archetype_field_name,
+            component: component.to_owned(),
         };
 
         self.schema.component_columns().find_map(|col| {
-            if col.matches_weak(&selector) {
+            if col.matches(&selector) {
                 Some(col.clone().into())
             } else {
                 None
@@ -588,7 +550,7 @@ impl PySchema {
     ///     The selector to look up.
     ///
     ///     String arguments are expected to follow the following format:
-    ///     `"<entity_path>:<component_name>"`
+    ///     `"<entity_path>:<component_type>"`
     ///
     /// Returns
     /// -------
@@ -1210,7 +1172,7 @@ impl PyRecording {
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```python
-    /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+    /// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
     /// ```
     ///
     /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -1239,7 +1201,7 @@ impl PyRecording {
 
             Ok(contents)
         } else if let Ok(dict) = expr.downcast::<PyDict>() {
-            // `Union[ComponentLike, Sequence[ComponentLike]]]`
+            // `Union[str, Sequence[str]]]`
 
             let mut contents = ViewContentsSelector::default();
 
@@ -1256,15 +1218,15 @@ impl PyRecording {
                     ))
                 })?;
 
-                let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
-                    value.extract::<ComponentLike>()
+                let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
+                    value.extract::<String>()
                 {
                     std::iter::once(component.into()).collect()
-                } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+                } else if let Ok(components) = value.extract::<Vec<String>>() {
                     components.into_iter().map(Into::into).collect()
                 } else {
                     return Err(PyTypeError::new_err(format!(
-                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a str or Sequence[str]."
                     )));
                 };
 

@@ -111,7 +111,7 @@ impl Server {
             let mut blueprint = ColumnBlueprint::default();
 
             if let ColumnDescriptorRef::Component(component) = desc {
-                if component.archetype_field_name == "entry_kind" {
+                if component.component == "entry_kind" {
                     blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
                 }
             }

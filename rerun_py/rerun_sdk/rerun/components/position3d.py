@@ -24,7 +24,7 @@ class Position3D(datatypes.Vec3D, ComponentMixin):
 
 
 class Position3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Position3D"
+    _COMPONENT_TYPE: str = "rerun.components.Position3D"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -29,7 +29,7 @@ class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D, ComponentMixin):
 
 
 class VisualBounds2DBatch(datatypes.Range2DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.VisualBounds2D"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.VisualBounds2D"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -26,28 +26,27 @@ use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher:
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
     let py = component_descr.py();
 
-    let archetype_name = component_descr.getattr(pyo3::intern!(py, "archetype_name"))?;
-    let archetype_name: Option<Cow<'_, str>> = if !archetype_name.is_none() {
-        Some(archetype_name.extract()?)
+    let archetype = component_descr.getattr(pyo3::intern!(py, "archetype"))?;
+    let archetype: Option<Cow<'_, str>> = if !archetype.is_none() {
+        Some(archetype.extract()?)
     } else {
         None
     };
 
-    let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
-    let component_name: Option<Cow<'_, str>> = if !component_name.is_none() {
-        Some(component_name.extract()?)
+    let component_type = component_descr.getattr(pyo3::intern!(py, "component_type"))?;
+    let component_type: Option<Cow<'_, str>> = if !component_type.is_none() {
+        Some(component_type.extract()?)
     } else {
         None
     };
 
-    let archetype_field_name =
-        component_descr.getattr(pyo3::intern!(py, "archetype_field_name"))?;
-    let archetype_field_name: Cow<'_, str> = archetype_field_name.extract()?;
+    let component = component_descr.getattr(pyo3::intern!(py, "component"))?;
+    let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
-        archetype_name: archetype_name.map(|s| s.as_ref().into()),
-        archetype_field_name: archetype_field_name.as_ref().into(),
-        component_name: component_name.map(|s| s.as_ref().into()),
+        archetype: archetype.map(|s| s.as_ref().into()),
+        component: component.as_ref().into(),
+        component_type: component_type.map(|s| s.as_ref().into()),
     };
     descr.sanity_check();
     Ok(descr)
