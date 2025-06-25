@@ -28,6 +28,7 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
     }
 
     if true {
+        // TODO(#10322): only do this if needed
         // Migrations from `v0.23` to `v0.24`:
         batch = v0_24::rewire_tagged_components(&batch);
     }
