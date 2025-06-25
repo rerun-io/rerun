@@ -128,7 +128,7 @@ pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.svg");
 pub const ADD: Icon = icon_from_path!("../data/icons/add.svg");
 
 pub const REMOVE: Icon = icon_from_path!("../data/icons/remove.svg");
-pub const TRASH: Icon = icon_from_path!("../data/icons/bin.svg");
+pub const TRASH: Icon = icon_from_path!("../data/icons/trash.svg");
 
 pub const RESET: Icon = icon_from_path!("../data/icons/reset.svg");
 
