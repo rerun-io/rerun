@@ -2,7 +2,7 @@
 title = "Compressed camera video stream"
 tags = ["2D", "Image encoding", "Video", "Streaming"]
 thumbnail = "https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/480w.png"
-thumbnail_dimensions = [480, 269]
+thumbnail_dimensions = [480, 300]
 -->
 
 This example uses [pyAV](https://pypi.org/project/av/) to fetch and encode a video stream to H.264 video and streams it live
