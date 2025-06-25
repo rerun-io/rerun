@@ -142,9 +142,9 @@ namespace rerun {
 
         /// Stream data to multiple sinks.
         ///
-        /// This function returns immediately.
-        ///
-        /// @see FileSink, GrpcSink
+        /// See specific sink types for more information:
+        /// * `FileSink`
+        /// * `GrpcSink`
         template <typename... Ts>
         Error set_sinks(const Ts&... sinks) const {
             LogSink out_sinks[] = {sinks...};
