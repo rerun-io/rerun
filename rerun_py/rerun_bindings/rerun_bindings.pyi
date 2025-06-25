@@ -681,6 +681,7 @@ def cleanup_if_forked_child() -> None:
 def spawn(
     port: int = 9876,
     memory_limit: str = ...,
+    server_memory_limit: str = ...,
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
     executable_name: str = ...,
