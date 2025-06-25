@@ -1,6 +1,6 @@
 //! Support crate for context menu and actions.
 
-use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::containers::menu::MenuConfig;
 use egui::{Popup, UiKind, UiStackInfo};
 use once_cell::sync::OnceCell;
 

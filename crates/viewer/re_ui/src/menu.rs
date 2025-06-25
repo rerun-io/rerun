@@ -1,6 +1,6 @@
 use crate::DesignTokens;
 use egui::style::StyleModifier;
-use egui::{Frame, InnerResponse, Margin, Ui};
+use egui::{Frame, InnerResponse, Ui};
 
 pub fn menu_style() -> StyleModifier {
     StyleModifier::new(|style| {
@@ -11,7 +11,7 @@ pub fn menu_style() -> StyleModifier {
         style.spacing.button_padding.x = DesignTokens::menu_button_padding();
         style.spacing.item_spacing.y = 0.0;
 
-        let mut widgets = &mut style.visuals.widgets;
+        let widgets = &mut style.visuals.widgets;
         for visual in [
             &mut widgets.inactive,
             &mut widgets.active,
