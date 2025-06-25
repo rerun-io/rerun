@@ -34,7 +34,19 @@ optimized for low latency video transmission as used for teleoperations.
 If you need lower latency you should consider tweaking the encoding settings further and
 configure Rerun's [Micro Batching](https://rerun.io/docs/reference/sdk/micro-batching).
 
-Video frames are logged subsequently using:
+For each frame we have to set a new timestamp.
+```py
+rr.set_time("time", duration=float(packet.pts * packet.time_base))
+```
+The time set here is the [_presentation timestamp_](https://en.wikipedia.org/wiki/Presentation_timestamp) (PTS) of the frame.
+Note that unlike with unlike with [`VideoAsset`](https://www.rerun.io/docs/reference/types/archetypes/video_asset),
+there's no need to log [`VideoFrameReference`](https://www.rerun.io/docs/reference/types/archetypes/video_frame_reference),
+to map the video's PTS to the Rerun timeline, since the time at which video samples
+are logged directly represents the PTS.
+TODO(#10090): In the presence of H.264/H.265 b-frames, separate _decode timestamps_ (DTS) are needed. This is not yet supported.
+
+The frame data, known as a frame-`sample` since this may contain data relevant for an arbitrary number of frames in the future,
+is then logged with:
 ```py
 rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
 ```
