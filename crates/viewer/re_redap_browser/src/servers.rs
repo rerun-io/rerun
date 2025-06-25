@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
 use datafusion::prelude::{col, lit};
-use egui::Widget as _;
+use egui::{Frame, Margin, RichText, Widget as _};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -420,10 +420,6 @@ pub enum Command {
     OpenAddServerModal,
     OpenEditServerModal(re_uri::Origin),
     AddServer(re_uri::Origin),
-    UpdateServer {
-        previous_origin: re_uri::Origin,
-        new_origin: re_uri::Origin,
-    },
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
