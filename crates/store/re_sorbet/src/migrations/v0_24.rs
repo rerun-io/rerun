@@ -72,7 +72,7 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 metadata.remove("rerun.archetype_field");
                 metadata.remove("rerun.component");
             } else if let Some(component) = metadata.remove("rerun.component") {
-            // If component is present, we are encountering a legacy component descriptor.
+                // If component is present, we are encountering a legacy component descriptor.
                 let (archetype, component, component_type) = match (
                     metadata.remove("rerun.archetype"),
                     metadata.remove("rerun.archetype_field"),
@@ -137,7 +137,7 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .iter()
         .map(|(key, value)| {
             if key.starts_with("rerun.") {
-                re_log::debug_once!("Migrating batch metadata key {key}");
+                re_log::debug_once!("Migrating batch metadata key '{key}'");
             }
             (key.replace("rerun.", "rerun:"), value.clone())
         })
