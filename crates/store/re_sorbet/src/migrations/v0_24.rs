@@ -28,7 +28,12 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .schema()
         .metadata()
         .keys()
-        .any(|key| key.starts_with("rerun."));
+        .any(|key| key.starts_with("rerun."))
+        || batch
+            .schema()
+            .fields()
+            .iter()
+            .any(|field| field.metadata().keys().any(|key| key.starts_with("rerun.")));
 
     if !needs_rewiring {
         return batch.clone();
