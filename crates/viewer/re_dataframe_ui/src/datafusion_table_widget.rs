@@ -3,6 +3,7 @@ use std::sync::Arc;
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
+use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
@@ -11,6 +12,7 @@ use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
+use re_ui::menu::menu_style;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
@@ -451,6 +453,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             egui::containers::menu::MenuButton::from_button(
                                 ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
+                            .config(MenuConfig::new().style(menu_style()))
                             .ui(ui, |ui| {
                                 for sort_direction in SortDirection::iter() {
                                     let already_sorted =

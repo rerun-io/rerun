@@ -52,7 +52,7 @@
     },
 
     "label_button_icon_color": {
-      "color": "{Gray.550}"
+      "color": "{Gray.250}"
     },
     "section_collapsing_header_color": {
       "color": "{Gray.900}"

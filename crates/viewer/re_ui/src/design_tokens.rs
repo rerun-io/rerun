@@ -521,8 +521,12 @@ impl DesignTokens {
         egui::Margin::symmetric(self.view_padding(), 0)
     }
 
+    pub fn menu_button_padding() -> f32 {
+        6.0
+    }
+
     pub fn window_corner_radius(&self) -> f32 {
-        12.0
+        6.0
     }
 
     pub fn normal_corner_radius(&self) -> f32 {
