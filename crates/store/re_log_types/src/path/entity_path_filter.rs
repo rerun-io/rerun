@@ -508,6 +508,8 @@ impl EntityPathFilter {
 impl ResolvedEntityPathFilter {
     /// Turns the resolved filter back into an unresolved filter.
     ///
+    /// The returned [`EntityPathFilter`] will _not_ contain the default exclusion of the recording properties.
+    ///
     /// Warning: Iterating over the rules in the unresolved filter will yield a different order
     /// than the order of the rules in the resolved filter.
     /// To preserve the order, use [`Self::iter_unresolved_expressions`] instead.
@@ -516,7 +518,15 @@ impl ResolvedEntityPathFilter {
             rules: self
                 .rules
                 .iter()
-                .map(|(rule, effect)| (rule.rule.clone(), *effect))
+                .filter_map(|(rule, effect)| {
+                    if rule == &ResolvedEntityPathRule::including_subtree(&EntityPath::properties())
+                        && effect == &RuleEffect::Exclude
+                    {
+                        None
+                    } else {
+                        Some((rule.rule.clone(), *effect))
+                    }
+                })
                 .collect(),
         }
     }
