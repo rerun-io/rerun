@@ -64,8 +64,15 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
             rename_key(&mut metadata, "rerun.is_semantically_empty", "rerun:is_semantically_empty");
             rename_key(&mut metadata, "rerun.is_sorted", "rerun:is_sorted");
 
+            if field.name().ends_with("Indicator") {
+                // TODO(#8129): Remove indicator components
+                if let Some(archetype) = metadata.remove("rerun.archetype") {
+                    metadata.insert("rerun:component".to_owned(), format!("{archetype}Indicator"));
+                }
+                metadata.remove("rerun.archetype_field");
+                metadata.remove("rerun.component");
+            } else if let Some(component) = metadata.remove("rerun.component") {
             // If component is present, we are encountering a legacy component descriptor.
-            if let Some(component) = metadata.remove("rerun.component") {
                 let (archetype, component, component_type) = match (
                     metadata.remove("rerun.archetype"),
                     metadata.remove("rerun.archetype_field"),
@@ -114,13 +121,6 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 }
             }
 
-            if field.name().ends_with("Indicator") {
-                // TODO(#8129): Remove indicator components
-                if let Some(archetype) = metadata.remove("rerun.archetype") {
-                    metadata.insert("rerun:component".to_owned(), format!("{archetype}Indicator"));
-                }
-                metadata.remove("rerun.archetype_field");
-            }
 
             for (key, value) in &metadata {
                 debug_assert!(!key.starts_with("rerun."), "Metadata `{key}` (with value `{value}`) was not migrated to colon syntax.");
