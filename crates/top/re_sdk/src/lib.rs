@@ -135,6 +135,7 @@ pub mod external {
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;
+    pub use re_uri;
 
     pub use re_chunk::external::*;
     pub use re_log::external::*;
