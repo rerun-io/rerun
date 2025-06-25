@@ -244,7 +244,7 @@ impl Server {
                             .send(Command::RefreshCollection(self.origin.clone()))
                             .ok();
                     }
-                    if icons::EDIT
+                    if icons::SETTINGS
                         .as_button_with_label(ui.tokens(), "Edit")
                         .ui(ui)
                         .clicked()
@@ -253,7 +253,7 @@ impl Server {
                             .send(Command::OpenEditServerModal(self.origin.clone()))
                             .ok();
                     }
-                    if icons::REMOVE
+                    if icons::TRASH
                         .as_button_with_label(ui.tokens(), "Remove")
                         .ui(ui)
                         .clicked()
