@@ -98,15 +98,14 @@ impl Server {
             "__entries",
         )
         .title(self.origin.host.to_string())
-        .title_button(ItemActionButton::new(
-            &re_ui::icons::RESET,
-            "Refresh collection",
-            || {
+        .title_button(
+            ItemActionButton::new(&re_ui::icons::RESET, "Refresh server", || {
                 ctx.command_sender
                     .send(Command::RefreshCollection(self.origin.clone()))
                     .ok();
-            },
-        ))
+            })
+            .hover_text("Refresh server"),
+        )
         .column_blueprint(|desc| {
             let mut blueprint = ColumnBlueprint::default();
 
@@ -156,15 +155,14 @@ impl Server {
             dataset.name(),
         )
         .title(dataset.name())
-        .title_button(ItemActionButton::new(
-            &re_ui::icons::RESET,
-            "Refresh collection",
-            || {
+        .title_button(
+            ItemActionButton::new(&re_ui::icons::RESET, "Refresh dataset", || {
                 ctx.command_sender
                     .send(Command::RefreshCollection(self.origin.clone()))
                     .ok();
-            },
-        ))
+            })
+            .hover_text("Refresh dataset"),
+        )
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
