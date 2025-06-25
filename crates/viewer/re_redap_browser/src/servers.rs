@@ -17,9 +17,9 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::add_server_modal::{ServerModal, ServerModalMode};
 use crate::context::Context;
 use crate::entries::{Dataset, Entries};
+use crate::server_modal::{ServerModal, ServerModalMode};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {

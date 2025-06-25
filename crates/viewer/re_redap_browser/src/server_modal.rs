@@ -14,6 +14,9 @@ pub enum ServerModalMode {
     Add,
 
     /// Show a modal to edit an existing server.
+    ///
+    /// You should ensure that the [`re_uri::Origin`] exists. (Otherwise, this leads to bad UX,
+    /// since the modal will be titled "Edit server" but for the user it's a new server.)
     Edit(re_uri::Origin),
 }
 
@@ -77,9 +80,9 @@ impl ServerModal {
             ui.ctx(),
             || {
                 let title = match &self.mode {
-                    ServerModalMode::Add => "Add Server".to_owned(),
+                    ServerModalMode::Add => "Add server".to_owned(),
                     ServerModalMode::Edit(origin) => {
-                        format!("Edit Server: {}", origin.host)
+                        format!("Edit server: {}", origin.host)
                     }
                 };
                 ModalWrapper::new(&title)
