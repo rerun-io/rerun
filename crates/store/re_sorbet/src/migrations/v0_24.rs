@@ -72,7 +72,7 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 ) {
                     (None, None) => {
                         // We likely encountered data that was logged via `AnyValues` and do our best effort to convert it.
-                        re_log::debug!(
+                        re_log::debug_once!(
                             "Moving stray component type to component field: {component}"
                         );
                         (None, component, None)
