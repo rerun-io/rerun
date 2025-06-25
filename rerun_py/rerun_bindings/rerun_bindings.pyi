@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
 from rerun.catalog import CatalogClient
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
     AnyColumn,
@@ -433,6 +434,10 @@ class RecordingView:
 
         """
 
+    @deprecated(
+        """Use `view(index=None)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+    )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
@@ -481,7 +486,7 @@ class Recording:
     def view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: ViewContentsLike,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
@@ -490,7 +495,8 @@ class Recording:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
 
-        The only type of index currently supported is the name of a timeline.
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
 
         The view will only contain a single row for each unique value of the index
         that is associated with a component column that was included in the view.
@@ -501,10 +507,13 @@ class Recording:
         generally be the last value logged, as row_ids are guaranteed to be
         monotonically increasing when data is sent from a single process.
 
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
         Parameters
         ----------
-        index : str
-            The index to use for the view. This is typically a timeline name.
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
 
@@ -1170,13 +1179,60 @@ class DatasetEntry(Entry):
     def dataframe_query_view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: Any,
         include_semantically_empty_columns: bool = False,
         include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> DataframeQueryView:
-        """Create a view to run a dataframe query on the dataset."""
+        """
+        Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
+
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
+
+        The view will only contain a single row for each unique value of the index
+        that is associated with a component column that was included in the view.
+        Component columns that are not included via the view contents will not
+        impact the rows that make up the view. If the same entity / component pair
+        was logged to a given index multiple times, only the most recent row will be
+        included in the view, as determined by the `row_id` column. This will
+        generally be the last value logged, as row_ids are guaranteed to be
+        monotonically increasing when data is sent from a single process.
+
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
+        Parameters
+        ----------
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
+        contents : ViewContentsLike
+            The content specification for the view.
+
+            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
+            specifying multiple content-expressions and a respective list of components to select within
+            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
+        include_semantically_empty_columns : bool, optional
+            Whether to include columns that are semantically empty, by default `False`.
+
+            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
+        include_indicator_columns : bool, optional
+            Whether to include indicator columns, by default `False`.
+
+            Indicator columns are components used to represent the presence of an archetype within an entity.
+        include_tombstone_columns : bool, optional
+            Whether to include tombstone columns, by default `False`.
+
+            Tombstone columns are components used to represent clears. However, even without the clear
+            tombstone columns, the view will still apply the clear semantics when resolving row contents.
+
+        Returns
+        -------
+        DataframeQueryView
+            The view of the dataset.
+
+        """
 
     def create_fts_index(
         self,
