@@ -57,14 +57,14 @@ namespace rerun {
     inline GrpcSink::operator LogSink() const {
         LogSink sink{};
         sink.kind = LogSink::Kind::Grpc;
-        sink.grpc = GrpcSink{url, flush_timeout_sec};
+        sink.grpc = *this;
         return sink;
     }
 
     inline FileSink::operator LogSink() const {
         LogSink sink{};
         sink.kind = LogSink::Kind::File;
-        sink.file = FileSink{path};
+        sink.file = *this;
         return sink;
     }
 
