@@ -512,7 +512,7 @@ class Recording:
 
         Parameters
         ----------
-        index : str, optional
+        index : str | None
             The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
@@ -1205,7 +1205,7 @@ class DatasetEntry(Entry):
 
         Parameters
         ----------
-        index : str, optional
+        index : str | None
             The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
