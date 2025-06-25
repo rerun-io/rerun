@@ -508,6 +508,8 @@ impl EntityPathFilter {
 impl ResolvedEntityPathFilter {
     /// Turns the resolved filter back into an unresolved filter.
     ///
+    /// The returned [`EntityPathFilter`] will _not_ contain the default exclusion of the recording properties.
+    ///
     /// Warning: Iterating over the rules in the unresolved filter will yield a different order
     /// than the order of the rules in the resolved filter.
     /// To preserve the order, use [`Self::iter_unresolved_expressions`] instead.
@@ -516,7 +518,15 @@ impl ResolvedEntityPathFilter {
             rules: self
                 .rules
                 .iter()
-                .map(|(rule, effect)| (rule.rule.clone(), *effect))
+                .filter_map(|(rule, effect)| {
+                    if rule == &ResolvedEntityPathRule::including_subtree(&EntityPath::properties())
+                        && effect == &RuleEffect::Exclude
+                    {
+                        None
+                    } else {
+                        Some((rule.rule.clone(), *effect))
+                    }
+                })
                 .collect(),
         }
     }
@@ -1274,6 +1284,87 @@ mod tests {
         assert_eq!(
             filter.formatted_without_properties(),
             "+ /**\n+ /__properties/**"
+        );
+    }
+
+    #[test]
+    fn test_unresolved() {
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /__properties/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                - /test123
+                + /test345
+                "#
+            )
+        );
+
+        // If not explicitly mentioned, it should roundtrip.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(resolved.unresolved(), filter);
+
+        // If the properties are _included_ they should be present.
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        + /__properties/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                + /__properties/**
+                - /test123
+                + /test345
+                "#
+            )
+        );
+
+        // If the subpaths of properties are _excluded_ they should be present.
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /__properties/test123/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                - /__properties/test123/**
+                - /test123
+                + /test345
+                "#
+            )
         );
     }
 }
