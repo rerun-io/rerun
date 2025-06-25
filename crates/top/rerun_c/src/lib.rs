@@ -98,6 +98,7 @@ pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 pub struct CSpawnOptions {
     pub port: u16,
     pub memory_limit: CStringView,
+    pub server_memory_limit: CStringView,
     pub hide_welcome_screen: bool,
     pub detach_process: bool,
     pub executable_name: CStringView,
@@ -107,28 +108,44 @@ pub struct CSpawnOptions {
 impl CSpawnOptions {
     #[allow(clippy::result_large_err)]
     pub fn as_rust(&self) -> Result<re_sdk::SpawnOptions, CError> {
+        let Self {
+            port,
+            memory_limit,
+            server_memory_limit,
+            hide_welcome_screen,
+            detach_process,
+            executable_name,
+            executable_path,
+        } = self;
+
         let mut spawn_opts = re_sdk::SpawnOptions::default();
 
-        if self.port != 0 {
-            spawn_opts.port = self.port;
+        if *port != 0 {
+            spawn_opts.port = *port;
         }
 
         spawn_opts.wait_for_bind = true;
 
-        if !self.memory_limit.is_empty() {
-            spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
+        if !memory_limit.is_empty() {
+            spawn_opts.memory_limit = memory_limit.as_str("memory_limit")?.to_owned();
+        }
+        if !server_memory_limit.is_empty() {
+            spawn_opts.server_memory_limit = self
+                .server_memory_limit
+                .as_str("server_memory_limit")?
+                .to_owned();
         }
 
-        spawn_opts.hide_welcome_screen = self.hide_welcome_screen;
-        spawn_opts.detach_process = self.detach_process;
+        spawn_opts.hide_welcome_screen = *hide_welcome_screen;
+        spawn_opts.detach_process = *detach_process;
 
-        if !self.executable_name.is_empty() {
-            spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
+        if !executable_name.is_empty() {
+            spawn_opts.executable_name = executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_empty() {
+        if !executable_path.is_empty() {
             spawn_opts.executable_path =
-                Some(self.executable_path.as_str("executable_path")?.to_owned());
+                Some(executable_path.as_str("executable_path")?.to_owned());
         }
 
         Ok(spawn_opts)
