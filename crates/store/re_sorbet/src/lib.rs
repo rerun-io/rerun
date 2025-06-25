@@ -74,6 +74,7 @@ pub enum BatchType {
 /// * `Ok`
 /// * [`SorbetError::MissingChunkId`]
 /// * [`SorbetError::ChunkIdDeserializationError`]
+// TODO(#10343): remove this
 pub fn chunk_id_of_schema(
     schema: &arrow::datatypes::Schema,
 ) -> Result<re_types_core::ChunkId, SorbetError> {
