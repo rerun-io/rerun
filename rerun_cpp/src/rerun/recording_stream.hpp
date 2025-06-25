@@ -140,22 +140,11 @@ namespace rerun {
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
 
-        /// Connect to a remote Rerun Viewer on the given URL.
-        ///
-        /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
-        ///
-        /// url:
-        /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
-        /// and the pathname must be `/proxy`.
-        ///
-        /// The default is `rerun+http://127.0.0.1:9876/proxy`.
-        ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
+        /// Stream data to multiple sinks.
         ///
         /// This function returns immediately.
+        ///
+        /// @see FileSink, GrpcSink
         template <typename... Ts>
         Error set_sinks(const Ts&... sinks) const {
             LogSink out_sinks[] = {sinks...};
@@ -167,14 +156,10 @@ namespace rerun {
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
-        /// url:
-        /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
-        /// and the pathname must be `/proxy`.
+        /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
         ///
-        /// The default is `rerun+http://127.0.0.1:9876/proxy`.
-        ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
@@ -204,17 +189,14 @@ namespace rerun {
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
         ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
-        /// ## Parameters
-        /// options:
-        /// See `rerun::SpawnOptions` for more information.
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// \param options See `rerun::SpawnOptions` for more information.
         Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
         /// @see RecordingStream::spawn
