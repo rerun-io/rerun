@@ -10,10 +10,10 @@ use re_renderer::{
 };
 use re_types::{
     blueprint::{
-        archetypes::{Background, LineGrid3D},
+        archetypes::{Background, Eye3D, LineGrid3D},
         components::GridSpacing,
     },
-    components::{ViewCoordinates, Visible},
+    components::{Scalar, ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
@@ -116,16 +116,20 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
+        eye_property: &ViewProperty,
     ) -> ViewEye {
+        // FIXME: test on self.last_eye_interaction.is_none() is disabled for now,
+        // as it does not workproperly - need to fix this properly
+        //
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that change over time.
-        if self.last_eye_interaction.is_none() {
-            self.interpolate_to_view_eye(default_eye(
-                &bounding_boxes.current,
-                scene_view_coordinates,
-            ));
-        }
+        // if self.last_eye_interaction.is_none() {
+        //     self.interpolate_to_view_eye(default_eye(
+        //         &bounding_boxes.current,
+        //         scene_view_coordinates,
+        //     ));
+        // }
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
         if scene_view_coordinates != self.scene_view_coordinates {
@@ -156,13 +160,15 @@ impl View3DState {
             .view_eye
             .get_or_insert_with(|| default_eye(&bounding_boxes.current, scene_view_coordinates));
 
-        if self.spin {
-            view_eye.rotate(egui::vec2(
-                -response.ctx.input(|i| i.stable_dt).at_most(0.1) * 150.0,
+        let maybe_eye_spin = extract_eye_spin_speed(eye_property);
+        if let Some(speed) = maybe_eye_spin {
+            let delta = egui::vec2(
+                -response.ctx.input(|i| i.stable_dt).at_most(0.1) * speed,
                 0.0,
-            ));
+            );
+            view_eye.rotate(delta);
             response.ctx.request_repaint();
-        }
+        };
 
         if let Some(cam_interpolation) = &mut self.eye_interpolation {
             cam_interpolation.elapsed_time += response.ctx.input(|i| i.stable_dt).at_most(0.1);
@@ -339,6 +345,25 @@ impl View3DState {
     }
 }
 
+fn extract_eye_spin_speed(eye_property: &ViewProperty) -> Option<f32> {
+    let eye_spin_comp_descr = re_types::ComponentDescriptor {
+        archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
+        component: "Eye3D:spin_speed".into(),
+        component_type: Some("rerun.components.Scalar".into()),
+    };
+    let eye_spin_component = eye_property.component_array::<Scalar>(&eye_spin_comp_descr);
+    if let Ok(Some(speed_arr)) = eye_spin_component {
+        if let Some(Scalar(re_types::datatypes::Float64(speed))) = speed_arr.first() {
+            if *speed > 0.0 {
+                // FIXME: see how conversion is done in the rest of the code base
+                let speed = *speed as f32;
+                return Some(speed);
+            }
+        }
+    }
+    None
+}
+
 #[derive(Clone, PartialEq)]
 struct EyeInterpolation {
     elapsed_time: f32,
@@ -443,11 +468,18 @@ impl SpatialView3D {
             return Ok(()); // protect against problems with zero-sized views
         }
 
+        let eye_property = ViewProperty::from_archetype::<Eye3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+
         let view_eye = state.state_3d.update_eye(
             &response,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
+            &eye_property,
         );
         let eye = view_eye.to_eye();
 

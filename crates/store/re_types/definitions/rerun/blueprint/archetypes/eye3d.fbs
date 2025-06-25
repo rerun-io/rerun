@@ -1,0 +1,25 @@
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// 3D Eye
+table Eye3D (
+  "attr.rerun.scope": "blueprint"
+) {
+
+  /// Eye Kind
+  kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_required", order: 1000);
+
+  /// Position of eye.
+  position: rerun.components.Position3D ("attr.rerun.component_required", order: 2000);
+
+  /// target for eye
+  target: rerun.components.Position3D ("attr.rerun.component_required", order: 3000);
+
+  /// Translation speed of the eye -- should be positive only (more constrainted than scalar)
+  speed: rerun.components.Scalar ("attr.rerun.component_required", order: 5000);
+
+  /// Spinning speed of the eye around the "up" axis of the eye.
+  spin_speed: rerun.components.Scalar ("attr.rerun.component_required", order: 6000);
+
+}

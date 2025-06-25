@@ -35,15 +35,16 @@ use datatype_uis::{
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
-        GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane, RootContainer,
-        ViewFit, ViewMaximized,
+        BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
+        ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
+        RootContainer, ViewFit, ViewMaximized,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Position2D, Range1D, Scale3D, SeriesVisible, ShowLabels, StrokeWidth, Text,
-        Timestamp, TransformRelation, Translation3D, ValueRange, VideoCodec, Visible,
+        Name, Opacity, Position2D, Range1D, Scalar, Scale3D, SeriesVisible, ShowLabels,
+        StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, VideoCodec,
+        Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
@@ -83,6 +84,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
     registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<Scalar>(edit_f64_zero_to_max);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
@@ -117,6 +119,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Eye3DKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
     registry.add_singleline_edit_or_view::<LinkAxis>(edit_view_enum);

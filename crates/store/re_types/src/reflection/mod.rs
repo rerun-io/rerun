@@ -137,6 +137,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Eye3DKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The type of the 3D eye",
+                deprecation_summary: None,
+                custom_placeholder: Some(Eye3DKind::default().to_arrow()?),
+                datatype: Eye3DKind::arrow_datatype(),
+                verify_arrow_array: Eye3DKind::verify_arrow_array,
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -2440,6 +2450,34 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     .into(), docstring_md :
                     "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.Eye3D"),
+            ArchetypeReflection {
+                display_name: "Eye 3D",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "kind", display_name : "Kind",
+                    component_type : "rerun.blueprint.components.Eye3DKind".into(),
+                    docstring_md : "Eye Kind", is_required : true, },
+                    ArchetypeFieldReflection { name : "position", display_name :
+                    "Position", component_type : "rerun.components.Position3D".into(),
+                    docstring_md : "Position of eye.", is_required : true, },
+                    ArchetypeFieldReflection { name : "target", display_name : "Target",
+                    component_type : "rerun.components.Position3D".into(), docstring_md :
+                    "target for eye", is_required : true, }, ArchetypeFieldReflection {
+                    name : "speed", display_name : "Speed", component_type :
+                    "rerun.components.Scalar".into(), docstring_md :
+                    "Translation speed of the eye -- should be positive only (more constrainted than scalar)",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "spin_speed", display_name : "Spin speed", component_type :
+                    "rerun.components.Scalar".into(), docstring_md :
+                    "Spinning speed of the eye around the \"up\" axis of the eye.",
+                    is_required : true, },
                 ],
             },
         ),

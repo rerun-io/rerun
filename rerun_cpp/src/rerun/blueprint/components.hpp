@@ -12,6 +12,7 @@
 #include "blueprint/components/container_kind.hpp"
 #include "blueprint/components/corner2d.hpp"
 #include "blueprint/components/enabled.hpp"
+#include "blueprint/components/eye3d_kind.hpp"
 #include "blueprint/components/filter_by_range.hpp"
 #include "blueprint/components/filter_is_not_null.hpp"
 #include "blueprint/components/force_distance.hpp"
