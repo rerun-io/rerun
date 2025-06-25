@@ -636,57 +636,6 @@ impl RecordingStreamBuilder {
     /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
-    /// ## Example
-    ///
-    /// ```ignore
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .serve("0.0.0.0",
-    ///            Default::default(),
-    ///            Default::default(),
-    ///            re_sdk::MemoryLimit::from_fraction_of_total(0.25),
-    ///            true)?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    //
-    // # TODO(#5531): keep static data around.
-    #[cfg(feature = "web_viewer")]
-    #[deprecated(
-        since = "0.20.0",
-        note = "use rec.serve_grpc() with rerun::serve_web_viewer() instead"
-    )]
-    pub fn serve(
-        self,
-        bind_ip: &str,
-        web_port: WebViewerServerPort,
-        grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
-        open_browser: bool,
-    ) -> RecordingStreamResult<RecordingStream> {
-        self.serve_web(
-            bind_ip,
-            web_port,
-            grpc_port,
-            server_memory_limit,
-            open_browser,
-        )
-    }
-
-    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via gRPC.
-    ///
-    /// If the `open_browser` argument is `true`, your default browser will be opened with a
-    /// connected web-viewer.
-    ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli --locked`).
-    ///
-    /// ## Details
-    /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
-    ///
-    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-    ///
     /// Calling `serve_web` is equivalent to calling [`Self::serve_grpc`] followed by [`crate::serve_web_viewer`].
     ///
     /// ## Example
@@ -702,6 +651,11 @@ impl RecordingStreamBuilder {
     /// ```
     //
     // # TODO(#5531): keep static data around.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Use `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details."
+    )]
     #[cfg(feature = "web_viewer")]
     pub fn serve_web(
         self,

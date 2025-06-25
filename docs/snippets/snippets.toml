@@ -72,6 +72,12 @@ features = [
       "reference/dataframe_view_query",
     ],
   ],
+  [
+    "Host web viewer and connect it to a gRPC server",
+    [
+      "howto/serve_web_viewer",
+    ],
+  ],
 ]
 
 
@@ -153,6 +159,11 @@ features = [
   "py",   # Requires a server to connect to
   "cpp",  # Doesn't exist
   "rust", # Doesn't exist
+]
+"howto/serve_web_viewer" = [
+  "py",   # Runs indefinitely.
+  "cpp",  # TODO(#4638): Doesn't exist.
+  "rust", # Runs indefinitely.
 ]
 "howto/set_sinks" = [
   "py",   # Requires a server to connect to
