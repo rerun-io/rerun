@@ -12,7 +12,7 @@ workspace = true
 
 
 [dependencies]
-rerun = { path = "../../crates/top/rerun" }
+rerun = { path = "../../crates/top/rerun", features = ["web_viewer"] }
 
 itertools.workspace = true
 ndarray.workspace = true
