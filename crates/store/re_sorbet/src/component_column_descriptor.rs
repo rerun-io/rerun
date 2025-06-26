@@ -271,11 +271,26 @@ impl ComponentColumnDescriptor {
                 self.component_descriptor().display_name().to_owned()
             }
             BatchType::Dataframe => {
+                let prefix = if let Some(suffix) = self
+                    .entity_path
+                    .strip_prefix(&EntityPath::recording_properties()) // TODO(#10318): remove
+                    .or_else(|| self.entity_path.strip_prefix(&EntityPath::properties()))
+                {
+                    if suffix.is_root() {
+                        // Property at root-level (maybe part of `RecordingProperties`, or maybe a user-defined property)
+                        "property".to_owned()
+                    } else {
+                        // User-defined property not at root-level
+                        format!("property:{}", suffix.to_string().trim_start_matches('/'))
+                    }
+                } else {
+                    self.entity_path.to_string()
+                };
+
                 // Each column can be of a different entity
                 match self.archetype {
                     Some(archetype_name) => format!(
-                        "{}:{}:{}",
-                        self.entity_path,
+                        "{prefix}:{}:{}",
                         if short_archetype {
                             archetype_name.short_name()
                         } else {
@@ -283,7 +298,7 @@ impl ComponentColumnDescriptor {
                         },
                         self.component_descriptor().archetype_field_name()
                     ),
-                    None => format!("{}:{}", self.entity_path, self.component),
+                    None => format!("{prefix}:{}", self.component),
                 }
             }
         }
