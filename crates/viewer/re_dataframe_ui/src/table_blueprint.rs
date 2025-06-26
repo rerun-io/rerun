@@ -177,10 +177,10 @@ fn test_default_column_display_name() {
         default_display_name_for_column(&ColumnDescriptorRef::Component(
             &re_sorbet::ComponentColumnDescriptor {
                 store_datatype: arrow::datatypes::DataType::Binary, // ignored
-                component_type: Some("rerun.components.Timestamp".into()),
                 entity_path: EntityPath::recording_properties(),
+                component: "RecordingProperties:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
                 archetype: Some("rerun.archetypes.RecordingProperties".into()),
-                component: "start_time".into(),
                 is_static: false,
                 is_indicator: false,
                 is_tombstone: false,
