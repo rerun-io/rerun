@@ -491,7 +491,7 @@ impl RedapServers {
 
             Command::AddServer(origin, jwt) => {
                 if let Some(token) = jwt {
-                    connection_registry.set_token(&origin, token)
+                    connection_registry.set_token(&origin, token);
                 }
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
