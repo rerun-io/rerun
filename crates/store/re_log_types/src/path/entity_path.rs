@@ -206,6 +206,18 @@ impl EntityPath {
         prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
     }
 
+    /// If this path starts with the given prefix,
+    /// then return the rest of the path after the prefix.
+    #[inline]
+    pub fn strip_prefix(&self, prefix: &Self) -> Option<Self> {
+        if self.starts_with(prefix) {
+            let remaining_parts = self.parts[prefix.len()..].to_vec();
+            Some(Self::new(remaining_parts))
+        } else {
+            None
+        }
+    }
+
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &Self) -> bool {
