@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 /// When showing grid-lines representing time.
 ///
 /// Given some spacing (e.g. 10s), return the next spacing (60s).

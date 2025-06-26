@@ -2,7 +2,7 @@ use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget};
+use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 use re_format::format_int;
@@ -14,7 +14,6 @@ use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 use std::mem;
 use std::sync::Arc;
-use std::time::Instant;
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{

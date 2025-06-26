@@ -1,6 +1,5 @@
 use re_log_types::{Timestamp, TimestampFormat};
-use std::ops::Sub;
-use std::time::Duration;
+use std::ops::Sub as _;
 
 /// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
 ///
@@ -16,16 +15,16 @@ pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFor
 
     let format_plural = |n: u64, unit: &str| {
         if n == 1 {
-            format!("{} {} ago", n, unit)
+            format!("{n} {unit} ago")
         } else {
-            format!("{} {}s ago", n, unit)
+            format!("{n} {unit}s ago")
         }
     };
 
     if seconds < 10 {
-        "just now".to_string()
+        "just now".to_owned()
     } else if seconds < 60 {
-        "less than a minute ago".to_string()
+        "less than a minute ago".to_owned()
     } else if seconds < 3600 {
         let minutes = seconds / 60;
         format_plural(minutes, "minute")
