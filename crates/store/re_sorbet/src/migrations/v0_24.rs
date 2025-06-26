@@ -70,6 +70,7 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 re_log::debug_once!(
                     "Moving indicator from field to component metadata field: {field_name}"
                 );
+                debug_assert!(!field_name.starts_with("rerun"), "We expected a short name here, but got {field_name:?}");
                 metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
                 // Remove everything else.
                 metadata.remove("rerun.archetype");
