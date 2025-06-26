@@ -203,3 +203,125 @@ impl SorbetBatch {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use arrow::datatypes::Field as ArrowField;
+
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
+
+    use super::*;
+
+    // TODO(apache/arrow-rs#7628): this will be easier soon
+    fn add_metadata(
+        mut metadata: HashMap<String, String>,
+        (key, value): (String, String),
+    ) -> HashMap<String, String> {
+        metadata.insert(key, value);
+        metadata
+    }
+
+    // TODO(apache/arrow-rs#7628): this will be easier soon
+    fn add_metadata_to_field(field: ArrowField, (key, value): (String, String)) -> ArrowField {
+        let old_metadata = field.metadata().clone();
+        let old_metadata = add_metadata(old_metadata, (key, value));
+        field.with_metadata(old_metadata)
+    }
+
+    // TODO(apache/arrow-rs#7628): this will be easier soon
+    fn remove_metadata_from_field(to_arrow_field: ArrowField, arg: &str) -> ArrowField {
+        let mut metadata = to_arrow_field.metadata().clone();
+        metadata.remove(arg);
+        to_arrow_field.with_metadata(metadata)
+    }
+
+    /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
+    ///
+    /// Also test that we add the proper Rerun metadata, and remove old Rerun metadata that is not relevant anymore.
+    #[test]
+    fn test_sorbet_batch_metadata() {
+        let original: ArrowRecordBatch = {
+            let row_id_field = add_metadata_to_field(
+                remove_metadata_from_field(
+                    RowIdColumnDescriptor::from_sorted(false).to_arrow_field(),
+                    "ARROW:extension:metadata",
+                ),
+                (
+                    "custom_column_key".to_owned(),
+                    "custom_column_value".to_owned(),
+                ),
+            );
+            let fields = vec![Arc::new(row_id_field)];
+            let arrow_schema = ArrowSchema::new_with_metadata(
+                fields,
+                [
+                    (
+                        "rerun.id".to_owned(),
+                        re_types_core::ChunkId::new().to_string(),
+                    ),
+                    (
+                        "custom_batch_key".to_owned(),
+                        "custom_batch_value".to_owned(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            );
+            ArrowRecordBatch::new_empty(arrow_schema.into())
+        };
+
+        {
+            // Check original has what we expect:
+            assert!(original.schema().metadata().contains_key("rerun.id"));
+            assert!(
+                original
+                    .schema()
+                    .metadata()
+                    .contains_key("custom_batch_key")
+            );
+            let row_id = original.schema_ref().field(0);
+            assert!(
+                !row_id.metadata().contains_key("ARROW:extension:metadata"),
+                "We intentionally omitted this from the original"
+            );
+        }
+
+        let sorbet_batch = sorbet_batch::SorbetBatch::try_from_record_batch(
+            &original,
+            crate::BatchType::Dataframe,
+        )
+        .unwrap();
+
+        let ret = ArrowRecordBatch::from(sorbet_batch);
+
+        assert!(
+            !ret.schema().metadata().contains_key("rerun.id"),
+            "This should have been removed/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("rerun:id"),
+            "This should have been added/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("custom_batch_key"),
+            "This should remain"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("rerun:version"),
+            "This should have been added"
+        );
+
+        // Check field:
+        let row_id = ret.schema_ref().field(0);
+        assert!(
+            row_id.metadata().contains_key("custom_column_key"),
+            "This should remain"
+        );
+        assert!(
+            row_id.metadata().contains_key("ARROW:extension:metadata"),
+            "This should have been added"
+        );
+    }
+}
