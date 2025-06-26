@@ -132,7 +132,7 @@ impl PyRerunHtmlTable {
         Ok(html_result.join("\n"))
     }
 
-    #[expect(unused_variables)]
+    #[expect(unused_variables, clippy::unused_self)]
     fn format_str<'py>(
         &self,
         batches: Vec<Bound<'py, PyAny>>,
