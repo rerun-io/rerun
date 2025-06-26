@@ -20,10 +20,8 @@ mod make_list_arrays;
 mod v0_0_1__to__v0_0_2;
 mod v0_0_2__to__v0_1_0;
 
-// TODO(grtlr): Eventually, we should have a trait the abstracts over
-// migrations so that they will be easier to manage. But let's follow
-// the rule of three here.
-
+/// This trait needs to be implemented by any new migrations. It ensures that
+/// all migrations adhere to the same contract.
 trait Migration {
     const TARGET_VERSION: semver::Version;
 
