@@ -74,6 +74,10 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 // A lot of defensive code to handle different legacy formats of the indicator component,
                 // including blueprint indicators:
                 if let Some(component) = metadata.remove("rerun.component") {
+                    debug_assert!(
+                        component.ends_with("Indicator"),
+                        "Expected component to end with 'Indicator', got: {component:?}"
+                    );
                     metadata.insert("rerun:component".to_owned(), component);
                 } else if field_name.starts_with("rerun.") {
                     // Long name
