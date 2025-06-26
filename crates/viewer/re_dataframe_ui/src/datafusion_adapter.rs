@@ -180,6 +180,8 @@ pub struct DataFusionAdapter {
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
     pub requested_sorbet_batches: Arc<Mutex<RequestedSorbetBatches>>,
+
+    pub queried_at: std::time::Instant,
 }
 
 impl DataFusionAdapter {
@@ -214,6 +216,7 @@ impl DataFusionAdapter {
                 ))),
                 query,
                 last_sorbet_batches: None,
+                queried_at: std::time::Instant::now(),
             };
 
             ui.data_mut(|data| {

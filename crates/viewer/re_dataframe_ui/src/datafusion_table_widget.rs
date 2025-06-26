@@ -1,19 +1,20 @@
-use std::sync::Arc;
-
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, RichText};
+use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
-
+use re_format::format_int;
 use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
 use re_ui::menu::menu_style;
+use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
+use std::mem;
+use std::sync::Arc;
+use std::time::Instant;
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
@@ -113,14 +114,13 @@ pub struct DataFusionTableWidget<'a> {
 
 impl<'a> DataFusionTableWidget<'a> {
     /// Clears all caches related to this session context and table reference.
-    pub fn clear_state(
+    pub fn refresh(
         egui_ctx: &egui::Context,
         session_ctx: &SessionContext,
         table_ref: impl Into<TableReference>,
     ) {
         let id = id_from_session_context_and_table(session_ctx, &table_ref.into());
 
-        TableConfig::clear_state(egui_ctx, id);
         DataFusionAdapter::clear_state(egui_ctx, id);
     }
 
@@ -261,7 +261,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         .clicked()
                     {
                         // This will trigger a fresh query on the next frame.
-                        Self::clear_state(ui.ctx(), &session_ctx, table_ref);
+                        Self::refresh(ui.ctx(), &session_ctx, table_ref);
                     }
                 });
                 return;
@@ -349,24 +349,118 @@ impl<'a> DataFusionTableWidget<'a> {
             table_config,
         };
 
-        egui_table::Table::new()
-            .id_salt(session_id)
-            .columns(
-                table_delegate
-                    .table_config
-                    .visible_column_ids()
-                    .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
-                    .collect::<Vec<_>>(),
-            )
-            .headers(vec![egui_table::HeaderRow::new(
-                tokens.table_header_height(),
-            )])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
+        ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
+            let spacing = mem::take(&mut ui.spacing_mut().item_spacing.y);
+
+            let visible_columns = table_delegate.table_config.visible_columns().count();
+            let total_columns = columns.columns.len();
+
+            let refresh = Self::bottom_bar_ui(
+                ui,
+                num_rows,
+                total_columns,
+                visible_columns,
+                table_state.queried_at,
+            );
+
+            if refresh {
+                Self::refresh(ui.ctx(), &session_ctx, table_ref);
+            }
+
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = spacing;
+                egui_table::Table::new()
+                    .id_salt(session_id)
+                    .columns(
+                        table_delegate
+                            .table_config
+                            .visible_column_ids()
+                            .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
+                            .collect::<Vec<_>>(),
+                    )
+                    .headers(vec![egui_table::HeaderRow::new(
+                        tokens.table_header_height(),
+                    )])
+                    .num_rows(num_rows)
+                    .show(ui, &mut table_delegate);
+            });
+        });
 
         table_delegate.table_config.store(ui.ctx());
         drop(requested_sorbet_batches);
-        table_state.update_query(runtime, ui, new_blueprint);
+        if table_state.blueprint() != &new_blueprint {
+            table_state.update_query(runtime, ui, new_blueprint);
+        }
+    }
+
+    fn bottom_bar_ui(
+        ui: &mut Ui,
+        total_rows: u64,
+        total_columns: usize,
+        visible_columns: usize,
+        queried_at: Instant,
+    ) -> bool {
+        let mut refresh = false;
+
+        let response = Frame::new()
+            .fill(ui.tokens().table_header_bg_fill)
+            .inner_margin(Margin::symmetric(12, 0))
+            .show(ui, |ui| {
+                let height = 24.0;
+                ui.set_height(height);
+                ui.horizontal_centered(|ui| {
+                    let subdued = |ui: &mut Ui, text| {
+                        ui.label(RichText::new(text).color(ui.tokens().text_subdued))
+                    };
+                    let default = |ui: &mut Ui, text| {
+                        ui.label(RichText::new(text).color(ui.tokens().text_default))
+                    };
+
+                    egui::Sides::new().show(
+                        ui,
+                        |ui| {
+                            ui.set_height(height);
+
+                            subdued(ui, "rows:");
+                            default(ui, format_int(total_rows as i64));
+
+                            ui.add_space(16.0);
+
+                            subdued(ui, "columns:");
+                            default(
+                                ui,
+                                format!(
+                                    "{} out of {}",
+                                    format_int(visible_columns as i64),
+                                    format_int(total_columns as i64)
+                                ),
+                            );
+                        },
+                        |ui| {
+                            ui.set_height(height);
+                            if icons::RESET.as_button().ui(ui).clicked() {
+                                refresh = true;
+                            };
+
+                            let duration = Instant::now().duration_since(queried_at);
+                            default(
+                                ui,
+                                format!("{} ago", re_format::format_duration_short(duration)),
+                            );
+                            subdued(ui, "Last updated:");
+                        },
+                    );
+                });
+            })
+            .response;
+
+        ui.painter().hline(
+            response.rect.x_range(),
+            response.rect.top(),
+            Stroke::new(1.0, ui.tokens().table_header_stroke_color),
+        );
+
+        refresh
     }
 }
 

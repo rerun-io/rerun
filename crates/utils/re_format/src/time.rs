@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 /// When showing grid-lines representing time.
 ///
 /// Given some spacing (e.g. 10s), return the next spacing (60s).
@@ -60,5 +62,33 @@ pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
             Some(((hours * 60 + minutes) * 60) as f64 + seconds)
         }
         _ => None,
+    }
+}
+
+/// Formats a duration in a short, readable format, e.g. ("1 hour" or "2 minutes")
+///
+/// It only shows the largest unit. Shows seconds, minutes, hours, or days.
+pub fn format_duration_short(duration: Duration) -> String {
+    let seconds = duration.as_secs();
+
+    let format_plural = |n: u64, unit: &str| {
+        if n == 1 {
+            format!("{} {}", n, unit)
+        } else {
+            format!("{} {}s", n, unit)
+        }
+    };
+
+    if seconds < 60 {
+        format_plural(seconds, "second")
+    } else if seconds < 3600 {
+        let minutes = seconds / 60;
+        format_plural(minutes, "minute")
+    } else if seconds < 86400 {
+        let hours = seconds / 3600;
+        format_plural(hours, "hour")
+    } else {
+        let days = seconds / 86400;
+        format_plural(days, "day")
     }
 }
