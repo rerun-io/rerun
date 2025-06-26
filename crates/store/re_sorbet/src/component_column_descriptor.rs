@@ -291,7 +291,7 @@ impl ComponentColumnDescriptor {
                         "property".to_owned()
                     } else {
                         // User-defined property not at root-level
-                        format!("property:{suffix}")
+                        format!("property:{}", suffix.to_string().trim_start_matches('/'))
                     }
                 } else {
                     self.entity_path.to_string()
@@ -308,7 +308,7 @@ impl ComponentColumnDescriptor {
                         },
                         self.component_descriptor().archetype_field_name()
                     ),
-                    None => format!("{}:{}", self.entity_path, self.component),
+                    None => format!("{prefix}:{}", self.component),
                 }
             }
         }
