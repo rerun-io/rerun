@@ -423,6 +423,7 @@ impl PyDataframeQueryView {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Convert this view to a [`pyarrow.RecordBatchReader`][].
     #[instrument(skip_all)]
     fn to_reader<'py>(
         self_: PyRef<'py, Self>,
