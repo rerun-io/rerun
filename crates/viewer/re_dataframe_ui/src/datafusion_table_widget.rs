@@ -6,7 +6,7 @@ use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 use re_format::format_int;
-use re_log_types::{EntryId, TimelineName};
+use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::list_item::ItemButton;
 use re_ui::menu::menu_style;
@@ -357,6 +357,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             let refresh = Self::bottom_bar_ui(
                 ui,
+                viewer_ctx,
                 num_rows,
                 total_columns,
                 visible_columns,
@@ -395,10 +396,11 @@ impl<'a> DataFusionTableWidget<'a> {
 
     fn bottom_bar_ui(
         ui: &mut Ui,
+        ctx: &ViewerContext<'_>,
         total_rows: u64,
         total_columns: usize,
         visible_columns: usize,
-        queried_at: Instant,
+        queried_at: Timestamp,
     ) -> bool {
         let mut refresh = false;
 
@@ -409,32 +411,26 @@ impl<'a> DataFusionTableWidget<'a> {
                 let height = 24.0;
                 ui.set_height(height);
                 ui.horizontal_centered(|ui| {
-                    let subdued = |ui: &mut Ui, text| {
-                        ui.label(RichText::new(text).color(ui.tokens().text_subdued))
-                    };
-                    let default = |ui: &mut Ui, text| {
-                        ui.label(RichText::new(text).color(ui.tokens().text_default))
-                    };
+                    ui.visuals_mut().widgets.noninteractive.fg_stroke.color =
+                        ui.tokens().text_subdued;
+                    ui.visuals_mut().widgets.active.fg_stroke.color = ui.tokens().text_default;
 
                     egui::Sides::new().show(
                         ui,
                         |ui| {
                             ui.set_height(height);
 
-                            subdued(ui, "rows:");
-                            default(ui, format_int(total_rows as i64));
+                            ui.label("rows:");
+                            ui.strong(format_int(total_rows as i64));
 
                             ui.add_space(16.0);
 
-                            subdued(ui, "columns:");
-                            default(
-                                ui,
-                                format!(
-                                    "{} out of {}",
-                                    format_int(visible_columns as i64),
-                                    format_int(total_columns as i64)
-                                ),
-                            );
+                            ui.label("columns:");
+                            ui.strong(format!(
+                                "{} out of {}",
+                                format_int(visible_columns as i64),
+                                format_int(total_columns as i64)
+                            ));
                         },
                         |ui| {
                             ui.set_height(height);
@@ -442,12 +438,13 @@ impl<'a> DataFusionTableWidget<'a> {
                                 refresh = true;
                             };
 
-                            let duration = Instant::now().duration_since(queried_at);
-                            default(
+                            re_ui::time::short_duration_ui(
                                 ui,
-                                format!("{} ago", re_format::format_duration_short(duration)),
+                                queried_at,
+                                ctx.app_options().timestamp_format,
+                                Ui::strong,
                             );
-                            subdued(ui, "Last updated:");
+                            ui.label("Last updated:");
                         },
                     );
                 });

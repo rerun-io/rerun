@@ -44,6 +44,7 @@ pub use self::{
 #[cfg(feature = "arrow")]
 mod arrow_ui;
 pub mod menu;
+pub mod time;
 
 #[cfg(feature = "arrow")]
 pub use self::arrow_ui::arrow_ui;

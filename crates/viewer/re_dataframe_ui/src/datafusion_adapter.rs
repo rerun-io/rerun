@@ -1,15 +1,15 @@
+use crate::RequestedObject;
+use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 use arrow::datatypes::DataType;
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use parking_lot::Mutex;
+use re_log_types::Timestamp;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 use std::sync::Arc;
-
-use crate::RequestedObject;
-use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -181,7 +181,7 @@ pub struct DataFusionAdapter {
     // so we should clean that up if the bound is lifted.
     pub requested_sorbet_batches: Arc<Mutex<RequestedSorbetBatches>>,
 
-    pub queried_at: std::time::Instant,
+    pub queried_at: Timestamp,
 }
 
 impl DataFusionAdapter {
@@ -216,7 +216,7 @@ impl DataFusionAdapter {
                 ))),
                 query,
                 last_sorbet_batches: None,
-                queried_at: std::time::Instant::now(),
+                queried_at: Timestamp::now(),
             };
 
             ui.data_mut(|data| {
