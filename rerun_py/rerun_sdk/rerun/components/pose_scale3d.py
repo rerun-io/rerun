@@ -31,7 +31,7 @@ class PoseScale3D(PoseScale3DExt, datatypes.Vec3D, ComponentMixin):
 
 
 class PoseScale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.PoseScale3D"
+    _COMPONENT_TYPE: str = "rerun.components.PoseScale3D"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -65,6 +65,21 @@ impl ConnectionRegistryHandle {
         });
     }
 
+    pub fn token(&self, origin: &re_uri::Origin) -> Option<Jwt> {
+        wrap_blocking_lock(|| {
+            let inner = self.inner.blocking_read();
+            inner.saved_tokens.get(origin).cloned()
+        })
+    }
+
+    pub fn remove_token(&self, origin: &re_uri::Origin) {
+        wrap_blocking_lock(|| {
+            let mut inner = self.inner.blocking_write();
+            inner.saved_tokens.remove(origin);
+            inner.clients.remove(origin);
+        });
+    }
+
     pub fn set_fallback_token(&self, token: Jwt) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();

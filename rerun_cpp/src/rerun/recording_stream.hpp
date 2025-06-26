@@ -11,6 +11,7 @@
 #include "as_components.hpp"
 #include "component_column.hpp"
 #include "error.hpp"
+#include "log_sink.hpp"
 #include "spawn_options.hpp"
 #include "time_column.hpp"
 
@@ -139,18 +140,26 @@ namespace rerun {
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
 
+        /// Stream data to multiple sinks.
+        ///
+        /// See specific sink types for more information:
+        /// * `FileSink`
+        /// * `GrpcSink`
+        template <typename... Ts>
+        Error set_sinks(const Ts&... sinks) const {
+            LogSink out_sinks[] = {sinks...};
+            uint32_t num_sinks = sizeof...(Ts);
+            return try_set_sinks(out_sinks, num_sinks);
+        }
+
         /// Connect to a remote Rerun Viewer on the given URL.
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
-        /// url:
-        /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
-        /// and the pathname must be `/proxy`.
+        /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
         ///
-        /// The default is `rerun+http://127.0.0.1:9876/proxy`.
-        ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
@@ -166,28 +175,28 @@ namespace rerun {
         /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
         ///
+        /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        /// on the same machine, otherwise you're potentially doubling your memory usage!
+        ///
         /// Returns the URI of the gRPC server so you can connect to it from a viewer.
         ///
         /// This function returns immediately.
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
-            std::string_view server_memory_limit = "75%"
+            std::string_view server_memory_limit = "25%"
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
         ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
-        /// ## Parameters
-        /// options:
-        /// See `rerun::SpawnOptions` for more information.
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// \param options See `rerun::SpawnOptions` for more information.
         Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
         /// @see RecordingStream::spawn
@@ -936,6 +945,8 @@ namespace rerun {
         /// @}
 
       private:
+        Error try_set_sinks(const LogSink* sinks, uint32_t num_sinks) const;
+
         // Utility function to implement `try_send_columns` variadic template.
         static void push_back_columns(
             std::vector<ComponentColumn>& component_columns, Collection<ComponentColumn> new_columns

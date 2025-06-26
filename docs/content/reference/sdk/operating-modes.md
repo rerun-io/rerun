@@ -54,9 +54,11 @@ The gRPC server acts as a proxy, buffering and forwarding log data to the Rerun 
 You can also connect to the gRPC server from a Rerun Web Viewer.
 To host a Rerun Web Viewer, you can use the `serve_web_viewer` function.
 
+snippet: howto/serve_web_viewer
+
 #### C++
 * [`RecordingStream::serve_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
-* `serve_web_viewer` is not available.
+* TODO(#7913): `serve_web_viewer` is not available.
 
 #### Python
 * [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)

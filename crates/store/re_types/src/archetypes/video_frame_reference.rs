@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: References a single video frame.
@@ -159,9 +159,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: Some("rerun.components.VideoTimestamp".into()),
-            archetype_field_name: "timestamp".into(),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:timestamp".into(),
+            component_type: Some("rerun.components.VideoTimestamp".into()),
         }
     }
 
@@ -171,9 +171,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: Some("rerun.components.EntityPath".into()),
-            archetype_field_name: "video_reference".into(),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:video_reference".into(),
+            component_type: Some("rerun.components.EntityPath".into()),
         }
     }
 
@@ -183,9 +183,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -193,9 +193,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.VideoFrameReferenceIndicator".into(),
+            archetype: None,
+            component: "rerun.components.VideoFrameReferenceIndicator".into(),
+            component_type: None,
         }
     }
 }

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Shared state for the 3 collapsible panels.
@@ -35,9 +35,9 @@ impl PanelBlueprint {
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component_name: Some("rerun.blueprint.components.PanelState".into()),
-            archetype_field_name: "state".into(),
+            archetype: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+            component: "PanelBlueprint:state".into(),
+            component_type: Some("rerun.blueprint.components.PanelState".into()),
         }
     }
 
@@ -45,9 +45,9 @@ impl PanelBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
+            component_type: None,
         }
     }
 }

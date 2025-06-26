@@ -12,7 +12,8 @@ use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
-use re_chunk_store::{ColumnIdentifier, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk::ComponentIdentifier;
+use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
@@ -20,7 +21,6 @@ use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
 use crate::catalog::{PyDatasetEntry, to_py_err};
-use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
 /// View into a remote dataset acting as DataFusion table provider.
@@ -40,23 +40,21 @@ impl PyDataframeQueryView {
     #[instrument(skip(dataset, contents, py))]
     pub fn new(
         dataset: Py<PyDatasetEntry>,
-        index: String,
+        index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
+        // Static only implies:
+        // - we include only static columns in the contents
+        // - we only return one row per partition, with the static data
+        let static_only = index.is_none();
+
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
-        let schema = {
-            let dataset_py = dataset.borrow(py);
-            let entry = dataset_py.as_super();
-            let dataset_id = entry.details.id;
-            let connection = entry.client.borrow(py).connection().clone();
-
-            connection.get_dataset_schema(py, dataset_id)?
-        };
+        let schema = PyDatasetEntry::fetch_arrow_schema(&dataset.borrow(py))?;
 
         // TODO(jleibs): Check schema for the index name
 
@@ -70,12 +68,22 @@ impl PyDataframeQueryView {
                 include_semantically_empty_columns,
                 include_indicator_columns,
                 include_tombstone_columns,
-                filtered_index: Some(index.into()),
+                include_static_columns: if static_only {
+                    re_chunk_store::StaticColumnSelection::StaticOnly
+                } else {
+                    re_chunk_store::StaticColumnSelection::Both
+                },
+                filtered_index: index.map(Into::into),
                 filtered_index_range: None,
                 filtered_index_values: None,
                 using_index_values: None,
                 filtered_is_not_null: None,
-                sparse_fill_strategy: SparseFillStrategy::None,
+                //TODO(#10327): this should not be necessary!
+                sparse_fill_strategy: if static_only {
+                    SparseFillStrategy::LatestAtGlobal
+                } else {
+                    SparseFillStrategy::None
+                },
                 selection: None,
             },
             partition_ids: vec![],
@@ -415,9 +423,7 @@ impl PyDataframeQueryView {
         let chunk_stores = connection.get_chunks_for_dataframe_query(
             py,
             dataset_id,
-            &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
-            self_.query_expression.max_range(),
+            &self_.query_expression,
             self_.partition_ids.as_slice(),
         )?;
 
@@ -488,9 +494,7 @@ impl PyDataframeQueryView {
         connection.get_chunk_ids_for_dataframe_query(
             py,
             dataset_id,
-            &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
-            self_.query_expression.max_range(),
+            &self_.query_expression,
             self_.partition_ids.as_slice(),
         )
     }
@@ -499,7 +503,7 @@ impl PyDataframeQueryView {
 /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
 ///
 /// ```python
-/// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+/// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
 /// ```
 ///
 /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -530,7 +534,7 @@ fn extract_contents_expr(
     let mut known_components = BTreeMap::<EntityPath, BTreeSet<ComponentDescriptor>>::new();
 
     for component in &component_descriptors {
-        // We need to resolve the component name to the best one in the schema
+        // We need to resolve the component type to the best one in the schema
         // (e.g. "color" -> "rerun.color")
         known_components
             .entry(component.entity_path.clone())
@@ -559,7 +563,7 @@ fn extract_contents_expr(
 
         Ok(contents)
     } else if let Ok(dict) = expr.downcast::<PyDict>() {
-        // `Union[ComponentLike, Sequence[ComponentLike]]]`
+        // `Union[str, Sequence[str]]]`
 
         let mut contents = ViewContentsSelector::default();
 
@@ -576,15 +580,15 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<ColumnIdentifier> = if let Ok(component) =
-                value.extract::<ComponentLike>()
+            let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
+                value.extract::<String>()
             {
                 std::iter::once(component.into()).collect()
-            } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+            } else if let Ok(components) = value.extract::<Vec<String>>() {
                 components.into_iter().map(Into::into).collect()
             } else {
                 return Err(PyTypeError::new_err(format!(
-                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a `str` or Sequence[str]."
                 )));
             };
 

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: General visualization behavior of an entity.
@@ -48,9 +48,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component_name: Some("rerun.components.Interactive".into()),
-            archetype_field_name: "interactive".into(),
+            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+            component: "EntityBehavior:interactive".into(),
+            component_type: Some("rerun.components.Interactive".into()),
         }
     }
 
@@ -60,9 +60,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
-            component_name: Some("rerun.components.Visible".into()),
-            archetype_field_name: "visible".into(),
+            archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+            component: "EntityBehavior:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -70,9 +70,9 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.blueprint.components.EntityBehaviorIndicator".into(),
+            archetype: None,
+            component: "rerun.blueprint.components.EntityBehaviorIndicator".into(),
+            component_type: None,
         }
     }
 }

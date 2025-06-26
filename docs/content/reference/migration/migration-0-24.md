@@ -36,6 +36,14 @@ final = `Transform3D` * … * `Transform3D` * InstancePoses3D * (Box3D.quaternio
 As a concrete example, if you previously scaled boxes/ellipsoids/capsules using `InstancePoses3D` they would be scaled relative to the individual box centers.
 Now instead they are scaled relative to the entity's center.
 
+## `serve_web` is now deprecated in Rust and Python
+
+`serve_web` will be removed in a future release but is still available for now.
+Instead prefer an explicit combination of `serve_grpc` and `serve_web_viewer`:
+
+snippet: howto/serve_web_viewer
+
+Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 
 ## Tagged components
 
@@ -51,11 +59,11 @@ Now instead they are scaled relative to the entity's center.
 
 #### `re_log_types`
 
-* Removed auto-filling of `rerun.components.` to `ComponentName` in path parsing.
+* Removed auto-filling of `rerun.components.` to `ComponentType` in path parsing.
 
 #### `re_sorbet`
 
-* Lookup `ColumnDescriptor` by `ArchetypeFieldName` instead of `ComponentName`.
+* Lookup `ColumnDescriptor` by `ComponentIdentifier` instead of `ComponentType`.
 * Changed `ComponentColumnSelector`.
 * Changed `ComponentColumnDescriptor::column_name` to use fully-qualified column names.
 
@@ -69,7 +77,7 @@ We can now have multiple components of the same type living on the same archetyp
 For this we introduce the following new string-based representation:
 
 ```
-<entity_path>:[<archetype_name>]:<archetype_field_name>
+<entity_path>:[<archetype_name>]:<component>
 ```
 
 Note that the `archetype_name` section is optional, because components can also be logged as plain fields.
@@ -81,3 +89,9 @@ We have updated our logic so that the `component` field of `blueprint.datatypes.
 #### LeRobot dataloader
 
 * Fixed an issue where the LeRobot dataloader logged untagged `Name` components for robot observations and actions, `.rrd` files created before `0.24` may include these untagged entries. To fix this, load the dataset in `0.24.0` and resave your episodes to `.rrd` (`0.24.0` now supports saving all selected recordings).
+
+## Dataframe API: `View.select_static` is deprecated
+
+The dataframe API was originally introduced with the `View.select_static()` variant of `View.select()` used when the view only contains static columns. In such cases, `select()` would yield no row as no data is logged at any index value (by definition of static-only content). Instead, `select_static()` would force the generation of a single, index-less row populated with the static data.
+
+The same behavior can now be achieved by using `Recording.view(index=None, content=...)`.

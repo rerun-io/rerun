@@ -128,6 +128,7 @@ pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.svg");
 pub const ADD: Icon = icon_from_path!("../data/icons/add.svg");
 
 pub const REMOVE: Icon = icon_from_path!("../data/icons/remove.svg");
+pub const TRASH: Icon = icon_from_path!("../data/icons/trash.svg");
 
 pub const RESET: Icon = icon_from_path!("../data/icons/reset.svg");
 
@@ -183,6 +184,10 @@ pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 
+pub const INFO: Icon = icon_from_path!("../data/icons/info.svg");
+pub const WARNING: Icon = icon_from_path!("../data/icons/warn.svg");
+pub const ERROR: Icon = icon_from_path!("../data/icons/error.svg");
+pub const SUCCESS: Icon = icon_from_path!("../data/icons/success.svg");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.svg");
 
 // drag and drop icons

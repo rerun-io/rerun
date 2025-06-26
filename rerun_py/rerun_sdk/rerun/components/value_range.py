@@ -28,7 +28,7 @@ class ValueRange(datatypes.Range1D, ComponentMixin):
 
 
 class ValueRangeBatch(datatypes.Range1DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ValueRange"
+    _COMPONENT_TYPE: str = "rerun.components.ValueRange"
 
 
 # This is patched in late to avoid circular dependencies.

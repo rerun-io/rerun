@@ -141,7 +141,10 @@ impl TryFrom<SorbetColumnDescriptors> for ChunkColumnDescriptors {
             return Err(SorbetError::MultipleRowIdColumns(row_ids.len()));
         }
 
-        let row_id = row_ids.pop().ok_or(SorbetError::MissingRowIdColumn)?;
+        let row_id = row_ids.pop().ok_or_else(|| {
+            re_log::debug!("Missing RowId column, but had these columns: {columns:#?}");
+            SorbetError::MissingRowIdColumn
+        })?;
 
         Ok(Self {
             row_id,

@@ -5,6 +5,7 @@ use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
 use re_build_info::CrateVersion;
+use re_chunk::Span;
 use re_log::external::log::warn;
 
 use crate::{
@@ -36,16 +37,12 @@ pub struct StreamingLogMsg {
     /// Only set if [`StreamingDecoderOptions::keep_decoded_protobuf`] is true.
     decoded: Option<re_protos::log_msg::v1alpha1::log_msg::Msg>,
 
-    /// How many bytes does one have to go through in the underlying storage resource in order to
-    /// find the start of this message?
+    /// Where in the underlying storage resource is this message (in bytes)?
     ///
-    /// Specifically, this points to the beginning of the `MessageHeader`.
-    pub byte_offset: u64,
-
-    /// How many bytes does this message take in the underlying storage resource?
+    /// Specifically, the start of this range points to the beginning of the `MessageHeader`.
     ///
-    /// This covers both the size of the message's header _and_ its body.
-    pub byte_len: u64,
+    /// The full range covers both the message's header _and_ its body.
+    pub byte_span: Span<u64>,
 }
 
 impl StreamingLogMsg {
@@ -81,8 +78,10 @@ impl StreamingLogMsg {
             version: CrateVersion::LOCAL,
             encoded: Some(log_msg_encoded.into()),
             decoded: log_msg_proto.msg,
-            byte_offset: 0,
-            byte_len,
+            byte_span: Span {
+                start: 0,
+                len: byte_len,
+            },
         })
     }
 
@@ -353,8 +352,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 version,
                 encoded,
                 decoded,
-                byte_offset: self.num_bytes_read,
-                byte_len: processed_length as _,
+                byte_span: Span {
+                    start: self.num_bytes_read,
+                    len: processed_length as _,
+                },
             };
 
             self.num_bytes_read += processed_length as u64;
@@ -491,11 +492,7 @@ mod tests {
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
             for msg_expected in &mut decoded_messages {
-                let (offset, len) = (
-                    msg_expected.byte_offset as usize,
-                    msg_expected.byte_len as usize,
-                );
-                let data = &data[offset..offset + len];
+                let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
                 {
                     use crate::codec::file;

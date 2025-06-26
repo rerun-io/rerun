@@ -129,6 +129,14 @@ typedef struct rr_spawn_options {
     /// Defaults to `75%` if null.
     rr_string memory_limit;
 
+    /// An upper limit on how much memory the gRPC server running
+    /// in the same process as the Rerun Viewer should use.
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `0B` if null.
+    rr_string server_memory_limit;
+
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
@@ -193,22 +201,21 @@ typedef struct rr_component_descriptor {
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `rerun.archetypes.Points3D`.
-    rr_string archetype_name;
+    rr_string archetype;
 
     /// Optional name of the field within `Archetype` associated with this data.
     ///
     /// Null if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    rr_string archetype_field_name;
+    rr_string component;
 
-    /// Semantic name associated with this data.
+    /// Semantic type associated with this data.
     ///
-    /// This is fully implied by `archetype_name` and `archetype_field`, but
-    /// included for semantic convenience.
+    /// This is fully implied by the `component`, but included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    rr_string component_name;
+    rr_string component_type;
 } rr_component_descriptor;
 
 /// Definition of a component type that can be registered.
@@ -306,6 +313,52 @@ typedef struct rr_time_column {
     /// The sorting order of the `times` array.
     rr_sorting_status sorting_status;
 } rr_time_column;
+
+/// Log sink which streams messages to a gRPC server.
+///
+/// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
+typedef struct rr_grpc_sink {
+    /// A Rerun gRPC URL.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
+    rr_string url;
+
+    /// The minimum time the SDK will wait during a flush before potentially
+    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+    /// and can cause a call to `flush` to block indefinitely.
+    float flush_timeout_sec;
+} rr_grpc_sink;
+
+/// Log sink which writes messages to a file.
+typedef struct rr_file_sink {
+    /// Path to the output file.
+    rr_string path;
+} rr_file_sink;
+
+enum {
+    RR_LOG_SINK_KIND_GRPC = 0,
+    RR_LOG_SINK_KIND_FILE = 1,
+};
+
+/// Used to tag the kind of `rr_log_sink`.
+typedef uint8_t rr_log_sink_kind;
+
+/// A sink for log messages.
+///
+/// See specific log sink types for more information:
+/// * `rr_grpc_sink`
+/// * `rr_file_sink`
+typedef struct rr_log_sink {
+    rr_log_sink_kind kind;
+
+    union {
+        rr_grpc_sink grpc;
+        rr_file_sink file;
+    };
+} rr_log_sink;
 
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
 ///
@@ -421,6 +474,15 @@ extern void rr_recording_stream_set_thread_local(
 /// Check whether the recording stream is enabled.
 extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
 
+/// Stream data to multiple different sinks.
+///
+/// Any previously active sinks will be dropped.
+///
+/// See `rr_log_sink` for more information about what each sink does.
+extern void rr_recording_stream_set_sinks(
+    rr_recording_stream stream, rr_log_sink* sinks, uint32_t num_sinks, rr_error* error
+);
+
 /// Connect to a remote Rerun Viewer on the given URL.
 ///
 /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
@@ -447,6 +509,9 @@ extern void rr_recording_stream_connect_grpc(
 /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
 /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+///
+/// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+/// on the same machine, otherwise you're potentially doubling your memory usage!
 extern void rr_recording_stream_serve_grpc(
     rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
     rr_error* error

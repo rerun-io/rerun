@@ -117,7 +117,7 @@ Example: `16GB` or `50%` (of system total)."
 
     #[clap(
         long,
-        default_value = "25%",
+        default_value = "0B",
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.

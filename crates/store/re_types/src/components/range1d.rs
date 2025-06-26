@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 1D range, specifying a lower and upper bound.
@@ -26,7 +26,7 @@ pub struct Range1D(pub crate::datatypes::Range1D);
 
 impl ::re_types_core::Component for Range1D {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.Range1D".into()
     }
 }

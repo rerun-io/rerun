@@ -15,6 +15,7 @@ use crate::{
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_global_context::DisplayMode;
 use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
@@ -409,12 +410,11 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+                display_mode: &DisplayMode::LocalRecordings,
             },
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
-            active_redap_entry: None,
-            active_table_id: None,
             storage_context: &StorageContext {
                 hub: &Default::default(),
                 bundle: &Default::default(),

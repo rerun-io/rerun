@@ -28,7 +28,7 @@ class ViewMaximized(datatypes.Uuid, ComponentMixin):
 
 
 class ViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewMaximized"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewMaximized"
 
 
 # This is patched in late to avoid circular dependencies.

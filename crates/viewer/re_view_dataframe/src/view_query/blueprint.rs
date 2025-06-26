@@ -61,7 +61,7 @@ impl Query {
 
         // clearing the range filter is equivalent to setting it to the default -inf/+inf
         self.query_property
-            .clear_blueprint_component(ctx, DataframeQuery::descriptor_timeline());
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
     }
 
     pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
@@ -158,7 +158,7 @@ impl Query {
                 ColumnSelector::Component(selector) => {
                     let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
                         &selector.entity_path,
-                        selector.qualified_archetype_field_name(),
+                        selector.component,
                     );
 
                     selected_columns
@@ -293,9 +293,7 @@ impl Query {
                     selected_columns.retain(|column| {
                         if let ColumnSelector::Component(selector) = column {
                             selector.entity_path != entity_path
-                                || selector.archetype_name != descr.archetype_name
-                                || selector.archetype_field_name
-                                    != descr.archetype_field_name.to_string()
+                                || selector.component != descr.component.to_string()
                         } else {
                             true
                         }

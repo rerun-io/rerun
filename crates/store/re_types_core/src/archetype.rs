@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
+    ComponentBatch, ComponentDescriptor, ComponentType, DeserializationResult, SerializationResult,
     SerializedComponentBatch,
 };
 
@@ -107,7 +107,7 @@ pub trait Archetype {
         )
     }
 
-    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
+    /// Given an iterator of Arrow arrays and their respective [`ComponentDescriptor`]s, deserializes them
     /// into this archetype.
     ///
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
@@ -139,6 +139,12 @@ re_string_interner::declare_new_type!(
 );
 
 impl ArchetypeName {
+    /// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
+    #[inline]
+    pub fn with_field(&self, field_name: impl AsRef<str>) -> ComponentIdentifier {
+        format!("{}:{}", self.short_name(), field_name.as_ref()).into()
+    }
+
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
     #[track_caller]
@@ -204,12 +210,12 @@ impl re_byte_size::SizeBytes for ArchetypeName {
 // ---
 
 re_string_interner::declare_new_type!(
-    /// The name of an [`Archetype`]'s field, e.g. `positions`.
+    /// An identifier for a component, i.e. a field in an [`Archetype`].
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct ArchetypeFieldName;
+    pub struct ComponentIdentifier;
 );
 
-impl re_byte_size::SizeBytes for ArchetypeFieldName {
+impl re_byte_size::SizeBytes for ComponentIdentifier {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -288,7 +294,7 @@ impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
 ///
 /// [indicator component]: [`Archetype::Indicator`]
 #[derive(Debug, Clone, Copy)]
-pub struct NamedIndicatorComponent(pub ComponentName);
+pub struct NamedIndicatorComponent(pub ComponentType);
 
 impl crate::ComponentBatch for NamedIndicatorComponent {
     #[inline]

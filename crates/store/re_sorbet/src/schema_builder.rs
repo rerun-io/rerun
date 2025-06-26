@@ -82,10 +82,10 @@ impl SchemaBuilder {
                             //TODO(#10315): we need a type safe way to do this gymnastics
                             let ComponentColumnDescriptor {
                                 store_datatype: _,
-                                component_name: _,
+                                component_type: _,
                                 entity_path: _,
-                                archetype_name: _,
-                                archetype_field_name: _,
+                                archetype: _,
+                                component: _,
 
                                 is_static,
                                 is_indicator,

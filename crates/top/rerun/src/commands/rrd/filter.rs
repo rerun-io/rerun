@@ -108,15 +108,14 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            match re_sorbet::ChunkSchema::try_from(msg.batch.schema_ref().as_ref())
-                            {
-                                Ok(schema) => {
-                                    if !dropped_entity_paths.contains(schema.entity_path()) {
+                            match re_sorbet::ChunkBatch::try_from(&msg.batch) {
+                                Ok(batch) => {
+                                    if !dropped_entity_paths.contains(batch.entity_path()) {
                                         None
                                     } else {
                                         let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
-                                            &msg.batch.schema().fields,
-                                            msg.batch.columns()
+                                            &batch.schema().fields,
+                                            batch.columns()
                                         )
                                         .filter(|(field, _col)| {
                                             !is_field_timeline_of(field, &dropped_timelines)
@@ -127,7 +126,7 @@ impl FilterCommand {
                                         if let Ok(new_batch) = ArrowRecordBatch::try_new(
                                             ArrowSchema::new_with_metadata(
                                                 fields,
-                                                msg.batch.schema().metadata().clone(),
+                                                batch.schema().metadata().clone(),
                                             )
                                             .into(),
                                             columns,

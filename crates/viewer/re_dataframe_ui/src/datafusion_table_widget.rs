@@ -3,6 +3,7 @@ use std::sync::Arc;
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
+use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
@@ -11,6 +12,7 @@ use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
+use re_ui::menu::menu_style;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
@@ -192,6 +194,15 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    fn loading_ui(ui: &mut egui::Ui) {
+        Frame::new().inner_margin(16.0).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.label("Loading table…");
+            });
+        });
+    }
+
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,
@@ -213,12 +224,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .table_exist(table_ref.clone())
             .unwrap_or_default()
         {
-            // Let's not be too intrusive here, as this can often happen temporarily while the table
-            // providers are being registered to the session context after refreshing.
-            ui.label(format!(
-                "Loading table… (table `{}` not found in session context)",
-                &table_ref
-            ));
+            Self::loading_ui(ui);
             return;
         }
 
@@ -269,7 +275,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (None, None) => {
                 // still processing, nothing yet to show
-                ui.label("Loading table…");
+                Self::loading_ui(ui);
                 return;
             }
         };
@@ -451,6 +457,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             egui::containers::menu::MenuButton::from_button(
                                 ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                             )
+                            .config(MenuConfig::new().style(menu_style()))
                             .ui(ui, |ui| {
                                 for sort_direction in SortDirection::iter() {
                                     let already_sorted =
@@ -548,10 +555,10 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
         ColumnDescriptorRef::Component(desc) => {
             let re_sorbet::ComponentColumnDescriptor {
                 store_datatype,
-                component_name,
+                component_type,
                 entity_path,
-                archetype_name,
-                archetype_field_name,
+                archetype: archetype_name,
+                component: _component,
                 is_static,
                 is_indicator,
                 is_tombstone,
@@ -561,8 +568,8 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(ui, "Type", "component");
             header_property_ui(
                 ui,
-                "Component",
-                component_name.map(|a| a.as_str()).unwrap_or("-"),
+                "Component type",
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
@@ -571,8 +578,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
-            //TODO(#9978): update this if we rename this descriptor field.
-            header_property_ui(ui, "Archetype field", archetype_field_name);
+            header_property_ui(
+                ui,
+                "Archetype field",
+                desc.component_descriptor().archetype_field_name(),
+            );
             header_property_ui(ui, "Static", is_static.to_string());
             header_property_ui(ui, "Indicator", is_indicator.to_string());
             header_property_ui(ui, "Tombstone", is_tombstone.to_string());

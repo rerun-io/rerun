@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image encoded as e.g. a JPEG or PNG.
@@ -74,9 +74,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: Some("rerun.components.Blob".into()),
-            archetype_field_name: "blob".into(),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -86,9 +86,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: Some("rerun.components.MediaType".into()),
-            archetype_field_name: "media_type".into(),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -98,9 +98,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: Some("rerun.components.Opacity".into()),
-            archetype_field_name: "opacity".into(),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -110,9 +110,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: Some("rerun.components.DrawOrder".into()),
-            archetype_field_name: "draw_order".into(),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.EncodedImageIndicator".into(),
+            archetype: None,
+            component: "rerun.components.EncodedImageIndicator".into(),
+            component_type: None,
         }
     }
 }
