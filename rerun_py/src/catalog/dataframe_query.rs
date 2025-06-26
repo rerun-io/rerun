@@ -4,7 +4,9 @@ use std::sync::Arc;
 use arrow::array::RecordBatchReader;
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
+use arrow::record_batch::RecordBatchIterator;
 use datafusion::catalog::TableProvider;
+use datafusion::prelude::SessionContext;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
@@ -21,7 +23,7 @@ use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
 use crate::catalog::{PyDatasetEntry, to_py_err};
-use crate::utils::get_tokio_runtime;
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
@@ -411,39 +413,7 @@ impl PyDataframeQueryView {
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
-        let dataset = self_.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let connection = entry.client.borrow(py).connection().clone();
-
-        //
-        // Fetch relevant chunks
-        //
-
-        let chunk_stores = connection.get_chunks_for_dataframe_query(
-            py,
-            dataset_id,
-            &self_.query_expression,
-            self_.partition_ids.as_slice(),
-        )?;
-
-        let query_engines = chunk_stores
-            .into_iter()
-            .map(|(partition_id, store_handle)| {
-                let query_engine = QueryEngine::new(
-                    store_handle.clone(),
-                    QueryCache::new_handle(store_handle.clone()),
-                );
-
-                (partition_id, query_engine)
-            })
-            .collect();
-
-        let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engines, &self_.query_expression)
-                .map_err(to_py_err)?
-                .try_into()
-                .map_err(to_py_err)?;
+        let provider = self_.as_table_provider(py)?;
 
         let capsule_name = cr"datafusion_table_provider".into();
 
@@ -451,6 +421,34 @@ impl PyDataframeQueryView {
         let provider = FFI_TableProvider::new(provider, false, Some(runtime));
 
         PyCapsule::new(py, provider, Some(capsule_name))
+    }
+
+    #[instrument(skip_all)]
+    fn to_reader<'py>(
+        self_: PyRef<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let table_provider = self_.as_table_provider(py)?;
+        let schema = table_provider.schema();
+
+        let session_context = SessionContext::new();
+        session_context
+            .register_table("__table__", table_provider)
+            .map_err(to_py_err)?;
+
+        let record_batches = wait_for_future(py, async move {
+            session_context
+                .table("__table__")
+                .await
+                .map_err(to_py_err)?
+                .collect()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        let reader = RecordBatchIterator::new(record_batches.into_iter().map(Result::Ok), schema);
+
+        Ok(PyArrowType(Box::new(reader)))
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.
@@ -497,6 +495,43 @@ impl PyDataframeQueryView {
             &self_.query_expression,
             self_.partition_ids.as_slice(),
         )
+    }
+}
+
+impl PyDataframeQueryView {
+    fn as_table_provider(&self, py: Python<'_>) -> PyResult<Arc<dyn TableProvider>> {
+        let dataset = self.dataset.borrow(py);
+        let entry = dataset.as_super();
+        let dataset_id = entry.details.id;
+        let connection = entry.client.borrow(py).connection().clone();
+
+        //
+        // Fetch relevant chunks
+        //
+
+        let chunk_stores = connection.get_chunks_for_dataframe_query(
+            py,
+            dataset_id,
+            &self.query_expression,
+            self.partition_ids.as_slice(),
+        )?;
+
+        let query_engines = chunk_stores
+            .into_iter()
+            .map(|(partition_id, store_handle)| {
+                let query_engine = QueryEngine::new(
+                    store_handle.clone(),
+                    QueryCache::new_handle(store_handle.clone()),
+                );
+
+                (partition_id, query_engine)
+            })
+            .collect();
+
+        DataframeQueryTableProvider::new(query_engines, &self.query_expression)
+            .map_err(to_py_err)?
+            .try_into()
+            .map_err(to_py_err)
     }
 }
 
