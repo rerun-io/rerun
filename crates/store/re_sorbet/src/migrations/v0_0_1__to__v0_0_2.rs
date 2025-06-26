@@ -14,6 +14,28 @@ use re_types_core::arrow_helpers::as_array_ref;
 
 use crate::MetadataExt as _;
 
+pub struct Migration;
+
+impl super::Migration for Migration {
+    const TARGET_VERSION: semver::Version = semver::Version::new(0, 0, 2);
+
+    fn version(batch: &ArrowRecordBatch) -> semver::Version {
+        if matches_schema(batch) {
+            // By returning `v0.0.1`, we ensure that the migration always runs.
+            semver::Version::new(0, 0, 1)
+        } else {
+            Self::TARGET_VERSION
+        }
+    }
+
+    fn migrate(mut batch: ArrowRecordBatch) -> ArrowRecordBatch {
+        batch = reorder_columns(&batch);
+        batch = migrate_tuids(&batch);
+        batch = migrate_record_batch(&batch);
+        batch
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(
     "Unknown `rerun:kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`."
@@ -37,7 +59,7 @@ enum ColumnKind {
     Component,
 }
 
-pub fn matches_schema(batch: &ArrowRecordBatch) -> bool {
+fn matches_schema(batch: &ArrowRecordBatch) -> bool {
     batch
         .schema()
         .metadata()
@@ -77,7 +99,7 @@ impl TryFrom<&ArrowField> for ColumnKind {
 
 /// Migrate TUID:s with the pre-0.23 encoding.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_migration = batch.schema_ref().fields().iter().any(|field| {
@@ -165,7 +187,7 @@ fn migrate_tuid_column(
 
 /// Migrate old renamed types to new types.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     struct ArchetypeRename {
@@ -265,7 +287,7 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
 /// Put row-id first, then time columns, and last data columns.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_reordering = 'check: {

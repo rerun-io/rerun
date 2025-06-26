@@ -2,8 +2,13 @@
 
 //! These are the migrations that are introduced for each Sorbet version.
 
-use arrow::array::RecordBatch;
-use semver::Version;
+use std::sync::Arc;
+
+use arrow::array::{RecordBatch, RecordBatchOptions};
+
+use re_log::ResultExt as _;
+
+use crate::SorbetSchema;
 
 mod make_list_arrays;
 
@@ -19,22 +24,58 @@ mod v0_0_2__to__v0_1_0;
 // migrations so that they will be easier to manage. But let's follow
 // the rule of three here.
 
-fn needs_migration_to_version(batch: &RecordBatch, target_semver: &'static str) -> bool {
-    // Expect is fine here, because `target_semver` is a static string.
-    let target_version = Version::parse(target_semver).expect("has to be a valid semver");
+trait Migration {
+    const TARGET_VERSION: semver::Version;
 
-    let Some(version_found) = batch.schema_ref().metadata().get("sorbet:version") else {
-        re_log::debug!("Encountered batch without 'sorbet:version' metadata.");
-        // We still do our best effort and try to perform the migration.
-        return true;
-    };
+    /// The Sorbet version that corresponds to this record batch.
+    fn version(batch: &RecordBatch) -> semver::Version {
+        let Some(version_found) = batch
+            .schema_ref()
+            .metadata()
+            .get(SorbetSchema::METADATA_KEY_VERSION)
+        else {
+            re_log::debug_once!("Encountered batch without 'sorbet:version' metadata.");
+            // We still do our best effort and try to perform the migration.
+            return semver::Version::new(0, 0, 0);
+        };
 
-    match Version::parse(version_found) {
-        Ok(version_found) => version_found < target_version,
-        Err(err) => {
-            re_log::error!("Could not parse 'sorbet:version': {err}");
-            false
+        match semver::Version::parse(version_found) {
+            Ok(version_found) => version_found,
+            Err(err) => {
+                re_log::error_once!("Could not parse 'sorbet:version': {err}");
+                // We still do our best effort and try to perform the migration.
+                semver::Version::new(0, 0, 0)
+            }
         }
+    }
+
+    /// Migrates a record batch from one Sorbet version to the next.
+    fn migrate(batch: RecordBatch) -> RecordBatch;
+}
+
+fn maybe_apply<M: Migration>(mut batch: RecordBatch) -> RecordBatch {
+    let version = M::version(&batch);
+    if version < M::TARGET_VERSION {
+        re_log::debug!("Migrating from `v{version}` to `v{}`", M::TARGET_VERSION);
+        batch = M::migrate(batch);
+
+        let mut metadata = batch.schema().metadata().clone();
+        metadata.insert("sorbet:version".to_owned(), M::TARGET_VERSION.to_string());
+        let schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            batch.schema().fields.clone(),
+            metadata,
+        ));
+
+        // TODO(grtlr): clean this up when we have mutable record batches in `arrow-rs`.
+        RecordBatch::try_new_with_options(
+            schema.clone(),
+            batch.columns().to_vec(),
+            &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+        )
+        .ok_or_log_error()
+        .unwrap_or_else(|| RecordBatch::new_empty(schema))
+    } else {
+        batch
     }
 }
 
@@ -45,19 +86,11 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
 
     re_tracing::profile_function!();
 
-    if v0_0_1__to__v0_0_2::matches_schema(&batch) {
-        // Corresponds to migrations from pre-`v0.23` to `v0.23`:
-        batch = v0_0_1__to__v0_0_2::reorder_columns(&batch);
-        batch = v0_0_1__to__v0_0_2::migrate_tuids(&batch);
-        batch = v0_0_1__to__v0_0_2::migrate_record_batch(&batch);
-    }
+    // Perform migrations if necesarry.
+    batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(batch);
+    batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(batch);
 
-    if needs_migration_to_version(&batch, "0.1.0") {
-        // Corresponds to migrations from `v0.23` to `v0.24`:
-        batch = v0_0_2__to__v0_1_0::rewire_tagged_components(&batch);
-    }
-
-    batch = make_all_data_columns_list_arrays(&batch, v0_0_2__to__v0_1_0::is_component_column);
+    batch = make_all_data_columns_list_arrays(&batch);
 
     batch
 }

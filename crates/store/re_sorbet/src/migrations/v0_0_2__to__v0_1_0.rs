@@ -2,12 +2,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use arrow::{
     array::{RecordBatch as ArrowRecordBatch, RecordBatchOptions as ArrowRecordBatchOptions},
-    datatypes::{FieldRef as ArrowFieldRef, Fields, Schema as ArrowSchema},
+    datatypes::{Fields, Schema as ArrowSchema},
 };
 use re_log::ResultExt as _;
-
-// We might have to move the definitions here, if we ever change the metadata key again.
-use crate::ColumnKind;
 
 fn trim_archetype_prefix(name: &str) -> &str {
     name.trim()
@@ -15,13 +12,19 @@ fn trim_archetype_prefix(name: &str) -> &str {
         .trim_start_matches("rerun.blueprint.archetypes.")
 }
 
-pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
-    ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
+pub struct Migration;
+
+impl super::Migration for Migration {
+    const TARGET_VERSION: semver::Version = semver::Version::new(0, 1, 0);
+
+    fn migrate(batch: ArrowRecordBatch) -> ArrowRecordBatch {
+        rewire_tagged_components(&batch)
+    }
 }
 
 /// Ensures that incoming data is properly tagged and rewires to our now component descriptor format.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_rewiring = batch
@@ -154,16 +157,17 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .schema()
         .metadata()
         .iter()
-        .map(|(key, value)| {
-            // TODO(grtlr): Ideally it should be enforced for all migrations to set the version.
+        .filter_map(|(key, value)| {
             if key.as_str() == "rerun.version" {
-                return ("sorbet:version".to_owned(), "0.1.0".to_owned());
+                // Note that the `Migration` trait takes care of setting the sorbet version.
+                re_log::debug_once!("Dropping 'rerun.version' from metadata.");
+                return None;
             }
 
             if key.starts_with("rerun.") {
                 re_log::debug_once!("Migrating batch metadata key '{key}'");
             }
-            (key.replace("rerun.", "rerun:"), value.clone())
+            Some((key.replace("rerun.", "rerun:"), value.clone()))
         })
         .collect();
 

@@ -35,14 +35,14 @@ pub struct SorbetSchema {
 /// ## Metadata keys for the record batch metadata
 impl SorbetSchema {
     /// The key used to identify the version of the Rerun schema.
-    const METADATA_KEY_VERSION: &'static str = "sorbet:version";
+    pub(crate) const METADATA_KEY_VERSION: &'static str = "sorbet:version";
 
     /// The version of the Sorbet schema.
     ///
     /// This is bumped everytime we require a migration, but notable it is
     /// decoupled from the Rerun version to avoid confusion as there will not
     /// be a new Sorbet version for each Rerun version.
-    const METADATA_VERSION: &'static str = "0.1.0";
+    pub(crate) const METADATA_VERSION: semver::Version = semver::Version::new(0, 1, 0);
 }
 
 impl SorbetSchema {
@@ -80,7 +80,7 @@ impl SorbetSchema {
         [
             Some((
                 Self::METADATA_KEY_VERSION.to_owned(),
-                Self::METADATA_VERSION.to_owned(),
+                Self::METADATA_VERSION.to_string(),
             )),
             chunk_id.as_ref().map(Self::chunk_id_metadata),
             entity_path.as_ref().map(Self::entity_path_metadata),
@@ -161,7 +161,7 @@ impl SorbetSchema {
 
         // Verify version
         if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION) {
-            if batch_version != Self::METADATA_VERSION {
+            if batch_version != &Self::METADATA_VERSION.to_string() {
                 re_log::warn_once!(
                     "Sorbet batch version mismatch. Expected {:?}, got {batch_version:?}",
                     Self::METADATA_VERSION
