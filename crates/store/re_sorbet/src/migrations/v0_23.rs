@@ -268,56 +268,13 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
-    let needs_reordering = 'check: {
-        let mut row_ids = false;
-        let mut indices = false;
-        let mut components = false;
-
-        let has_indices = batch.schema_ref().fields().iter().any(|field| {
-            let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
-            column_kind == ColumnKind::Index
-        });
-
-        for field in batch.schema_ref().fields() {
-            let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
-            match column_kind {
-                ColumnKind::RowId => {
-                    row_ids = true;
-                    if (has_indices && indices) || components {
-                        break 'check true;
-                    }
-                }
-
-                ColumnKind::Index => {
-                    indices = true;
-                    if !row_ids || components {
-                        break 'check true;
-                    }
-                }
-
-                ColumnKind::Component => {
-                    components = true;
-                    if !row_ids || (has_indices && !indices) {
-                        break 'check true;
-                    }
-                }
-            }
-        }
-
-        false
-    };
-
-    if !needs_reordering {
-        return batch.clone();
-    }
-
     let mut row_ids = vec![];
     let mut indices = vec![];
     let mut components = vec![];
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
-        let field = field.clone();
-        let array = array.clone();
+        let field = Arc::clone(field);
+        let array = Arc::clone(array);
         let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
         match column_kind {
             ColumnKind::RowId => row_ids.push((field, array)),
@@ -329,34 +286,31 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     let (fields, arrays): (Vec<ArrowFieldRef>, Vec<ArrowArrayRef>) =
         itertools::chain!(row_ids, indices, components).unzip();
 
-    let schema = Arc::new(ArrowSchema::new_with_metadata(
-        fields,
-        batch.schema().metadata.clone(),
-    ));
-
-    if schema.fields() != batch.schema().fields() {
+    if fields == batch.schema().fields().as_ref() {
+        batch.clone() // Early-out - no reordering needed
+    } else {
         re_log::debug!(
-            "Reordered columns. Before: {:?}, after: {:?}",
+            "Reordering columns. Before: {:?}, after: {:?}",
             batch
                 .schema()
                 .fields()
                 .iter()
                 .map(|f| f.name())
                 .collect_vec(),
-            schema.fields().iter().map(|f| f.name()).collect_vec()
+            fields.iter().map(|f| f.name()).collect_vec()
         );
-    } else {
-        debug_assert!(
-            false,
-            "reordered something that didn't need to be reordered"
-        );
-    }
 
-    ArrowRecordBatch::try_new_with_options(
-        schema.clone(),
-        arrays,
-        &ArrowRecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
-    )
-    .ok_or_log_error()
-    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
+        let schema = Arc::new(ArrowSchema::new_with_metadata(
+            fields,
+            batch.schema().metadata.clone(),
+        ));
+
+        ArrowRecordBatch::try_new_with_options(
+            schema.clone(),
+            arrays,
+            &ArrowRecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+        )
+        .ok_or_log_error()
+        .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
+    }
 }
