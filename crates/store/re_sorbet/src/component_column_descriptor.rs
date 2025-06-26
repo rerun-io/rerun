@@ -277,7 +277,10 @@ impl ComponentColumnDescriptor {
                 {
                     if suffix.is_root() {
                         // Built-in recording properties, like `start_time`:
-                        return self.component.to_string();
+                        return self
+                            .component_descriptor()
+                            .archetype_field_name()
+                            .to_owned();
                     } else {
                         // Something weird
                         self.entity_path.to_string()
