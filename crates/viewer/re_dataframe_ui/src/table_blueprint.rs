@@ -187,7 +187,7 @@ fn test_default_column_display_name() {
                 is_semantically_empty: false
             },
         )),
-        "start_time"
+        "property:RecordingProperties:start_time"
     );
 
     // User-defined recoding property:

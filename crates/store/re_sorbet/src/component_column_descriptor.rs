@@ -273,24 +273,11 @@ impl ComponentColumnDescriptor {
             BatchType::Dataframe => {
                 let prefix = if let Some(suffix) = self
                     .entity_path
-                    .strip_prefix(&EntityPath::recording_properties())
+                    .strip_prefix(&EntityPath::recording_properties()) // TODO(#10318): remove
+                    .or_else(|| self.entity_path.strip_prefix(&EntityPath::properties()))
                 {
                     if suffix.is_root() {
-                        // Built-in recording properties, like `start_time`:
-                        return self
-                            .component_descriptor()
-                            .archetype_field_name()
-                            .to_owned();
-                    } else {
-                        // Something weird
-                        self.entity_path.to_string()
-                    }
-                } else if let Some(suffix) =
-                    self.entity_path.strip_prefix(&EntityPath::properties())
-                {
-                    // User-defined property
-                    if suffix.is_root() {
-                        // User-defined property at root-level
+                        // Property at root-level (maybe part of `RecordingProperties`, or maybe a user-defined property)
                         "property".to_owned()
                     } else {
                         // User-defined property not at root-level
