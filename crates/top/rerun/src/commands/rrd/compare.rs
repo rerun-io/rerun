@@ -101,6 +101,7 @@ impl CompareCommand {
                     width: Some(800),
                     include_metadata: true,
                     include_column_metadata: true,
+                    trim_field_names: false,
                     trim_metadata_keys: false,
                     trim_metadata_values: false,
                 },

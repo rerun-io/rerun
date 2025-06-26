@@ -96,15 +96,13 @@ impl std::fmt::Display for DisplayMetadata {
             &metadata
                 .iter()
                 .map(|(key, value)| {
-                    format!(
-                        "{prefix}{}: {}",
-                        if *trim_keys { trim_key(key) } else { key },
-                        if *trim_values {
-                            trim_name(value)
-                        } else {
-                            value
-                        },
-                    )
+                    let key = if *trim_keys { trim_key(key) } else { key };
+                    let value = if *trim_values {
+                        trim_name(value)
+                    } else {
+                        value
+                    };
+                    format!("{prefix}{key}: {value}",)
                 })
                 .collect_vec()
                 .join("\n"),
@@ -150,10 +148,13 @@ pub struct RecordBatchFormatOpts {
     /// If `true`, displays the individual columns' metadata too.
     pub include_column_metadata: bool,
 
+    /// If `true`, trims the Rerun prefixes from field names
+    pub trim_field_names: bool,
+
     /// If `true`, trims the `rerun:` prefix from metadata values
     pub trim_metadata_keys: bool,
 
-    /// If `true`, trims known Rerun names from metadata values
+    /// If `true`, trims known Rerun prefixes from metadata values
     pub trim_metadata_values: bool,
 }
 
@@ -164,6 +165,7 @@ impl Default for RecordBatchFormatOpts {
             width: None,
             include_metadata: true,
             include_column_metadata: true,
+            trim_field_names: true,
             trim_metadata_keys: true,
             trim_metadata_values: true,
         }
@@ -205,6 +207,7 @@ pub fn format_record_batch_with_width(
             width,
             include_metadata: true,
             include_column_metadata: true,
+            trim_field_names: true,
             trim_metadata_keys: true,
             trim_metadata_values: true,
         },
@@ -222,6 +225,7 @@ fn format_dataframe_with_metadata(
         width,
         include_metadata,
         include_column_metadata: _,
+        trim_field_names: _, // passed as part of `opts` below
         trim_metadata_keys: trim_keys,
         trim_metadata_values: trim_values,
     } = opts;
@@ -274,6 +278,7 @@ fn format_dataframe_without_metadata(
         width,
         include_metadata: _,
         include_column_metadata,
+        trim_field_names,
         trim_metadata_keys: trim_keys,
         trim_metadata_values: trim_values,
     } = opts;
@@ -310,7 +315,14 @@ fn format_dataframe_without_metadata(
 
         let mut headers = fields
             .iter()
-            .map(|field| Cell::new(trim_name(field.name())))
+            .map(|field| {
+                let name = if trim_field_names {
+                    trim_name(field.name())
+                } else {
+                    field.name()
+                };
+                Cell::new(name)
+            })
             .collect_vec();
         headers.reverse();
 
@@ -342,13 +354,21 @@ fn format_dataframe_without_metadata(
                 if field.metadata().is_empty() {
                     Cell::new(format!(
                         "{}\n---\ntype: {}",
-                        trim_name(field.name()),
+                        if trim_field_names {
+                            trim_name(field.name())
+                        } else {
+                            field.name()
+                        },
                         format_data_type(field.data_type()),
                     ))
                 } else {
                     Cell::new(format!(
                         "{}\n---\ntype: {}\n{}",
-                        trim_name(field.name()),
+                        if trim_field_names {
+                            trim_name(field.name())
+                        } else {
+                            field.name()
+                        },
                         format_data_type(field.data_type()),
                         DisplayMetadata {
                             prefix: "",
@@ -360,11 +380,14 @@ fn format_dataframe_without_metadata(
                 }
             }))
         } else {
-            Either::Right(
-                fields
-                    .iter()
-                    .map(|field| Cell::new(trim_name(field.name()).to_owned())),
-            )
+            Either::Right(fields.iter().map(|field| {
+                let name = if trim_field_names {
+                    trim_name(field.name())
+                } else {
+                    field.name()
+                };
+                Cell::new(name.to_owned())
+            }))
         };
 
         table.set_header(header);
