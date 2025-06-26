@@ -6,6 +6,7 @@ use egui::{
     pos2,
 };
 
+use crate::alert::Alert;
 use crate::{
     DesignTokens, Icon, LabelStyle, icons,
     list_item::{self, LabelContent},
@@ -15,40 +16,6 @@ static FULL_SPAN_TAG: &str = "rerun_full_span";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
-}
-
-/// success, warning, error…
-fn notification_label(
-    ui: &mut egui::Ui,
-    fg_color: Color32,
-    icon: &str,
-    visible_text: &str,
-    full_text: &str,
-) -> egui::Response {
-    egui::Frame::new()
-        .stroke((1.0, fg_color))
-        .fill(error_label_bg_color(fg_color))
-        .corner_radius(4)
-        .inner_margin(3.0)
-        .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 4.0;
-                ui.colored_label(fg_color, icon);
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                let response = ui.strong(visible_text).on_hover_ui(|ui| {
-                    if visible_text != full_text {
-                        ui.label(full_text);
-                        ui.add_space(8.0);
-                    }
-                    ui.label("Click to copy text.");
-                });
-                if response.clicked() {
-                    ui.ctx().copy_text(full_text.to_owned());
-                };
-            });
-        })
-        .response
 }
 
 /// Rerun custom extensions to [`egui::Ui`].
@@ -68,39 +35,26 @@ pub trait UiExt {
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        let success_text_color = self.tokens().success_text_color;
-        let ui = self.ui_mut();
-        let success_text = success_text.into();
-        notification_label(ui, success_text_color, "✅", &success_text, &success_text)
+        Alert::success().show_text(self.ui_mut(), success_text.into(), None)
+    }
+
+    /// Shows a info label with a large border.
+    fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
+        Alert::info().show_text(self.ui_mut(), info_text.into(), None)
     }
 
     /// Shows a warning label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        let warning_text = warning_text.into();
-        notification_label(
-            ui,
-            ui.style().visuals.warn_fg_color,
-            "⚠",
-            &warning_text,
-            &warning_text,
-        )
+        Alert::warning().show_text(self.ui_mut(), warning_text.into(), None)
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_with_details_on_hover(&mut self, error_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        notification_label(
-            ui,
-            ui.style().visuals.error_fg_color,
-            "⚠",
-            "Error",
-            &error_text.into(),
-        )
+        Alert::error().show_text(self.ui_mut(), "Error", Some(error_text.into()))
     }
 
     fn error_label_background_color(&self) -> egui::Color32 {
@@ -114,15 +68,7 @@ pub trait UiExt {
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        let error_text = error_text.into();
-        notification_label(
-            ui,
-            ui.style().visuals.error_fg_color,
-            "⚠",
-            &error_text,
-            &error_text,
-        )
+        Alert::error().show_text(self.ui_mut(), error_text.into(), None)
     }
 
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),

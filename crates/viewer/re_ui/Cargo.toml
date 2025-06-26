@@ -78,7 +78,7 @@ time = { workspace = true, features = [
 
 [dev-dependencies]
 egui_kittest.workspace = true
-rand.workspace = true
+rand = { workspace = true, features = ["std"] }
 re_types.workspace = true
 
 

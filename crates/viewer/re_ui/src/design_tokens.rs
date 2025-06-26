@@ -10,6 +10,29 @@ use crate::{
     format_with_decimals_in_range,
 };
 
+#[derive(Debug)]
+pub struct AlertVisuals {
+    pub fill: Color32,
+    pub stroke: Color32,
+    pub icon: Color32,
+}
+
+impl AlertVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            fill: color_from_json(color_table, value.get("fill")?)?,
+            stroke: color_from_json(color_table, value.get("stroke")?)?,
+            icon: color_from_json(color_table, value.get("icon")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse AlertVisuals")
+    }
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -143,6 +166,11 @@ pub struct DesignTokens {
     pub warn_fg_color: Color32,
     pub popup_shadow_color: Color32,
 
+    pub alert_success: AlertVisuals,
+    pub alert_info: AlertVisuals,
+    pub alert_warning: AlertVisuals,
+    pub alert_error: AlertVisuals,
+
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
 
@@ -266,6 +294,11 @@ impl DesignTokens {
             text_strong: get_color("text_strong"),
             error_fg_color: get_color("error_fg_color"),
             warn_fg_color: get_color("warn_fg_color"),
+
+            alert_success: AlertVisuals::get(&colors, &theme_json, "alert_success"),
+            alert_info: AlertVisuals::get(&colors, &theme_json, "alert_info"),
+            alert_warning: AlertVisuals::get(&colors, &theme_json, "alert_warning"),
+            alert_error: AlertVisuals::get(&colors, &theme_json, "alert_error"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
@@ -750,8 +783,15 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
     if color.starts_with('#') {
-        Ok(Color32::from_hex(color)
-            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?)
+        let mut color = Color32::from_hex(color)
+            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?;
+        if let Ok(alpha) = color_alias.get("alpha") {
+            let alpha = alpha
+                .as_u8()
+                .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
+            color = color.gamma_multiply_u8(alpha);
+        }
+        Ok(color)
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
