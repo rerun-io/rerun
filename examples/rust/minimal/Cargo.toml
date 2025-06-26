@@ -1,6 +1,6 @@
 [package]
 name = "minimal"
-version = "0.23.4"
+version = "0.24.0-alpha.1+dev"
 edition = "2021"
 rust-version = "1.84"
 license = "MIT OR Apache-2.0"
