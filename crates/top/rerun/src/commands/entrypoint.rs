@@ -117,13 +117,13 @@ Example: `16GB` or `50%` (of system total)."
 
     #[clap(
         long,
-        default_value = "0B",
+        default_value = None,
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
 Example: `16GB` or `50%` (of system total)."
     )]
-    server_memory_limit: String,
+    server_memory_limit: Option<String>,
 
     #[clap(
         long,
@@ -720,7 +720,18 @@ fn run_impl(
     #[cfg(feature = "server")]
     let server_memory_limit = {
         re_log::debug!("Parsing memory limit for gRPC server");
-        re_memory::MemoryLimit::parse(&args.server_memory_limit)
+        let value = match &args.server_memory_limit {
+            Some(v) => v.as_str(),
+            None => {
+                if args.serve_web {
+                    "25%"
+                } else {
+                    "0B"
+                }
+            }
+        };
+        re_log::info!("actual memory limit: {value}");
+        re_memory::MemoryLimit::parse(value)
             .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
     };
 
