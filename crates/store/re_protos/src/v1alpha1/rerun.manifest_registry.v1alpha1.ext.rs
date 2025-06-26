@@ -259,6 +259,7 @@ pub struct QueryLatestAt {
     ///
     /// Use `None` for static only data.
     pub index: Option<String>,
+
     /// The timestamp to query at.
     ///
     /// Use `TimeInt::STATIC` to query for static only data.
