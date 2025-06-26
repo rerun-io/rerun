@@ -180,9 +180,25 @@ pub struct QueryDatasetRequest {
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
-    /// Which entity paths are we interested in? Leave empty to query all of them.
+    /// Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+    /// in order to query all of them.
     #[prost(message, repeated, tag = "4")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
+    /// If set, the query will cover all existing entity paths.
+    ///
+    /// `entity_paths` must be empty, otherwise an error will be raised.
+    ///
+    /// Truth table:
+    /// ```ignore
+    /// select_all_entity_paths | entity_paths   | result
+    /// ------------------------+----------------+--------
+    /// false                   | \[\]             | valid query, empty results (no entity paths selected)
+    /// false                   | \['foo', 'bar'\] | valid query, 'foo' & 'bar' selected
+    /// true                    | \[\]             | valid query, all entity paths selected
+    /// true                    | \['foo', 'bar'\] | invalid query, error
+    /// ```
+    #[prost(bool, tag = "7")]
+    pub select_all_entity_paths: bool,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
@@ -211,9 +227,25 @@ pub struct GetChunksRequest {
     /// all chunks (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
-    /// Which entity paths are we interested in? Leave empty to query all of them.
+    /// Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+    /// in order to query all of them.
     #[prost(message, repeated, tag = "4")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
+    /// If set, the query will cover all existing entity paths.
+    ///
+    /// `entity_paths` must be empty, otherwise an error will be raised.
+    ///
+    /// Truth table:
+    /// ```ignore
+    /// select_all_entity_paths | entity_paths   | result
+    /// ------------------------+----------------+--------
+    /// false                   | \[\]             | valid query, empty results (no entity paths selected)
+    /// false                   | \['foo', 'bar'\] | valid query, 'foo' & 'bar' selected
+    /// true                    | \[\]             | valid query, all entity paths selected
+    /// true                    | \['foo', 'bar'\] | invalid query, error
+    /// ```
+    #[prost(bool, tag = "6")]
+    pub select_all_entity_paths: bool,
     /// Query details
     #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
