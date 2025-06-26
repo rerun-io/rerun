@@ -189,7 +189,7 @@ pub struct QueryDatasetRequest {
     /// `entity_paths` must be empty, otherwise an error will be raised.
     ///
     /// Truth table:
-    /// ```ignore
+    /// ```text
     /// select_all_entity_paths | entity_paths   | result
     /// ------------------------+----------------+--------
     /// false                   | \[\]             | valid query, empty results (no entity paths selected)
@@ -236,7 +236,7 @@ pub struct GetChunksRequest {
     /// `entity_paths` must be empty, otherwise an error will be raised.
     ///
     /// Truth table:
-    /// ```ignore
+    /// ```text
     /// select_all_entity_paths | entity_paths   | result
     /// ------------------------+----------------+--------
     /// false                   | \[\]             | valid query, empty results (no entity paths selected)
