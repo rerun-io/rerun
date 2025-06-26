@@ -29,6 +29,7 @@ impl AlertKind {
     }
 }
 
+/// Show a pretty info / error message
 pub struct Alert {
     kind: AlertKind,
 }
@@ -62,7 +63,7 @@ impl Alert {
             .fill(colors.fill)
             .corner_radius(6)
             .inner_margin(6.0)
-            .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
+            .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk/egui#4019): remove clip_rect_margin
     }
 
     pub fn show<T>(self, ui: &mut Ui, content: impl FnOnce(&mut Ui) -> T) -> InnerResponse<T> {
@@ -98,5 +99,27 @@ impl Alert {
             };
         })
         .response
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::UiExt as _;
+    use egui_kittest::Harness;
+
+    #[test]
+    fn test_alert() {
+        let mut harness = Harness::builder().build_ui(|ui| {
+            crate::apply_style_and_install_loaders(ui.ctx());
+
+            ui.info_label("This is an info alert.");
+            ui.success_label("This is a success alert.");
+            ui.warning_label("This is a warning alert.");
+            ui.error_label("This is an error alert.");
+        });
+
+        harness.run();
+        harness.fit_contents();
+        harness.snapshot("alert");
     }
 }
