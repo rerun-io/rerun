@@ -7740,6 +7740,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
+ "semver",
  "thiserror 1.0.65",
  "tracing",
  "web-time",
