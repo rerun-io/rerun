@@ -9,6 +9,7 @@ from rerun_bindings import (
     FileSink as FileSink,
     GrpcSink as GrpcSink,
 )
+from typing_extensions import deprecated
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
@@ -377,6 +378,10 @@ def serve_grpc(
     )
 
 
+@deprecated(
+    """Use a combination of `rr.serve_grpc` and `rr.serve_web_viewer` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+)
 def serve_web(
     *,
     open_browser: bool = True,
@@ -398,6 +403,10 @@ def serve_web(
     This function returns immediately.
 
     Calling `serve_web` is equivalent to calling [`rerun.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+    ```
+    server_uri = rr.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+    rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+    ```
 
     Parameters
     ----------

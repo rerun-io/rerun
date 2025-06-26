@@ -336,6 +336,59 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
     }
 }
 
+SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
+    const char* url = "rerun+http://127.0.0.1:9876/proxy";
+    const char* invalid_url = "definitely not valid!";
+    const char* test_path = "build/test_output";
+    fs::create_directories(test_path);
+
+    std::string test_rrd0 = std::string(test_path) + "test-file-log-sink-0.rrd";
+
+    fs::remove(test_rrd0);
+
+    GIVEN("a new RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+
+        AND_GIVEN("valid save path" << test_rrd0) {
+            AND_GIVEN("a directory already existing at this path") {
+                fs::create_directory(test_rrd0);
+                THEN("set_sinks(FileSink) call fails") {
+                    CHECK(
+                        stream.set_sinks(rerun::FileSink{test_rrd0}).code ==
+                        rerun::ErrorCode::RecordingStreamSaveFailure
+                    );
+                }
+            }
+            THEN("set_sinks(FileSink) call returns no error") {
+                CHECK(stream.set_sinks(rerun::FileSink{test_rrd0}).code == rerun::ErrorCode::Ok);
+            }
+        }
+
+        AND_GIVEN("an invalid url" << invalid_url) {
+            THEN("set_sinks(GrpcSink) call fails") {
+                CHECK(
+                    stream.set_sinks(rerun::GrpcSink{invalid_url}).code ==
+                    rerun::ErrorCode::InvalidServerUrl
+                );
+            }
+        }
+        AND_GIVEN("a valid url" << url) {
+            THEN("set_sinks(GrpcSink) call returns no error") {
+                CHECK(stream.set_sinks(rerun::GrpcSink{url}).code == rerun::ErrorCode::Ok);
+            }
+        }
+
+        AND_GIVEN("both a url" << url << "and a save path" << test_rrd0) {
+            THEN("set_sinks(GrpcSink, FileSink) call returns no error") {
+                CHECK(
+                    stream.set_sinks(rerun::GrpcSink{url}, rerun::FileSink{test_rrd0}).code ==
+                    rerun::ErrorCode::Ok
+                );
+            }
+        }
+    }
+}
+
 SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
     const char* url = "rerun+http://127.0.0.1:9876/proxy";
     GIVEN("a new RecordingStream") {

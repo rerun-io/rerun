@@ -402,11 +402,13 @@ impl Drop for FFmpegProcessAndListener {
         {
             let kill_result = self.ffmpeg.kill();
             let wait_result = self.ffmpeg.wait();
-            re_log::debug!(
-                "FFmpeg kill result: {:?}, wait result: {:?}",
-                kill_result,
-                wait_result
-            );
+            if kill_result.is_err() || wait_result.is_err() {
+                re_log::debug!(
+                    "FFmpeg kill result: {:?}, wait result: {:?}",
+                    kill_result,
+                    wait_result
+                );
+            }
         }
 
         // Unfortunately, even with the above measures, it can still happen that the listen threads take occasionally 100ms and more to shut down.

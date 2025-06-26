@@ -155,6 +155,12 @@ impl_multi_sink_tuple!(A, B, C, D);
 impl_multi_sink_tuple!(A, B, C, D, E);
 impl_multi_sink_tuple!(A, B, C, D, E, F);
 
+impl IntoMultiSink for Vec<Box<dyn LogSink>> {
+    fn into_multi_sink(self) -> MultiSink {
+        MultiSink::new(self)
+    }
+}
+
 impl private::Sealed for crate::sink::FileSink {}
 
 impl MultiSinkCompatible for crate::sink::FileSink {}

@@ -10,6 +10,12 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+## Enables the web viewer in the rerun-sdk crate.
+##
+## This adds quite a bit of build time to the snippets test while being used only by
+## very few snippets (as of writing only by `howto/serve_web_viewer`) which is why we don't enable it by default.
+web_viewer = ["rerun/web_viewer"]
 
 [dependencies]
 rerun = { path = "../../crates/top/rerun" }

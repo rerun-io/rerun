@@ -69,13 +69,7 @@ impl ServerModal {
     }
 
     //TODO(ab): handle ESC and return
-    pub fn ui(
-        &mut self,
-        global_ctx: &GlobalContext<'_>,
-        ctx: &Context<'_>,
-        connection_registry: &ConnectionRegistryHandle,
-        ui: &egui::Ui,
-    ) {
+    pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
         self.modal.ui(
             ui.ctx(),
             || {
@@ -135,6 +129,7 @@ impl ServerModal {
                         style_invalid_field(ui);
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
+                    self.host = self.host.trim().to_owned();
                 });
 
                 ui.add_space(14.0);
@@ -151,6 +146,7 @@ impl ServerModal {
                         }
 
                         ui.add(egui::TextEdit::singleline(&mut self.token));
+                        self.token = self.token.trim().to_owned();
 
                         token
                     })
@@ -181,17 +177,13 @@ impl ServerModal {
                         {
                             ui.close();
 
-                            if let Some(token) = token {
-                                connection_registry.set_token(&origin, token);
-                            }
-
                             if let ServerModalMode::Edit(old_origin) = &self.mode {
                                 ctx.command_sender
                                     .send(Command::RemoveServer(old_origin.clone()))
                                     .ok();
                             }
                             ctx.command_sender
-                                .send(Command::AddServer(origin.clone()))
+                                .send(Command::AddServer(origin.clone(), token))
                                 .ok();
                             global_ctx.command_sender.send_system(
                                 SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(origin)),

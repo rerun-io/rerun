@@ -158,18 +158,8 @@ impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
-        // Migrations from pre-`v0.23` to `v0.23`.
-        let batch = if crate::migrations::v0_23::matches_schema(batch) {
-            crate::migrations::v0_23::reorder_columns(batch)
-        } else {
-            batch.clone()
-        };
-
-        // Migrations from `v0.23` to `v0.24`.
-        let batch = crate::migrations::v0_24::rewire_tagged_components(&batch);
-
         Self::try_from(SorbetBatch::try_from_record_batch(
-            &batch,
+            batch,
             crate::BatchType::Chunk,
         )?)
     }

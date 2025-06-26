@@ -61,7 +61,7 @@ impl Query {
 
         // clearing the range filter is equivalent to setting it to the default -inf/+inf
         self.query_property
-            .clear_blueprint_component(ctx, DataframeQuery::descriptor_timeline());
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
     }
 
     pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {

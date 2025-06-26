@@ -78,8 +78,9 @@ fn edit_view_enum_impl<
 
         if variants.is_empty() {
             ui.label("<no variants>")
-        } else if variants.len() <= 3 {
-            // Short version
+        } else if variants.len() <= 2 {
+            // Short version - only when there are 2 (or fewer) variants.
+            // For more variants, this would become too wide, and we use a combobox instead.
             let mut response = ui
                 .selectable_toggle(|ui| {
                     for variant in variants.iter().copied() {

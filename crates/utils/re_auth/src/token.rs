@@ -16,8 +16,9 @@ impl TryFrom<String> for Jwt {
 
     fn try_from(token: String) -> Result<Self, Self::Error> {
         // We first check if the general structure of the token is correct.
-        let _ = decode_header(&token).map_err(Self::Error::MalformedToken)?;
-        Ok(Self(token))
+        let token = token.trim();
+        let _ = decode_header(token).map_err(Self::Error::MalformedToken)?;
+        Ok(Self(token.to_owned()))
     }
 }
 

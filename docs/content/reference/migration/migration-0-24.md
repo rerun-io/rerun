@@ -36,6 +36,14 @@ final = `Transform3D` * … * `Transform3D` * InstancePoses3D * (Box3D.quaternio
 As a concrete example, if you previously scaled boxes/ellipsoids/capsules using `InstancePoses3D` they would be scaled relative to the individual box centers.
 Now instead they are scaled relative to the entity's center.
 
+## `serve_web` is now deprecated in Rust and Python
+
+`serve_web` will be removed in a future release but is still available for now.
+Instead prefer an explicit combination of `serve_grpc` and `serve_web_viewer`:
+
+snippet: howto/serve_web_viewer
+
+Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 
 ## Tagged components
 

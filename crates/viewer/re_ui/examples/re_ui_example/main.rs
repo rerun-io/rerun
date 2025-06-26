@@ -521,6 +521,8 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
             ui.error_label("This is an example of a long error label.");
             ui.warning_label("This is an example of a long warning label.");
+            ui.success_label("This is an example of a long success label.");
+            ui.info_label("This is an example of a long info label.");
         });
 
         ui.help_button(|ui| {

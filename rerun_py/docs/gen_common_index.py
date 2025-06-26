@@ -89,6 +89,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "disconnect",
             "save",
             "send_blueprint",
+            "serve_web",  # Deprecated, but still around.
             "serve_grpc",
             "serve_web_viewer",
             "spawn",

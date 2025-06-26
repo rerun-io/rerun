@@ -52,7 +52,7 @@
     },
 
     "label_button_icon_color": {
-      "color": "{Gray.550}"
+      "color": "{Gray.250}"
     },
     "section_collapsing_header_color": {
       "color": "{Gray.900}"
@@ -272,6 +272,60 @@
       "color": "{Gray.250}"
     },
   },
+
+  "alert_success": {
+    "fill": {
+       "color": "{Green.500}",
+       "alpha": 25,
+    },
+    "stroke": {
+       "color": "{Green.500}",
+       "alpha": 100,
+    },
+    "icon": {
+       "color": "{Green.500}"
+    },
+  },
+  "alert_info": {
+    "fill": {
+       "color": "{Blue.500}",
+       "alpha": 25,
+    },
+    "stroke": {
+       "color": "{Blue.500}",
+       "alpha": 100,
+    },
+    "icon": {
+       "color": "{Blue.500}"
+    },
+  },
+  "alert_warning": {
+    "fill": {
+       "color": "#DF7700",
+       "alpha": 25,
+    },
+    "stroke": {
+       "color": "#DF7700",
+       "alpha": 100,
+    },
+    "icon": {
+       "color": "#DF7700"
+    },
+  },
+  "alert_error": {
+    "fill": {
+       "color": "{Red.500}",
+       "alpha": 25,
+    },
+    "stroke": {
+       "color": "{Red.500}",
+       "alpha": 100,
+    },
+    "icon": {
+       "color": "{Red.500}"
+    },
+  },
+
   "Global": {
     "Typography": {
       "Default": {

@@ -12,7 +12,7 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::ffi::{CString, c_char, c_uchar};
+use std::ffi::{CString, c_char, c_float, c_uchar};
 
 use arrow::{
     array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
@@ -98,6 +98,7 @@ pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 pub struct CSpawnOptions {
     pub port: u16,
     pub memory_limit: CStringView,
+    pub server_memory_limit: CStringView,
     pub hide_welcome_screen: bool,
     pub detach_process: bool,
     pub executable_name: CStringView,
@@ -107,28 +108,44 @@ pub struct CSpawnOptions {
 impl CSpawnOptions {
     #[allow(clippy::result_large_err)]
     pub fn as_rust(&self) -> Result<re_sdk::SpawnOptions, CError> {
+        let Self {
+            port,
+            memory_limit,
+            server_memory_limit,
+            hide_welcome_screen,
+            detach_process,
+            executable_name,
+            executable_path,
+        } = self;
+
         let mut spawn_opts = re_sdk::SpawnOptions::default();
 
-        if self.port != 0 {
-            spawn_opts.port = self.port;
+        if *port != 0 {
+            spawn_opts.port = *port;
         }
 
         spawn_opts.wait_for_bind = true;
 
-        if !self.memory_limit.is_empty() {
-            spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
+        if !memory_limit.is_empty() {
+            spawn_opts.memory_limit = memory_limit.as_str("memory_limit")?.to_owned();
+        }
+        if !server_memory_limit.is_empty() {
+            spawn_opts.server_memory_limit = self
+                .server_memory_limit
+                .as_str("server_memory_limit")?
+                .to_owned();
         }
 
-        spawn_opts.hide_welcome_screen = self.hide_welcome_screen;
-        spawn_opts.detach_process = self.detach_process;
+        spawn_opts.hide_welcome_screen = *hide_welcome_screen;
+        spawn_opts.detach_process = *detach_process;
 
-        if !self.executable_name.is_empty() {
-            spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
+        if !executable_name.is_empty() {
+            spawn_opts.executable_name = executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_empty() {
+        if !executable_path.is_empty() {
             spawn_opts.executable_path =
-                Some(self.executable_path.as_str("executable_path")?.to_owned());
+                Some(executable_path.as_str("executable_path")?.to_owned());
         }
 
         Ok(spawn_opts)
@@ -278,6 +295,48 @@ pub struct CTimeColumn {
 
     /// The sorting order of the times array.
     pub sorting_status: CSortingStatus,
+}
+
+/// Log sink which streams messages to a gRPC server.
+///
+/// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
+///
+/// See `rr_grpc_sink` in the C header.
+#[repr(C)]
+pub struct CGrpcSink {
+    /// A Rerun gRPC URL
+    ///
+    /// Default is `rerun+http://127.0.0.1:9876/proxy`.
+    pub url: CStringView,
+
+    /// The minimum time the SDK will wait during a flush before potentially
+    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+    /// and can cause a call to `flush` to block indefinitely.
+    pub flush_timeout_sec: c_float,
+}
+
+/// Log sink which writes messages to a file.
+///
+/// See `rr_file_sink` in the C header.
+#[repr(C)]
+pub struct CFileSink {
+    /// Path to the output file.
+    pub path: CStringView,
+}
+
+/// A sink for log messages.
+///
+/// See specific log sink types for more information:
+/// * [`CGrpcSink`]
+/// * [`CFileSink`]
+///
+/// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
+///
+/// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
+#[repr(C, u8)]
+pub enum CLogSink {
+    GrpcSink { grpc: CGrpcSink } = 0,
+    FileSink { file: CFileSink } = 1,
 }
 
 #[repr(u32)]
@@ -567,6 +626,65 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_sinks_impl(
+    stream: CRecordingStream,
+    raw_sinks: *mut CLogSink,
+    num_sinks: u32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let raw_sinks = unsafe { std::slice::from_raw_parts_mut(raw_sinks, num_sinks as usize) };
+
+    let mut sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::with_capacity(num_sinks as usize);
+    for sink in raw_sinks {
+        match sink {
+            CLogSink::GrpcSink { grpc } => {
+                let uri = grpc
+                    .url
+                    .as_str("url")?
+                    .parse::<re_sdk::external::re_uri::ProxyUri>()
+                    .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
+                let flush_timeout = if grpc.flush_timeout_sec >= 0.0 {
+                    Some(std::time::Duration::from_secs_f32(grpc.flush_timeout_sec))
+                } else {
+                    None
+                };
+                sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri, flush_timeout)));
+            }
+            CLogSink::FileSink { file } => {
+                let path = file.path.as_str("path")?;
+                sinks.push(Box::new(re_sdk::sink::FileSink::new(path).map_err(
+                    |err| {
+                        CError::new(
+                            CErrorCode::RecordingStreamSaveFailure,
+                            &format!("Failed to save recording stream to {path:?}: {err}"),
+                        )
+                    },
+                )?));
+            }
+        }
+    }
+
+    stream.set_sinks(sinks);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_sinks(
+    id: CRecordingStream,
+    sinks: *mut CLogSink,
+    num_sinks: u32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_sinks_impl(id, sinks, num_sinks) {
+        err.write_error(error);
     }
 }
 

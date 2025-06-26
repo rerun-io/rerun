@@ -626,9 +626,13 @@ impl ::prost::Name for Query {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryLatestAt {
     /// Which index column should we perform the query on? E.g. `log_time`.
+    ///
+    /// Leave this empty to query for static data.
     #[prost(message, optional, tag = "1")]
     pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index value are we looking for?
+    ///
+    /// Leave this empty to query for static data.
     #[prost(int64, optional, tag = "2")]
     pub at: ::core::option::Option<i64>,
     /// Which components are we interested in?

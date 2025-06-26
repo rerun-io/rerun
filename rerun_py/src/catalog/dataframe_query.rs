@@ -423,9 +423,7 @@ impl PyDataframeQueryView {
         let chunk_stores = connection.get_chunks_for_dataframe_query(
             py,
             dataset_id,
-            &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
-            self_.query_expression.max_range(),
+            &self_.query_expression,
             self_.partition_ids.as_slice(),
         )?;
 
@@ -496,9 +494,7 @@ impl PyDataframeQueryView {
         connection.get_chunk_ids_for_dataframe_query(
             py,
             dataset_id,
-            &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
-            self_.query_expression.max_range(),
+            &self_.query_expression,
             self_.partition_ids.as_slice(),
         )
     }
