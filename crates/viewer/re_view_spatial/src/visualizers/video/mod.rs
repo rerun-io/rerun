@@ -1,10 +1,11 @@
 mod video_frame_reference;
 mod video_stream;
 
+use re_types::ViewClassIdentifier;
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use re_log_types::{EntityPath, hash::Hash64};
+use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
 use re_viewer_context::{ViewContext, ViewId, ViewSystemIdentifier};
 
@@ -90,6 +91,16 @@ fn visualize_video_frame_texture(
             },
             ctx.view_class_identifier,
         );
+    } else {
+        // If we don't have a texture, still expand the bounding box,
+        // so the default extents of the view show the spinner in the same place as if we had a texture.
+        register_video_bounds_with_bounding_box(
+            entity_path.hash(),
+            visualizer_data,
+            world_from_entity,
+            video_size,
+            ctx.view_class_identifier,
+        );
     }
 }
 
@@ -102,6 +113,17 @@ fn show_video_error(
     video_size: glam::Vec2,
     entity_path: &EntityPath,
 ) {
+    // Register the full video bounds regardless for more stable default view extents for when the error
+    // goes in and out of existance.
+    // The size of the error icon depends on the bounds in turn, making this extra important!
+    register_video_bounds_with_bounding_box(
+        entity_path.hash(),
+        visualizer_data,
+        world_from_entity,
+        video_size,
+        ctx.view_class_identifier,
+    );
+
     let render_ctx = ctx.viewer_ctx.render_ctx();
 
     let video_error_image = match re_ui::icons::VIDEO_ERROR
@@ -204,5 +226,34 @@ fn show_video_error(
             source_data: PickableRectSourceData::ErrorPlaceholder,
         },
         ctx.view_class_identifier,
+    );
+}
+
+fn register_video_bounds_with_bounding_box(
+    entity_path: EntityPathHash,
+    visualizer_data: &mut SpatialViewVisualizerData,
+    world_from_entity: glam::Affine3A,
+    video_size: glam::Vec2,
+    class_identifier: ViewClassIdentifier,
+) {
+    // Only update the bounding box if this is a 2D view.
+    // This is avoids a cyclic relationship where the image plane grows
+    // the bounds which in turn influence the size of the image plane.
+    // See: https://github.com/rerun-io/rerun/issues/3728
+    if class_identifier != SpatialView2D::identifier() {
+        return;
+    }
+
+    // To avoid circular dependency of the bounds and the error rectangle (causing flickering),
+    // make sure the bounding box contains the entire (speculative) video rectangle.
+    let top_left = glam::Vec3::from(world_from_entity.translation);
+
+    visualizer_data.add_bounding_box(
+        entity_path,
+        macaw::BoundingBox {
+            min: top_left,
+            max: top_left + glam::Vec3::new(video_size.x, video_size.y, 0.0),
+        },
+        world_from_entity,
     );
 }
