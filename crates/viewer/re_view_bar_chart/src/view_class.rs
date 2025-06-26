@@ -7,7 +7,7 @@ use re_types::{
     components::Visible,
     datatypes::TensorBuffer,
 };
-use re_ui::{Help, IconText, MouseButtonText, icons, list_item, UiExt as _};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::{
     controls::SELECTION_RECT_ZOOM_BUTTON, suggest_view_for_each_entity, view_property_ui,
 };
@@ -260,9 +260,12 @@ impl ViewClass for BarChartView {
                             color,
                             theme,
                         ),
-                        TensorBuffer::F16(data) => {
-                            create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()), color, theme)
-                        }
+                        TensorBuffer::F16(data) => create_bar_chart(
+                            ent_path,
+                            data.iter().map(|f| f.to_f32()),
+                            color,
+                            theme,
+                        ),
                         TensorBuffer::F32(data) => {
                             create_bar_chart(ent_path, data.iter().copied(), color, theme)
                         }
