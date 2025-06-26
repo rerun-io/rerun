@@ -7051,6 +7051,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_video",
  "re_viewer_context",
  "rexif",
