@@ -65,10 +65,15 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
             rename_key(&mut metadata, "rerun.is_sorted", "rerun:is_sorted");
 
             if field.name().ends_with("Indicator") {
+                let field_name = field.name();
                 // TODO(#8129): Remove indicator components
-                if let Some(archetype) = metadata.remove("rerun.archetype") {
-                    metadata.insert("rerun:component".to_owned(), format!("{archetype}Indicator"));
-                }
+                re_log::debug_once!(
+                    "Moving indicator from field to component metadata field: {field_name}"
+                );
+                debug_assert!(!field_name.starts_with("rerun"), "We expected a short name here, but got {field_name:?}");
+                metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
+                // Remove everything else.
+                metadata.remove("rerun.archetype");
                 metadata.remove("rerun.archetype_field");
                 metadata.remove("rerun.component");
             } else if let Some(component) = metadata.remove("rerun.component") {
