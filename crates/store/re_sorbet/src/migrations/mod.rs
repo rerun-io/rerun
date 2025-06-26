@@ -84,7 +84,7 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
 
     re_tracing::profile_function!();
 
-    // Perform migrations if necesarry.
+    // Perform migrations if necessary.
     batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(batch);
     batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(batch);
 
