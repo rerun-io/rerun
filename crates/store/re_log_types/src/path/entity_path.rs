@@ -740,4 +740,14 @@ mod tests {
         run_test(&[("/", "/"), ("/", "/")]);
         run_test(&[("a/b", "a/b"), ("a/b", "a/b")]);
     }
+
+    #[test]
+    fn test_strip_prefix() {
+        let entity_path = EntityPath::properties() / EntityPathPart::from("episode");
+        assert_eq!(entity_path.to_string(), "/__properties/episode");
+        assert_eq!(
+            entity_path.strip_prefix(&EntityPath::properties()),
+            Some(EntityPath::from("episode"))
+        );
+    }
 }
