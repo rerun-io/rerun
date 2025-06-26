@@ -1,12 +1,16 @@
-use std::str::FromStr as _;
-
-use re_grpc_client::ConnectionRegistryHandle;
+use crate::{context::Context, servers::Command};
+use egui::{Id, Ui};
+use re_dataframe_ui::RequestedObject;
+use re_grpc_client::message_proxy::write_table::viewer_client;
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle};
+use re_protos::frontend::v1alpha1::VersionRequest;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
-
-use crate::{context::Context, servers::Command};
+use re_viewer_context::{
+    AsyncRuntimeHandle, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
+};
+use std::str::FromStr as _;
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -28,6 +32,26 @@ pub struct ServerModal {
     host: String,
     token: String,
     port: u16,
+
+    verify_opts: Option<RequestedObject<Result<(), ConnectionTestError>>>,
+}
+
+enum ConnectionTestError {
+    ConnectionError(ConnectionError),
+    Tonic(tonic::Status),
+}
+
+impl ConnectionTestError {
+    fn ui(&self, ui: &mut Ui) {
+        match self {
+            ConnectionTestError::ConnectionError(err) => {
+                ui.label(format!("Connection error: {}", err));
+            }
+            ConnectionTestError::Tonic(status) => {
+                ui.label(format!("gRPC error: {}", status));
+            }
+        }
+    }
 }
 
 impl Default for ServerModal {
@@ -39,6 +63,8 @@ impl Default for ServerModal {
             host: String::new(),
             token: String::new(),
             port: 443,
+
+            verify_opts: None,
         }
     }
 }
@@ -61,6 +87,8 @@ impl ServerModal {
                     host: host.to_string(),
                     token,
                     port,
+
+                    verify_opts: None,
                 }
             }
         };
@@ -68,8 +96,31 @@ impl ServerModal {
         self.modal.open();
     }
 
+    fn origin(&self) -> Option<re_uri::Origin> {
+        if self.host.is_empty() {
+            return None;
+        }
+
+        let host = url::Host::parse(&self.host).ok()?;
+        Some(re_uri::Origin {
+            scheme: self.scheme,
+            host,
+            port: self.port,
+        })
+    }
+
     //TODO(ab): handle ESC and return
-    pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
+    pub fn ui(
+        &mut self,
+        global_ctx: &GlobalContext<'_>,
+        ctx: &Context<'_>,
+        runtime: &AsyncRuntimeHandle,
+        ui: &egui::Ui,
+    ) {
+        if let Some(verify_opts) = &mut self.verify_opts {
+            verify_opts.on_frame_start();
+        }
+
         self.modal.ui(
             ui.ctx(),
             || {
@@ -82,6 +133,8 @@ impl ServerModal {
                 ModalWrapper::new(&title)
             },
             |ui| {
+                let hash = Id::new((&self.scheme, &self.host, &self.port, &self.token));
+
                 ui.warning_label(
                     "The dataplatform is very experimental and not generally \
                 available yet. Proceed with caution!",
@@ -164,6 +217,49 @@ impl ServerModal {
                 });
 
                 ui.add_space(24.0);
+
+                let edited_hash = Id::new((&self.scheme, &self.host, &self.port, &self.token));
+
+                if hash != edited_hash {
+                    if let Some(origin) = origin.clone().ok() {
+                        if let Ok(token) = &token {
+                            let token = token.clone();
+                            let future = async move {
+                                let mut client = re_grpc_client::client(origin, token)
+                                    .await
+                                    .map_err(ConnectionTestError::ConnectionError)?;
+                                client
+                                    .version(VersionRequest::default())
+                                    .await
+                                    .map(|_| ())
+                                    .map_err(ConnectionTestError::Tonic)
+                            };
+
+                            self.verify_opts = Some(RequestedObject::new_with_repaint(
+                                runtime,
+                                ui.ctx().clone(),
+                                future,
+                            ))
+                        }
+                    }
+                }
+
+                match &self.verify_opts {
+                    None => {
+                        ui.label("-");
+                    }
+                    Some(req) => match req.try_as_ref() {
+                        None => {
+                            ui.spinner();
+                        }
+                        Some(Ok(_)) => {
+                            ui.label("Connection looks good!");
+                        }
+                        Some(Err(err)) => {
+                            err.ui(ui);
+                        }
+                    },
+                }
 
                 let save_text = match &self.mode {
                     ServerModalMode::Add => "Add",

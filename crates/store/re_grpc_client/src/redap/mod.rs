@@ -195,7 +195,7 @@ pub type RedapClientInner =
 pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn client(
+pub async fn client(
     origin: Origin,
     token: Option<re_auth::Jwt>,
 ) -> Result<RedapClient, ConnectionError> {

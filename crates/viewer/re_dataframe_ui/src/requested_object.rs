@@ -14,7 +14,7 @@ pub enum RequestedObject<T: Send + 'static> {
 
 impl<T: Send + 'static> RequestedObject<T> {
     /// Create a new [`Self`] with the given future.
-    pub fn new<F>(runtime: &AsyncRuntimeHandle, func: F) -> Self
+    pub fn new<F>(runtime: &AsyncRuntimeHandle, future: F) -> Self
     where
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
@@ -23,7 +23,7 @@ impl<T: Send + 'static> RequestedObject<T> {
 
         runtime.spawn_future(async move {
             //TODO(#9836): implement cancellation using another channel (see `make_future_send`)
-            let result = func.await;
+            let result = future.await;
             tx.send(result).ok();
         });
 
@@ -35,13 +35,13 @@ impl<T: Send + 'static> RequestedObject<T> {
     pub fn new_with_repaint<F>(
         runtime: &AsyncRuntimeHandle,
         egui_ctx: egui::Context,
-        func: F,
+        future: F,
     ) -> Self
     where
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
         Self::new(runtime, async move {
-            let result = func.await;
+            let result = future.await;
             egui_ctx.request_repaint();
             result
         })

@@ -9,7 +9,7 @@ pub use self::{
     connection_client::GenericConnectionClient,
     connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
     redap::{
-        Command, ConnectionError, RedapClient, channel,
+        Command, ConnectionError, RedapClient, channel, client,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
         stream_dataset_from_redap,
     },
