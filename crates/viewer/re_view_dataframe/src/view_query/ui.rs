@@ -5,13 +5,14 @@ use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
-use re_sorbet::{ColumnSelector, ComponentColumnSelector};
+use re_sorbet::ColumnSelector;
+use re_types::ComponentIdentifier;
 use re_types::blueprint::components;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
 
-type ComponentSelectorSet = std::collections::BTreeSet<ComponentColumnSelector>;
+type ComponentIdentifierSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 // UI implementation
 impl Query {
@@ -241,29 +242,41 @@ impl Query {
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
-        let all_components = all_components
-            .into_iter()
-            .map(|descr| ComponentColumnSelector::from_descriptor(filter_entity.clone(), &descr))
-            .collect::<BTreeSet<_>>();
-
-        // TODO(#10212): This is very likely still broken.
+        // The list of suggested components is built as follows:
+        // - consider all component descriptors that have an archetype
+        // - for the matching archetypes, take all required components
+        // - keep those that are actually present
         let suggested_components = || {
             all_components
                 .iter()
-                .filter(|c| all_components.iter().any(|descr| &descr == c))
-                .cloned()
-                .collect::<ComponentSelectorSet>()
+                .filter_map(|c| {
+                    c.archetype.as_ref().and_then(|archetype| {
+                        ctx.reflection()
+                            .archetypes
+                            .get(archetype)
+                            .map(|archetype_reflection| (archetype, archetype_reflection))
+                    })
+                })
+                .flat_map(|(archetype, archetype_reflection)| {
+                    archetype_reflection
+                        .required_fields()
+                        .map(|field| field.component_descriptor(*archetype))
+                })
+                .filter(|c| all_components.contains(c))
+                .map(|descr| descr.component)
+                .collect::<ComponentIdentifierSet>()
         };
 
         // If the currently saved component, we auto-switch it to a reasonable one.
         let mut filter_component = filter
-            .and_then(|component| {
+            .and_then(|component_sel| {
                 all_components
                     .iter()
-                    .any(|descr| descr == &component)
-                    .then_some(component)
+                    .any(|descr| descr.component.as_str() == component_sel.component)
+                    .then_some(component_sel.component.into())
             })
-            .or_else(|| suggested_components().first().cloned());
+            .or_else(|| suggested_components().first().copied())
+            .unwrap_or_else(|| ComponentIdentifier::from("-"));
 
         //
         // UI for filter entity and component
@@ -288,17 +301,12 @@ impl Query {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Component").value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
-                        .selected_text(
-                            filter_component
-                                .as_ref()
-                                .map(|f| f.component.as_str())
-                                .unwrap_or("-"),
-                        )
+                        .selected_text(filter_component.as_str())
                         .show_ui(ui, |ui| {
                             for descr in all_components {
                                 ui.selectable_value(
                                     &mut filter_component,
-                                    Some(descr.clone()),
+                                    descr.component,
                                     descr.component.as_str(),
                                 );
                             }
@@ -310,17 +318,11 @@ impl Query {
         //
         // Save filter if changed
         //
+        let filter_is_not_null =
+            components::FilterIsNotNull::new(active, &filter_entity, filter_component.to_string());
 
-        if let Some(filter_component) = filter_component {
-            let filter_is_not_null = components::FilterIsNotNull::new(
-                active,
-                &filter_entity,
-                filter_component.component,
-            );
-
-            if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
-                self.save_filter_is_not_null(ctx, &filter_is_not_null);
-            }
+        if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
+            self.save_filter_is_not_null(ctx, &filter_is_not_null);
         }
 
         Ok(())
