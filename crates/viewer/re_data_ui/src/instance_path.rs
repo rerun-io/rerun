@@ -194,7 +194,7 @@ fn component_list_ui(
                                 "{}:",
                                 archetype
                                     .map(|a| a.short_name())
-                                    .unwrap_or("Without Archetype")
+                                    .unwrap_or("Without archetype")
                             ))
                             .size(10.0)
                             .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),

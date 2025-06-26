@@ -841,7 +841,7 @@ impl TimePanel {
                         RichText::new(
                             archetype
                                 .map(|a| a.short_name())
-                                .unwrap_or("Without Archetype"),
+                                .unwrap_or("Without archetype"),
                         )
                         .size(10.0),
                     ),
