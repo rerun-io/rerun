@@ -57,6 +57,8 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
     "rustls",
+    // TODO(10286): Remove once we have a wgpu version with https://github.com/gfx-rs/wgpu/pull/7850 landed.
+    "wgpu_hal::vulkan::conv",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
