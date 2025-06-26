@@ -121,7 +121,8 @@ Example: `16GB` or `50%` (of system total)."
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total)."
+Example: `16GB` or `50%` (of system total).
+Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
     )]
     server_memory_limit: Option<String>,
 
@@ -163,6 +164,8 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
+    ///
+    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_web: bool,
 
@@ -170,6 +173,8 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
+    ///
+    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_grpc: bool,
 
@@ -723,14 +728,15 @@ fn run_impl(
         let value = match &args.server_memory_limit {
             Some(v) => v.as_str(),
             None => {
-                if args.serve_web {
+                // When spawning just a server, we don't want the memory limit to be 0.
+                if args.serve || args.serve_web || args.serve_grpc {
                     "25%"
                 } else {
                     "0B"
                 }
             }
         };
-        re_log::info!("actual memory limit: {value}");
+        re_log::debug!("Server memory limit: {value}");
         re_memory::MemoryLimit::parse(value)
             .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
     };
