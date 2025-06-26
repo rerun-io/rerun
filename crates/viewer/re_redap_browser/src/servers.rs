@@ -4,7 +4,7 @@ use std::task::Poll;
 
 use datafusion::prelude::{col, lit};
 use egui::{Frame, Margin, RichText, Widget as _};
-
+use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
@@ -416,9 +416,17 @@ impl Default for RedapServers {
 
 pub enum Command {
     OpenAddServerModal,
+
     OpenEditServerModal(re_uri::Origin),
-    AddServer(re_uri::Origin),
+
+    /// Add a server with an optional JWT token.
+    ///
+    /// If the token is None, this does *not* remove an existing token.
+    AddServer(re_uri::Origin, Option<Jwt>),
+
+    /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
+
     RefreshCollection(re_uri::Origin),
 }
 
@@ -434,7 +442,9 @@ impl RedapServers {
 
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
-        self.command_sender.send(Command::AddServer(origin)).ok();
+        self.command_sender
+            .send(Command::AddServer(origin, None))
+            .ok();
     }
 
     /// Per-frame housekeeping.
@@ -448,7 +458,9 @@ impl RedapServers {
         egui_ctx: &egui::Context,
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
-            self.command_sender.send(Command::AddServer(origin)).ok();
+            self.command_sender
+                .send(Command::AddServer(origin, None))
+                .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(connection_registry, runtime, egui_ctx, command);
@@ -477,7 +489,10 @@ impl RedapServers {
                     .open(ServerModalMode::Edit(origin), connection_registry);
             }
 
-            Command::AddServer(origin) => {
+            Command::AddServer(origin, jwt) => {
+                if let Some(token) = jwt {
+                    connection_registry.set_token(&origin, token)
+                }
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
                         origin.clone(),
@@ -565,19 +580,13 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(
-        &mut self,
-        global_ctx: &GlobalContext<'_>,
-        connection_registry: &ConnectionRegistryHandle,
-        ui: &egui::Ui,
-    ) {
+    pub fn modals_ui(&mut self, global_ctx: &GlobalContext<'_>, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
         };
 
-        self.server_modal_ui
-            .ui(global_ctx, &ctx, connection_registry, ui);
+        self.server_modal_ui.ui(global_ctx, &ctx, ui);
     }
 
     #[inline]
