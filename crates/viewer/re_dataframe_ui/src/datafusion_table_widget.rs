@@ -1,15 +1,14 @@
-use std::mem;
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget as _};
+use egui::{Frame, Id, Margin, RichText, Stroke, TopBottomPanel, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
-use re_format::format_int;
+use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
@@ -338,42 +337,41 @@ impl<'a> DataFusionTableWidget<'a> {
             table_config,
         };
 
-        ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
-            let spacing = mem::take(&mut ui.spacing_mut().item_spacing.y);
+        let visible_columns = table_delegate.table_config.visible_columns().count();
+        let total_columns = columns.columns.len();
 
-            let visible_columns = table_delegate.table_config.visible_columns().count();
-            let total_columns = columns.columns.len();
+        let action = Self::bottom_bar_ui(
+            ui,
+            viewer_ctx,
+            session_id,
+            num_rows,
+            visible_columns,
+            total_columns,
+            table_state.queried_at,
+        );
 
-            let refresh = Self::bottom_bar_ui(
-                ui,
-                viewer_ctx,
-                num_rows,
-                total_columns,
-                visible_columns,
-                table_state.queried_at,
-            );
-
-            if refresh {
+        match action {
+            Some(BottomBarAction::Refresh) => {
                 Self::refresh(ui.ctx(), &session_ctx, table_ref);
             }
+            None => {}
+        }
 
-            ui.vertical(|ui| {
-                ui.spacing_mut().item_spacing.y = spacing;
-                egui_table::Table::new()
-                    .id_salt(session_id)
-                    .columns(
-                        table_delegate
-                            .table_config
-                            .visible_column_ids()
-                            .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
-                            .collect::<Vec<_>>(),
-                    )
-                    .headers(vec![egui_table::HeaderRow::new(
-                        tokens.table_header_height(),
-                    )])
-                    .num_rows(num_rows)
-                    .show(ui, &mut table_delegate);
-            });
+        ui.vertical(|ui| {
+            egui_table::Table::new()
+                .id_salt(session_id)
+                .columns(
+                    table_delegate
+                        .table_config
+                        .visible_column_ids()
+                        .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
+                        .collect::<Vec<_>>(),
+                )
+                .headers(vec![egui_table::HeaderRow::new(
+                    tokens.table_header_height(),
+                )])
+                .num_rows(num_rows)
+                .show(ui, &mut table_delegate);
         });
 
         table_delegate.table_config.store(ui.ctx());
@@ -386,17 +384,20 @@ impl<'a> DataFusionTableWidget<'a> {
     fn bottom_bar_ui(
         ui: &mut Ui,
         ctx: &ViewerContext<'_>,
+        session_id: Id,
         total_rows: u64,
-        total_columns: usize,
         visible_columns: usize,
+        total_columns: usize,
         queried_at: Timestamp,
-    ) -> bool {
-        let mut refresh = false;
+    ) -> Option<BottomBarAction> {
+        let mut action = None;
 
-        let response = Frame::new()
+        let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
-            .inner_margin(Margin::symmetric(12, 0))
-            .show(ui, |ui| {
+            .inner_margin(Margin::symmetric(12, 0));
+        let response = TopBottomPanel::bottom(session_id.with("bottom_bar"))
+            .frame(frame)
+            .show_inside(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
                 ui.horizontal_centered(|ui| {
@@ -410,21 +411,21 @@ impl<'a> DataFusionTableWidget<'a> {
                             ui.set_height(height);
 
                             ui.label("rows:");
-                            ui.strong(format_int(total_rows as i64));
+                            ui.strong(format_uint(total_rows));
 
                             ui.add_space(16.0);
 
                             ui.label("columns:");
                             ui.strong(format!(
                                 "{} out of {}",
-                                format_int(visible_columns as i64),
-                                format_int(total_columns as i64)
+                                format_uint(visible_columns),
+                                format_uint(total_columns),
                             ));
                         },
                         |ui| {
                             ui.set_height(height);
                             if icons::RESET.as_button().ui(ui).clicked() {
-                                refresh = true;
+                                action = Some(BottomBarAction::Refresh);
                             };
 
                             re_ui::time::short_duration_ui(
@@ -446,7 +447,7 @@ impl<'a> DataFusionTableWidget<'a> {
             Stroke::new(1.0, ui.tokens().table_header_stroke_color),
         );
 
-        refresh
+        action
     }
 }
 
@@ -476,6 +477,10 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
                 },
             );
         });
+}
+
+enum BottomBarAction {
+    Refresh,
 }
 
 struct DataFusionTableDelegate<'a> {
