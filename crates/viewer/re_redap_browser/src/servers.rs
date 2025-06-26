@@ -12,7 +12,7 @@ use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
-use re_ui::list_item::{ItemActionButton, ItemButton as _, ItemMenuButton};
+use re_ui::list_item::{ItemButton as _, ItemMenuButton};
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,

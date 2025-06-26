@@ -8,7 +8,7 @@ use nohash_hasher::IntMap;
 use re_format::format_int;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::list_item::ItemButton;
+use re_ui::list_item::ItemButton as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -456,7 +456,7 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-fn title_ui<'a>(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
+fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
     Frame::new()
         .inner_margin(Margin {
             top: 16,
