@@ -28,7 +28,7 @@ class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, Compo
 
 
 class ComponentColumnSelectorBatch(blueprint_datatypes.ComponentColumnSelectorBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ComponentColumnSelector"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ComponentColumnSelector"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -1,8 +1,8 @@
 //! Abstraction for buttons to be used in list items.
 
+use crate::menu::menu_style;
 use crate::{Icon, UiExt as _};
 use egui::containers::menu::{MenuButton, MenuConfig};
-
 // -------------------------------------------------------------------------------------------------
 
 /// An [`super::ItemButton`] that acts as a popup menu.
@@ -78,10 +78,8 @@ impl super::ItemButton for ItemMenuButton<'_> {
         ui.add_enabled_ui(enabled, |ui| {
             ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
 
-            let mut button = MenuButton::from_button(ui.small_icon_button_widget(icon, alt_text));
-            if let Some(config) = config {
-                button = button.config(config);
-            }
+            let button = MenuButton::from_button(ui.small_icon_button_widget(icon, alt_text))
+                .config(config.unwrap_or_default().style(menu_style()));
 
             let (mut response, _) = button.ui(ui, add_contents);
             if let Some(hover_text) = hover_text {

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether the entity can be interacted with.
@@ -28,7 +28,7 @@ pub struct Interactive(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for Interactive {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.Interactive".into()
     }
 }

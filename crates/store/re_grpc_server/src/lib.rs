@@ -484,6 +484,11 @@ impl EventLoop {
     fn handle_msg(&mut self, msg: LogMsgProto) {
         self.broadcast_log_tx.send(msg.clone()).ok();
 
+        if self.is_history_disabled() {
+            // no need to gc or maintain history
+            return;
+        }
+
         self.gc_if_using_too_much_ram();
 
         let Some(inner) = &msg.msg else {
@@ -525,11 +530,20 @@ impl EventLoop {
     fn handle_table(&mut self, table: TableMsgProto) {
         self.broadcast_table_tx.send(table.clone()).ok();
 
+        if self.is_history_disabled() {
+            // no need to gc or maintain history
+            return;
+        }
+
         self.gc_if_using_too_much_ram();
 
         let approx_size_bytes = table.total_size_bytes();
         self.ordered_message_bytes += approx_size_bytes;
         self.ordered_message_queue.push_back(Msg::Table(table));
+    }
+
+    fn is_history_disabled(&self) -> bool {
+        self.server_memory_limit.max_bytes.is_some_and(|b| b == 0)
     }
 
     fn gc_if_using_too_much_ram(&mut self) {

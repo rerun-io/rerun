@@ -28,7 +28,7 @@ class ImageBuffer(datatypes.Blob, ComponentMixin):
 
 
 class ImageBufferBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.ImageBuffer"
+    _COMPONENT_TYPE: str = "rerun.components.ImageBuffer"
 
 
 # This is patched in late to avoid circular dependencies.

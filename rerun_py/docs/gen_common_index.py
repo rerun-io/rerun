@@ -84,10 +84,12 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization functions",
         func_list=[
             "init",
+            "set_sinks",
             "connect_grpc",
             "disconnect",
             "save",
             "send_blueprint",
+            "serve_web",  # Deprecated, but still around.
             "serve_grpc",
             "serve_web_viewer",
             "spawn",
@@ -353,7 +355,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "Schema",
             "AnyColumn",
             "AnyComponentColumn",
-            "ComponentLike",
             "ViewContentsLike",
         ],
         show_tables=True,

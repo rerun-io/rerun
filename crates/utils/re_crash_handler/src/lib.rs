@@ -71,9 +71,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
             #[cfg(feature = "analytics")]
             {
-                if let Ok(analytics) =
-                    re_analytics::Analytics::new(std::time::Duration::from_millis(1))
-                {
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
                     analytics.record(re_analytics::event::CrashPanic {
                         build_info: _build_info.clone(),
                         callstack,
@@ -82,8 +80,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
                         message: None,
                         file_line,
                     });
-
-                    std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
+                    analytics.flush_blocking();
                 }
             }
 
@@ -202,14 +199,13 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
             analytics.record(re_analytics::event::CrashSignal {
                 build_info,
                 signal: signal_name.to_owned(),
                 callstack,
             });
-
-            std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
+            analytics.flush_blocking();
         }
     }
 

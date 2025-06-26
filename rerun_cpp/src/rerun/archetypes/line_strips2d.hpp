@@ -120,41 +120,45 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.components.LineStrips2DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.LineStrips2D";
 
         /// `ComponentDescriptor` for the `strips` field.
         static constexpr auto Descriptor_strips = ComponentDescriptor(
-            ArchetypeName, "strips", Loggable<rerun::components::LineStrip2D>::ComponentName
+            ArchetypeName, "LineStrips2D:strips",
+            Loggable<rerun::components::LineStrip2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::ComponentName
+            ArchetypeName, "LineStrips2D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "LineStrips2D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::ComponentName
+            ArchetypeName, "LineStrips2D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels", Loggable<rerun::components::ShowLabels>::ComponentName
+            ArchetypeName, "LineStrips2D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
+            ArchetypeName, "LineStrips2D:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
+            ArchetypeName, "LineStrips2D:class_ids",
+            Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public:

@@ -147,15 +147,6 @@ impl From<&ChunkSchema> for ArrowSchema {
     }
 }
 
-impl TryFrom<&ArrowSchema> for ChunkSchema {
-    type Error = SorbetError;
-
-    fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
-        let sorbet_schema = SorbetSchema::try_from(arrow_schema)?;
-        Self::try_from(sorbet_schema)
-    }
-}
-
 impl TryFrom<SorbetSchema> for ChunkSchema {
     type Error = SorbetError;
 

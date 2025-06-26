@@ -36,7 +36,7 @@ mod view;
 
 pub use self::{
     archetype::{
-        Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
+        Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
         GenericIndicatorComponent, NamedIndicatorComponent,
     },
     arrow_string::ArrowString,
@@ -45,7 +45,7 @@ pub use self::{
     component_descriptor::ComponentDescriptor,
     id::{ChunkId, RowId},
     loggable::{
-        Component, ComponentDescriptorSet, ComponentName, DatatypeName, Loggable,
+        Component, ComponentDescriptorSet, ComponentType, DatatypeName, Loggable,
         UnorderedComponentDescriptorSet,
     },
     result::{

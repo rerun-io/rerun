@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
@@ -80,9 +80,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: Some("rerun.components.Text".into()),
-            archetype_field_name: "text".into(),
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:text".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -92,9 +92,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: Some("rerun.components.TextLogLevel".into()),
-            archetype_field_name: "level".into(),
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:level".into(),
+            component_type: Some("rerun.components.TextLogLevel".into()),
         }
     }
 
@@ -104,9 +104,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: Some("rerun.components.Color".into()),
-            archetype_field_name: "color".into(),
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -114,9 +114,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: None,
-            component_name: None,
-            archetype_field_name: "rerun.components.TextLogIndicator".into(),
+            archetype: None,
+            component: "rerun.components.TextLogIndicator".into(),
+            component_type: None,
         }
     }
 }

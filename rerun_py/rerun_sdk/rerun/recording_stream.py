@@ -486,7 +486,7 @@ class RecordingStream:
     get_recording_id = get_recording_id
     is_enabled = is_enabled
 
-    def tee(
+    def set_sinks(
         self,
         *sinks: LogSinkLike,
         default_blueprint: BlueprintLike | None = None,
@@ -495,7 +495,13 @@ class RecordingStream:
         Stream data to multiple different sinks.
 
         Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
-        use the same `url`.
+        use the same `url` will cause this function to throw a `ValueError`.
+
+        This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+        `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+        the sinks passed to `set_sinks` remaining active.
+
+        Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
 
         Parameters
         ----------
@@ -513,7 +519,7 @@ class RecordingStream:
         -------
         ```py
         rec = rr.RecordingStream("rerun_example_tee")
-        rec.tee(
+        rec.set_sinks(
             rr.GrpcSink(),
             rr.FileSink("data.rrd")
         )
@@ -522,9 +528,9 @@ class RecordingStream:
 
         """
 
-        from .sinks import _tee
+        from .sinks import set_sinks
 
-        _tee(*sinks, default_blueprint=default_blueprint, recording=self)
+        set_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
 
     def connect_grpc(
         self,
@@ -650,7 +656,7 @@ class RecordingStream:
         *,
         grpc_port: int | None = None,
         default_blueprint: BlueprintLike | None = None,
-        server_memory_limit: str = "75%",
+        server_memory_limit: str = "25%",
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -660,6 +666,9 @@ class RecordingStream:
         The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+        It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        on the same machine, otherwise you're potentially doubling your memory usage!
 
         Returns the URI of the server so you can connect the viewer to it.
 
@@ -689,6 +698,10 @@ class RecordingStream:
             recording=self,
         )
 
+    @deprecated(
+        """Use a combination of `serve_grpc` and `rr.serve_web_viewer` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+    )
     def serve_web(
         self,
         *,
@@ -709,7 +722,11 @@ class RecordingStream:
 
         This function returns immediately.
 
-        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][]:
+        ```
+        server_uri = rec.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+        rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+        ```
 
         Parameters
         ----------

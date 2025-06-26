@@ -24,7 +24,7 @@ class EntityPath(datatypes.EntityPath, ComponentMixin):
 
 
 class EntityPathBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.EntityPath"
+    _COMPONENT_TYPE: str = "rerun.components.EntityPath"
 
 
 # This is patched in late to avoid circular dependencies.

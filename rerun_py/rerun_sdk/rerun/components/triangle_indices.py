@@ -24,7 +24,7 @@ class TriangleIndices(datatypes.UVec3D, ComponentMixin):
 
 
 class TriangleIndicesBatch(datatypes.UVec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.TriangleIndices"
+    _COMPONENT_TYPE: str = "rerun.components.TriangleIndices"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -1,5 +1,6 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+pub mod alert;
 mod color_table;
 mod command;
 mod command_palette;
@@ -42,6 +43,7 @@ pub use self::{
 
 #[cfg(feature = "arrow")]
 mod arrow_ui;
+pub mod menu;
 
 #[cfg(feature = "arrow")]
 pub use self::arrow_ui::arrow_ui;

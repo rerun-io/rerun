@@ -31,7 +31,7 @@ class HalfSize3D(datatypes.Vec3D, ComponentMixin):
 
 
 class HalfSize3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.HalfSize3D"
+    _COMPONENT_TYPE: str = "rerun.components.HalfSize3D"
 
 
 # This is patched in late to avoid circular dependencies.

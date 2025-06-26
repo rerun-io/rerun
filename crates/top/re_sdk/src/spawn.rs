@@ -29,6 +29,14 @@ pub struct SpawnOptions {
     /// Defaults to `75%`.
     pub memory_limit: String,
 
+    /// An upper limit on how much memory the gRPC server running
+    /// in the same process as the Rerun Viewer should use.
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `0B`.
+    pub server_memory_limit: String,
+
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
@@ -64,6 +72,7 @@ impl Default for SpawnOptions {
             port: re_grpc_server::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
+            server_memory_limit: "0B".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
@@ -202,6 +211,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     let port = opts.port;
     let connect_addr = opts.connect_addr();
     let memory_limit = &opts.memory_limit;
+    let server_memory_limit = &opts.server_memory_limit;
     let executable_path = opts.executable_path();
 
     // TODO(#4019): application-level handshake
@@ -284,6 +294,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
+        .arg(format!("--server-memory-limit={server_memory_limit}"))
         .arg("--expect-data-soon");
 
     if opts.hide_welcome_screen {

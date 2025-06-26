@@ -216,7 +216,7 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(component_descr);
         let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
-        // If we don't have a component name, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
+        // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
             .fallback_provider()
             .fallback_for(&query_ctx, component_descr);
@@ -406,7 +406,7 @@ fn visualizer_components(
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
                     // since usually archetypes match 1:1 with visualizers.
-                    component_descr.archetype_field_name.as_str(),
+                    component_descr.archetype_field_name(),
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
@@ -430,10 +430,10 @@ fn visualizer_components(
             )
             .item_response;
 
-        if let Some(component_name) = component_descr.component_name {
+        if let Some(component_type) = component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
-                component_name.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
         }
     }

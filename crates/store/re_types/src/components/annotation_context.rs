@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The annotation context provides additional information on how to display entities.
@@ -36,7 +36,7 @@ pub struct AnnotationContext(
 
 impl ::re_types_core::Component for AnnotationContext {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.components.AnnotationContext".into()
     }
 }

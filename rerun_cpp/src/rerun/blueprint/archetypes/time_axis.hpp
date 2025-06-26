@@ -25,17 +25,18 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> link;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.TimeAxisIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TimeAxis";
 
         /// `ComponentDescriptor` for the `link` field.
         static constexpr auto Descriptor_link = ComponentDescriptor(
-            ArchetypeName, "link", Loggable<rerun::blueprint::components::LinkAxis>::ComponentName
+            ArchetypeName, "TimeAxis:link",
+            Loggable<rerun::blueprint::components::LinkAxis>::ComponentType
         );
 
       public:

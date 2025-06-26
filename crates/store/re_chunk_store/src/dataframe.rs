@@ -11,7 +11,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
@@ -19,7 +19,7 @@ use re_sorbet::{
 };
 use tap::Tap as _;
 
-use crate::{ChunkStore, ColumnMetadata, store::ColumnIdentifier};
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Queries v2 ---
 
@@ -50,24 +50,23 @@ impl std::fmt::Display for SparseFillStrategy {
 
 /// The view contents specify which subset of the database (i.e., which columns) the query runs on.
 ///
-/// Contents are expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ArchetypeFieldName`]s
-/// (plus optional [`re_types_core::ArchetypeName`]s).
+/// Contents are expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ComponentIdentifier`]s.
 ///
 /// Setting an entity's identifier to `None` means: everything.
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[positions, radius] --with /cam:[pinhole]`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>);
+pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>>);
 
 impl ViewContentsSelector {
-    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>> {
+    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>> {
         self.0
     }
 }
 
 impl Deref for ViewContentsSelector {
-    type Target = BTreeMap<EntityPath, Option<BTreeSet<ColumnIdentifier>>>;
+    type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentIdentifier>>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -82,8 +81,8 @@ impl DerefMut for ViewContentsSelector {
     }
 }
 
-impl FromIterator<(EntityPath, Option<BTreeSet<ColumnIdentifier>>)> for ViewContentsSelector {
-    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ColumnIdentifier>>)>>(
+impl FromIterator<(EntityPath, Option<BTreeSet<ComponentIdentifier>>)> for ViewContentsSelector {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ComponentIdentifier>>)>>(
         iter: T,
     ) -> Self {
         Self(iter.into_iter().collect())
@@ -102,12 +101,26 @@ pub type IndexValue = TimeInt;
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
 pub type IndexRange = ResolvedTimeRange;
 
+/// Specifies whether static columns should be included in the query.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StaticColumnSelection {
+    /// Both static and non-static columns should be included in the query.
+    #[default]
+    Both,
+
+    /// Only static columns should be included in the query.
+    StaticOnly,
+
+    /// Only non-static columns should be included in the query.
+    NonStaticOnly,
+}
+
 /// Describes a complete query for Rerun's dataframe API.
 ///
 /// ## Terminology: view vs. selection vs. filtering vs. sampling
 ///
 /// * The view contents specify which subset of the database (i.e., which columns) the query runs on,
-///   expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ArchetypeFieldName`]s (and optional [`re_types_core::ArchetypeName`]s).
+///   expressed as a set of [`EntityPath`]s and their associated [`re_types_core::ComponentIdentifier`]s.
 ///
 /// * The filters filter out _rows_ of data from the view contents.
 ///   A filter cannot possibly introduce new rows, it can only remove existing ones from the view contents.
@@ -129,7 +142,7 @@ pub type IndexRange = ResolvedTimeRange;
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
-    /// associated [`re_types_core::ArchetypeFieldName`]s (and optional [`re_types_core::ArchetypeName`]s).
+    /// associated [`re_types_core::ComponentIdentifier`]s.
     ///
     /// Defaults to `None`, which means: everything.
     ///
@@ -163,6 +176,11 @@ pub struct QueryExpression {
     /// `view_contents`: [`QueryExpression::view_contents`]
     /// `Clear`: [`re_types_core::archetypes::Clear`]
     pub include_tombstone_columns: bool,
+
+    /// Whether the `view_contents` should include static columns.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_static_columns: StaticColumnSelection,
 
     /// The index used to filter out _rows_ from the view contents.
     ///
@@ -218,7 +236,7 @@ pub struct QueryExpression {
     ///
     /// Only rows where this column contains non-null data be kept in the final dataset.
     ///
-    /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
+    /// Example: `ComponentColumnSelector("Points3D:positions")`.
     //
     // TODO(cmc): multi-pov support
     pub filtered_is_not_null: Option<ComponentColumnSelector>,
@@ -234,7 +252,7 @@ pub struct QueryExpression {
     ///
     /// Defaults to `None`, which means: everything.
     ///
-    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("rerun.components.Position3D"))]`.
+    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("Points3D:position"))]`.
     //
     // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
     pub selection: Option<Vec<ColumnSelector>>,
@@ -337,7 +355,7 @@ impl ChunkStore {
                     is_semantically_empty,
                 } = metadata;
 
-                if let Some(c) = component_descr.component_name {
+                if let Some(c) = component_descr.component_type {
                     c.sanity_check();
                 }
 
@@ -350,9 +368,9 @@ impl ChunkStore {
                     ),
 
                     entity_path: entity_path.clone(),
-                    archetype_name: component_descr.archetype_name,
-                    archetype_field_name: component_descr.archetype_field_name,
-                    component_name: component_descr.component_name,
+                    archetype: component_descr.archetype,
+                    component: component_descr.component,
+                    component_type: component_descr.component_type,
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -404,10 +422,10 @@ impl ChunkStore {
         // in long-running servers. In practice this probably doesn't matter.
         let mut result = ComponentColumnDescriptor {
             store_datatype: ArrowDatatype::Null,
-            component_name: None,
+            component_type: None,
             entity_path: selector.entity_path.clone(),
-            archetype_name: selector.archetype_name,
-            archetype_field_name: selector.archetype_field_name.as_str().into(),
+            archetype: None,
+            component: selector.component.as_str().into(),
             is_static: false,
             is_indicator: false,
             is_tombstone: false,
@@ -419,13 +437,14 @@ impl ChunkStore {
         };
 
         // We perform a scan over all component descriptors in the queried entity path.
-        let Some((component_descr, _, datatype)) = per_identifier.get(&ColumnIdentifier {
-            archetype_name: selector.archetype_name,
-            archetype_field_name: selector.archetype_field_name.as_str().into(),
-        }) else {
+        let Some((component_descr, _, datatype)) =
+            per_identifier.get(&selector.component.as_str().into())
+        else {
             return result;
         };
         result.store_datatype = datatype.clone();
+        result.archetype = component_descr.archetype;
+        result.component_type = component_descr.component_type;
 
         if let Some(ColumnMetadata {
             is_static,
@@ -456,6 +475,7 @@ impl ChunkStore {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
+            include_static_columns,
             filtered_index: _,
             filtered_index_range: _,
             filtered_index_values: _,
@@ -471,17 +491,9 @@ impl ChunkStore {
                     view_contents
                         .get(&column.entity_path)
                         .is_some_and(|components| {
-                            components.as_ref().is_none_or(|components| {
-                                components.contains(&ColumnIdentifier {
-                                    archetype_name: column.archetype_name,
-                                    archetype_field_name: column.archetype_field_name,
-                                }) || components.contains(&ColumnIdentifier {
-                                    archetype_name: column
-                                        .archetype_name
-                                        .map(|a| a.short_name().into()),
-                                    archetype_field_name: column.archetype_field_name,
-                                })
-                            })
+                            components
+                                .as_ref()
+                                .is_none_or(|components| components.contains(&column.component))
                         })
                 })
             };
@@ -493,10 +505,17 @@ impl ChunkStore {
 
             let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
 
+            let passes_static_check = || match include_static_columns {
+                StaticColumnSelection::Both => true,
+                StaticColumnSelection::StaticOnly => column.is_static,
+                StaticColumnSelection::NonStaticOnly => !column.is_static,
+            };
+
             is_part_of_view_contents()
                 && passes_semantically_empty_check()
                 && passes_indicator_check()
                 && passes_tombstone_check()
+                && passes_static_check()
         };
 
         self.schema().filter_components(filter)

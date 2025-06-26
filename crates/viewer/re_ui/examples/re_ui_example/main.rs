@@ -204,6 +204,9 @@ impl eframe::App for ExampleApp {
             ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
                 ui.toggle_switch(8.0, &mut self.dummy_bool);
+                ui.help_button(|ui| {
+                    ui.label("This some help text.");
+                });
             });
             ui.label(format!("Latest command: {}", self.latest_cmd));
 
@@ -486,6 +489,10 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         _tile_id: egui_tiles::TileId,
         _pane: &mut Tab,
     ) -> egui_tiles::UiResponse {
+        ui.help_button(|ui| {
+            ui.label("This some help text.");
+        });
+
         egui::Frame::new().inner_margin(4.0).show(ui, |ui| {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
@@ -514,6 +521,12 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
             ui.error_label("This is an example of a long error label.");
             ui.warning_label("This is an example of a long warning label.");
+            ui.success_label("This is an example of a long success label.");
+            ui.info_label("This is an example of a long info label.");
+        });
+
+        ui.help_button(|ui| {
+            ui.label("This some help text.");
         });
 
         Default::default()

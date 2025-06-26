@@ -2,6 +2,7 @@ use std::error::Error;
 use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
+use re_log_types::StoreKind;
 use re_types_core::{ComponentDescriptor, RowId};
 use re_uri::RedapUri;
 use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -34,10 +35,11 @@ pub fn redap_uri_button(
     let uri = RedapUri::from_str(url_str)?;
 
     let loaded_recording_id = ctx.storage_context.bundle.entity_dbs().find_map(|db| {
-        if db
-            .data_source
-            .as_ref()
-            .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
+        if db.store_kind() == StoreKind::Recording
+            && db
+                .data_source
+                .as_ref()
+                .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
         {
             Some(db.store_id())
         } else {

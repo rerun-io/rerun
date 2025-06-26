@@ -29,22 +29,22 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
+        static constexpr const char IndicatorComponentType[] =
             "rerun.blueprint.components.BackgroundIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.Background";
 
         /// `ComponentDescriptor` for the `kind` field.
         static constexpr auto Descriptor_kind = ComponentDescriptor(
-            ArchetypeName, "kind",
-            Loggable<rerun::blueprint::components::BackgroundKind>::ComponentName
+            ArchetypeName, "Background:kind",
+            Loggable<rerun::blueprint::components::BackgroundKind>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
+            ArchetypeName, "Background:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

@@ -57,7 +57,7 @@ GraphTypeArrayLike = Union[GraphTypeLike, Sequence[GraphTypeLike]]
 
 class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.components.GraphType"
+    _COMPONENT_TYPE: str = "rerun.components.GraphType"
 
     @staticmethod
     def _native_to_pa_array(data: GraphTypeArrayLike, data_type: pa.DataType) -> pa.Array:

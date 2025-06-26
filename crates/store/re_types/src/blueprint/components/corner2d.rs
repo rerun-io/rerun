@@ -17,7 +17,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: One of four 2D corners, typically used to align objects.
@@ -40,7 +40,7 @@ pub enum Corner2D {
 
 impl ::re_types_core::Component for Corner2D {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> ComponentType {
         "rerun.blueprint.components.Corner2D".into()
     }
 }

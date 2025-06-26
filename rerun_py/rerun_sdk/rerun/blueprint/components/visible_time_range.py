@@ -30,7 +30,7 @@ class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
 
 
 class VisibleTimeRangeBatch(datatypes.VisibleTimeRangeBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.VisibleTimeRange"
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.VisibleTimeRange"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -51,9 +51,17 @@ need_stdout = true
 watch = ["tests"]
 
 [jobs.nextest]
-command = ["cargo", "nextest", "run", "--all-features", "--color=always"]
+command = [
+  "cargo",
+  "nextest",
+  "run",
+  "--hide-progress-bar",
+  "--all-features",
+  "--failure-output",
+  "final",
+]
 need_stdout = true
-watch = ["tests"]
+analyzer = "nextest"
 
 [jobs.doc]
 command = ["cargo", "doc", "--color=always", "--all-features", "--no-deps"]

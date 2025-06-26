@@ -841,7 +841,7 @@ impl TimePanel {
                         RichText::new(
                             archetype
                                 .map(|a| a.short_name())
-                                .unwrap_or("Without Archetype"),
+                                .unwrap_or("Without archetype"),
                         )
                         .size(10.0),
                     ),
@@ -869,7 +869,7 @@ impl TimePanel {
                     )
                     .show_hierarchical(
                         ui,
-                        list_item::LabelContent::new(component_descr.archetype_field_name.as_str())
+                        list_item::LabelContent::new(component_descr.archetype_field_name())
                             .with_icon(if is_static {
                                 &re_ui::icons::COMPONENT_STATIC
                             } else {

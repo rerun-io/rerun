@@ -289,7 +289,7 @@ impl ViewClass for SpatialView3D {
             // TODO(#9917): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
             if !engine
                 .store()
-                .entity_component_descriptors_with_name(path, components::ViewCoordinates::name())
+                .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())
                 .is_empty()
             {
                 indicated_entities.insert(path.clone());
@@ -476,7 +476,7 @@ fn view_property_ui_grid3d(
         for field in &reflection.fields {
             // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
             // Here however, we need that alpha color picker!
-            if field.component_name == re_types::components::Color::name() {
+            if field.component_type == re_types::components::Color::name() {
                 re_view::view_property_component_ui_custom(
                     &query_ctx,
                     ui,

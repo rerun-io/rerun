@@ -40,7 +40,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::EntityPath> {
-        static constexpr std::string_view ComponentName = "rerun.datatypes.EntityPath";
+        static constexpr std::string_view ComponentType = "rerun.datatypes.EntityPath";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
