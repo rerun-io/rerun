@@ -135,6 +135,7 @@ impl ServerModal {
                         style_invalid_field(ui);
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
+                    self.host = self.host.trim().to_owned();
                 });
 
                 ui.add_space(14.0);
@@ -151,6 +152,7 @@ impl ServerModal {
                         }
 
                         ui.add(egui::TextEdit::singleline(&mut self.token));
+                        self.token = self.token.trim().to_owned();
 
                         token
                     })

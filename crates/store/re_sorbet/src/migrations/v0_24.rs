@@ -28,7 +28,12 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .schema()
         .metadata()
         .keys()
-        .any(|key| key.starts_with("rerun."));
+        .any(|key| key.starts_with("rerun."))
+        || batch
+            .schema()
+            .fields()
+            .iter()
+            .any(|field| field.metadata().keys().any(|key| key.starts_with("rerun.")));
 
     if !needs_rewiring {
         return batch.clone();
@@ -59,15 +64,22 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
             rename_key(&mut metadata, "rerun.is_semantically_empty", "rerun:is_semantically_empty");
             rename_key(&mut metadata, "rerun.is_sorted", "rerun:is_sorted");
 
-            // If component is present, we are encountering a legacy component descriptor.
-            if let Some(component) = metadata.remove("rerun.component") {
+            if field.name().ends_with("Indicator") {
+                // TODO(#8129): Remove indicator components
+                if let Some(archetype) = metadata.remove("rerun.archetype") {
+                    metadata.insert("rerun:component".to_owned(), format!("{archetype}Indicator"));
+                }
+                metadata.remove("rerun.archetype_field");
+                metadata.remove("rerun.component");
+            } else if let Some(component) = metadata.remove("rerun.component") {
+                // If component is present, we are encountering a legacy component descriptor.
                 let (archetype, component, component_type) = match (
                     metadata.remove("rerun.archetype"),
                     metadata.remove("rerun.archetype_field"),
                 ) {
                     (None, None) => {
                         // We likely encountered data that was logged via `AnyValues` and do our best effort to convert it.
-                        re_log::debug!(
+                        re_log::debug_once!(
                             "Moving stray component type to component field: {component}"
                         );
                         (None, component, None)
@@ -124,7 +136,7 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .iter()
         .map(|(key, value)| {
             if key.starts_with("rerun.") {
-                re_log::debug_once!("Migrating batch metadata key {key}");
+                re_log::debug_once!("Migrating batch metadata key '{key}'");
             }
             (key.replace("rerun.", "rerun:"), value.clone())
         })

@@ -73,10 +73,10 @@ pub fn arrow_msg_from_proto(
         arrow_msg.compression().into(),
     )?;
 
-    let sorbet_schema = re_sorbet::ChunkSchema::try_from(batch.schema_ref().as_ref())?;
+    let chunk_id = re_sorbet::chunk_id_of_schema(batch.schema_ref())?.as_tuid();
 
     Ok(re_log_types::ArrowMsg {
-        chunk_id: sorbet_schema.chunk_id().as_tuid(),
+        chunk_id,
         batch,
         on_release: None,
     })

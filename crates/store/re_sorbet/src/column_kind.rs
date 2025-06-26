@@ -39,6 +39,11 @@ impl TryFrom<&ArrowField> for ColumnKind {
     type Error = UnknownColumnKind;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        debug_assert!(
+            field.metadata().get("rerun.kind").is_none(),
+            "We should have migrated to 'rerun:kind'"
+        );
+
         let Some(kind) = field.get_opt("rerun:kind") else {
             return Ok(Self::default());
         };

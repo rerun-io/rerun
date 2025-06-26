@@ -75,10 +75,6 @@ impl TryFrom<&ArrowField> for ColumnKind {
     }
 }
 
-pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
-    ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component)
-}
-
 /// Migrate TUID:s with the pre-0.23 encoding.
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
