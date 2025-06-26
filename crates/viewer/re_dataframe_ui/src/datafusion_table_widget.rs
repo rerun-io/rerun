@@ -4,7 +4,7 @@ use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, RichText, Stroke, TopBottomPanel, Ui, Widget as _};
+use egui::{Frame, Id, Margin, RichText, TopBottomPanel, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
@@ -357,22 +357,20 @@ impl<'a> DataFusionTableWidget<'a> {
             None => {}
         }
 
-        ui.vertical(|ui| {
-            egui_table::Table::new()
-                .id_salt(session_id)
-                .columns(
-                    table_delegate
-                        .table_config
-                        .visible_column_ids()
-                        .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
-                        .collect::<Vec<_>>(),
-                )
-                .headers(vec![egui_table::HeaderRow::new(
-                    tokens.table_header_height(),
-                )])
-                .num_rows(num_rows)
-                .show(ui, &mut table_delegate);
-        });
+        egui_table::Table::new()
+            .id_salt(session_id)
+            .columns(
+                table_delegate
+                    .table_config
+                    .visible_column_ids()
+                    .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
+                    .collect::<Vec<_>>(),
+            )
+            .headers(vec![egui_table::HeaderRow::new(
+                tokens.table_header_height(),
+            )])
+            .num_rows(num_rows)
+            .show(ui, &mut table_delegate);
 
         table_delegate.table_config.store(ui.ctx());
         drop(requested_sorbet_batches);
@@ -395,7 +393,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
             .inner_margin(Margin::symmetric(12, 0));
-        let response = TopBottomPanel::bottom(session_id.with("bottom_bar"))
+        TopBottomPanel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_inside(ui, |ui| {
                 let height = 24.0;
@@ -438,14 +436,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                     );
                 });
-            })
-            .response;
-
-        ui.painter().hline(
-            response.rect.x_range(),
-            response.rect.top(),
-            Stroke::new(1.0, ui.tokens().table_header_stroke_color),
-        );
+            });
 
         action
     }
