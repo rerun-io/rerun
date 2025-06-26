@@ -33,7 +33,8 @@ def setup_camera_input(video_device: str | None = None) -> av.container.InputCon
             # Extract video device names
             video_devices = []
             for line in devices_output.split("\n"):
-                if '"' in line and "Alternative name" not in line:
+                # FFmpeg will return both `(audio)` and `(video)` devices
+                if "(video)" in line and "Alternative name" not in line:
                     device_name = line.split('"')[1]
                     if device_name not in video_devices:
                         video_devices.append(device_name)
