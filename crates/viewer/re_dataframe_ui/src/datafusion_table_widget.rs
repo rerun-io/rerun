@@ -1,3 +1,6 @@
+use std::mem;
+use std::sync::Arc;
+
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
@@ -5,15 +8,13 @@ use egui::containers::menu::MenuConfig;
 use egui::{Align, Frame, Id, Layout, Margin, RichText, Stroke, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
+
 use re_format::format_int;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::list_item::ItemButton as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
-use std::mem;
-use std::sync::Arc;
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{

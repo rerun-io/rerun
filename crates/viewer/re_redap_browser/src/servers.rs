@@ -197,7 +197,6 @@ impl Server {
     fn dataset_entry_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
-        ctx: &Context<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
@@ -540,9 +539,7 @@ impl RedapServers {
     ) {
         for server in self.servers.values() {
             if let Some(dataset) = server.find_dataset(active_entry) {
-                self.with_ctx(|ctx| {
-                    server.dataset_entry_ui(viewer_ctx, ctx, ui, dataset);
-                });
+                server.dataset_entry_ui(viewer_ctx, ui, dataset);
 
                 return;
             }
