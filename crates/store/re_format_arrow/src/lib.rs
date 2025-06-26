@@ -148,13 +148,13 @@ pub struct RecordBatchFormatOpts {
     /// If `true`, displays the individual columns' metadata too.
     pub include_column_metadata: bool,
 
-    /// If `true`, trims the Rerun prefixes from field names
+    /// If `true`, trims the Rerun prefixes from field names.
     pub trim_field_names: bool,
 
-    /// If `true`, trims the `rerun:` prefix from metadata values
+    /// If `true`, trims the `rerun:` prefix from metadata values.
     pub trim_metadata_keys: bool,
 
-    /// If `true`, trims known Rerun prefixes from metadata values
+    /// If `true`, trims known Rerun prefixes from metadata values.
     pub trim_metadata_values: bool,
 }
 
