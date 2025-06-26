@@ -169,20 +169,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
 impl From<Query> for crate::manifest_registry::v1alpha1::Query {
     fn from(value: Query) -> Self {
         crate::manifest_registry::v1alpha1::Query {
-            latest_at: value.latest_at.map(|latest_at| {
-                crate::manifest_registry::v1alpha1::QueryLatestAt {
-                    index: latest_at.index.map(|index| {
-                        let timeline: TimelineName = index.into();
-                        timeline.into()
-                    }),
-                    at: if latest_at.at.is_static() {
-                        None
-                    } else {
-                        Some(latest_at.at.as_i64())
-                    },
-                    fuzzy_descriptors: latest_at.fuzzy_descriptors,
-                }
-            }),
+            latest_at: value.latest_at.map(Into::into),
             range: value
                 .range
                 .map(|range| crate::manifest_registry::v1alpha1::QueryRange {
@@ -293,6 +280,23 @@ impl QueryLatestAt {
 
     pub fn is_static(&self) -> bool {
         self.index.is_none() && self.at.is_static()
+    }
+}
+
+impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
+    fn from(value: QueryLatestAt) -> Self {
+        crate::manifest_registry::v1alpha1::QueryLatestAt {
+            index: value.index.map(|index| {
+                let timeline: TimelineName = index.into();
+                timeline.into()
+            }),
+            at: if value.at.is_static() {
+                None
+            } else {
+                Some(value.at.as_i64())
+            },
+            fuzzy_descriptors: value.fuzzy_descriptors,
+        }
     }
 }
 
