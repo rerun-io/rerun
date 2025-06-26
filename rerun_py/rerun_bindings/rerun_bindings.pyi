@@ -1503,6 +1503,9 @@ class DataframeQueryView:
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
+    def to_reader(self) -> pa.RecordBatchReader:
+        """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
+
 # TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
     def __init__(self, addr: str, token: str | None = None) -> None: ...
