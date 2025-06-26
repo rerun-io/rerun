@@ -583,10 +583,14 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype field",
                 desc.component_descriptor().archetype_field_name(),
             );
-            header_property_ui(ui, "Static", is_static.to_string());
-            header_property_ui(ui, "Indicator", is_indicator.to_string());
-            header_property_ui(ui, "Tombstone", is_tombstone.to_string());
-            header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+
+            if false {
+                // TODO(#10315): these are sometimes inaccurate. Also, the user don't care.
+                header_property_ui(ui, "Static", is_static.to_string());
+                header_property_ui(ui, "Indicator", is_indicator.to_string());
+                header_property_ui(ui, "Tombstone", is_tombstone.to_string());
+                header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+            }
         }
     }
 }
