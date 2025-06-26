@@ -194,6 +194,15 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    fn loading_ui(ui: &mut egui::Ui) {
+        Frame::new().inner_margin(16.0).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.label("Loading table…");
+            });
+        });
+    }
+
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,
@@ -215,12 +224,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .table_exist(table_ref.clone())
             .unwrap_or_default()
         {
-            // Let's not be too intrusive here, as this can often happen temporarily while the table
-            // providers are being registered to the session context after refreshing.
-            ui.label(format!(
-                "Loading table… (table `{}` not found in session context)",
-                &table_ref
-            ));
+            Self::loading_ui(ui);
             return;
         }
 
@@ -271,7 +275,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (None, None) => {
                 // still processing, nothing yet to show
-                ui.label("Loading table…");
+                Self::loading_ui(ui);
                 return;
             }
         };
