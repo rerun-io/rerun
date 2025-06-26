@@ -1,6 +1,5 @@
 use re_log_types::{EntityPath, EntryId};
 use re_sorbet::{BatchType, ColumnDescriptorRef};
-use re_types::archetypes::RecordingProperties;
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
@@ -158,32 +157,54 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
         ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
 
         ColumnDescriptorRef::Component(desc) => {
-            let name = if desc.entity_path == EntityPath::root() {
+            if desc.entity_path == EntityPath::root() {
                 // In most case, user tables don't have any entities, so we filter out the root entity
                 // noise in column names.
                 desc.column_name(BatchType::Chunk)
             } else {
                 desc.column_name(BatchType::Dataframe)
-            };
-
-            strip_recording_properties_prefix(&name)
-                .map(ToOwned::to_owned)
-                .unwrap_or(name)
+            }
         }
     }
 }
 
-/// Strip the `/__properties/recording:RecordingProperties:` prefix from a column name.
-fn strip_recording_properties_prefix(name: &str) -> Option<&str> {
-    let name = name
-        .strip_prefix(&EntityPath::recording_properties().to_string())?
-        .strip_prefix(":")?;
-    let archetype_name = RecordingProperties::descriptor_name()
-        .archetype
-        .expect("Should have an archetype name");
-    Option::or(
-        name.strip_prefix(archetype_name.short_name()),
-        name.strip_prefix(archetype_name.full_name()),
-    )?
-    .strip_prefix(":")
+#[test]
+fn test_default_column_display_name() {
+    use re_log_types::EntityPathPart;
+
+    // Built-in recording property:
+    assert_eq!(
+        default_display_name_for_column(&ColumnDescriptorRef::Component(
+            &re_sorbet::ComponentColumnDescriptor {
+                store_datatype: arrow::datatypes::DataType::Binary, // ignored
+                component_type: Some("rerun.components.Timestamp".into()),
+                entity_path: EntityPath::recording_properties(),
+                archetype: Some("rerun.archetypes.RecordingProperties".into()),
+                component: "start_time".into(),
+                is_static: false,
+                is_indicator: false,
+                is_tombstone: false,
+                is_semantically_empty: false
+            },
+        )),
+        "start_time"
+    );
+
+    // User-defined recoding property:
+    assert_eq!(
+        default_display_name_for_column(&ColumnDescriptorRef::Component(
+            &re_sorbet::ComponentColumnDescriptor {
+                store_datatype: arrow::datatypes::DataType::Binary, // ignored
+                component_type: None,
+                entity_path: EntityPath::properties() / EntityPathPart::from("episode"),
+                archetype: None,
+                component: "building".into(),
+                is_static: false,
+                is_indicator: false,
+                is_tombstone: false,
+                is_semantically_empty: false
+            },
+        )),
+        "property:episode:building"
+    );
 }
