@@ -19,7 +19,7 @@ use re_log_types::{
     StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint, Timeline,
     TimelineName,
 };
-use re_types::archetypes::RecordingProperties;
+use re_types::archetypes::RecordingInfo;
 use re_types::components::Timestamp;
 use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 
@@ -116,7 +116,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
-/// Automatically sends a [`Chunk`] with the default [`RecordingProperties`] to
+/// Automatically sends a [`Chunk`] with the default [`RecordingInfo`] to
 /// the sink, unless an explicit `recording_id` is set via [`RecordingStreamBuilder::recording_id`].
 #[derive(Debug)]
 pub struct RecordingStreamBuilder {
@@ -132,7 +132,7 @@ pub struct RecordingStreamBuilder {
 
     // Optional user-defined recording properties.
     should_send_properties: bool,
-    properties: RecordingProperties,
+    properties: RecordingInfo,
 }
 
 impl RecordingStreamBuilder {
@@ -163,7 +163,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
 
             should_send_properties: true,
-            properties: RecordingProperties::new()
+            properties: RecordingInfo::new()
                 .with_start_time(re_types::components::Timestamp::now()),
         }
     }
@@ -226,14 +226,14 @@ impl RecordingStreamBuilder {
     }
 
     #[deprecated(since = "0.22.0", note = "use `send_properties` instead")]
-    /// Disables sending the [`RecordingProperties`] chunk.
+    /// Disables sending the [`RecordingInfo`] chunk.
     #[inline]
     pub fn disable_properties(mut self) -> Self {
         self.should_send_properties = false;
         self
     }
 
-    /// Whether the [`RecordingProperties`] chunk should be sent.
+    /// Whether the [`RecordingInfo`] chunk should be sent.
     #[inline]
     pub fn send_properties(mut self, should_send: bool) -> Self {
         self.should_send_properties = should_send;
@@ -686,14 +686,7 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(
-        self,
-    ) -> (
-        bool,
-        StoreInfo,
-        Option<RecordingProperties>,
-        ChunkBatcherConfig,
-    ) {
+    pub fn into_args(self) -> (bool, StoreInfo, Option<RecordingInfo>, ChunkBatcherConfig) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -843,7 +836,7 @@ impl Drop for RecordingStream {
 
 struct RecordingStreamInner {
     info: StoreInfo,
-    properties: Option<RecordingProperties>,
+    properties: Option<RecordingInfo>,
     tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
@@ -897,7 +890,7 @@ impl Drop for RecordingStreamInner {
 impl RecordingStreamInner {
     fn new(
         info: StoreInfo,
-        properties: Option<RecordingProperties>,
+        properties: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -1008,7 +1001,7 @@ impl RecordingStream {
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         info: StoreInfo,
-        properties: Option<RecordingProperties>,
+        properties: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -1239,7 +1232,7 @@ impl RecordingStream {
     /// Sends the name of the recording.
     #[inline]
     pub fn send_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
-        let update = RecordingProperties::update_fields().with_name(name.into());
+        let update = RecordingInfo::update_fields().with_name(name.into());
         self.log_static(EntityPath::recording_properties(), &update)
     }
 
@@ -1249,7 +1242,7 @@ impl RecordingStream {
         &self,
         timestamp: impl Into<Timestamp>,
     ) -> RecordingStreamResult<()> {
-        let update = RecordingProperties::update_fields().with_start_time(timestamp.into());
+        let update = RecordingInfo::update_fields().with_start_time(timestamp.into());
         self.log_static(EntityPath::recording_properties(), &update)
     }
 
@@ -2769,7 +2762,7 @@ mod tests {
 
             // MemorySinkStorage transparently handles flushing during `take()`!
 
-            // The batch that contains the `RecordingProperties`.
+            // The batch that contains the `RecordingInfo`.
             match msgs.pop().unwrap() {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);
@@ -2781,7 +2774,7 @@ mod tests {
                 _ => panic!("expected ArrowMsg"),
             }
 
-            // For the same reasons as above, another chunk that contains the `RecordingProperties`.
+            // For the same reasons as above, another chunk that contains the `RecordingInfo`.
             match msgs.pop().unwrap() {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);

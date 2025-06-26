@@ -118,7 +118,7 @@ impl EntityPath {
         Self::from(vec![EntityPathPart::properties()])
     }
 
-    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
+    /// The reserved namespace for the `RecordingInfo` that are specific to the Rerun viewer.
     #[inline]
     pub fn recording_properties() -> Self {
         Self::from(vec![

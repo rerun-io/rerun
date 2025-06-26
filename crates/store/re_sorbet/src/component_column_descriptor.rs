@@ -277,7 +277,7 @@ impl ComponentColumnDescriptor {
                     .or_else(|| self.entity_path.strip_prefix(&EntityPath::properties()))
                 {
                     if suffix.is_root() {
-                        // Property at root-level (maybe part of `RecordingProperties`, or maybe a user-defined property)
+                        // Property at root-level (maybe part of `RecordingInfo`, or maybe a user-defined property)
                         "property".to_owned()
                     } else {
                         // User-defined property not at root-level

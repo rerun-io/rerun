@@ -281,10 +281,10 @@ impl Chunk {
             // Therefore, it's important that we first check that the number of components is the same.
             anyhow::ensure!(components.len() == rhs.components.len());
 
-            // Copied from `rerun.archetypes.RecordingProperties`.
+            // Copied from `rerun.archetypes.RecordingInfo`.
             let recording_time_descriptor = ComponentDescriptor {
-                archetype: Some("rerun.archetypes.RecordingProperties".into()),
-                component: "RecordingProperties:start_time".into(),
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:start_time".into(),
                 component_type: Some("rerun.components.Timestamp".into()),
             };
 

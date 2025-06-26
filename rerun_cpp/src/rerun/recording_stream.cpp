@@ -355,7 +355,7 @@ namespace rerun {
         rr_error status = {};
         log_static(
             this->RECORDING_PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
+            rerun::archetypes::RecordingInfo::update_fields().with_name(name.data())
         );
         return status;
     }
@@ -364,7 +364,7 @@ namespace rerun {
         rr_error status = {};
         log_static(
             this->RECORDING_PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingProperties::update_fields().with_start_time(nanos)
+            rerun::archetypes::RecordingInfo::update_fields().with_start_time(nanos)
         );
         return status;
     }

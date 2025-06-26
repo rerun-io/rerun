@@ -207,8 +207,8 @@ impl EntityDb {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
         debug_assert_eq!(
             component_descr.archetype,
-            // String from re_types::RecordingProperties::name()
-            Some("rerun.archetypes.RecordingProperties".into())
+            // String from re_types::RecordingInfo::name()
+            Some("rerun.archetypes.RecordingInfo".into())
         );
 
         self.latest_at_component::<C>(

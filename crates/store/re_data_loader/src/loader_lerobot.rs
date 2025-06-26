@@ -132,7 +132,7 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties = re_types::archetypes::RecordingProperties::new()
+                let properties = re_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());

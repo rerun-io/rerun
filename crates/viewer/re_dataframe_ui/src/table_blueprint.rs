@@ -178,16 +178,16 @@ fn test_default_column_display_name() {
             &re_sorbet::ComponentColumnDescriptor {
                 store_datatype: arrow::datatypes::DataType::Binary, // ignored
                 entity_path: EntityPath::recording_properties(),
-                component: "RecordingProperties:start_time".into(),
+                component: "RecordingInfo:start_time".into(),
                 component_type: Some("rerun.components.Timestamp".into()),
-                archetype: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
                 is_static: false,
                 is_indicator: false,
                 is_tombstone: false,
                 is_semantically_empty: false
             },
         )),
-        "property:RecordingProperties:start_time"
+        "property:RecordingInfo:start_time"
     );
 
     // User-defined recoding property:

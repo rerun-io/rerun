@@ -6,7 +6,7 @@ namespace rerun.archetypes;
 /// A list of properties associated with a recording.
 ///
 /// \example concepts/recording_properties !api title="Setting recording properties"
-table RecordingProperties (
+table RecordingInfo (
   "attr.rerun.state": "stable"
 ) {
   /// When the recording started.
