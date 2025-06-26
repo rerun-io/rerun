@@ -7,9 +7,9 @@ pub use video_stream::VideoStreamVisualizer;
 
 use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewContext, ViewId, ViewSystemIdentifier};
+use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialViewState};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D, SpatialViewState};
 
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
@@ -182,6 +182,24 @@ fn show_video_error(
                 let extent_y = extent_x / video_error_rect_aspect;
                 video_error_rect_size = glam::vec2(extent_x, extent_y);
             }
+        }
+
+        // To avoid circular dependency of the bounds and the error rectangle (causing flickering),
+        // make sure the bounding box contains the entire (speculative) video rectangle.
+        if ctx.view_class_identifier == SpatialView2D::identifier() {
+            visualizer_data.add_bounding_box(
+                entity_path.hash(),
+                macaw::BoundingBox::from_points(
+                    [
+                        glam::Vec3::from(world_from_entity.translation),
+                        glam::Vec3::from(world_from_entity.translation)
+                            + glam::Vec3::new(video_size.x, video_size.y, 0.0),
+                    ]
+                    .iter()
+                    .copied(),
+                ),
+                world_from_entity,
+            );
         }
     }
 
