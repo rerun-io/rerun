@@ -79,16 +79,33 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
 struct DisplayMetadata {
     prefix: &'static str,
     metadata: Metadata,
+    trim_keys: bool,
+    trim_values: bool,
 }
 
 impl std::fmt::Display for DisplayMetadata {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self { prefix, metadata } = self;
+        let Self {
+            prefix,
+            metadata,
+            trim_keys,
+            trim_values,
+        } = self;
         f.write_str(
             &metadata
                 .iter()
-                .map(|(key, value)| format!("{prefix}{}: {}", trim_key(key), trim_name(value)))
+                .map(|(key, value)| {
+                    format!(
+                        "{prefix}{}: {}",
+                        if *trim_keys { trim_key(key) } else { key },
+                        if *trim_values {
+                            trim_name(value)
+                        } else {
+                            value
+                        },
+                    )
+                })
                 .collect_vec()
                 .join("\n"),
         )
@@ -132,6 +149,12 @@ pub struct RecordBatchFormatOpts {
 
     /// If `true`, displays the individual columns' metadata too.
     pub include_column_metadata: bool,
+
+    /// If `true`, trims the `rerun:` prefix from metadata values
+    pub trim_metadata_keys: bool,
+
+    /// If `true`, trims known Rerun names from metadata values
+    pub trim_metadata_values: bool,
 }
 
 impl Default for RecordBatchFormatOpts {
@@ -141,6 +164,8 @@ impl Default for RecordBatchFormatOpts {
             width: None,
             include_metadata: true,
             include_column_metadata: true,
+            trim_metadata_keys: true,
+            trim_metadata_values: true,
         }
     }
 }
@@ -180,6 +205,8 @@ pub fn format_record_batch_with_width(
             width,
             include_metadata: true,
             include_column_metadata: true,
+            trim_metadata_keys: true,
+            trim_metadata_values: true,
         },
     )
 }
@@ -195,6 +222,8 @@ fn format_dataframe_with_metadata(
         width,
         include_metadata,
         include_column_metadata: _,
+        trim_metadata_keys: trim_keys,
+        trim_metadata_values: trim_values,
     } = opts;
 
     let (num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
@@ -216,7 +245,9 @@ fn format_dataframe_with_metadata(
                 "METADATA:\n{}",
                 DisplayMetadata {
                     prefix: "* ",
-                    metadata: metadata.clone()
+                    metadata: metadata.clone(),
+                    trim_keys,
+                    trim_values,
                 }
             )));
             row
@@ -243,6 +274,8 @@ fn format_dataframe_without_metadata(
         width,
         include_metadata: _,
         include_column_metadata,
+        trim_metadata_keys: trim_keys,
+        trim_metadata_values: trim_values,
     } = opts;
 
     let mut table = Table::new();
@@ -319,7 +352,9 @@ fn format_dataframe_without_metadata(
                         format_data_type(field.data_type()),
                         DisplayMetadata {
                             prefix: "",
-                            metadata: field.metadata().clone().into_iter().collect()
+                            metadata: field.metadata().clone().into_iter().collect(),
+                            trim_keys,
+                            trim_values,
                         },
                     ))
                 }
