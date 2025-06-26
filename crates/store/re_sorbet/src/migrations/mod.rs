@@ -7,7 +7,7 @@ use semver::Version;
 
 mod make_list_arrays;
 
-// We introduce artifical names here for consistency. `v0_0_1` corresponds to
+// We introduce artificial versions here for consistency. `v0_0_1` corresponds to
 // Rerun versions pre-`v0.23` and `v0_0_2` corresponds to Rerun version
 // `v0.23`. Starting with Rerun `v0.24`, we will track the Sorbet version
 // separately, starting at `v0.1.0`.
