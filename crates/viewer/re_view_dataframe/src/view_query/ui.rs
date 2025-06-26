@@ -236,11 +236,13 @@ impl Query {
         // Filter component
         //
 
-        let all_components = ctx
+        let mut all_components = ctx
             .recording_engine()
             .store()
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
+
+        all_components.retain(|descr| !descr.is_indicator_component());
 
         // The list of suggested components is built as follows:
         // - consider all component descriptors that have an archetype
@@ -258,12 +260,12 @@ impl Query {
                     })
                 })
                 .flat_map(|(archetype, archetype_reflection)| {
-                    archetype_reflection
-                        .required_fields()
-                        .map(|field| field.component_descriptor(*archetype))
+                    archetype_reflection.required_fields().filter_map(|field| {
+                        let descr = field.component_descriptor(*archetype);
+                        (!descr.is_indicator_component()).then_some(descr)
+                    })
                 })
-                .filter(|c| all_components.contains(c))
-                .map(|descr| descr.component)
+                .filter_map(|c| all_components.contains(&c).then_some(c.component))
                 .collect::<ComponentIdentifierSet>()
         };
 
@@ -321,7 +323,9 @@ impl Query {
         let filter_is_not_null =
             components::FilterIsNotNull::new(active, &filter_entity, filter_component.to_string());
 
-        if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
+        if original_filter_is_not_null.is_some()
+            && original_filter_is_not_null.as_ref() != Some(&filter_is_not_null)
+        {
             self.save_filter_is_not_null(ctx, &filter_is_not_null);
         }
 
