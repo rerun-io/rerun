@@ -35,10 +35,14 @@ pub struct SorbetSchema {
 /// ## Metadata keys for the record batch metadata
 impl SorbetSchema {
     /// The key used to identify the version of the Rerun schema.
-    const METADATA_KEY_VERSION: &'static str = "rerun:version";
+    const METADATA_KEY_VERSION: &'static str = "sorbet:version";
 
-    /// The version of the Rerun schema.
-    const METADATA_VERSION: &'static str = "1";
+    /// The version of the Sorbet schema.
+    ///
+    /// This is bumped everytime we require a migration, but notable it is
+    /// decoupled from the Rerun version to avoid confusion as there will not
+    /// be a new Sorbet version for each Rerun version.
+    const METADATA_VERSION: &'static str = "0.1.0";
 }
 
 impl SorbetSchema {

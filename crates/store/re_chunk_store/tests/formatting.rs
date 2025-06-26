@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use insta::Settings;
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
 use re_log_types::{
@@ -44,7 +45,15 @@ fn format_chunk_store() -> anyhow::Result<()> {
             .build()?,
     ))?;
 
-    insta::assert_snapshot!("format_chunk_store", format!("{:240}", store));
+    let mut settings = Settings::clone_current();
+    // Replace the version number by [`**REDACTED**`] and pad the new string so that everything formats nicely.
+    settings.add_filter(
+        r"\* version: \d+\.\d+\.\d+(\s*)│",
+        "* version: [**REDACTED**]<>│".replace("<>", &" ".repeat(149)),
+    );
+    settings.bind(|| {
+        insta::assert_snapshot!("format_chunk_store", format!("{:240}", store));
+    });
 
     Ok(())
 }

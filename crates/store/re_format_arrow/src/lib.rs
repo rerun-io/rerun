@@ -111,7 +111,9 @@ impl std::fmt::Display for DisplayMetadata {
 }
 
 fn trim_key(name: &str) -> &str {
-    name.trim().trim_start_matches("rerun:")
+    name.trim()
+        .trim_start_matches("rerun:")
+        .trim_start_matches("sorbet:")
 }
 
 fn trim_name(name: &str) -> &str {
