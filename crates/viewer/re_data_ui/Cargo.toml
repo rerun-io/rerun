@@ -35,6 +35,7 @@ re_types = { workspace = true, features = [
 ] }
 re_types_core.workspace = true
 re_ui = { workspace = true, features = ["arrow"] }
+re_uri.workspace = true
 re_video = { workspace = true, features = ["ffmpeg"] }
 re_viewer_context.workspace = true
 
