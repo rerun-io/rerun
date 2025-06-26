@@ -5,7 +5,7 @@ pub struct Timescale(u64);
 impl Timescale {
     pub const NANOSECOND: Self = Self(1_000_000_000);
 
-    pub fn new(v: u64) -> Self {
+    pub const fn new(v: u64) -> Self {
         Self(v)
     }
 }
@@ -31,22 +31,22 @@ impl Time {
     }
 
     #[inline]
-    pub fn from_secs(secs_since_start: f64, timescale: Timescale) -> Self {
-        Self((secs_since_start * timescale.0 as f64).round() as i64)
+    pub const fn from_secs(secs_since_start: f64, timescale: Timescale) -> Self {
+        Self((secs_since_start * timescale.0 as f64 + 0.5) as i64)
     }
 
     #[inline]
-    pub fn from_millis(millis_since_start: f64, timescale: Timescale) -> Self {
+    pub const fn from_millis(millis_since_start: f64, timescale: Timescale) -> Self {
         Self::from_secs(millis_since_start / 1e3, timescale)
     }
 
     #[inline]
-    pub fn from_micros(micros_since_start: f64, timescale: Timescale) -> Self {
+    pub const fn from_micros(micros_since_start: f64, timescale: Timescale) -> Self {
         Self::from_secs(micros_since_start / 1e6, timescale)
     }
 
     #[inline]
-    pub fn from_nanos(nanos_since_start: i64, timescale: Timescale) -> Self {
+    pub const fn from_nanos(nanos_since_start: i64, timescale: Timescale) -> Self {
         Self::from_secs(nanos_since_start as f64 / 1e9, timescale)
     }
 

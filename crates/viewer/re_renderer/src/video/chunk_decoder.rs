@@ -18,6 +18,7 @@ use crate::{
 
 #[derive(Default)]
 struct DecoderOutput {
+    /// Frames sorted by PTS.
     frames: Vec<Frame>,
 
     /// Set on error; reset on success.
@@ -25,7 +26,8 @@ struct DecoderOutput {
 }
 
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
-// TODO(andreas): Meld this into `super::player::VideoPlayer`.
+///
+/// Expected to be reset upon backwards seeking.
 pub struct VideoSampleDecoder {
     decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
@@ -51,6 +53,15 @@ impl VideoSampleDecoder {
                         frame.info.presentation_timestamp
                     );
                     let mut output = decoder_output.lock();
+
+                    if let Some(last_frame) = output.frames.last() {
+                        debug_assert!(
+                            last_frame.info.presentation_timestamp
+                                < frame.info.presentation_timestamp,
+                            "Expect new incoming frames to be in increasing PTS order. We expect the sample decoder to be reset upon backwards seeking."
+                        );
+                    }
+
                     output.frames.push(frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
                 }
@@ -104,71 +115,27 @@ impl VideoSampleDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drops all earlier frames to save memory.
-    ///
-    /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
-    /// which it is just after startup or after a call to [`Self::reset`].
-    pub fn update_video_texture(
+    /// Returns the latest decoded frame at the given PTS and drops all earlier frames.
+    pub fn latest_decoded_frame_at_and_drop_earlier_frames(
         &self,
-        render_ctx: &RenderContext,
-        video_texture: &mut VideoTexture,
-        presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
+        pts: Time,
+    ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
-        let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = latest_at_idx(
-            frames,
+        if let Some(idx) = latest_at_idx(
+            &decoder_output.frames,
             |frame| frame.info.presentation_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyBuffer);
-        };
+            &pts,
+        ) {
+            decoder_output.frames.drain(0..idx);
 
-        // drain up-to (but not including) the frame idx, clearing out any frames
-        // before it. this lets the video decoder output more frames.
-        drop(frames.drain(0..frame_idx));
-
-        // after draining all old frames, the next frame will be at index 0
-        let frame_idx = 0;
-        let frame = &frames[frame_idx];
-
-        let frame_presentation_timestamp = frame.info.presentation_timestamp;
-
-        let gpu_texture = video_texture.texture.get_or_insert_with(|| {
-            alloc_video_frame_texture(
-                &render_ctx.device,
-                &render_ctx.gpu_resources.textures,
-                frame.content.width(),
-                frame.content.height(),
-            )
-        });
-
-        let is_up_to_date = video_texture
-            .frame_info
-            .as_ref()
-            // We assume that every frame is uniquely identified by its presentation timestamp.
-            .is_some_and(|info| info.presentation_timestamp == frame_presentation_timestamp);
-
-        if !is_up_to_date {
-            #[cfg(target_arch = "wasm32")]
-            {
-                video_texture.source_pixel_format =
-                    copy_web_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                video_texture.source_pixel_format =
-                    copy_native_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
-            }
-
-            video_texture.frame_info = Some(frame.info.clone());
+            Some(parking_lot::MutexGuard::map(
+                decoder_output,
+                |decoder_output| &mut decoder_output.frames[0],
+            ))
+        } else {
+            None
         }
-
-        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
@@ -186,6 +153,43 @@ impl VideoSampleDecoder {
     pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
+}
+
+pub fn update_video_texture_with_frame(
+    render_ctx: &RenderContext,
+    target_video_texture: &mut VideoTexture,
+    source_frame: &Frame,
+) -> Result<(), VideoPlayerError> {
+    let Frame {
+        content: source_content,
+        info: source_info,
+    } = source_frame;
+
+    // Ensure that we have a texture to copy to.
+    let gpu_texture = target_video_texture.texture.get_or_insert_with(|| {
+        alloc_video_frame_texture(
+            &render_ctx.device,
+            &render_ctx.gpu_resources.textures,
+            source_content.width(),
+            source_content.height(),
+        )
+    });
+
+    let format = {
+        #[cfg(target_arch = "wasm32")]
+        {
+            copy_web_video_frame_to_texture(render_ctx, source_content, gpu_texture)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            copy_native_video_frame_to_texture(render_ctx, source_content, gpu_texture)
+        }
+    }?;
+
+    target_video_texture.source_pixel_format = format;
+    target_video_texture.frame_info = Some(source_info.clone());
+
+    Ok(())
 }
 
 fn alloc_video_frame_texture(
@@ -220,6 +224,21 @@ fn alloc_video_frame_texture(
     };
 
     texture
+}
+
+pub fn copy_frame_to_texture(
+    ctx: &RenderContext,
+    frame: &FrameContent,
+    target_texture: &GpuTexture,
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        copy_web_video_frame_to_texture(ctx, frame, target_texture)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        copy_native_video_frame_to_texture(ctx, frame, target_texture)
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
