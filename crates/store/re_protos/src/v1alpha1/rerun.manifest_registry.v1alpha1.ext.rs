@@ -8,7 +8,7 @@ use arrow::{
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart};
@@ -100,13 +100,11 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
                     index: latest_at
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
-                        .ok_or_else(|| {
-                            tonic::Status::invalid_argument("index is required for latest_at query")
-                        })?,
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name)),
                     at: latest_at
                         .at
-                        .ok_or_else(|| tonic::Status::invalid_argument("at is required"))?,
+                        .map(|at| TimeInt::new_temporal(at))
+                        .unwrap_or_else(|| TimeInt::STATIC),
                     fuzzy_descriptors: latest_at
                         // TODO(cmc): I shall bring that back into a more structured form later.
                         // .into_iter()
@@ -171,16 +169,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
 impl From<Query> for crate::manifest_registry::v1alpha1::Query {
     fn from(value: Query) -> Self {
         crate::manifest_registry::v1alpha1::Query {
-            latest_at: value.latest_at.map(|latest_at| {
-                crate::manifest_registry::v1alpha1::QueryLatestAt {
-                    index: Some({
-                        let timeline: TimelineName = latest_at.index.into();
-                        timeline.into()
-                    }),
-                    at: Some(latest_at.at),
-                    fuzzy_descriptors: latest_at.fuzzy_descriptors,
-                }
-            }),
+            latest_at: value.latest_at.map(Into::into),
             range: value
                 .range
                 .map(|range| crate::manifest_registry::v1alpha1::QueryRange {
@@ -266,11 +255,46 @@ pub struct FuzzyComponentDescriptor {
 
 #[derive(Debug, Clone)]
 pub struct QueryLatestAt {
-    pub index: String,
-    pub at: i64,
+    /// Index name (timeline) to query.
+    ///
+    /// Use `None` for static only data.
+    pub index: Option<String>,
+
+    /// The timestamp to query at.
+    ///
+    /// Use `TimeInt::STATIC` to query for static only data.
+    pub at: TimeInt,
+
     pub fuzzy_descriptors: Vec<String>,
     // TODO(cmc): I shall bring that back into a more structured form later.
     // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+}
+
+impl QueryLatestAt {
+    pub fn new_static() -> Self {
+        Self {
+            index: None,
+            at: TimeInt::STATIC,
+            fuzzy_descriptors: Vec::new(),
+        }
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.index.is_none()
+    }
+}
+
+impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
+    fn from(value: QueryLatestAt) -> Self {
+        crate::manifest_registry::v1alpha1::QueryLatestAt {
+            index: value.index.map(|index| {
+                let timeline: TimelineName = index.into();
+                timeline.into()
+            }),
+            at: Some(value.at.as_i64()),
+            fuzzy_descriptors: value.fuzzy_descriptors,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
