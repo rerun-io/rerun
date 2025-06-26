@@ -155,6 +155,11 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         .metadata()
         .iter()
         .map(|(key, value)| {
+            // TODO(grtlr): Ideally it should be enforced for all migrations to set the version.
+            if key.as_str() == "rerun.version" {
+                return ("sorbet:version".to_owned(), "0.1.0".to_owned());
+            }
+
             if key.starts_with("rerun.") {
                 re_log::debug_once!("Migrating batch metadata key '{key}'");
             }
