@@ -113,18 +113,13 @@ mod tests {
             crate::apply_style_and_install_loaders(ui.ctx());
 
             ui.info_label("This is an info alert.");
-
             ui.success_label("This is a success alert.");
-
             ui.warning_label("This is a warning alert.");
-
             ui.error_label("This is an error alert.");
         });
 
         harness.run();
-
         harness.fit_contents();
-
         harness.snapshot("alert");
     }
 }
