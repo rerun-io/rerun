@@ -1,14 +1,27 @@
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::PyAnyMethods as _;
 use pyo3::{
-    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods,
+    Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError, pyclass,
+    pymethods,
 };
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
+use crate::catalog::task::PyTasks;
+use crate::catalog::{
+    PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
+    dataframe_query::PyDataframeQueryView, to_py_err,
+};
+use crate::dataframe::{
+    AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
+};
+use crate::utils::wait_for_future;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::get_chunks_response_to_chunk_and_partition_id;
@@ -23,16 +36,7 @@ use re_protos::manifest_registry::v1alpha1::{
     IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
-
-use crate::catalog::task::PyTasks;
-use crate::catalog::{
-    PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, to_py_err,
-};
-use crate::dataframe::{
-    AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
-};
-use crate::utils::wait_for_future;
+use re_tuid::Tuid;
 
 /// A dataset entry in the catalog.
 #[pyclass(name = "DatasetEntry", extends=PyEntry)]
@@ -93,6 +97,44 @@ impl PyDatasetEntry {
         };
 
         Some(Py::new(py, (dataset, entry))).transpose()
+    }
+
+    /// Set or clear the associated blueprint dataset for this dataset.
+    #[pyo3(signature = (blueprint_dataset_id))]
+    fn set_blueprint_dataset_id(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        // could be str or none or PyEntryId
+        blueprint_dataset_id: Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(py).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let blueprint_dataset_id = if blueprint_dataset_id.is_none() {
+            None
+        } else if let Ok(id) = blueprint_dataset_id.extract::<String>() {
+            Some(
+                Tuid::from_str(&id)
+                    .map_err(|err| PyValueError::new_err(format!("Invalid id: {err}")))?
+                    .into(),
+            )
+        } else if let Ok(entry_id) = blueprint_dataset_id.extract::<PyEntryId>() {
+            Some(entry_id.id)
+        } else {
+            return Err(PyRuntimeError::new_err(
+                "Expected a string, None, or PyEntryId for blueprint dataset ID",
+            ));
+        };
+
+        let mut dataset_details = self_.dataset_details.clone();
+        dataset_details.blueprint_dataset = blueprint_dataset_id;
+
+        let result = connection.update_dataset(py, dataset_id, dataset_details)?;
+
+        self_.dataset_details = result.dataset_details;
+
+        Ok(())
     }
 
     /// The default blueprint partition ID for this dataset, if any.

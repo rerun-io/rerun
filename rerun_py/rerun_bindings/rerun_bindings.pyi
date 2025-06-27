@@ -1125,6 +1125,9 @@ class DatasetEntry(Entry):
     def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
 
+    def set_blueprint_dataset_id(self, blueprint_dataset_id: EntryId | str | None) -> None:
+        """Set or clear the associated blueprint dataset ID for this dataset."""
+
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
 
