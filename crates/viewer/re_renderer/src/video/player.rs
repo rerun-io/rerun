@@ -26,7 +26,7 @@ const DECODING_GRACE_DELAY_BEFORE_REPORTING: Duration = Duration::from_millis(40
 /// Video time duration we allow to lag behind before no longer updating the output texture.
 ///
 /// Note that since this is video time based, not wallclock time.
-/// We can't do wallclock time here since this would because we don't know the playback speed.
+/// We can't do wallclock time here since this we don't know the playback speed.
 /// Also, hitting the tolerance limit for faster playback is desirable anyways.
 const TOLLERATED_OUTPUT_DELAY: Duration = Duration::from_millis(100);
 
