@@ -175,16 +175,7 @@ pub fn update_video_texture_with_frame(
         )
     });
 
-    let format = {
-        #[cfg(target_arch = "wasm32")]
-        {
-            copy_web_video_frame_to_texture(render_ctx, source_content, gpu_texture)
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            copy_native_video_frame_to_texture(render_ctx, source_content, gpu_texture)
-        }
-    }?;
+    let format = copy_frame_to_texture(render_ctx, source_content, gpu_texture)?;
 
     target_video_texture.source_pixel_format = format;
     target_video_texture.frame_info = Some(source_info.clone());
