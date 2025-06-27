@@ -155,14 +155,14 @@ class TestDataframe:
         col += 1
 
         # Default property columns
-        assert schema.component_columns()[col].entity_path == "/__properties/recording"
+        assert schema.component_columns()[col].entity_path == "/__properties"
         assert schema.component_columns()[col].archetype is None
         assert schema.component_columns()[col].component == "rerun.components.RecordingInfoIndicator"
         assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 
-        assert schema.component_columns()[col].entity_path == "/__properties/recording"
+        assert schema.component_columns()[col].entity_path == "/__properties"
         assert schema.component_columns()[col].archetype == "rerun.archetypes.RecordingInfo"
         assert schema.component_columns()[col].component == "RecordingInfo:start_time"
         assert schema.component_columns()[col].component_type == "rerun.components.Timestamp"

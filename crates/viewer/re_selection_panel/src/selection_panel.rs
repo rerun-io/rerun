@@ -503,20 +503,18 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    let filtered = db
+    let property_entities = db
         .entity_paths()
         .into_iter()
-        .filter(|entity_path| {
-            // Only check for properties, but skip the recording properties,
-            // because we display them already elsewhere in the UI.
-            entity_path.is_descendant_of(&EntityPath::properties())
-        })
+        .filter(|entity_path| entity_path.starts_with(&EntityPath::properties()))
         .collect::<Vec<_>>();
 
-    if filtered.is_empty() {
+    // TODO: fix the UI for built-in properties (RecordingInfo) vs custom ones.
+
+    if property_entities.is_empty() {
         ui.label("No properties found for this recording.");
     } else {
-        for entity_path in filtered {
+        for entity_path in property_entities {
             // We strip the property part
             let name = entity_path
                 .to_string()

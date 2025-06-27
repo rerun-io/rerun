@@ -271,10 +271,8 @@ impl ComponentColumnDescriptor {
                 self.component_descriptor().display_name().to_owned()
             }
             BatchType::Dataframe => {
-                let prefix = if let Some(suffix) = self
-                    .entity_path
-                    .strip_prefix(&EntityPath::recording_properties()) // TODO(#10318): remove
-                    .or_else(|| self.entity_path.strip_prefix(&EntityPath::properties()))
+                let prefix = if let Some(suffix) =
+                    self.entity_path.strip_prefix(&EntityPath::properties())
                 {
                     if suffix.is_root() {
                         // Property at root-level (maybe part of `RecordingInfo`, or maybe a user-defined property)

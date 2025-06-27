@@ -935,7 +935,7 @@ impl RecordingStreamInner {
 
             re_log::debug!(recording_info = ?recording_info, "Adding RecordingInfo to batcher");
 
-            let chunk = Chunk::builder(EntityPath::recording_properties())
+            let chunk = Chunk::builder(EntityPath::properties())
                 .with_archetype(RowId::new(), TimePoint::default(), recording_info)
                 .build()?;
 
@@ -1231,7 +1231,7 @@ impl RecordingStream {
     #[inline]
     pub fn send_recording_name(&self, name: impl Into<String>) -> RecordingStreamResult<()> {
         let update = RecordingInfo::update_fields().with_name(name.into());
-        self.log_static(EntityPath::recording_properties(), &update)
+        self.log_static(EntityPath::properties(), &update)
     }
 
     /// Sends the start time of the recording.
@@ -1241,7 +1241,7 @@ impl RecordingStream {
         timestamp: impl Into<Timestamp>,
     ) -> RecordingStreamResult<()> {
         let update = RecordingInfo::update_fields().with_start_time(timestamp.into());
-        self.log_static(EntityPath::recording_properties(), &update)
+        self.log_static(EntityPath::properties(), &update)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even

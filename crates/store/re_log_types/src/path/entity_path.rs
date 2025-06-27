@@ -112,19 +112,11 @@ impl EntityPath {
         Self::from(vec![])
     }
 
-    /// The reserved namespace for properties.
+    /// The reserved namespace for recording properties,
+    /// both the built-in ones (`RecordingInfo`) and user-defined ones.
     #[inline]
     pub fn properties() -> Self {
         Self::from(vec![EntityPathPart::properties()])
-    }
-
-    /// The reserved namespace for the `RecordingInfo` that are specific to the Rerun viewer.
-    #[inline]
-    pub fn recording_properties() -> Self {
-        Self::from(vec![
-            EntityPathPart::properties(),
-            EntityPathPart::recording(),
-        ])
     }
 
     /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
@@ -635,13 +627,6 @@ mod tests {
     fn test_properties() {
         let path = EntityPath::properties();
         assert_eq!(path, EntityPath::from("/__properties"));
-        assert!(path.is_reserved());
-    }
-
-    #[test]
-    fn test_recording_properties() {
-        let path = EntityPath::recording_properties();
-        assert_eq!(path, EntityPath::from("/__properties/recording"),);
         assert!(path.is_reserved());
     }
 
