@@ -12,6 +12,7 @@ use std::rc::Rc;
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 use re_log_types::{TimeReal, Timeline, TimelineName};
+use re_smart_channel::SmartChannelSource;
 use re_viewer_context::Item;
 use re_viewer_context::ItemContext;
 use re_viewer_context::ViewId;
@@ -28,6 +29,8 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: StoreId,
 
+    pub partition_id: Option<String>,
+
     #[serde(flatten)]
     pub kind: ViewerEventKind,
 }
@@ -35,9 +38,22 @@ pub struct ViewerEvent {
 impl ViewerEvent {
     #[inline]
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Option<Self> {
+        let partition_id = db.data_source.as_ref().and_then(|ds| {
+            if let SmartChannelSource::RedapGrpcStream {
+                uri: re_uri::DatasetDataUri { partition_id, .. },
+                ..
+            } = ds
+            {
+                Some(partition_id.clone())
+            } else {
+                None
+            }
+        });
+
         Some(Self {
             application_id: db.app_id()?.clone(),
             recording_id: db.store_id(),
+            partition_id,
             kind,
         })
     }
