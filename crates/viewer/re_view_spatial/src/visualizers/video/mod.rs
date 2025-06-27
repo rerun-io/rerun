@@ -114,7 +114,7 @@ fn show_video_error(
     entity_path: &EntityPath,
 ) {
     // Register the full video bounds regardless for more stable default view extents for when the error
-    // goes in and out of existance.
+    // goes in and out of existence.
     // The size of the error icon depends on the bounds in turn, making this extra important!
     register_video_bounds_with_bounding_box(
         entity_path.hash(),
