@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import functools
+import os
+
 import random
 import sys
 from typing import Any, Callable, TypeVar, cast
@@ -15,6 +17,14 @@ __version_info__ = (0, 24, 0, "alpha.1")
 if sys.version_info < (3, 9):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.9 or later.")
 
+# For development builds
+if "RERUN_CLI_PATH" not in os.environ:
+    import pathlib
+    import rerun_bindings as bindings
+
+    if bindings.is_dev_build():
+        target_path = pathlib.Path(__file__).parent.parent.parent.joinpath(f"target/debug/rerun").resolve()
+        os.environ["RERUN_CLI_PATH"] = str(target_path)
 
 # =====================================
 # API RE-EXPORTS
@@ -22,6 +32,7 @@ if sys.version_info < (3, 9):  # noqa: UP036
 # Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
 #
 import rerun_bindings as bindings
+
 
 from . import (
     blueprint as blueprint,
