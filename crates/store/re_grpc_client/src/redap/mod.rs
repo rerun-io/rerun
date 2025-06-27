@@ -344,7 +344,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         };
 
         stream_partition_from_server(
-            &mut client,
+            &client,
             blueprint_store_info,
             &tx,
             blueprint_dataset,
@@ -389,8 +389,12 @@ pub async fn stream_blueprint_and_partition_from_server(
         fragment: _,
     } = uri;
 
+    // TODO(cmc): Ideally we would like to immediately spawn the recording request in the background,
+    // but only consume the stream after all blueprint chunks have been ingested. In practice we might
+    // be in a web context here so spawning is not an option. We need to implement some manual
+    // polling etc.
     stream_partition_from_server(
-        &mut client,
+        &client,
         store_info,
         &tx,
         dataset_id.into(),
@@ -487,7 +491,8 @@ async fn stream_partition_from_server(
 
     // TODO(cmc): Ideally we would like to immediately spawn the temporal request in the background,
     // but only consume the stream after all static chunks have been ingested. In practice we might
-    // be in a web context here so spawning is not an option.
+    // be in a web context here so spawning is not an option. We need to implement some manual
+    // polling etc.
     stream_chunks(true).await?;
 
     Ok(())
