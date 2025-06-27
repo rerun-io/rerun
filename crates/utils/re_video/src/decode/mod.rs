@@ -136,6 +136,7 @@ pub enum DecodeError {
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
+/// Callback for decoding a single frame, called by decoders upon decoding a frame or hitting an error.
 #[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
 pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
