@@ -3,6 +3,7 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
+use datafusion::catalog::TableProvider;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 
@@ -102,9 +103,15 @@ async fn register_all_table_entries(
 
     let mut registered_tables = vec![];
 
-    let mut futures: Vec<Pin<Box<dyn Send + Future<Output = (Result<_, _>, EntryDetails)>>>> =
-        vec![];
-    for entry in entries.into_iter() {
+    type ResultFuture = dyn Send
+        + Future<
+            Output = (
+                Result<Arc<dyn TableProvider>, DataFusionError>,
+                EntryDetails,
+            ),
+        >;
+    let mut futures: Vec<Pin<Box<ResultFuture>>> = vec![];
+    for entry in entries {
         let client = client.clone();
         #[expect(clippy::match_same_arms)]
         match entry.kind {
@@ -115,7 +122,7 @@ async fn register_all_table_entries(
 
             EntryKind::Dataset => futures.push(Box::pin(async move {
                 (
-                    PartitionTableProvider::new(client, entry.id.clone())
+                    PartitionTableProvider::new(client, entry.id)
                         .into_provider()
                         .await,
                     entry,
@@ -123,7 +130,7 @@ async fn register_all_table_entries(
             })),
             EntryKind::Table => futures.push(Box::pin(async move {
                 (
-                    TableEntryTableProvider::new(client, entry.id.clone())
+                    TableEntryTableProvider::new(client, entry.id)
                         .into_provider()
                         .await,
                     entry,
