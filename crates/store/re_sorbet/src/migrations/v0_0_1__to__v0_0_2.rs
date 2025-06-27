@@ -19,15 +19,6 @@ pub struct Migration;
 impl super::Migration for Migration {
     const TARGET_VERSION: semver::Version = semver::Version::new(0, 0, 2);
 
-    fn version(batch: &ArrowRecordBatch) -> semver::Version {
-        if matches_schema(batch) {
-            // By returning `v0.0.1`, we ensure that the migration always runs.
-            semver::Version::new(0, 0, 1)
-        } else {
-            Self::TARGET_VERSION
-        }
-    }
-
     fn migrate(mut batch: ArrowRecordBatch) -> ArrowRecordBatch {
         batch = reorder_columns(&batch);
         batch = migrate_tuids(&batch);
@@ -57,14 +48,6 @@ enum ColumnKind {
     /// Data (also the default when unknown)
     #[default]
     Component,
-}
-
-fn matches_schema(batch: &ArrowRecordBatch) -> bool {
-    batch
-        .schema()
-        .metadata()
-        .keys()
-        .any(|key| key.starts_with("rerun."))
 }
 
 impl std::fmt::Display for ColumnKind {
