@@ -67,6 +67,8 @@ impl PyEntryKind {
     #[classattr]
     pub const DATASET: Self = Self::Dataset;
     #[classattr]
+    pub const BLUEPRINT_DATASET: Self = Self::BlueprintDataset;
+    #[classattr]
     pub const DATASET_VIEW: Self = Self::DatasetView;
     #[classattr]
     pub const TABLE: Self = Self::Table;

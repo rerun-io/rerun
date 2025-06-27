@@ -86,11 +86,16 @@ impl ConnectionHandle {
         })
     }
 
-    pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(
+        &self,
+        py: Python<'_>,
+        name: String,
+        blueprint_dataset: bool,
+    ) -> PyResult<DatasetEntry> {
         wait_for_future(py, async {
             self.client()
                 .await?
-                .create_dataset_entry(name)
+                .create_dataset_entry(name, blueprint_dataset)
                 .await
                 .map_err(to_py_err)
         })

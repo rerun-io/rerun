@@ -62,6 +62,9 @@ pub struct CreateDatasetEntryRequest {
     /// TODO(jleibs): Define valid name constraints
     #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// If true, the created dataset will be of type `ENTRY_KIND_BLUEPRINT_DATASET`
+    #[prost(bool, tag = "2")]
+    pub blueprint_dataset: bool,
 }
 impl ::prost::Name for CreateDatasetEntryRequest {
     const NAME: &'static str = "CreateDatasetEntryRequest";

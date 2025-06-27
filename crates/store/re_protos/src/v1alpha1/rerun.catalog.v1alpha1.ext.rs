@@ -187,16 +187,34 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
 
 // --- CreateDatasetEntryRequest ---
 
-impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryRequest> for String {
+#[derive(Debug, Clone)]
+pub struct CreateDatasetEntryRequest {
+    pub name: String,
+    pub blueprint_dataset: bool,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryRequest> for CreateDatasetEntryRequest {
     type Error = TypeConversionError;
 
     fn try_from(
         value: crate::catalog::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
-        Ok(value.name.ok_or(missing_field!(
-            crate::catalog::v1alpha1::CreateDatasetEntryRequest,
-            "name"
-        ))?)
+        Ok(Self {
+            name: value.name.ok_or(missing_field!(
+                crate::catalog::v1alpha1::CreateDatasetEntryRequest,
+                "name"
+            ))?,
+            blueprint_dataset: value.blueprint_dataset,
+        })
+    }
+}
+
+impl From<CreateDatasetEntryRequest> for crate::catalog::v1alpha1::CreateDatasetEntryRequest {
+    fn from(value: CreateDatasetEntryRequest) -> Self {
+        Self {
+            name: Some(value.name),
+            blueprint_dataset: value.blueprint_dataset,
+        }
     }
 }
 

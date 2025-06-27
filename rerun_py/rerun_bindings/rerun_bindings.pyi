@@ -1070,6 +1070,7 @@ class EntryKind:
     """The kinds of entries that can be stored in the catalog."""
 
     DATASET: EntryKind
+    BLUEPRINT_DATASET: EntryKind
     DATASET_VIEW: EntryKind
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
@@ -1471,7 +1472,7 @@ class CatalogClientInternal:
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntry: ...
+    def create_dataset(self, name: str, blueprint_dataset: bool = False) -> DatasetEntry: ...
     def ctx(self) -> Any: ...
 
     # ---

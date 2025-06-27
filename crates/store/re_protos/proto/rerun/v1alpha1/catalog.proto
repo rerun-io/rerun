@@ -46,6 +46,9 @@ message CreateDatasetEntryRequest {
   // The name is a short human-readable string
   // TODO(jleibs): Define valid name constraints
   optional string name = 1;
+
+  // If true, the created dataset will be of type `ENTRY_KIND_BLUEPRINT_DATASET`
+  bool blueprint_dataset = 2;
 }
 
 message CreateDatasetEntryResponse {

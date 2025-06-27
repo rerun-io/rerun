@@ -113,9 +113,14 @@ class CatalogClient:
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntry:
-        """Creates a new dataset with the given name."""
-        return self._raw_client.create_dataset(name)
+    def create_dataset(self, name: str, blueprint_dataset: bool = False) -> DatasetEntry:
+        """
+        Creates a new dataset with the given name.
+
+        If `blueprint_dataset` is True, the dataset will be of `EntryKind.BLUEPRINT_DATASET` kind instead of the regular
+        `EntryKind.DATASET` kind.
+        """
+        return self._raw_client.create_dataset(name, blueprint_dataset)
 
     @property
     def ctx(self) -> datafusion.SessionContext:

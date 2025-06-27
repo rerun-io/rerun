@@ -6,9 +6,9 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
+    catalog::v1alpha1::ext::CreateDatasetEntryRequest,
     catalog::v1alpha1::{
-        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
-        ReadDatasetEntryRequest,
+        DeleteEntryRequest, EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
         ext::{
             CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
             ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
@@ -94,10 +94,17 @@ where
     pub async fn create_dataset_entry(
         &mut self,
         name: String,
+        blueprint_dataset: bool,
     ) -> Result<DatasetEntry, StreamError> {
         let response: CreateDatasetEntryResponse = self
             .inner()
-            .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
+            .create_dataset_entry(tonic::Request::new(
+                CreateDatasetEntryRequest {
+                    name,
+                    blueprint_dataset,
+                }
+                .into(),
+            ))
             .await?
             .into_inner()
             .try_into()?;

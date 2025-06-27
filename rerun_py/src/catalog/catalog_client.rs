@@ -252,10 +252,16 @@ impl PyCatalogClientInternal {
     // ---
 
     /// Create a new dataset with the provided name.
-    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDatasetEntry>> {
+    #[pyo3(text_signature = "(self, name, blueprint_dataset=False)")]
+    fn create_dataset(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: &str,
+        blueprint_dataset: bool,
+    ) -> PyResult<Py<PyDatasetEntry>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
-        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
+        let dataset_entry = connection.create_dataset(py, name.to_owned(), blueprint_dataset)?;
 
         let entry_id = Py::new(py, PyEntryId::from(dataset_entry.details.id))?;
 
