@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 import os
-
 import random
 import sys
 from typing import Any, Callable, TypeVar, cast
@@ -20,10 +19,11 @@ if sys.version_info < (3, 9):  # noqa: UP036
 # For development builds
 if "RERUN_CLI_PATH" not in os.environ:
     import pathlib
+
     import rerun_bindings as bindings
 
     if bindings.is_dev_build():
-        target_path = pathlib.Path(__file__).parent.parent.parent.joinpath(f"target/debug/rerun").resolve()
+        target_path = pathlib.Path(__file__).parent.parent.parent.joinpath("target/debug/rerun").resolve()
         os.environ["RERUN_CLI_PATH"] = str(target_path)
 
 # =====================================
@@ -32,7 +32,6 @@ if "RERUN_CLI_PATH" not in os.environ:
 # Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
 #
 import rerun_bindings as bindings
-
 
 from . import (
     blueprint as blueprint,
