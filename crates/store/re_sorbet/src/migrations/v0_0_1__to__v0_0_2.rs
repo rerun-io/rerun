@@ -17,6 +17,7 @@ use crate::MetadataExt as _;
 pub struct Migration;
 
 impl super::Migration for Migration {
+    const SOURCE_VERSION: semver::Version = semver::Version::new(0, 0, 1);
     const TARGET_VERSION: semver::Version = semver::Version::new(0, 0, 2);
 
     fn migrate(mut batch: ArrowRecordBatch) -> ArrowRecordBatch {

@@ -2,6 +2,8 @@
 
 //! These are the migrations that are introduced for each Sorbet version.
 
+use std::cmp::Ordering;
+
 use arrow::array::RecordBatch;
 
 use crate::SorbetSchema;
@@ -19,31 +21,36 @@ mod v0_0_2__to__v0_1_0;
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
 trait Migration {
+    /// The Sorbet version that the record batch should currently have.
+    const SOURCE_VERSION: semver::Version;
+
+    /// The Sorbet version for the result of the migration.
     const TARGET_VERSION: semver::Version;
 
     /// Migrates a record batch from one Sorbet version to the next.
     fn migrate(batch: RecordBatch) -> RecordBatch;
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("could not parse 'sorbet:version: {value}': {err}")]
+    InvalidSemVer { value: String, err: semver::Error },
+    #[error("could not determine Sorbet version")]
+    MissingVersion,
+}
+
 /// The Sorbet version that corresponds to this record batch.
-fn get_or_guess_version(batch: &RecordBatch) -> semver::Version {
+fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
     if let Some(version_found) = batch
         .schema_ref()
         .metadata()
         .get(SorbetSchema::METADATA_KEY_VERSION)
     {
         // This is the happy path going forward.
-        match semver::Version::parse(version_found) {
-            Ok(version_found) => version_found,
-            Err(err) => {
-                re_log::error_once!("Could not parse 'sorbet:version: {version_found}': {err}");
-                // We return an unreasonable large version number here to make
-                // sure none of the migration code messes with the record batch.
-                // This might be important for downstream handling (such as
-                // printing).
-                semver::Version::new(u64::MAX, u64::MAX, u64::MAX)
-            }
-        }
+        semver::Version::parse(version_found).map_err(|err| Error::InvalidSemVer {
+            value: version_found.to_owned(),
+            err,
+        })
     } else {
         // This means earlier than Rerun `v0.24`.
         re_log::debug_once!("Encountered batch without 'sorbet:version' metadata.");
@@ -54,34 +61,29 @@ fn get_or_guess_version(batch: &RecordBatch) -> semver::Version {
             .keys()
             .any(|key| key.starts_with("rerun."))
         {
-            // This means Rerun `v0.23` or earlier.
-            semver::Version::new(0, 0, 1)
-        } else if batch
-            .schema()
-            .metadata()
-            .keys()
-            .any(|key| key.starts_with("rerun:"))
-        {
-            // This means from `main` between `v0.23` and `v0.24`. The
-            // migration code from `v0.0.2` to `v0.1.0` should be able handle
-            // this.
-            semver::Version::new(0, 0, 2)
+            re_log::debug_once!(
+                "Found 'rerun.' prefixed metatdata. This means Rerun `v0.23` or earlier."
+            );
+            Ok(semver::Version::new(0, 0, 1))
+        } else if batch.schema().metadata().get("rerun:version").is_some() {
+            re_log::debug_once!(
+                "Found 'rerun:' prefixed metatdata. This means 'nightly' between 'v0.23' and 'v0.24'."
+            );
+            // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
+            Ok(semver::Version::new(0, 0, 2))
         } else {
-            // This must be very old (or unexpected). Again we return a large
-            // value from the future to prevent any migrations to run.
-            // If we ever want to support even older versions, this would be the place.
-            return semver::Version::new(u64::MAX, u64::MAX, u64::MAX);
+            Err(Error::MissingVersion)
         }
     }
 }
 
 fn maybe_apply<M: Migration>(
-    source_version: &semver::Version,
+    batch_version: &semver::Version,
     mut batch: RecordBatch,
 ) -> RecordBatch {
-    if source_version < &M::TARGET_VERSION {
+    if batch_version < &M::TARGET_VERSION {
         re_log::debug_once!(
-            "Migrating record batch from Sorbet 'v{source_version}' to 'v{}'.",
+            "Migrating record batch from Sorbet 'v{batch_version}' to 'v{}'.",
             M::TARGET_VERSION
         );
         batch = M::migrate(batch);
@@ -101,11 +103,40 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
 
     re_tracing::profile_function!();
 
-    let source_version = get_or_guess_version(&batch);
-
-    // Perform migrations if necessary.
-    batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(&source_version, batch);
-    batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&source_version, batch);
+    batch = match get_or_guess_version(&batch) {
+        Ok(batch_version) => match batch_version.cmp(&SorbetSchema::METADATA_VERSION) {
+            Ordering::Equal => {
+                // Provide this code path as an early out to avoid unnecessary comparisons.
+                re_log::trace!("Batch version matches Sorbet version.");
+                batch
+            }
+            Ordering::Less => {
+                let first_supported = v0_0_1__to__v0_0_2::Migration::SOURCE_VERSION;
+                if batch_version < first_supported {
+                    re_log::warn_once!(
+                        "Sorbet version 'v{batch_version}' is to old. Only versions '>={first_supported}' are supported."
+                    );
+                    batch
+                } else {
+                    re_log::trace!("Performing migrations...");
+                    batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(&batch_version, batch);
+                    batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&batch_version, batch);
+                    batch
+                }
+            }
+            Ordering::Greater => {
+                re_log::warn!(
+                    "Found Sorbet version 'v{batch_version}' that is newer then current supported version 'v{}'. Try using a newer version of Rerun.",
+                    SorbetSchema::METADATA_VERSION
+                );
+                batch
+            }
+        },
+        Err(err) => {
+            re_log::error!("Skipping migrations due to error: {err}");
+            batch
+        }
+    };
 
     batch = make_all_data_columns_list_arrays(&batch);
 

@@ -15,6 +15,7 @@ fn trim_archetype_prefix(name: &str) -> &str {
 pub struct Migration;
 
 impl super::Migration for Migration {
+    const SOURCE_VERSION: semver::Version = semver::Version::new(0, 0, 2);
     const TARGET_VERSION: semver::Version = semver::Version::new(0, 1, 0);
 
     fn migrate(batch: ArrowRecordBatch) -> ArrowRecordBatch {
