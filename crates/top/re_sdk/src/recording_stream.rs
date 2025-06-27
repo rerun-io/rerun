@@ -835,7 +835,7 @@ impl Drop for RecordingStream {
 }
 
 struct RecordingStreamInner {
-    info: StoreInfo,
+    store_info: StoreInfo,
     properties: Option<RecordingInfo>,
     tick: AtomicI64,
 
@@ -860,7 +860,7 @@ impl fmt::Debug for RecordingStreamInner {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RecordingStreamInner")
-            .field("info", &self.info.store_id)
+            .field("store_id", &self.store_info.store_id)
             .finish()
     }
 }
@@ -889,7 +889,7 @@ impl Drop for RecordingStreamInner {
 
 impl RecordingStreamInner {
     fn new(
-        info: StoreInfo,
+        store_info: StoreInfo,
         properties: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
@@ -899,14 +899,14 @@ impl RecordingStreamInner {
 
         {
             re_log::debug!(
-                app_id = %info.application_id,
-                rec_id = %info.store_id,
-                "setting recording info",
+                app_id = %store_info.application_id,
+                rec_id = %store_info.store_id,
+                "Setting StoreInfo",
             );
             sink.send(
                 re_log_types::SetStoreInfo {
                     row_id: *RowId::new(),
-                    info: info.clone(),
+                    info: store_info.clone(),
                 }
                 .into(),
             );
@@ -919,7 +919,7 @@ impl RecordingStreamInner {
             std::thread::Builder::new()
                 .name(NAME.into())
                 .spawn({
-                    let info = info.clone();
+                    let info = store_info.clone();
                     let batcher = batcher.clone();
                     move || forwarding_thread(info, sink, cmds_rx, batcher.chunks(), on_release)
                 })
@@ -943,7 +943,7 @@ impl RecordingStreamInner {
         }
 
         Ok(Self {
-            info,
+            store_info,
             properties,
             tick: AtomicI64::new(0),
             cmds_tx,
@@ -1000,12 +1000,12 @@ impl RecordingStream {
     /// See also: [`RecordingStreamBuilder`].
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
-        info: StoreInfo,
+        store_info: StoreInfo,
         properties: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = (info.store_id.kind == StoreKind::Recording)
+        let sink = (store_info.store_id.kind == StoreKind::Recording)
             .then(forced_sink_path)
             .flatten()
             .map_or(sink, |path| {
@@ -1016,12 +1016,11 @@ impl RecordingStream {
                 ) as Box<dyn LogSink>
             });
 
-        let stream =
-            RecordingStreamInner::new(info, properties, batcher_config, sink).map(|inner| {
-                Self {
-                    inner: Either::Left(Arc::new(Some(inner))),
-                }
-            })?;
+        let stream = RecordingStreamInner::new(store_info, properties, batcher_config, sink).map(
+            |inner| Self {
+                inner: Either::Left(Arc::new(Some(inner))),
+            },
+        )?;
 
         Ok(stream)
     }
@@ -1426,7 +1425,7 @@ impl RecordingStream {
 
 #[allow(clippy::needless_pass_by_value)]
 fn forwarding_thread(
-    info: StoreInfo,
+    store_info: StoreInfo,
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
     chunks: Receiver<Chunk>,
@@ -1434,7 +1433,7 @@ fn forwarding_thread(
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
-    fn handle_cmd(info: &StoreInfo, cmd: Command, sink: &mut Box<dyn LogSink>) -> bool {
+    fn handle_cmd(store_info: &StoreInfo, cmd: Command, sink: &mut Box<dyn LogSink>) -> bool {
         match cmd {
             Command::RecordMsg(msg) => {
                 sink.send(msg);
@@ -1456,14 +1455,14 @@ fn forwarding_thread(
                 // Send the recording info to the new sink. This is idempotent.
                 {
                     re_log::debug!(
-                        app_id = %info.application_id,
-                        rec_id = %info.store_id,
-                        "setting recording info",
+                        app_id = %store_info.application_id,
+                        rec_id = %store_info.store_id,
+                        "Setting StoreInfo",
                     );
                     new_sink.send(
                         re_log_types::SetStoreInfo {
                             row_id: *RowId::new(),
-                            info: info.clone(),
+                            info: store_info.clone(),
                         }
                         .into(),
                     );
@@ -1502,7 +1501,7 @@ fn forwarding_thread(
                 }
             };
             msg.on_release = on_release.clone();
-            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), msg));
+            sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
         }
 
         select! {
@@ -1522,7 +1521,7 @@ fn forwarding_thread(
                     }
                 };
 
-                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), msg));
+                sink.send(LogMsg::ArrowMsg(store_info.store_id.clone(), msg));
             }
 
             recv(cmds_rx) -> res => {
@@ -1532,7 +1531,7 @@ fn forwarding_thread(
                     re_log::trace!("Shutting down forwarding_thread: all command senders are gone");
                     break;
                 };
-                if !handle_cmd(&info, cmd, &mut sink) {
+                if !handle_cmd(&store_info, cmd, &mut sink) {
                     break; // shutdown
                 }
             }
@@ -1555,7 +1554,7 @@ impl RecordingStream {
     /// The [`StoreInfo`] associated with this `RecordingStream`.
     #[inline]
     pub fn store_info(&self) -> Option<StoreInfo> {
-        self.with(|inner| inner.info.clone())
+        self.with(|inner| inner.store_info.clone())
     }
 
     /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our
@@ -2169,7 +2168,7 @@ impl fmt::Debug for RecordingStream {
             let RecordingStreamInner {
                 // This pattern match prevents _accidentally_ omitting data from the debug output
                 // when new fields are added.
-                info,
+                store_info,
                 properties,
                 tick,
                 cmds_tx: _,
@@ -2180,7 +2179,7 @@ impl fmt::Debug for RecordingStream {
             } = inner;
 
             f.debug_struct("RecordingStream")
-                .field("info", &info)
+                .field("store_info", &store_info)
                 .field("properties", &properties)
                 .field("tick", &tick)
                 .field("pending_dataloaders", &dataloader_handles.lock().len())
@@ -2264,7 +2263,8 @@ impl ThreadInfo {
 impl RecordingStream {
     /// Returns the current time of the recording on the current thread.
     pub fn now(&self) -> TimePoint {
-        let f = move |inner: &RecordingStreamInner| ThreadInfo::thread_now(&inner.info.store_id);
+        let f =
+            move |inner: &RecordingStreamInner| ThreadInfo::thread_now(&inner.store_info.store_id);
         if let Some(res) = self.with(f) {
             res
         } else {
@@ -2290,7 +2290,7 @@ impl RecordingStream {
         let f = move |inner: &RecordingStreamInner| {
             let timepoint = timepoint.into();
             for (timeline, time) in timepoint {
-                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, time);
+                ThreadInfo::set_thread_time(&inner.store_info.store_id, timeline, time);
             }
         };
 
@@ -2325,7 +2325,7 @@ impl RecordingStream {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
             if let Ok(value) = value.try_into() {
-                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, value);
+                ThreadInfo::set_thread_time(&inner.store_info.store_id, timeline, value);
             } else {
                 re_log::warn_once!(
                     "set_time({timeline}): Failed to convert the given value to an TimeCell"
@@ -2518,7 +2518,7 @@ impl RecordingStream {
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
         let f = move |inner: &RecordingStreamInner| {
             let timeline = timeline.into();
-            ThreadInfo::unset_thread_time(&inner.info.store_id, &timeline);
+            ThreadInfo::unset_thread_time(&inner.store_info.store_id, &timeline);
         };
 
         if self.with(f).is_none() {
@@ -2541,7 +2541,7 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     pub fn reset_time(&self) {
         let f = move |inner: &RecordingStreamInner| {
-            ThreadInfo::reset_thread_time(&inner.info.store_id);
+            ThreadInfo::reset_thread_time(&inner.store_info.store_id);
         };
 
         if self.with(f).is_none() {

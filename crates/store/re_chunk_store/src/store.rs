@@ -400,7 +400,7 @@ impl ChunkStoreHandle {
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
-    pub(crate) info: Option<StoreInfo>,
+    pub(crate) store_info: Option<StoreInfo>,
 
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
@@ -497,7 +497,7 @@ impl Clone for ChunkStore {
         re_tracing::profile_function!();
         Self {
             id: self.id.clone(),
-            info: self.info.clone(),
+            store_info: self.store_info.clone(),
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
             type_registry: self.type_registry.clone(),
@@ -522,7 +522,7 @@ impl std::fmt::Display for ChunkStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             id,
-            info: _,
+            store_info: _,
             config,
             time_type_registry: _,
             type_registry: _,
@@ -584,7 +584,7 @@ impl ChunkStore {
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
             id,
-            info: None,
+            store_info: None,
             config,
             time_type_registry: Default::default(),
             type_registry: Default::default(),
@@ -619,13 +619,13 @@ impl ChunkStore {
     }
 
     #[inline]
-    pub fn set_info(&mut self, info: StoreInfo) {
-        self.info = Some(info);
+    pub fn set_store_info(&mut self, store_info: StoreInfo) {
+        self.store_info = Some(store_info);
     }
 
     #[inline]
-    pub fn info(&self) -> Option<&StoreInfo> {
-        self.info.as_ref()
+    pub fn store_info(&self) -> Option<&StoreInfo> {
+        self.store_info.as_ref()
     }
 
     /// Return the current [`ChunkStoreGeneration`]. This can be used to determine whether the
@@ -746,7 +746,7 @@ impl ChunkStore {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
 
-                    store.set_info(info.info);
+                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
@@ -794,7 +794,7 @@ impl ChunkStore {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
 
-                    store.set_info(info.info);
+                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
