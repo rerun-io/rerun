@@ -11,19 +11,21 @@ use arrow::{
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 
+pub fn is_component_column(field: &&ArrowFieldRef) -> bool {
+    crate::ColumnKind::try_from(field.as_ref())
+        .is_ok_and(|kind| kind == crate::ColumnKind::Component)
+}
+
 /// Make sure all data columns are `ListArrays`.
 #[tracing::instrument(level = "trace", skip_all)]
-pub fn make_all_data_columns_list_arrays(
-    batch: &ArrowRecordBatch,
-    is_component_column: impl Fn(&&ArrowFieldRef) -> bool,
-) -> ArrowRecordBatch {
+pub fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
     let needs_migration = batch
         .schema_ref()
         .fields()
         .iter()
-        .filter(|f| is_component_column(f))
+        .filter(is_component_column)
         .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
     if !needs_migration {
         return batch.clone();
