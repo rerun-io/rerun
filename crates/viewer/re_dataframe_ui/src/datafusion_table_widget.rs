@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::list_item::ItemButton;
+use re_ui::list_item::ItemButton as _;
 use re_ui::menu::menu_style;
 use re_ui::{ContextExt as _, UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
