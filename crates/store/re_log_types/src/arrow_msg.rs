@@ -83,15 +83,3 @@ impl Drop for ArrowMsg {
         }
     }
 }
-
-impl ArrowMsg {
-    /// Insert a metadata key-value pair into the record batch of an [`ArrowMsg`].
-    // TODO(apache/arrow-rs#7628): remove once we can do this with arrow-rs directly.
-    pub fn with_record_batch_metadata(self, key: String, value: String) -> Self {
-        Self {
-            chunk_id: self.chunk_id,
-            batch: re_arrow_util::insert_metadata(self.batch.clone(), key, value),
-            on_release: self.on_release.clone(),
-        }
-    }
-}

@@ -68,10 +68,10 @@ async fn stream_async(
             Ok(Some(ReadMessagesResponse {
                 log_msg: Some(log_msg_proto),
             })) => {
-                let log_msg = log_msg_from_proto(log_msg_proto)?;
+                let mut log_msg = log_msg_from_proto(log_msg_proto)?;
 
                 // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                let log_msg = log_msg.with_record_batch_metadata(
+                log_msg.insert_arrow_record_batch_metadata(
                     re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
                     re_sorbet::timestamp_metadata::now_timestamp(),
                 );

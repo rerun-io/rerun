@@ -2,12 +2,12 @@
 
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use std::rc::Rc;
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use serde::Deserialize;
-use std::rc::Rc;
-use std::str::FromStr as _;
-use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
@@ -339,15 +339,22 @@ impl WebHandle {
                 }
             };
 
-            let encoded = match stream_reader.collect::<Result<Vec<_>, _>>() {
-                Ok(encoded) => encoded,
+            let mut batches = match stream_reader.collect::<Result<Vec<_>, _>>() {
+                Ok(batches) => batches,
                 Err(err) => {
                     re_log::error_once!("Could not read from IPC stream: {err}");
                     return;
                 }
             };
 
-            let msg = match from_arrow_encoded(&encoded[0]) {
+            if batches.len() != 1 {
+                re_log::warn_once!("Expected exactly one record batch, got {}", batches.len());
+                return;
+            }
+
+            let record_batch = batches.remove(0);
+
+            let msg = match from_arrow_encoded(record_batch) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error_once!("Failed to decode Arrow message: {err}");
@@ -818,19 +825,11 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
-    let mut metadata = data.schema().metadata().clone();
-    let id = metadata
+pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+    let id = data
+        .schema_metadata_mut()
         .remove("__table_id")
         .ok_or("encoded record batch is missing `__table_id` metadata.")?;
-
-    let data = RecordBatch::try_new(
-        Arc::new(arrow::datatypes::Schema::new_with_metadata(
-            data.schema().fields().clone(),
-            metadata,
-        )),
-        data.columns().to_vec(),
-    )?;
 
     Ok(TableMsg {
         id: TableId::new(id),
@@ -905,7 +904,7 @@ mod tests {
         };
 
         let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
-        let decoded = from_arrow_encoded(&encoded).expect("from concatenated failed");
+        let decoded = from_arrow_encoded(encoded).expect("from concatenated failed");
 
         assert_eq!(msg, decoded);
     }
