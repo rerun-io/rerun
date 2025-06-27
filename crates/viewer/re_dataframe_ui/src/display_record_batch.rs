@@ -16,6 +16,7 @@ use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
+use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
@@ -210,6 +211,8 @@ impl DisplayComponentColumn {
                 .and_then(|row_ids| row_ids.get(row_index))
                 .copied();
 
+            let mut variant_name = self.variant_name;
+
             // TODO(ab): we should find an alternative to using content-hashing to generate cache
             // keys.
             //
@@ -232,10 +235,12 @@ impl DisplayComponentColumn {
                     row_id = Some(RowId::from_u128(
                         quick_partial_hash(buffer, SECTION_LENGTH).hash64() as _,
                     ));
+
+                    variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
                 }
             }
 
-            if let Some(variant_name) = self.variant_name {
+            if let Some(variant_name) = variant_name {
                 ctx.component_ui_registry().variant_ui_raw(
                     ctx,
                     ui,

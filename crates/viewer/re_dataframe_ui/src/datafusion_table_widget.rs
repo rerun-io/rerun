@@ -596,7 +596,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height()
+        self.ctx.tokens().table_line_height() * 4.0
     }
 }
 
