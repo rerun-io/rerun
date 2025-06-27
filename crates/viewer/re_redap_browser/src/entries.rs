@@ -323,7 +323,7 @@ async fn fetch_dataset_entries(
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
-    let resp = client
+    let entries = client
         .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
@@ -333,19 +333,28 @@ async fn fetch_dataset_entries(
             }),
         })
         .await?
-        .into_inner();
+        .into_inner()
+        .entries;
 
     let mut datasets = HashMap::default();
 
-    for entry_details in resp.entries {
+    let mut futures = vec![];
+    for entry_details in entries {
+        let mut client = client.clone();
         let entry_details = EntryDetails::try_from(entry_details)?;
 
-        let dataset_entry: DatasetEntry = client
-            .inner()
-            .read_dataset_entry(ReadDatasetEntryRequest {
-                id: Some(entry_details.id.into()),
-            })
-            .await?
+        futures.push(async move {
+            client
+                .inner()
+                .read_dataset_entry(ReadDatasetEntryRequest {
+                    id: Some(entry_details.id.into()),
+                })
+                .await
+        });
+    }
+
+    for result in futures::future::join_all(futures).await {
+        let dataset_entry = result?
             .into_inner()
             .dataset
             .ok_or(EntryError::FieldNotSet("dataset"))?
