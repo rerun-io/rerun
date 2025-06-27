@@ -160,6 +160,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
+    #[tracing::instrument(level = "trace", skip_all)]
     fn init(&self) -> &QueryHandleState {
         self.engine
             .with(|store, cache| self.state.get_or_init(|| self.init_(store, cache)))
@@ -377,6 +378,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     #[allow(clippy::unused_self)]
     fn compute_user_selection(
         &self,
@@ -466,6 +468,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect_vec()
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn fetch_view_chunks(
         &self,
         store: &ChunkStore,
@@ -504,6 +507,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// These chunks take recursive clear semantics into account and are guaranteed to be properly densified.
     /// The component data is stripped out, only the indices are left.
+    #[tracing::instrument(level = "trace", skip_all)]
     fn fetch_clear_chunks(
         &self,
         store: &ChunkStore,
@@ -601,6 +605,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect()
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn fetch_chunks<'a>(
         &self,
         _store: &ChunkStore,
@@ -705,6 +710,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "trace", skip_all)]
     #[inline]
     pub fn seek_to_row(&self, row_idx: usize) {
         let state = self.init();
@@ -734,6 +740,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "trace", skip_all)]
     fn seek_to_index_value(&self, index_value: IndexValue) {
         re_tracing::profile_function!();
 
@@ -867,6 +874,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         re_tracing::profile_function!();
 
