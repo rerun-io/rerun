@@ -7553,6 +7553,7 @@ dependencies = [
  "ahash",
  "datafusion",
  "egui",
+ "futures",
  "itertools 0.14.0",
  "re_auth",
  "re_component_ui",

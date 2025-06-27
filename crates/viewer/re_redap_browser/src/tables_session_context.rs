@@ -1,5 +1,6 @@
 //! Helper to maintain a [`SessionContext`] with the tables of a remote server.
 
+use std::pin::Pin;
 use std::sync::Arc;
 
 use datafusion::common::DataFusionError;
@@ -101,44 +102,53 @@ async fn register_all_table_entries(
 
     let mut registered_tables = vec![];
 
-    for entry in entries {
+    let mut futures: Vec<Pin<Box<dyn Send + Future<Output = (Result<_, _>, EntryDetails)>>>> =
+        vec![];
+    for entry in entries.into_iter() {
+        let client = client.clone();
         #[expect(clippy::match_same_arms)]
-        let table_provider = match entry.kind {
+        match entry.kind {
             // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
             // some reason, this failure is silent but blocks other tables from being registered.
             // Since we don't need these tables yet, we just skip them for now.
-            EntryKind::BlueprintDataset => None,
+            EntryKind::BlueprintDataset => {}
 
-            EntryKind::Dataset => Some(
-                PartitionTableProvider::new(client.clone(), entry.id)
-                    .into_provider()
-                    .await?,
-            ),
-
-            EntryKind::Table => Some(
-                TableEntryTableProvider::new(client.clone(), entry.id)
-                    .into_provider()
-                    .await?,
-            ),
+            EntryKind::Dataset => futures.push(Box::pin(async move {
+                (
+                    PartitionTableProvider::new(client, entry.id.clone())
+                        .into_provider()
+                        .await,
+                    entry,
+                )
+            })),
+            EntryKind::Table => futures.push(Box::pin(async move {
+                (
+                    TableEntryTableProvider::new(client, entry.id.clone())
+                        .into_provider()
+                        .await,
+                    entry,
+                )
+            })),
 
             // TODO(ab): these do not exist yet
-            EntryKind::DatasetView | EntryKind::TableView => None,
+            EntryKind::DatasetView | EntryKind::TableView => {}
 
             EntryKind::Unspecified => {
                 return Err(
                     TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32)).into(),
                 );
             }
-        };
-
-        if let Some(table_provider) = table_provider {
-            ctx.register_table(&entry.name, table_provider)?;
-
-            registered_tables.push(Table {
-                entry_id: entry.id,
-                name: entry.name,
-            });
         }
+    }
+
+    for (result, entry) in futures::future::join_all(futures).await {
+        let table_provider = result?;
+        ctx.register_table(&entry.name, table_provider)?;
+
+        registered_tables.push(Table {
+            entry_id: entry.id,
+            name: entry.name,
+        });
     }
 
     Ok(registered_tables)
