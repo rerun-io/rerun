@@ -3,17 +3,25 @@ use crate::{Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyUri {
     pub origin: Origin,
+    pub path_prefix: String,
 }
 
 impl std::fmt::Display for ProxyUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/proxy", self.origin)
+        if self.path_prefix.is_empty() {
+            write!(f, "{}/proxy", self.origin)
+        } else {
+            write!(f, "{}{}/proxy", self.origin, self.path_prefix)
+        }
     }
 }
 
 impl ProxyUri {
     pub fn new(origin: Origin) -> Self {
-        Self { origin }
+        Self {
+            origin,
+            path_prefix: String::new(),
+        }
     }
 }
 
