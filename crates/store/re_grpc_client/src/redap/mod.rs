@@ -407,7 +407,7 @@ pub async fn stream_blueprint_and_partition_from_server(
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
 async fn stream_partition_from_server(
-    client: &mut ConnectionClient,
+    client: &ConnectionClient,
     store_info: StoreInfo,
     tx: &re_smart_channel::Sender<LogMsg>,
     dataset_id: EntryId,
@@ -416,40 +416,6 @@ async fn stream_partition_from_server(
     on_cmd: &(dyn Fn(Command) + Send + Sync),
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
-    let static_chunk_stream = {
-        client
-            .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.clone().into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                exclude_static_data: false,
-                exclude_temporal_data: true,
-                query: None,
-            })
-            .await?
-            .into_inner()
-    };
-
-    let temporal_chunk_stream = {
-        client
-            .inner()
-            .get_chunks(GetChunksRequest {
-                dataset_id: Some(dataset_id.into()),
-                partition_ids: vec![partition_id.into()],
-                chunk_ids: vec![],
-                entity_paths: vec![],
-                select_all_entity_paths: true,
-                exclude_static_data: true,
-                exclude_temporal_data: false,
-                query: None,
-            })
-            .await?
-            .into_inner()
-    };
-
     let store_id = store_info.store_id.clone();
 
     if let Some(time_range) = time_range {
@@ -460,6 +426,7 @@ async fn stream_partition_from_server(
         });
     }
 
+    // Send the `StoreInfo` first and foremost, so that the viewer switches to the new view ASAP.
     if tx
         .send(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *re_chunk::RowId::new(),
@@ -471,31 +438,57 @@ async fn stream_partition_from_server(
         return Ok(());
     }
 
-    // TODO(#10229): this looks to be converting back and forth?
+    let stream_chunks = move |temporal: bool| {
+        let mut client = client.clone();
+        let store_id = store_id.clone();
+        let partition_id = partition_id.clone();
+        async move {
+            let chunk_stream = client
+                .inner()
+                .get_chunks(GetChunksRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    partition_ids: vec![partition_id.into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    exclude_static_data: temporal,
+                    exclude_temporal_data: !temporal,
+                    query: None,
+                })
+                .await?
+                .into_inner();
 
-    let static_chunk_stream = get_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
-    let temporal_chunk_stream =
-        get_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
+            // TODO(#10229): this looks to be converting back and forth?
 
-    let mut chunk_stream = static_chunk_stream.chain(temporal_chunk_stream);
+            let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(chunk_stream);
+            while let Some(chunks) = chunk_stream.next().await {
+                for chunk in chunks? {
+                    let (chunk, _partition_id) = chunk;
 
-    while let Some(chunks) = chunk_stream.next().await {
-        for chunk in chunks? {
-            let (chunk, _partition_id) = chunk;
+                    if tx
+                        .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+                        .is_err()
+                    {
+                        re_log::debug!("Receiver disconnected");
+                        return Ok(());
+                    }
 
-            if tx
-                .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(());
+                    if let Some(on_msg) = &on_msg {
+                        on_msg();
+                    }
+                }
             }
 
-            if let Some(on_msg) = &on_msg {
-                on_msg();
-            }
+            Ok::<_, StreamError>(())
         }
-    }
+    };
+
+    stream_chunks(false).await?;
+
+    // TODO(cmc): Ideally we would like to immediately spawn the temporal request in the background,
+    // but only consume the stream after all static chunks have been ingested. In practice we might
+    // be in a web context here so spawning is not an option.
+    stream_chunks(true).await?;
 
     Ok(())
 }
