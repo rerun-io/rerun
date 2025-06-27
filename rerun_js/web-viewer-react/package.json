@@ -13,7 +13,8 @@
   "scripts": {
     "build:types": "tsc --noEmit && dts-buddy",
     "build": "npm run build:types",
-    "pack": "yarn pack --filename web-viewer-react.tar.gz"
+    "pack": "yarn pack --filename web-viewer-react.tar.gz",
+    "docs": "typedoc"
   },
   "repository": {
     "type": "git",
@@ -46,6 +47,8 @@
   },
   "devDependencies": {
     "dts-buddy": "^0.3.0",
+    "typedoc": "^0.28.6",
+    "typedoc-github-theme": "^0.3.0",
     "typescript": "^5.2.2"
   }
 }
