@@ -423,6 +423,8 @@ impl ConnectionHandle {
                             chunk_ids: vec![],
                             entity_paths,
                             select_all_entity_paths,
+                            exclude_static_data: false,
+                            exclude_temporal_data: false,
                             query: Some(query.into()),
                         })
                         .instrument(tracing::trace_span!("get_chunks::grpc"))
@@ -621,6 +623,8 @@ impl ConnectionHandle {
                         .map(|p| (*p).clone().into())
                         .collect(),
                     select_all_entity_paths,
+                    exclude_static_data: false,
+                    exclude_temporal_data: false,
                     query: Some(query.into()),
                     scan_parameters: Some(
                         ScanParameters {

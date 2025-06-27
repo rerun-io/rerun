@@ -199,6 +199,12 @@ pub struct QueryDatasetRequest {
     /// ```
     #[prost(bool, tag = "7")]
     pub select_all_entity_paths: bool,
+    /// If set, static data will be excluded from the results.
+    #[prost(bool, tag = "8")]
+    pub exclude_static_data: bool,
+    /// If set, temporal data will be excluded from the results.
+    #[prost(bool, tag = "9")]
+    pub exclude_temporal_data: bool,
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
@@ -246,6 +252,12 @@ pub struct GetChunksRequest {
     /// ```
     #[prost(bool, tag = "6")]
     pub select_all_entity_paths: bool,
+    /// If set, static data will be excluded from the results.
+    #[prost(bool, tag = "7")]
+    pub exclude_static_data: bool,
+    /// If set, temporal data will be excluded from the results.
+    #[prost(bool, tag = "8")]
+    pub exclude_temporal_data: bool,
     /// Query details
     #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
