@@ -83,12 +83,24 @@ impl std::str::FromStr for RedapUri {
         let segments = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
-            .take(2)
+            .take(10) // limit to 10 segments
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
         match segments.as_slice() {
             ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
+
+            // Handle proxy endpoint with pathname prefix - fix for issue #10373
+            segments if segments.last() == Some(&"proxy") => {
+                // Extract the path prefix (everything except the last "proxy" segment)
+                let prefix_segments = &segments[..segments.len() - 1];
+                let path_prefix = if prefix_segments.is_empty() {
+                    String::new()
+                } else {
+                    format!("/{}", prefix_segments.join("/"))
+                };
+                Ok(Self::Proxy(ProxyUri { origin, path_prefix }))
+            }
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
 
@@ -459,12 +471,28 @@ mod tests {
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
+            path_prefix: String::new(),
         });
 
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/proxy/";
         let address: Result<RedapUri, _> = url.parse();
+
+        assert_eq!(address.unwrap(), expected);
+
+        // Test the specific case mentioned in issue #10373
+        let url = "rerun+http://13.31.13.31/rerun/proxy";
+        let address: Result<RedapUri, _> = url.parse();
+
+        let expected = RedapUri::Proxy(ProxyUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
+                host: url::Host::Ipv4("13.31.13.31".parse().unwrap()),
+                port: 80,
+            },
+            path_prefix: "/rerun".to_owned(),
+        });
 
         assert_eq!(address.unwrap(), expected);
     }
@@ -500,6 +528,7 @@ mod tests {
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_PROXY_PORT,
                     },
+                    path_prefix: String::new(),
                 }),
             ),
             (
@@ -510,6 +539,7 @@ mod tests {
                         host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
                         port: DEFAULT_PROXY_PORT,
                     },
+                    path_prefix: String::new(),
                 }),
             ),
             (
