@@ -222,36 +222,10 @@ impl SorbetBatch {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use arrow::datatypes::Field as ArrowField;
 
     use crate::{RowIdColumnDescriptor, sorbet_batch};
 
     use super::*;
-
-    // TODO(apache/arrow-rs#7628): this will be easier soon
-    fn add_metadata(
-        mut metadata: HashMap<String, String>,
-        (key, value): (String, String),
-    ) -> HashMap<String, String> {
-        metadata.insert(key, value);
-        metadata
-    }
-
-    // TODO(apache/arrow-rs#7628): this will be easier soon
-    fn add_metadata_to_field(field: ArrowField, (key, value): (String, String)) -> ArrowField {
-        let old_metadata = field.metadata().clone();
-        let old_metadata = add_metadata(old_metadata, (key, value));
-        field.with_metadata(old_metadata)
-    }
-
-    // TODO(apache/arrow-rs#7628): this will be easier soon
-    fn remove_metadata_from_field(to_arrow_field: ArrowField, arg: &str) -> ArrowField {
-        let mut metadata = to_arrow_field.metadata().clone();
-        metadata.remove(arg);
-        to_arrow_field.with_metadata(metadata)
-    }
 
     /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
     ///
@@ -259,15 +233,13 @@ mod tests {
     #[test]
     fn test_sorbet_batch_metadata() {
         let original: ArrowRecordBatch = {
-            let row_id_field = add_metadata_to_field(
-                remove_metadata_from_field(
-                    RowIdColumnDescriptor::from_sorted(false).to_arrow_field(),
-                    "ARROW:extension:metadata",
-                ),
-                (
-                    "custom_column_key".to_owned(),
-                    "custom_column_value".to_owned(),
-                ),
+            let mut row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
+            row_id_field
+                .metadata_mut()
+                .remove("ARROW:extension:metadata");
+            row_id_field.metadata_mut().insert(
+                "custom_column_key".to_owned(),
+                "custom_column_value".to_owned(),
             );
             let fields = vec![Arc::new(row_id_field)];
             let arrow_schema = ArrowSchema::new_with_metadata(
