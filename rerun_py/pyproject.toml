@@ -189,7 +189,7 @@ include = [
   "rerun_sdk/rerun_cli/rerun.exe",
 ]
 locked = true
-name = "rerun_bindings"
+name = "rerun_sdk/rerun_bindings"
 python-source = "rerun_sdk"
 python-packages = ["rerun", "rerun_cli"]
 
