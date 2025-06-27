@@ -503,27 +503,33 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    let property_entities = db
+    let mut property_entities = db
         .entity_paths()
         .into_iter()
-        .filter(|entity_path| entity_path.starts_with(&EntityPath::properties()))
+        .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
+    property_entities.sort();
 
-    // TODO: fix the UI for built-in properties (RecordingInfo) vs custom ones.
+    // TODO: fix the UI for built-in properties (`RecordingInfo`) vs custom ones.
 
     if property_entities.is_empty() {
         ui.label("No properties found for this recording.");
     } else {
-        for entity_path in property_entities {
-            // We strip the property part
-            let name = entity_path
-                .to_string()
-                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                .map(re_case::to_human_case)
-                .unwrap_or("<unknown>".to_owned());
-            ui.label(name);
-            entity_path.data_ui(ctx, ui, ui_layout, query, db);
-        }
+        list_item::list_item_scope(ui, "recording_properties", |ui| {
+            for suffix_path in property_entities {
+                let entity_path = EntityPath::properties() / suffix_path.clone();
+                if suffix_path.is_root() {
+                    // No header - this is likely `RecordingInfo`.
+                } else if suffix_path.len() == 1 {
+                    // Single nested - this is what we expect in the normal case.
+                    ui.label(re_case::to_human_case(suffix_path[0].unescaped_str()));
+                } else {
+                    // Deeply nested - show the full path.
+                    ui.label(suffix_path.to_string());
+                }
+                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+            }
+        });
     }
 }
 
