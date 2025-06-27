@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use arrow::array::{Array, RecordBatch, StringArray, new_null_array};
+use arrow::array::{Array, ArrayRef, RecordBatch, StringArray, new_null_array};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::{
     catalog::{TableProvider, streaming::StreamingTable},
@@ -9,6 +9,7 @@ use datafusion::{
     execution::SendableRecordBatchStream,
     physical_plan::{stream::RecordBatchStreamAdapter, streaming::PartitionStream},
 };
+use itertools::Itertools as _;
 
 use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
@@ -63,19 +64,35 @@ impl PartitionStream for DataframeQueryTableProvider {
         let engines = self.query_engines.clone();
         let query_expression = self.query_expression.clone();
 
+        let mut partition_id_columns: HashMap<String, (Field, ArrayRef)> = HashMap::new();
+
         let target_schema = self.schema.clone();
         let stream = futures_util::stream::iter(engines.into_iter().flat_map(
             move |(partition_id, query_engine)| {
+                let (pid_field, pid_array) = partition_id_columns
+                    .entry(partition_id.clone())
+                    .or_insert_with(|| {
+                        // The batches returned by re_dataframe are guaranteed to always have a
+                        // single row in them. This will change some day, hopefully, but it's been
+                        // true for years so we should at least leverage it for now.
+                        (
+                            Field::new(DATASET_MANIFEST_ID_FIELD_NAME, DataType::Utf8, false),
+                            Arc::new(StringArray::from(vec![partition_id.clone()]))
+                                as Arc<dyn Array>,
+                        )
+                    });
+                let (pid_field, pid_array) = (pid_field.clone(), pid_array.clone());
+
                 let inner_schema = target_schema.clone();
                 query_engine
                     .query(query_expression.clone())
                     .into_batch_iter()
                     .map(move |batch| {
                         align_record_batch_to_schema(
-                            &prepend_string_column(
+                            &prepend_partition_id_column(
                                 &batch,
-                                DATASET_MANIFEST_ID_FIELD_NAME,
-                                partition_id.as_str(),
+                                pid_field.clone(),
+                                pid_array.clone(),
                             )?,
                             &inner_schema,
                         )
@@ -104,25 +121,22 @@ fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
-fn prepend_string_column(
+fn prepend_partition_id_column(
     batch: &RecordBatch,
-    column_name: &str,
-    value: &str,
+    partition_id_field: Field,
+    partition_id_column: ArrayRef,
 ) -> Result<RecordBatch, arrow::error::ArrowError> {
-    let row_count = batch.num_rows();
-
-    let new_array =
-        Arc::new(StringArray::from(vec![value.to_owned(); row_count])) as Arc<dyn Array>;
-
-    let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
-    fields.extend(batch.schema().fields().iter().map(|f| (**f).clone()));
+    let fields = std::iter::once(partition_id_field)
+        .chain(batch.schema().fields().iter().map(|f| (**f).clone()))
+        .collect_vec();
     let schema = Arc::new(Schema::new_with_metadata(
         fields,
         batch.schema().metadata.clone(),
     ));
 
-    let mut columns = vec![new_array];
-    columns.extend(batch.columns().iter().cloned());
+    let columns = std::iter::once(partition_id_column)
+        .chain(batch.columns().iter().cloned())
+        .collect_vec();
 
     RecordBatch::try_new(schema, columns)
 }
