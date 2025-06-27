@@ -32,7 +32,7 @@ for (const pkg_path of root_package_json.workspaces) {
 
   let package_json = JSON.parse(fs.readFileSync(package_json_path, "utf-8"));
   let readme = fs.readFileSync(readme_path, "utf-8");
-  let index_ts = fs.readFileSync(index_ts_path, "utf-8");
+  let index_ts = fs.existsSync(index_ts_path) ? fs.readFileSync(index_ts_path, "utf-8") : null;
 
   // update package version
   package_json.version = version;
@@ -58,12 +58,18 @@ for (const pkg_path of root_package_json.workspaces) {
       /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
-    index_ts = index_ts.replace(
-      /https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd/,
-      `https://app.rerun.io/version/${version}/examples/dna.rrd`,
-    )
+    if (index_ts) {
+      index_ts = index_ts.replace(
+        /https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd/,
+        `https://app.rerun.io/version/${version}/examples/dna.rrd`,
+      )
+
+    }
   }
 
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
   fs.writeFileSync(readme_path, readme);
+  if (index_ts) {
+    fs.writeFileSync(index_ts_path, index_ts);
+  }
 }
