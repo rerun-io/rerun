@@ -84,7 +84,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "22.x"
 
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
@@ -421,7 +421,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: "22.x"
 
       - uses: prefix-dev/setup-pixi@v0.8.8
         with:
