@@ -5,10 +5,10 @@
 use crate::ArrowBatchMetadata;
 
 /// When was this batch sent by the SDK gRPC log sink?
-pub const KEY_TIMESTAMP_SDK_IPC_ENCODE: &str = "sorbet.timestamp_sdk_ipc_encoded";
+pub const KEY_TIMESTAMP_SDK_IPC_ENCODE: &str = "rerun:timestamp_sdk_ipc_encoded";
 
 /// When was this batch last decoded from IPC bytes by the gRPC server (presumably in the viewer)?
-pub const KEY_TIMESTAMP_VIEWER_IPC_DECODED: &str = "sorbet.timestamp_viewer_ipc_decoded";
+pub const KEY_TIMESTAMP_VIEWER_IPC_DECODED: &str = "rerun:timestamp_viewer_ipc_decoded";
 
 /// We encode time as seconds since the Unix epoch,
 /// with nanosecond precision, e.g. `1700000000.012345678`.
