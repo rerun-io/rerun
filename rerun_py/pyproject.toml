@@ -214,7 +214,7 @@ norecursedirs = ".* venv* target* build"
 files = [
   "docs/snippets",
   "rerun_py/rerun_sdk/rerun",
-  "rerun_py/rerun_bindings",
+  "rerun_py/rerun_sdk/rerun_bindings",
   "rerun_py/tests",
   "rerun_notebook/src/rerun_notebook",
   "examples/python",
