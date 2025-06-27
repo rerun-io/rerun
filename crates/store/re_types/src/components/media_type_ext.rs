@@ -46,6 +46,11 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/model/stl>
     pub const STL: &'static str = "model/stl";
 
+    /// [COLLADA `.dae`](https://en.wikipedia.org/wiki/COLLADA): `model/collada+xml`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/model/vnd.collada+xml>
+    pub const DAE: &'static str = "model/vnd.collada+xml";
+
     // -------------------------------------------------------
     // Videos:
 
@@ -108,6 +113,12 @@ impl MediaType {
     #[inline]
     pub fn stl() -> Self {
         Self(Self::STL.into())
+    }
+
+    /// `model/vnd.collada+xml`
+    #[inline]
+    pub fn dae() -> Self {
+        Self(Self::DAE.into())
     }
 
     // -------------------------------------------------------
@@ -174,6 +185,11 @@ impl MediaType {
             // https://en.wikipedia.org/wiki/STL_(file_format)#Binary
         }
 
+        fn dae_matcher(buf: &[u8]) -> bool {
+            // COLLADA .dae files are XML, so we can look for the <COLLADA> tag.
+            buf.starts_with(b"<COLLADA>")
+        }
+
         // NOTE:
         // - gltf is simply json, so no magic byte
         //   (also most gltf files contain file:// links, so not much point in sending that to
@@ -183,6 +199,7 @@ impl MediaType {
         let mut inferer = infer::Infer::new();
         inferer.add(Self::GLB, "glb", glb_matcher);
         inferer.add(Self::STL, "stl", stl_matcher);
+        inferer.add(Self::DAE, "dae", dae_matcher);
 
         inferer
             .get(data)
@@ -213,6 +230,7 @@ impl MediaType {
             Self::JPEG => Some("jpg"),
             Self::MARKDOWN => Some("md"),
             Self::STL => Some("stl"),
+            Self::DAE => Some("dae"),
             Self::TEXT => Some("txt"),
 
             _ => {
