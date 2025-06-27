@@ -540,7 +540,7 @@ mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1.*"
 numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-prettier = "3.2.5.*"
+prettier = ">=3.6"
 pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
@@ -573,7 +573,7 @@ maturin = "==1.8.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"
-nodejs = ">=20.12"       # rerun_notebook needs nodejs to build the wheel
+nodejs = ">=22.0"       # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
