@@ -3,7 +3,8 @@ use egui::{Id, Ui};
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::message_proxy::write_table::viewer_client;
 use re_grpc_client::{ConnectionError, ConnectionRegistryHandle};
-use re_protos::frontend::v1alpha1::VersionRequest;
+use re_protos::catalog::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_protos::frontend::v1alpha1::{QueryDatasetRequest, VersionRequest};
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
@@ -11,6 +12,7 @@ use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
 };
 use std::str::FromStr as _;
+use url::Host;
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -221,7 +223,26 @@ impl ServerModal {
                 let edited_hash = Id::new((&self.scheme, &self.host, &self.port, &self.token));
 
                 if hash != edited_hash {
-                    if let Some(origin) = origin.clone().ok() {
+                    let host = Host::parse(&self.host).ok();
+                    let origin = host.map(|host| re_uri::Origin {
+                        scheme: self.scheme,
+                        host,
+                        port: self.port,
+                    });
+
+                    let token = if self.token.is_empty() {
+                        Ok(None)
+                    } else {
+                        re_auth::Jwt::try_from(self.token.clone())
+                            .map(Some)
+                            .map_err(|_| {
+                                ConnectionTestError::Tonic(tonic::Status::invalid_argument(
+                                    "Invalid token",
+                                ))
+                            })
+                    };
+
+                    if let Some(origin) = origin.clone() {
                         if let Ok(token) = &token {
                             let token = token.clone();
                             let future = async move {
@@ -229,7 +250,9 @@ impl ServerModal {
                                     .await
                                     .map_err(ConnectionTestError::ConnectionError)?;
                                 client
-                                    .version(VersionRequest::default())
+                                    .find_entries(FindEntriesRequest {
+                                        filter: Some(EntryFilter::new()),
+                                    })
                                     .await
                                     .map(|_| ())
                                     .map_err(ConnectionTestError::Tonic)
