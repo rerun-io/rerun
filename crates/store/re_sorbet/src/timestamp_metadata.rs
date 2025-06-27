@@ -63,9 +63,24 @@ impl TimestampMetadata {
         let grpc_encoded_at = metadata
             .get(KEY_TIMESTAMP_SDK_IPC_ENCODE)
             .and_then(|s| parse_timestamp(s.as_str()));
+
         let grpc_decoded_at = metadata
             .get(KEY_TIMESTAMP_VIEWER_IPC_DECODED)
             .and_then(|s| parse_timestamp(s.as_str()));
+
+        if cfg!(debug_assertions) {
+            // Missing both happens all the time - but missing just one is suspicious.
+            if grpc_encoded_at.is_some() && grpc_decoded_at.is_none() {
+                re_log::warn_once!(
+                    "Received a batch with an encode timestamp but no decode timestamp. Latency measurements will be incomplete."
+                );
+            }
+            if grpc_decoded_at.is_some() && grpc_encoded_at.is_none() {
+                re_log::warn_once!(
+                    "Received a batch with a decode timestamp but no encode timestamp. Latency measurements will be incomplete."
+                );
+            }
+        }
 
         Self {
             grpc_encoded_at,
