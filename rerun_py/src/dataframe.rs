@@ -165,6 +165,21 @@ impl PyComponentColumnDescriptor {
         self.0.column_name(re_sorbet::BatchType::Dataframe)
     }
 
+    fn __str__(&self) -> String {
+        format!(
+            "Column name: {}",
+            self.0.column_name(re_sorbet::BatchType::Dataframe)
+        )
+        .to_owned()
+            + format!("\n\tEntity path: {}", self.entity_path()).as_str()
+            + format!("\n\tArchetype type: {}", self.archetype().unwrap_or("None")).as_str()
+            + format!(
+                "\n\tComponent type: {}",
+                self.component_type().unwrap_or("")
+            )
+            .as_str()
+    }
+
     fn __eq__(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -469,6 +484,23 @@ pub struct PySchema {
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
+    fn __str__(&self) -> String {
+        self.component_columns()
+            .iter()
+            .filter(|field| {
+                !field.entity_path().contains("link") && !field.component().contains("Indicator")
+            })
+            .map(|col| col.__str__())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    // Technically this violates python's `__repr__` definition
+    // but since we previously didn't have anything that's ok for now.
+    fn __repr__(&self) -> String {
+        self.__str__()
+    }
+
     /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
         let py = slf.py();
