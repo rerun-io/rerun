@@ -633,12 +633,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 is_semantically_empty,
             } = desc;
 
-            header_property_ui(ui, "Type", "component");
-            header_property_ui(
-                ui,
-                "Component type",
-                component_type.map(|a| a.as_str()).unwrap_or("-"),
-            );
+            header_property_ui(ui, "Column type", "Component");
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
@@ -646,10 +641,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype.map(|a| a.full_name()).unwrap_or("-"),
             );
+            header_property_ui(ui, "Component", desc.component_descriptor().component);
             header_property_ui(
                 ui,
-                "Archetype field",
-                desc.component_descriptor().archetype_field_name(),
+                "Component type",
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
 
             if false {
