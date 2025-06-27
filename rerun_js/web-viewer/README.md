@@ -16,16 +16,19 @@ This package is framework-agnostic. A React wrapper is available at <https://www
 
 ## Install
 
-```
-$ npm i @rerun-io/web-viewer
+```txt
+npm i @rerun-io/web-viewer
 ```
 
 ℹ️ Note:
-The package version is equal to the supported Rerun SDK version, and [RRD files are not yet stable across different versions](https://github.com/rerun-io/rerun/issues/6410).
-This means that `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) that originates from a Rerun SDK with version `0.10.0`!
+The package version is equal to the supported Rerun SDK version, and [RRD files are only partially stable across different versions](https://rerun.io/blog/release-0.23).
+This means that:
+- `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) that originates from a Rerun SDK with version `0.10.0`!
+- For versions after `@rerun-io/web-viewer@0.23.0`, the Viewer can load data from the previous _minor_ version of Rerun, e.g. `0.24` can load `0.23` files.
 
 ## Usage
 
+The entrypoint for this packages is the [`WebViewer`](https://ref.rerun.io/docs/js/0.23.0/web-viewer/classes/WebViewer.html?speculative-link) class.
 The web viewer is an object which manages a canvas element:
 
 ```js
@@ -57,4 +60,6 @@ You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-
 This package only targets recent versions of browsers.
 If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
 
-For more information about using the package, visit [our docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).
+For more information about using the package, visit:
+- [Integration docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).
+- [Package docs](https://ref.rerun.io/docs/js/web-viewer/index.html).
