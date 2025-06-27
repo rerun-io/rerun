@@ -48,12 +48,12 @@ for frame_i in range(fps * duration_seconds):
     for packet in stream.encode(frame):
         if packet.pts is None:
             continue
-        rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
+        rr.set_time("time", duration=float(packet.pts * packet.time_base))
         rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
 
 # Flush stream.
 for packet in stream.encode():
     if packet.pts is None:
         continue
-    rr.set_time("video_stream", duration=float(packet.pts * packet.time_base))
+    rr.set_time("time", duration=float(packet.pts * packet.time_base))
     rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))

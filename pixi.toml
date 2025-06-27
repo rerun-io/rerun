@@ -714,6 +714,7 @@ air_traffic_data = { path = "examples/python/air_traffic_data", editable = true 
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
+camera_video_stream = { path = "examples/python/camera_video_stream", editable = true }
 clock = { path = "examples/python/clock", editable = true }
 controlnet = { path = "examples/python/controlnet", editable = true }
 dataframe_query = { path = "examples/python/dataframe_query", editable = true }
