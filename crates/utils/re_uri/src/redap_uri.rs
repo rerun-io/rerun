@@ -83,7 +83,7 @@ impl std::str::FromStr for RedapUri {
         let segments = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
-            .take(10) // limit to 10 segments
+            .take(10) // increased to handle arbitrary proxy prefixes
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
@@ -110,7 +110,7 @@ impl std::str::FromStr for RedapUri {
                 Ok(Self::Entry(EntryUri::new(origin, entry_id)))
             }
 
-            ["dataset", dataset_id] => {
+            ["dataset", dataset_id, "data"] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
                 DatasetDataUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
@@ -492,6 +492,21 @@ mod tests {
                 port: 80,
             },
             path_prefix: "/rerun".to_owned(),
+        });
+
+        assert_eq!(address.unwrap(), expected);
+
+        // Test multi-segment prefix case
+        let url = "rerun+http://13.31.13.31/cell/vscode/rerun/proxy";
+        let address: Result<RedapUri, _> = url.parse();
+
+        let expected = RedapUri::Proxy(ProxyUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
+                host: url::Host::Ipv4("13.31.13.31".parse().unwrap()),
+                port: 80,
+            },
+            path_prefix: "/cell/vscode/rerun".to_owned(),
         });
 
         assert_eq!(address.unwrap(), expected);
