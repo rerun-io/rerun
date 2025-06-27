@@ -476,7 +476,7 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor
             .view()
             .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
-            .unwrap()
+            .expect("Tensor.shape.len() is not actually 1!")
     } else {
         tensor.view()
     };

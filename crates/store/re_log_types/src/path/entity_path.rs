@@ -206,6 +206,18 @@ impl EntityPath {
         prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
     }
 
+    /// If this path starts with the given prefix,
+    /// then return the rest of the path after the prefix.
+    #[inline]
+    pub fn strip_prefix(&self, prefix: &Self) -> Option<Self> {
+        if self.starts_with(prefix) {
+            let remaining_parts = self.parts[prefix.len()..].to_vec();
+            Some(Self::new(remaining_parts))
+        } else {
+            None
+        }
+    }
+
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &Self) -> bool {
@@ -727,5 +739,15 @@ mod tests {
         // degenerate cases
         run_test(&[("/", "/"), ("/", "/")]);
         run_test(&[("a/b", "a/b"), ("a/b", "a/b")]);
+    }
+
+    #[test]
+    fn test_strip_prefix() {
+        let entity_path = EntityPath::properties() / EntityPathPart::from("episode");
+        assert_eq!(entity_path.to_string(), "/__properties/episode");
+        assert_eq!(
+            entity_path.strip_prefix(&EntityPath::properties()),
+            Some(EntityPath::from("episode"))
+        );
     }
 }

@@ -8,7 +8,7 @@ use pyo3::{
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::{
-    ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyTableEntry, to_py_err,
+    ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
 
 /// Client for a remote Rerun catalog server.
@@ -59,6 +59,19 @@ impl PyCatalogClientInternal {
             .import("datafusion")
             .and_then(|datafusion| Ok(datafusion.getattr("SessionContext")?.call0()?.unbind()))
             .ok();
+
+        // Set up our renderer by default since we've already established datafusion
+        // is installed.
+        let html_renderer = PyRerunHtmlTable::new(None, None);
+
+        let format_fn = py
+            .import("datafusion")
+            .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
+            .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
+
+        if let Ok(format_fn) = format_fn {
+            let _ = format_fn.call1((html_renderer,))?;
+        }
 
         Ok(Self {
             origin,

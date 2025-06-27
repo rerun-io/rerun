@@ -354,14 +354,9 @@ impl LogMsg {
         }
     }
 
-    /// Insert a metadata key-value pair into the record batch of an [`ArrowMsg`].
-    // TODO(apache/arrow-rs#7628): remove once we can do this with arrow-rs directly.
-    pub fn with_record_batch_metadata(self, key: String, value: String) -> Self {
-        match self {
-            Self::ArrowMsg(store_id, arrow_msg) => {
-                Self::ArrowMsg(store_id, arrow_msg.with_record_batch_metadata(key, value))
-            }
-            _ => self,
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        if let Some(record_batch) = self.arrow_record_batch_mut() {
+            record_batch.schema_metadata_mut().insert(key, value);
         }
     }
 }

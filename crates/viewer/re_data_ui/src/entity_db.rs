@@ -5,6 +5,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
+use re_smart_channel::SmartChannelSource;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -36,6 +37,12 @@ impl crate::DataUi for EntityDb {
             {
                 ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
                 ui.label(self.store_id().to_string());
+                ui.end_row();
+            }
+
+            if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetDataUri { partition_id, .. }, .. }) = &self.data_source {
+                ui.grid_left_hand_label("Partition ID");
+                ui.label(partition_id.to_string());
                 ui.end_row();
             }
 
@@ -138,8 +145,8 @@ impl crate::DataUi for EntityDb {
                     re_format::format_uint(chunk_max_rows_if_unsorted),
                     re_format::format_bytes(chunk_max_bytes as _),
                 ))
-                .on_hover_text(
-                    unindent::unindent(&format!("\
+                    .on_hover_text(
+                        unindent::unindent(&format!("\
                         The current compaction configuration for this recording is to merge chunks until they \
                         reach either a maximum of {} rows ({} if unsorted) or {}, whichever comes first.
 
@@ -165,14 +172,14 @@ impl crate::DataUi for EntityDb {
                         `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
                         make future runs cheaper.
                         ",
-                        re_format::format_uint(chunk_max_rows),
-                        re_format::format_uint(chunk_max_rows_if_unsorted),
-                        re_format::format_bytes(chunk_max_bytes as _),
-                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
-                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
-                        ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
-                    )),
-                );
+                                                    re_format::format_uint(chunk_max_rows),
+                                                    re_format::format_uint(chunk_max_rows_if_unsorted),
+                                                    re_format::format_bytes(chunk_max_bytes as _),
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
+                        )),
+                    );
                 ui.end_row();
             }
 

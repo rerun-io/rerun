@@ -77,7 +77,8 @@ impl Capsules3DVisualizer {
 
                     proc_mesh::ProcMeshKey::Capsule {
                         subdivisions,
-                        length: NotNan::new(ratio).unwrap(), // ok because of clean_length()
+                        length: NotNan::new(ratio)
+                            .expect("Ratio was not properly checked with clean_length"),
                         axes_only,
                     }
                 });
