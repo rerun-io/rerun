@@ -416,18 +416,39 @@ async fn stream_partition_from_server(
     on_cmd: &(dyn Fn(Command) + Send + Sync),
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
-    let catalog_chunk_stream = client
-        .inner()
-        .get_chunks(GetChunksRequest {
-            dataset_id: Some(dataset_id.into()),
-            partition_ids: vec![partition_id.into()],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            query: None,
-        })
-        .await?
-        .into_inner();
+    let static_chunk_stream = {
+        client
+            .inner()
+            .get_chunks(GetChunksRequest {
+                dataset_id: Some(dataset_id.into()),
+                partition_ids: vec![partition_id.clone().into()],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                exclude_static_data: false,
+                exclude_temporal_data: true,
+                query: None,
+            })
+            .await?
+            .into_inner()
+    };
+
+    let temporal_chunk_stream = {
+        client
+            .inner()
+            .get_chunks(GetChunksRequest {
+                dataset_id: Some(dataset_id.into()),
+                partition_ids: vec![partition_id.into()],
+                chunk_ids: vec![],
+                entity_paths: vec![],
+                select_all_entity_paths: true,
+                exclude_static_data: true,
+                exclude_temporal_data: false,
+                query: None,
+            })
+            .await?
+            .into_inner()
+    };
 
     let store_id = store_info.store_id.clone();
 
@@ -452,7 +473,11 @@ async fn stream_partition_from_server(
 
     // TODO(#10229): this looks to be converting back and forth?
 
-    let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
+    let static_chunk_stream = get_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
+    let temporal_chunk_stream =
+        get_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
+
+    let mut chunk_stream = static_chunk_stream.chain(temporal_chunk_stream);
 
     while let Some(chunks) = chunk_stream.next().await {
         for chunk in chunks? {

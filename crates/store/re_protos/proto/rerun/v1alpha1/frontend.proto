@@ -218,6 +218,12 @@ message QueryDatasetRequest {
   // ```
   bool select_all_entity_paths = 7;
 
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 8;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 9;
+
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
@@ -253,6 +259,12 @@ message GetChunksRequest {
   // true                    | ['foo', 'bar'] | invalid query, error
   // ```
   bool select_all_entity_paths = 6;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 7;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 8;
 
   // Query details
   rerun.manifest_registry.v1alpha1.Query query = 5;
