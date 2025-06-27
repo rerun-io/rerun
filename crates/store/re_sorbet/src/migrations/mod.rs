@@ -126,15 +126,15 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
                 }
             }
             Ordering::Greater => {
-                re_log::warn!(
-                    "Found Sorbet version 'v{batch_version}' that is newer then current supported version 'v{}'. Try using a newer version of Rerun.",
+                re_log::warn_once!(
+                    "Found Sorbet version 'v{batch_version}' that is newer then current supported version 'v{}'. Consider updating Rerun!",
                     SorbetSchema::METADATA_VERSION
                 );
                 batch
             }
         },
         Err(err) => {
-            re_log::error!("Skipping migrations due to error: {err}");
+            re_log::error_once!("Skipping migrations due to error: {err}");
             batch
         }
     };
