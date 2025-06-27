@@ -35,6 +35,7 @@ trait Migration {
 pub enum Error {
     #[error("could not parse 'sorbet:version: {value}': {err}")]
     InvalidSemVer { value: String, err: semver::Error },
+
     #[error("could not determine Sorbet version")]
     MissingVersion,
 }
@@ -62,12 +63,12 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             .any(|key| key.starts_with("rerun."))
         {
             re_log::debug_once!(
-                "Found 'rerun.' prefixed metatdata. This means Rerun `v0.23` or earlier."
+                "Found 'rerun.' prefixed metadata. This means Rerun `v0.23` or earlier."
             );
             Ok(semver::Version::new(0, 0, 1))
         } else if batch.schema().metadata().get("rerun:version").is_some() {
             re_log::debug_once!(
-                "Found 'rerun:' prefixed metatdata. This means 'nightly' between 'v0.23' and 'v0.24'."
+                "Found 'rerun:' prefixed metadata. This means 'nightly' between 'v0.23' and 'v0.24'."
             );
             // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
             Ok(semver::Version::new(0, 0, 2))
