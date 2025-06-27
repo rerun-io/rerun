@@ -70,8 +70,23 @@ pub fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
                 re_log::debug_once!(
                     "Moving indicator from field to component metadata field: {field_name}"
                 );
-                debug_assert!(!field_name.starts_with("rerun"), "We expected a short name here, but got {field_name:?}");
-                metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
+
+                // A lot of defensive code to handle different legacy formats of the indicator component,
+                // including blueprint indicators:
+                if let Some(component) = metadata.remove("rerun.component") {
+                    debug_assert!(
+                        component.ends_with("Indicator"),
+                        "Expected component to end with 'Indicator', got: {component:?}"
+                    );
+                    metadata.insert("rerun:component".to_owned(), component);
+                } else if field_name.starts_with("rerun.") {
+                    // Long name
+                    metadata.insert("rerun:component".to_owned(), field_name.to_string());
+                } else {
+                    // Short name: expand it to be long
+                    metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
+                }
+
                 // Remove everything else.
                 metadata.remove("rerun.archetype");
                 metadata.remove("rerun.archetype_field");

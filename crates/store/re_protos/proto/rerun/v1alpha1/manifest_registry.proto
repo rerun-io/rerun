@@ -329,8 +329,24 @@ message QueryDatasetRequest {
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Which entity paths are we interested in? Leave empty to query all of them.
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 7;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
@@ -444,8 +460,24 @@ message GetChunksRequest {
   // all chunks (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Which entity paths are we interested in? Leave empty to query all of them.
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 6;
 
   // A chunk-level latest-at or range query, or both.
   //

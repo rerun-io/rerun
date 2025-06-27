@@ -782,16 +782,9 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
-    if color.starts_with('#') {
-        let mut color = Color32::from_hex(color)
-            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?;
-        if let Ok(alpha) = color_alias.get("alpha") {
-            let alpha = alpha
-                .as_u8()
-                .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
-            color = color.gamma_multiply_u8(alpha);
-        }
-        Ok(color)
+    let mut color = if color.starts_with('#') {
+        Color32::from_hex(color)
+            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
@@ -804,17 +797,19 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
             .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
         let hue: Hue = hue.parse()?;
         let scale: Scale = scale.parse()?;
-        let mut color = color_table.get(ColorToken::new(hue, scale));
-        if let Ok(alpha) = color_alias.get("alpha") {
-            let alpha = alpha
-                .as_u8()
-                .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
-            color = color.gamma_multiply_u8(alpha);
-        }
-        Ok(color)
+        color_table.get(ColorToken::new(hue, scale))
     } else {
         anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
+    };
+
+    if let Ok(alpha) = color_alias.get("alpha") {
+        let alpha = alpha
+            .as_u8()
+            .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
+        color = color.gamma_multiply_u8(alpha);
     }
+
+    Ok(color)
 }
 
 fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
