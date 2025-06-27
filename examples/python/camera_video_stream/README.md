@@ -39,7 +39,7 @@ For each frame we have to set a new timestamp.
 rr.set_time("time", duration=float(packet.pts * packet.time_base))
 ```
 The time set here is the [_presentation timestamp_](https://en.wikipedia.org/wiki/Presentation_timestamp) (PTS) of the frame.
-Note that unlike with unlike with [`VideoAsset`](https://www.rerun.io/docs/reference/types/archetypes/video_asset),
+Note that unlike with unlike with [`VideoAsset`](https://www.rerun.io/docs/reference/types/archetypes/asset_video),
 there's no need to log [`VideoFrameReference`](https://www.rerun.io/docs/reference/types/archetypes/video_frame_reference),
 to map the video's PTS to the Rerun timeline, since the time at which video samples
 are logged directly represents the PTS.
