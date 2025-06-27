@@ -8,6 +8,7 @@ A stream of images (like those produced by a camera) can be logged to Rerun in s
 * Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
 * Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
 * Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
+* Compressed as a series of encoded video samples using [`VideoStream`](../reference/types/archetypes/video_stream.md), using e.g. H.264 encoded video stream
 
 These alternatives range on a scale of "simple, lossless, and big" to "complex, lossy, and small".
 
@@ -18,24 +19,47 @@ though it should be noted that PNG encoding usually does very little for the fil
 If you want to reduce bandwidth and storage cost, you can encode each frame as a JPEG and log it using `EncodedImage`. This can easily reduce the file sizes by almost two orders of magnitude with minimal perceptual loss.
 This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/0.18.2/common/archetypes/#rerun.archetypes.Image.compress).
 
-Finally, you can encode the images as a video file, and log it using `AssetVideo`.
-This gives the best compression ratio, reducing file sizes and bandwidth requirements.
+Finally, for the best compression ratio, you can encode the images as an encoded video.
+There are two options to choose from:
+* Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md).
+* Video files using [`AssetVideo`](../reference/types/archetypes/asset_video.md)
+
+## Streaming video / raw encoded video frames
+
+The following example illustrates how to encode frames (represented by `numpy` arrays) using [`pyAV`](https://github.com/PyAV-Org/PyAV)
+and then logging them to Rerun using [`VideoStream`](../reference/types/archetypes/video_stream.md).
+
+snippet: archetypes/video_stream_synthetic
+
+Using [`VideoStream`](../reference/types/archetypes/video_stream.md) requires deeper knowledge of the encoding process
+but compared to [`AssetVideo`](../reference/types/archetypes/asset_video.md),
+allows the Rerun Viewer to show incomplete or open ended video streams.
+In contrast, [`AssetVideo`](../reference/types/archetypes/asset_video.md) requires the entire
+video asset blob to be present before decoding can begin.
+
+Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream/) example
+for live streaming of Rerun video.
+
+Current limitations:
+* [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
+  This can causes latency or in some cases stop of video playback.
+* [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10185](https://github.com/rerun-io/rerun/issues/10185), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 at this point.
+* [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
+* [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
+
+## Video files
+
+You can use [`AssetVideo`](../reference/types/archetypes/asset_video.md) to log readily encoded video files.
+Rerun ignores the timestamp at which the video asset itself is logged and requires you
+to log [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) to establish a
+correlation of video time to the Rerun timeline.
+To ease this, the SDK's `read_frame_timestamps_nanos` utility allows to read out timestamps from in-memory video assets:
 
 snippet: archetypes/video_auto_frames
 
-## Video playback limitations
-Video support is new in Rerun, and has a few limitations:
+[#7354](https://github.com/rerun-io/rerun/issues/7354): Currently, only MP4 files are supported.
 
-* [#7354](https://github.com/rerun-io/rerun/issues/7354): Only the MP4 container format is supported
-* [#7755](https://github.com/rerun-io/rerun/issues/7755): No AV1 support on Linux ARM
-* [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
-* [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
-* There is no video encoder in the Rerun SDK, so you need to create the video file yourself
-
-## Streaming video
-Rerun does not yet support streaming video support. For scenarios where you don't need live video, you can work around this limitation by logging many small `AssetVideo`s to the same Entity Path. See [#7484](https://github.com/rerun-io/rerun/issues/7484) for more.
-
-## Codec support
+## Codec support in detail
 
 ### Overview
 
@@ -66,7 +90,9 @@ In those cases where encoding time matters, we recommend H.264/avc.
 
 #### AV1
 
-AV1 is supported out of the box using a software decoder paired with gpu based image conversion
+AV1 is supported out of the box using a software decoder paired with gpu based image conversion.
+
+[#7755](https://github.com/rerun-io/rerun/issues/7755): AV1 is supported on all native builds exception on Linux ARM.
 
 #### H.264/avc
 
@@ -111,6 +137,14 @@ Beyond this, for best compatibility we recommend:
 * prefer YUV over RGB & monochrome formats
 * don't use more than 8bit per color channel
 * keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782))
+
+## Other limitations
+There are still some limitations to encoded Video in Rerun which will be addressed in the future:
+
+* [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
+* [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
+* There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
+  Refer to TODO: 
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
