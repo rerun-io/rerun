@@ -133,6 +133,12 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
                 batch
             }
         },
+        Err(Error::MissingVersion) => {
+            // TODO(grtlr): We need to handle arbitrary record batches and
+            // we don't want to spam the viewer with useless warnings.
+            re_log::debug!("Encountered record batch without 'sorbet:version' metadata");
+            batch
+        }
         Err(err) => {
             re_log::error_once!("Skipping migrations due to error: {err}");
             batch
