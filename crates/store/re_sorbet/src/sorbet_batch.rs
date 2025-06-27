@@ -297,7 +297,7 @@ mod tests {
             "This should remain"
         );
         assert!(
-            ret.schema().metadata().contains_key("rerun:version"),
+            ret.schema().metadata().contains_key("sorbet:version"),
             "This should have been added"
         );
 
