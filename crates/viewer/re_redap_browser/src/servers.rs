@@ -12,7 +12,7 @@ use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
-use re_ui::list_item::{ItemActionButton, ItemButton as _, ItemMenuButton};
+use re_ui::list_item::{ItemButton as _, ItemMenuButton};
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
@@ -159,14 +159,6 @@ impl Server {
             "__entries",
         )
         .title(self.origin.host.to_string())
-        .title_button(
-            ItemActionButton::new(&re_ui::icons::RESET, "Refresh server", || {
-                ctx.command_sender
-                    .send(Command::RefreshCollection(self.origin.clone()))
-                    .ok();
-            })
-            .hover_text("Refresh server"),
-        )
         .column_blueprint(|desc| {
             let mut blueprint = ColumnBlueprint::default();
 
@@ -205,7 +197,6 @@ impl Server {
     fn dataset_entry_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
-        ctx: &Context<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
@@ -216,14 +207,6 @@ impl Server {
             dataset.name(),
         )
         .title(dataset.name())
-        .title_button(
-            ItemActionButton::new(&re_ui::icons::RESET, "Refresh dataset", || {
-                ctx.command_sender
-                    .send(Command::RefreshCollection(self.origin.clone()))
-                    .ok();
-            })
-            .hover_text("Refresh dataset"),
-        )
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -571,9 +554,7 @@ impl RedapServers {
     ) {
         for server in self.servers.values() {
             if let Some(dataset) = server.find_dataset(active_entry) {
-                self.with_ctx(|ctx| {
-                    server.dataset_entry_ui(viewer_ctx, ctx, ui, dataset);
-                });
+                server.dataset_entry_ui(viewer_ctx, ui, dataset);
 
                 return;
             }

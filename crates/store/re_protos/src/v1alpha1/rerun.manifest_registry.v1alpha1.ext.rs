@@ -26,6 +26,7 @@ pub struct QueryDatasetRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
     pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
     pub query: Option<Query>,
 }
@@ -66,6 +67,8 @@ impl TryFrom<crate::manifest_registry::v1alpha1::QueryDatasetRequest> for QueryD
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
+
+            select_all_entity_paths: value.select_all_entity_paths,
 
             scan_parameters: value
                 .scan_parameters
@@ -198,6 +201,7 @@ pub struct GetChunksRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
     pub query: Option<Query>,
 }
 
@@ -237,6 +241,8 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
+
+            select_all_entity_paths: value.select_all_entity_paths,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
         })

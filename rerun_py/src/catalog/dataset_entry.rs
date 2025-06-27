@@ -246,6 +246,7 @@ impl PyDatasetEntry {
                     partition_ids: vec![partition_id.clone().into()],
                     chunk_ids: vec![],
                     entity_paths: vec![],
+                    select_all_entity_paths: true,
                     query: None,
                 })
                 .await

@@ -181,7 +181,7 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "55.1", default-features = false }
+arrow = { version = "55.2", default-features = false }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"

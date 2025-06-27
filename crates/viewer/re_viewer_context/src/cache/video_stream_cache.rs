@@ -343,7 +343,11 @@ fn read_samples_from_chunk(
                 let decode_timestamp = re_video::Time(time.as_i64());
 
                 // Samples within a chunk are expected to be always in order since we called `chunk.sorted_by_timeline_if_unsorted` earlier.
-                debug_assert!(decode_timestamp > previous_max_presentation_timestamp);
+                //
+                // Equality means that we have two samples falling onto the same time.
+                // This is strange, but we allow it since decoders are fine with it (they care little about exact times)
+                // and this may well happen in practice, in fact it can be spuriously observed in the video streaming example.
+                debug_assert!(decode_timestamp >= previous_max_presentation_timestamp);
                 previous_max_presentation_timestamp = decode_timestamp;
 
                 let is_sync = match re_video::detect_gop_start(sample_bytes, *codec) {
