@@ -573,7 +573,7 @@ maturin = "==1.8.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"
-nodejs = ">=22.0"       # rerun_notebook needs nodejs to build the wheel
+nodejs = ">=22.0"        # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
