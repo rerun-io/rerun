@@ -174,7 +174,10 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &BTreeMap<Option<ArchetypeName>, Vec<(ComponentDescriptor, UnitChunkShared)>>,
+    components_by_archetype: &BTreeMap<
+        Option<ArchetypeName>,
+        Vec<(ComponentDescriptor, UnitChunkShared)>,
+    >,
 ) {
     let interactive = ui_layout != UiLayout::Tooltip;
 
@@ -182,24 +185,12 @@ fn component_list_ui(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (archetype, components) in components {
-                ui.list_item()
-                    .with_y_offset(1.0)
-                    .with_height(20.0)
-                    .interactive(false)
-                    .show_flat(
-                        ui,
-                        list_item::LabelContent::new(
-                            RichText::new(format!(
-                                "{}:",
-                                archetype
-                                    .map(|a| a.short_name())
-                                    .unwrap_or("Without archetype")
-                            ))
-                            .size(10.0)
-                            .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
-                        ),
-                    );
+            for (archetype, components) in components_by_archetype {
+                if archetype.is_none() && components_by_archetype.len() == 1 {
+                    // They are all without archetype, so we can skip the label.
+                } else {
+                    archetype_label_ui(ui, archetype);
+                }
 
                 for (component_descr, unit) in components {
                     let component_path =
@@ -282,6 +273,26 @@ fn component_list_ui(
             }
         },
     );
+}
+
+fn archetype_label_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
+    ui.list_item()
+        .with_y_offset(1.0)
+        .with_height(20.0)
+        .interactive(false)
+        .show_flat(
+            ui,
+            list_item::LabelContent::new(
+                RichText::new(format!(
+                    "{}:",
+                    archetype
+                        .map(|a| a.short_name())
+                        .unwrap_or("Without archetype")
+                ))
+                .size(10.0)
+                .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
+            ),
+        );
 }
 
 /// If this entity is an image, show it together with buttons to download and copy the image.
