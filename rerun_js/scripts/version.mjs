@@ -28,9 +28,11 @@ const root_package_json = JSON.parse(
 for (const pkg_path of root_package_json.workspaces) {
   const package_json_path = path.join(root_dir, pkg_path, "package.json");
   const readme_path = path.join(root_dir, pkg_path, "README.md");
+  const index_ts_path = path.join(root_dir, pkg_path, "index.ts");
 
   let package_json = JSON.parse(fs.readFileSync(package_json_path, "utf-8"));
   let readme = fs.readFileSync(readme_path, "utf-8");
+  let index_ts = fs.readFileSync(index_ts_path, "utf-8");
 
   // update package version
   package_json.version = version;
@@ -56,6 +58,10 @@ for (const pkg_path of root_package_json.workspaces) {
       /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
+    index_ts = index_ts.replace(
+      /https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd/,
+      `https://app.rerun.io/version/${version}/examples/dna.rrd`,
+    )
   }
 
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
