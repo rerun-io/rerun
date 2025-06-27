@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use arrow::array::{Array, RecordBatch, StringArray, new_null_array};
@@ -10,6 +10,7 @@ use datafusion::{
     physical_plan::{stream::RecordBatchStreamAdapter, streaming::PartitionStream},
 };
 
+use itertools::Itertools;
 use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 
@@ -63,6 +64,8 @@ impl PartitionStream for DataframeQueryTableProvider {
         let engines = self.query_engines.clone();
         let query_expression = self.query_expression.clone();
 
+        // let partition_id_columns = HashMap::new();
+
         let target_schema = self.schema.clone();
         let stream = futures_util::stream::iter(engines.into_iter().flat_map(
             move |(partition_id, query_engine)| {
@@ -114,15 +117,17 @@ fn prepend_string_column(
     let new_array =
         Arc::new(StringArray::from(vec![value.to_owned(); row_count])) as Arc<dyn Array>;
 
-    let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
-    fields.extend(batch.schema().fields().iter().map(|f| (**f).clone()));
+    let fields = std::iter::once(Field::new(column_name, DataType::Utf8, false))
+        .chain(batch.schema().fields().iter().map(|f| (**f).clone()))
+        .collect_vec();
     let schema = Arc::new(Schema::new_with_metadata(
         fields,
         batch.schema().metadata.clone(),
     ));
 
-    let mut columns = vec![new_array];
-    columns.extend(batch.columns().iter().cloned());
+    let columns = std::iter::once(new_array)
+        .chain(batch.columns().iter().cloned())
+        .collect_vec();
 
     RecordBatch::try_new(schema, columns)
 }
