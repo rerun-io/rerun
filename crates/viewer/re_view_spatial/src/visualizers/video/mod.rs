@@ -183,24 +183,6 @@ fn show_video_error(
                 video_error_rect_size = glam::vec2(extent_x, extent_y);
             }
         }
-
-        // To avoid circular dependency of the bounds and the error rectangle (causing flickering),
-        // make sure the bounding box contains the entire (speculative) video rectangle.
-        if ctx.view_class_identifier == SpatialView2D::identifier() {
-            visualizer_data.add_bounding_box(
-                entity_path.hash(),
-                macaw::BoundingBox::from_points(
-                    [
-                        glam::Vec3::from(world_from_entity.translation),
-                        glam::Vec3::from(world_from_entity.translation)
-                            + glam::Vec3::new(video_size.x, video_size.y, 0.0),
-                    ]
-                    .iter()
-                    .copied(),
-                ),
-                world_from_entity,
-            );
-        }
     }
 
     let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
@@ -262,8 +244,6 @@ fn register_video_bounds_with_bounding_box(
         return;
     }
 
-    // To avoid circular dependency of the bounds and the error rectangle (causing flickering),
-    // make sure the bounding box contains the entire (speculative) video rectangle.
     let top_left = glam::Vec3::from(world_from_entity.translation);
 
     visualizer_data.add_bounding_box(
