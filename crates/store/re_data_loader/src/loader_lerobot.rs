@@ -132,12 +132,12 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties = re_types::archetypes::RecordingInfo::new()
+                let recording_info = re_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
                 let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
-                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                    .with_archetype(RowId::new(), TimePoint::default(), &recording_info)
                     .build()
                 else {
                     re_log::error!(

@@ -132,7 +132,7 @@ pub struct RecordingStreamBuilder {
 
     // Optional user-defined recording properties.
     should_send_properties: bool,
-    properties: RecordingInfo,
+    recording_info: RecordingInfo,
 }
 
 impl RecordingStreamBuilder {
@@ -163,7 +163,7 @@ impl RecordingStreamBuilder {
             batcher_config: None,
 
             should_send_properties: true,
-            properties: RecordingInfo::new()
+            recording_info: RecordingInfo::new()
                 .with_start_time(re_types::components::Timestamp::now()),
         }
     }
@@ -214,14 +214,14 @@ impl RecordingStreamBuilder {
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_name(mut self, name: impl Into<String>) -> Self {
-        self.properties = self.properties.with_name(name.into());
+        self.recording_info = self.recording_info.with_name(name.into());
         self
     }
 
     /// Sets an optional name for the recording.
     #[inline]
     pub fn recording_started(mut self, started: impl Into<Timestamp>) -> Self {
-        self.properties = self.properties.with_start_time(started);
+        self.recording_info = self.recording_info.with_start_time(started);
         self
     }
 
@@ -665,7 +665,7 @@ impl RecordingStreamBuilder {
         server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, recording_info, batcher_config) = self.into_args();
         if enabled {
             let sink = crate::web_viewer::new_sink(
                 open_browser,
@@ -674,7 +674,7 @@ impl RecordingStreamBuilder {
                 grpc_port,
                 server_memory_limit,
             )?;
-            RecordingStream::new(store_info, properties, batcher_config, sink)
+            RecordingStream::new(store_info, recording_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
             Ok(RecordingStream::disabled())
@@ -698,7 +698,7 @@ impl RecordingStreamBuilder {
             enabled: _,
             batcher_config,
             should_send_properties,
-            properties,
+            recording_info,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
@@ -727,7 +727,7 @@ impl RecordingStreamBuilder {
         (
             enabled,
             store_info,
-            should_send_properties.then_some(properties),
+            should_send_properties.then_some(recording_info),
             batcher_config,
         )
     }
@@ -836,7 +836,7 @@ impl Drop for RecordingStream {
 
 struct RecordingStreamInner {
     store_info: StoreInfo,
-    properties: Option<RecordingInfo>,
+    recording_info: Option<RecordingInfo>,
     tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
@@ -890,7 +890,7 @@ impl Drop for RecordingStreamInner {
 impl RecordingStreamInner {
     fn new(
         store_info: StoreInfo,
-        properties: Option<RecordingInfo>,
+        recording_info: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -929,22 +929,22 @@ impl RecordingStreamInner {
                 })?
         };
 
-        if let Some(properties) = properties.as_ref() {
-            // We pre-populate the batcher with a chunk the contains the recording
-            // properties, so that these get automatically sent to the sink.
+        if let Some(recording_info) = recording_info.as_ref() {
+            // We pre-populate the batcher with a chunk the contains the `RecordingInfo`
+            // so that these get automatically sent to the sink.
 
-            re_log::debug!(properties = ?properties, "adding recording properties to batcher");
+            re_log::debug!(recording_info = ?recording_info, "Adding RecordingInfo to batcher");
 
-            let properties_chunk = Chunk::builder(EntityPath::recording_properties())
-                .with_archetype(RowId::new(), TimePoint::default(), properties)
+            let chunk = Chunk::builder(EntityPath::recording_properties())
+                .with_archetype(RowId::new(), TimePoint::default(), recording_info)
                 .build()?;
 
-            batcher.push_chunk(properties_chunk);
+            batcher.push_chunk(chunk);
         }
 
         Ok(Self {
             store_info,
-            properties,
+            recording_info,
             tick: AtomicI64::new(0),
             cmds_tx,
             batcher,
@@ -1001,7 +1001,7 @@ impl RecordingStream {
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         store_info: StoreInfo,
-        properties: Option<RecordingInfo>,
+        recording_info: Option<RecordingInfo>,
         batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
@@ -1016,11 +1016,10 @@ impl RecordingStream {
                 ) as Box<dyn LogSink>
             });
 
-        let stream = RecordingStreamInner::new(store_info, properties, batcher_config, sink).map(
-            |inner| Self {
+        let stream = RecordingStreamInner::new(store_info, recording_info, batcher_config, sink)
+            .map(|inner| Self {
                 inner: Either::Left(Arc::new(Some(inner))),
-            },
-        )?;
+            })?;
 
         Ok(stream)
     }
@@ -2169,7 +2168,7 @@ impl fmt::Debug for RecordingStream {
                 // This pattern match prevents _accidentally_ omitting data from the debug output
                 // when new fields are added.
                 store_info,
-                properties,
+                recording_info,
                 tick,
                 cmds_tx: _,
                 batcher: _,
@@ -2180,7 +2179,7 @@ impl fmt::Debug for RecordingStream {
 
             f.debug_struct("RecordingStream")
                 .field("store_info", &store_info)
-                .field("properties", &properties)
+                .field("recording_info", &recording_info)
                 .field("tick", &tick)
                 .field("pending_dataloaders", &dataloader_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)
