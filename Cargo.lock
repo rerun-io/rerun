@@ -7700,6 +7700,7 @@ dependencies = [
  "re_case",
  "re_chunk",
  "re_chunk_store",
+ "re_component_ui",
  "re_context_menu",
  "re_data_ui",
  "re_entity_db",
