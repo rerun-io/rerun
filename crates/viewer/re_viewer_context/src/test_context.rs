@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // This is only a test
+
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -5,6 +7,19 @@ use ahash::HashMap;
 use egui::os::OperatingSystem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use tap::Tap as _;
+
+use re_chunk::{Chunk, ChunkBuilder};
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
+use re_global_context::DisplayMode;
+use re_log_types::{
+    EntityPath, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
+    external::re_tuid::Tuid,
+};
+use re_types::{archetypes::RecordingInfo, external::uuid::Uuid};
+use re_types_core::reflection::Reflection;
+use re_ui::Help;
 
 use crate::{
     ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
@@ -12,13 +27,6 @@ use crate::{
     SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
     blueprint_timeline, command_channel,
 };
-use re_chunk::{Chunk, ChunkBuilder};
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
-use re_global_context::DisplayMode;
-use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
-use re_types_core::reflection::Reflection;
-use re_ui::Help;
 
 pub trait HarnessExt {
     /// Fails the test iff more than `broken_pixels_fraction * num_pixels` pixels are broken.
@@ -137,6 +145,10 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// test_context.run_in_egui_central_panel(|ctx: &ViewerContext, _| {
 ///     /* do something with ctx */
 /// });
+///
+/// // To get proper UI:s, also run this:
+/// // test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+/// // re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 /// ```
 pub struct TestContext {
     pub recording_store: EntityDb,
@@ -171,7 +183,41 @@ impl Default for TestContext {
     fn default() -> Self {
         re_log::setup_logging();
 
-        let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
+        let mut recording_store =
+            EntityDb::new(StoreId::from_uuid(StoreKind::Recording, Uuid::nil()));
+
+        recording_store.set_store_info(SetStoreInfo {
+            row_id: Tuid::new(),
+            info: StoreInfo {
+                application_id: "test_app".into(),
+                store_id: recording_store.store_id(),
+                cloned_from: None,
+                store_source: StoreSource::Other("test".into()),
+                store_version: None,
+            },
+        });
+        {
+            // Set RecordingInfo:
+            recording_store
+                .set_recording_property(
+                    EntityPath::properties(),
+                    RecordingInfo::descriptor_name(),
+                    &re_types::components::Name::from("Test recording"),
+                )
+                .unwrap();
+            recording_store
+                .set_recording_property(
+                    EntityPath::properties(),
+                    RecordingInfo::descriptor_start_time(),
+                    &re_types::components::Timestamp::from(
+                        "2025-06-28T19:26:42Z"
+                            .parse::<jiff::Timestamp>()
+                            .unwrap()
+                            .as_nanosecond() as i64,
+                    ),
+                )
+                .unwrap();
+        }
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
         let (command_sender, command_receiver) = command_channel();
@@ -400,6 +446,9 @@ impl TestContext {
         let mut selection_state = self.selection_state.lock();
         let mut focused_item = self.focused_item.lock();
 
+        let bundle = re_entity_db::StoreBundle::default()
+            .tap_mut(|store_bundle| store_bundle.insert(self.recording_store.clone()));
+
         let ctx = ViewerContext {
             global_context: GlobalContext {
                 app_options: &Default::default(),
@@ -418,7 +467,7 @@ impl TestContext {
             store_context: &store_context,
             storage_context: &StorageContext {
                 hub: &Default::default(),
-                bundle: &Default::default(),
+                bundle: &bundle,
                 tables: &Default::default(),
             },
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
