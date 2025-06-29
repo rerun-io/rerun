@@ -1,7 +1,9 @@
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
@@ -36,12 +38,41 @@ impl Default for Options {
     }
 }
 
+/// Why a client was unintentionally disconnected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ClientConnectionFailure {
+    #[error("Invalid message proxy server endpoint")]
+    InvalidEndpoint,
+
+    #[error("Failed to encode message")]
+    FailedToEncodeMessage,
+
+    #[error("Failed to send messages")]
+    FailedToSendMessages(tonic::Code),
+}
+
+/// The connection state of a client.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientConnectionState {
+    /// The client is connecting to the remote server.
+    Connecting,
+
+    /// The client is connected to the remote server.
+    Connected,
+
+    /// The client is disconnected from the remote server.
+    ///
+    /// No new connection attempts will be made.
+    Disconnected(Result<(), ClientConnectionFailure>),
+}
+
 /// This is the gRPC client used for the SDK-side log-sink.
 pub struct Client {
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
     shutdown_tx: Sender<()>,
     flush_timeout: Option<Duration>,
+    status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
@@ -50,33 +81,44 @@ impl Client {
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
-        let thread = thread::Builder::new()
-            .name("message_proxy_client".to_owned())
-            .spawn(move || {
-                let mut runtime = runtime::Builder::new_current_thread();
-                runtime.enable_all();
-                runtime
-                    .build()
-                    .expect("Failed to build tokio runtime")
-                    .block_on(message_proxy_client(
-                        uri,
-                        cmd_rx,
-                        shutdown_rx,
-                        options.compression,
-                    ));
-            })
-            .expect("Failed to spawn message proxy client thread");
+        let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting));
+        let thread = {
+            let status = status.clone();
+            thread::Builder::new()
+                .name("message_proxy_client".to_owned())
+                .spawn(move || {
+                    let mut runtime = runtime::Builder::new_current_thread();
+                    runtime.enable_all();
+                    runtime
+                        .build()
+                        .expect("Failed to build tokio runtime")
+                        .block_on(message_proxy_client(
+                            uri,
+                            cmd_rx,
+                            shutdown_rx,
+                            options.compression,
+                            status,
+                        ));
+                })
+                .expect("Failed to spawn message proxy client thread")
+        };
 
         Self {
             thread: Some(thread),
             cmd_tx,
             shutdown_tx,
             flush_timeout: options.flush_timeout,
+            status,
         }
     }
 
     pub fn send(&self, msg: LogMsg) {
         self.cmd_tx.send(Cmd::LogMsg(msg)).ok();
+    }
+
+    /// Whether the client is connected to a remote server.
+    pub fn status(&self) -> ClientConnectionState {
+        self.status.load()
     }
 
     pub fn flush(&self) {
@@ -143,10 +185,14 @@ async fn message_proxy_client(
     mut cmd_rx: UnboundedReceiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
+    status: Arc<AtomicCell<ClientConnectionState>>,
 ) {
     let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
+            status.store(ClientConnectionState::Disconnected(Err(
+                ClientConnectionFailure::InvalidEndpoint,
+            )));
             re_log::error!("Invalid message proxy server endpoint: {err}");
             return;
         }
@@ -159,7 +205,8 @@ async fn message_proxy_client(
                 re_log::debug!("failed to connect to message proxy server: {err}");
                 tokio::select! {
                     _ = shutdown_rx.recv() => {
-                        re_log::debug!("shutting down client without flush");
+                        status.store(ClientConnectionState::Disconnected(Ok(())));
+                        re_log::debug!("Shutting down client without flush");
                         return;
                     }
                     _ = tokio::time::sleep(Duration::from_millis(100)) => {
@@ -169,9 +216,13 @@ async fn message_proxy_client(
             }
         }
     };
+
+    status.store(ClientConnectionState::Connected);
+
     let mut client = MessageProxyServiceClient::new(channel)
         .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
+    let stream_status = status.clone();
     let stream = async_stream::stream! {
         loop {
             tokio::select! {
@@ -187,6 +238,9 @@ async fn message_proxy_client(
                             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(log_msg, compression) {
                                 Ok(msg) => msg,
                                 Err(err) => {
+                                    stream_status.store(ClientConnectionState::Disconnected(
+                                        Err(ClientConnectionFailure::FailedToEncodeMessage),
+                                    ));
                                     re_log::error!("Failed to encode message: {err}");
                                     break;
                                 }
@@ -204,13 +258,15 @@ async fn message_proxy_client(
                             // we know we've sent all messages before that flush through already.
                             re_log::debug!("Flush requested");
                             if tx.send(()).is_err() {
-                                re_log::debug!("Failed to respond to flush: channel is closed");
-                                return;
+                                // Flush channel may already be closed for non-blocking flush, so this isn't an error.
+                                re_log::debug!("Failed to respond to flush: flush report channel was closed");
+                                break;
                             };
                         }
 
                         None => {
-                            re_log::debug!("Channel closed");
+                            // Assume channel closing is intentional, so don't report as error.
+                            re_log::debug!("Shutdown channel closed");
                             break;
                         }
                     }
@@ -218,13 +274,27 @@ async fn message_proxy_client(
 
                 _ = shutdown_rx.recv() => {
                     re_log::debug!("Shutting down client without flush");
-                    return;
+                    break;
                 }
             }
         }
     };
 
-    if let Err(err) = client.write_messages(stream).await {
+    let disconnect_result = if let Err(err) = client.write_messages(stream).await {
         re_log::error!("Write messages call failed: {err}");
+
+        // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.
+        if err.code() != tonic::Code::Ok && err.code() != tonic::Code::Unknown {
+            Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
+        } else {
+            Ok(())
+        }
+    } else {
+        Ok(())
     };
+
+    // Don't set error status if we already did so in the stream.
+    if !matches!(status.load(), ClientConnectionState::Disconnected(_)) {
+        status.store(ClientConnectionState::Disconnected(disconnect_result));
+    }
 }
