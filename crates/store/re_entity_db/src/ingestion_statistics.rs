@@ -10,6 +10,14 @@ pub struct IngestionStatistics {
     stats: Mutex<LatencyStats>,
 }
 
+impl Clone for IngestionStatistics {
+    fn clone(&self) -> Self {
+        Self {
+            stats: Mutex::new(self.stats.lock().clone()),
+        }
+    }
+}
+
 impl IngestionStatistics {
     #[inline]
     pub fn on_events(&self, timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {

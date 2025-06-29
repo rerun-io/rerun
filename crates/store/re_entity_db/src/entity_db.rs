@@ -50,6 +50,7 @@ pub enum EntityDbClass<'a> {
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
+#[derive(Clone)] // Useful for tests
 pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
     ///
