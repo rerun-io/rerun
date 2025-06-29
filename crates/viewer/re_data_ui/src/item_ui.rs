@@ -693,12 +693,12 @@ pub fn entity_db_button_ui(
     };
 
     let recording_name = if let Some(recording_name) =
-        entity_db.recording_property::<Name>(&RecordingInfo::descriptor_name())
+        entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
     } else {
         entity_db
-            .recording_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+            .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             .map(|started| {
                 re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
