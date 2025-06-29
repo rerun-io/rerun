@@ -1119,7 +1119,7 @@ mod tests {
 
         let mut harness = test_context
             .setup_kittest_for_rendering()
-            .with_size([600.0, 1024.0])
+            .with_size([600.0, 400.0])
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     SelectionPanel::default().contents(
