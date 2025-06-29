@@ -57,7 +57,7 @@ pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
 pub use re_memory::MemoryLimit;
-pub use re_types::archetypes::RecordingProperties;
+pub use re_types::archetypes::RecordingInfo;
 
 pub use global::cleanup_if_forked_child;
 

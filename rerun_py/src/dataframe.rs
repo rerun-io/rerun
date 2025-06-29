@@ -1392,7 +1392,7 @@ impl PyRecording {
         Ok(self
             .store
             .read()
-            .info()
+            .store_info()
             .ok_or(PyValueError::new_err(
                 "Recording is missing application id.",
             ))?

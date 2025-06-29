@@ -28,7 +28,7 @@
 #include "archetypes/pinhole.hpp"
 #include "archetypes/points2d.hpp"
 #include "archetypes/points3d.hpp"
-#include "archetypes/recording_properties.hpp"
+#include "archetypes/recording_info.hpp"
 #include "archetypes/scalars.hpp"
 #include "archetypes/segmentation_image.hpp"
 #include "archetypes/series_lines.hpp"

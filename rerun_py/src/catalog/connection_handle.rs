@@ -509,7 +509,7 @@ impl ConnectionHandle {
                                             store_info.store_id.clone(),
                                             Default::default(),
                                         );
-                                        store.set_info(store_info);
+                                        store.set_store_info(store_info);
                                         ChunkStoreHandle::new(store)
                                     });
 

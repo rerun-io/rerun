@@ -63,7 +63,6 @@ namespace rerun {
         // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
         //              that we don't have to hardcode this here.
         static constexpr const char PROPERTIES_ENTITY_PATH[] = "__properties/";
-        static constexpr const char RECORDING_PROPERTIES_ENTITY_PATH[] = "__properties/recording/";
 
       public:
         /// Creates a new recording stream to log to.

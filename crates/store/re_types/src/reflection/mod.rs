@@ -2051,9 +2051,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.RecordingProperties"),
+            ArchetypeName::new("rerun.archetypes.RecordingInfo"),
             ArchetypeReflection {
-                display_name: "Recording properties",
+                display_name: "Recording info",
                 deprecation_summary: None,
                 scope: None,
                 view_types: &[],

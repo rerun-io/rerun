@@ -75,5 +75,5 @@ This page lists all built-in archetypes.
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
-* [`RecordingProperties`](archetypes/recording_properties.md): A list of properties associated with a recording.
+* [`RecordingInfo`](archetypes/recording_info.md): A list of properties associated with a recording.
 

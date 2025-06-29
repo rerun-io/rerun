@@ -265,7 +265,7 @@ impl PyDatasetEntry {
             };
 
             let mut store = ChunkStore::new(store_id, Default::default());
-            store.set_info(store_info);
+            store.set_store_info(store_info);
 
             let mut chunk_stream =
                 get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
