@@ -223,7 +223,7 @@ impl AppState {
                     .update(ui.ctx(), store_context.blueprint);
 
                 let viewport_blueprint =
-                    ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+                    ViewportBlueprint::from_db(store_context.blueprint, &blueprint_query);
                 let viewport_ui = ViewportUi::new(viewport_blueprint);
 
                 // If the blueprint is invalid, reset it.

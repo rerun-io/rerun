@@ -32,7 +32,7 @@ mod test {
         });
 
         test_ctx.run_in_egui_central_panel(|ctx, ui| {
-            let blueprint = ViewportBlueprint::try_from_db(
+            let blueprint = ViewportBlueprint::from_db(
                 ctx.store_context.blueprint,
                 &LatestAtQuery::latest(blueprint_timeline()),
             );
