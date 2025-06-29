@@ -204,11 +204,13 @@ impl EntityDb {
         }
     }
 
-    pub fn recording_property<C: re_types_core::Component>(
+    /// Read one of the built-in `RecordingInfo` properties.
+    pub fn recording_info_property<C: re_types_core::Component>(
         &self,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
+        debug_assert!(component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()));
 
         self.latest_at_component::<C>(
             &EntityPath::properties(),
@@ -218,14 +220,23 @@ impl EntityDb {
         .map(|(_, value)| value)
     }
 
+    /// Use can use this both for setting the built-in `RecordingInfo` components,
+    /// and for setting custom properties on the recording.
     pub fn set_recording_property<Component: re_types_core::Component>(
         &mut self,
+        entity_path: EntityPath,
         component_descr: re_types_core::ComponentDescriptor,
         value: &Component,
     ) -> Result<(), Error> {
         debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        debug_assert!(entity_path.starts_with(&EntityPath::properties()));
+        debug_assert!(
+            (entity_path == EntityPath::properties())
+                == (component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into())),
+            "RecordingInfo should be logged at {}. Custom properties should be under a child entity",
+            EntityPath::properties()
+        );
 
-        let entity_path = EntityPath::properties();
         let chunk = ChunkBuilder::new(ChunkId::new(), entity_path)
             .with_component(RowId::new(), TimePoint::STATIC, component_descr, value)
             .map_err(|err| Error::Chunk(err.into()))?

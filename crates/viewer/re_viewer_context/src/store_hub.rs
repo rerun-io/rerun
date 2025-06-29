@@ -407,7 +407,7 @@ impl StoreHub {
 
         // Find any matching recording and activate it
         for rec in self.store_bundle.recordings().sorted_by_key(|entity_db| {
-            entity_db.recording_property::<Timestamp>(
+            entity_db.recording_info_property::<Timestamp>(
                 &archetypes::RecordingInfo::descriptor_start_time(),
             )
         }) {
