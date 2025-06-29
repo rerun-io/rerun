@@ -124,7 +124,7 @@ fn run_time_panel_and_save_snapshot(
         .with_size(Vec2::new(700.0, 700.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );

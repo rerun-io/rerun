@@ -45,10 +45,8 @@ impl TestContextExt for TestContext {
             // us to a `FnMut` closure.
             if let Some(setup_blueprint) = setup_blueprint.take() {
                 self.run(egui_ctx, |ctx| {
-                    let mut viewport_blueprint = ViewportBlueprint::try_from_db(
-                        &self.blueprint_store,
-                        &self.blueprint_query,
-                    );
+                    let mut viewport_blueprint =
+                        ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
                     result = Some(setup_blueprint(ctx, &mut viewport_blueprint));
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
@@ -57,7 +55,7 @@ impl TestContextExt for TestContext {
 
                 // Reload the blueprint store and execute all view queries.
                 let viewport_blueprint =
-                    ViewportBlueprint::try_from_db(&self.blueprint_store, &self.blueprint_query);
+                    ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
 
                 let mut query_results = HashMap::default();
 

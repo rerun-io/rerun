@@ -83,7 +83,7 @@ pub struct ViewportBlueprint {
 
 impl ViewportBlueprint {
     /// Attempt to load a [`ViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &re_entity_db::EntityDb, query: &LatestAtQuery) -> Self {
+    pub fn from_db(blueprint_db: &re_entity_db::EntityDb, query: &LatestAtQuery) -> Self {
         re_tracing::profile_function!();
 
         let blueprint_engine = blueprint_db.storage_engine();
