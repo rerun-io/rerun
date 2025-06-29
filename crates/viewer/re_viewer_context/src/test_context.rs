@@ -14,10 +14,12 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_global_context::DisplayMode;
 use re_log_types::{
-    EntityPath, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
+    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
     external::re_tuid::Tuid,
 };
-use re_types::{archetypes::RecordingInfo, external::uuid::Uuid};
+use re_types::{
+    Component as _, ComponentDescriptor, archetypes::RecordingInfo, external::uuid::Uuid,
+};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
@@ -218,6 +220,32 @@ impl Default for TestContext {
                 )
                 .unwrap();
         }
+        {
+            // Set some custom recording properties:
+            recording_store
+                .set_recording_property(
+                    EntityPath::properties() / EntityPathPart::from("episode"),
+                    ComponentDescriptor {
+                        archetype: None,
+                        component: "building".into(),
+                        component_type: Some(re_types::components::Text::name()),
+                    },
+                    &re_types::components::Text::from("Warehuse B"),
+                )
+                .unwrap();
+            recording_store
+                .set_recording_property(
+                    EntityPath::properties() / EntityPathPart::from("episode"),
+                    ComponentDescriptor {
+                        archetype: None,
+                        component: "weather".into(),
+                        component_type: Some(re_types::components::Text::name()),
+                    },
+                    &re_types::components::Text::from("Cloudy with meatballs"),
+                )
+                .unwrap();
+        }
+
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
         let (command_sender, command_receiver) = command_channel();
