@@ -283,12 +283,11 @@ fn archetype_label_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
         .show_flat(
             ui,
             list_item::LabelContent::new(
-                RichText::new(format!(
-                    "{}:",
+                RichText::new(
                     archetype
                         .map(|a| a.short_name())
-                        .unwrap_or("Without archetype")
-                ))
+                        .unwrap_or("Without archetype"),
+                )
                 .size(10.0)
                 .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
             ),
