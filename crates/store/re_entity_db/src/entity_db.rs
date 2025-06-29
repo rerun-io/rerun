@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{
+    Chunk, ChunkBuilder, ChunkId, ChunkResult, LatestAtQuery, RowId, TimeInt, TimePoint, Timeline,
+    TimelineName,
+};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
@@ -213,6 +216,24 @@ impl EntityDb {
             component_descr,
         )
         .map(|(_, value)| value)
+    }
+
+    pub fn set_recording_property<Component: re_types_core::Component>(
+        &mut self,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> Result<(), Error> {
+        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+
+        let entity_path = EntityPath::properties();
+        let chunk = ChunkBuilder::new(ChunkId::new(), entity_path)
+            .with_component(RowId::new(), TimePoint::STATIC, component_descr, value)
+            .map_err(|err| Error::Chunk(err.into()))?
+            .build()?;
+
+        self.add_chunk(&Arc::new(chunk))?;
+
+        Ok(())
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
