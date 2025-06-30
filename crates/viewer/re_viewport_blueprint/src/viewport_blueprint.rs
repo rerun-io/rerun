@@ -417,7 +417,6 @@ impl ViewportBlueprint {
     /// Add a set of views to the viewport.
     ///
     /// The view is added to the root container, or, if provided, to a given parent container.
-    /// The list of created view IDs is returned.
     ///
     /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
     /// if needed.
@@ -434,6 +433,15 @@ impl ViewportBlueprint {
                 position_in_parent,
             });
         }
+    }
+
+    /// Add a single view to the viewport to the root container.
+    ///
+    /// Returns the ID of the added view.
+    pub fn add_view_at_root(&self, view: ViewBlueprint) -> ViewId {
+        let view_id = view.id;
+        self.add_views(std::iter::once(view), None, None);
+        view_id
     }
 
     /// Returns an iterator over all the contents (views and containers) in the viewport.

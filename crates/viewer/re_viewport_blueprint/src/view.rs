@@ -68,6 +68,14 @@ impl ViewBlueprint {
         Self::new_with_id(view_class, recommended, ViewId::random())
     }
 
+    /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`] containing everything under the root.
+    ///
+    /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent, you
+    /// must call [`Self::save_to_blueprint_store`].
+    pub fn new_with_root_wildcard(view_class: ViewClassIdentifier) -> Self {
+        Self::new(view_class, RecommendedView::root())
+    }
+
     /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`], using the provided id.
     ///
     /// Useful for testing contexts where random ids are not desired. Avoid using in production
@@ -514,7 +522,7 @@ mod tests {
         );
 
         // Basic blueprint - a single view that queries everything.
-        let view = ViewBlueprint::new("3D".into(), RecommendedView::root());
+        let view = ViewBlueprint::new_with_root_wildcard("3D".into());
         let override_root = ViewContents::override_path_for_entity(view.id, &EntityPath::root());
 
         // Things needed to resolve properties:

@@ -6,7 +6,7 @@ use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
@@ -84,13 +84,9 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_dataframe::DataframeView::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        ));
 
         // the dataframe view to the desired timeline
         let query = re_view_dataframe::Query::from_blueprint(ctx, view_id);

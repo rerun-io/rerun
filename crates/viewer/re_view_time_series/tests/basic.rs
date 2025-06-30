@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
-    RecommendedView, ViewClass as _, ViewId,
+    ViewClass as _, ViewId,
     test_context::{HarnessExt as _, TestContext},
 };
 use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
@@ -339,13 +339,9 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint =
-            ViewBlueprint::new(TimeSeriesView::identifier(), RecommendedView::root());
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            TimeSeriesView::identifier(),
+        ))
     })
 }
 

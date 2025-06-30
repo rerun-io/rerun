@@ -172,16 +172,13 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view = ViewBlueprint::new(
+        blueprint.add_view_at_root(ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: origin.into(),
                 query_filter: "+ /**".parse().expect("valid query filter"),
             },
-        );
-        let id = view.id;
-        blueprint.add_views(std::iter::once(view), None, None);
-        id
+        ))
     })
 }
 

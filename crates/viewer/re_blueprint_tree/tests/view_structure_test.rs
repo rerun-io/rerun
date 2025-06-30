@@ -123,7 +123,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
     }
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view = ViewBlueprint::new_with_id(
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: test_case.origin.clone(),
@@ -133,9 +133,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
                     .expect("invalid entity filter"),
             },
             ViewId::hashed_from_str(VIEW_ID),
-        );
-
-        blueprint.add_views(std::iter::once(view), None, None);
+        ));
     });
 
     test_context

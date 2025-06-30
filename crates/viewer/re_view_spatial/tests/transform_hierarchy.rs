@@ -1,10 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 #[test]
 pub fn test_transform_hierarchy() {
@@ -157,10 +155,8 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView3D::identifier(),
-            RecommendedView::root(),
-        );
+        let view_blueprint =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
 
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);

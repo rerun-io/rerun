@@ -1,10 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 #[test]
 pub fn test_draw_order() {
@@ -141,7 +139,11 @@ pub fn test_draw_order() {
         });
     }
 
-    let view_id = setup_blueprint(&mut test_context);
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView2D::identifier(),
+        ))
+    });
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
@@ -159,20 +161,6 @@ fn get_test_context() -> TestContext {
     test_context.register_view_class::<re_view_spatial::SpatialView2D>();
 
     test_context
-}
-
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView2D::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
-    })
 }
 
 fn run_view_ui_and_save_snapshot(

@@ -7,10 +7,10 @@ use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{Timeline, build_frame_nr};
 use re_types::archetypes::Points3D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{Contents, RecommendedView, ViewClass as _, VisitorControlFlow};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow, test_context::TestContext};
+use re_viewport_blueprint::{
+    ViewBlueprint, ViewportBlueprint, test_context_ext::TestContextExt as _,
+};
 
 #[test]
 fn test_range_selection_in_blueprint_tree() {
@@ -22,15 +22,10 @@ fn test_range_selection_in_blueprint_tree() {
         test_context.log_entity(format!("/entity{i}"), add_point_to_chunk_builder);
     }
 
-    test_context.setup_viewport_blueprint(|_, blueprint| {
-        blueprint.add_views(
-            std::iter::once(ViewBlueprint::new(
-                re_view_spatial::SpatialView3D::identifier(),
-                RecommendedView::root(),
-            )),
-            None,
-            None,
-        );
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView3D::identifier(),
+        ))
     });
 
     let mut blueprint_tree = BlueprintTree::default();
