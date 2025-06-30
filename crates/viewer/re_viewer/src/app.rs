@@ -374,6 +374,8 @@ impl App {
 
     #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+        re_log::debug!("Adding new log receiver: {:?}", rx.source());
+
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
         let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
