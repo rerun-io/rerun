@@ -831,7 +831,8 @@ impl TimePanel {
         let store = engine.store();
 
         for (archetype, components) in components_for_entity(ctx, store, entity_path) {
-            ui.list_item()
+            let response = ui
+                .list_item()
                 .with_y_offset(1.0)
                 .with_height(20.0)
                 .interactive(false)
@@ -846,6 +847,8 @@ impl TimePanel {
                         .size(10.0),
                     ),
                 );
+
+            self.next_col_right = self.next_col_right.max(response.rect.right());
 
             for component_descr in components {
                 let is_static = store.entity_has_static_component(entity_path, &component_descr);
