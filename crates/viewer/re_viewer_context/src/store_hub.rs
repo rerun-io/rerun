@@ -809,7 +809,7 @@ impl StoreHub {
         }
     }
 
-    /// See `re_viewer_context::Cache::begin_frame`.
+    /// See [`crate::Caches::begin_frame`].
     pub fn begin_frame_caches(&mut self, renderer_active_frame_idx: u64) {
         if let Some(store_id) = self.active_recording_id().cloned() {
             if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
