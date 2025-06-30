@@ -135,6 +135,9 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
 }
 
 impl ComponentDescriptor {
+    /// Creates a new component descriptor that only has the `component` set.
+    ///
+    /// Both `archetype` and `component_type` will be missing.
     pub fn partial(component: impl Into<ComponentIdentifier>) -> Self {
         Self {
             archetype: None,

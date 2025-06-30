@@ -760,6 +760,9 @@ class ComponentDescriptor:
     Every component is uniquely identified by its `ComponentDescriptor`.
     """
 
+    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None):
+        """Creates a new component descriptor."""
+
     @property
     def archetype(self) -> str | None:
         """
@@ -790,10 +793,10 @@ class ComponentDescriptor:
         Example: `rerun.components.Position3D`.
         """
 
-    def with_overrides(self, component, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+    def with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
         """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
 
-    def or_with_overrides(self, component, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+    def or_with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
         """Sets `archetype` & `component_type` to the given one iff it's not already set."""
 
 #

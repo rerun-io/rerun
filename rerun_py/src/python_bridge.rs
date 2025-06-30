@@ -1338,8 +1338,10 @@ struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
 impl PyComponentDescriptor {
+    /// Creates a new component descriptor.
     #[new]
     #[pyo3(signature = (component, archetype=None, component_type=None))]
+    #[pyo3(text_signature = "(self, url=None, flush_timeout_sec=None)")]
     fn partial(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let descr = ComponentDescriptor {
             archetype: archetype.map(Into::into),
