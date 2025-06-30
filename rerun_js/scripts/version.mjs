@@ -55,7 +55,7 @@ for (const pkg_path of root_package_json.workspaces) {
   // be uploaded, so the links will work, and this is safe to bump.
   if (!version.includes("+dev")) {
     readme = readme.replace(
-      /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
+      /<https:\/\/app\.rerun\.io\/version\/.*\/examples\/dna\.rrd>/,
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
     readme = readme.replace(
@@ -64,7 +64,7 @@ for (const pkg_path of root_package_json.workspaces) {
     )
     if (index_ts) {
       index_ts = index_ts.replace(
-        /https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd/,
+        /https:\/\/app\.rerun\.io\/version\/.*\/examples\/dna\.rrd/,
         `https://app.rerun.io/version/${version}/examples/dna.rrd`,
       )
 
