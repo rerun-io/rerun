@@ -22,6 +22,7 @@ use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
 use re_types::ComponentDescriptor;
+use re_types::components::MediaType;
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, VariantName, ViewerContext};
@@ -177,6 +178,21 @@ pub struct DisplayComponentColumn {
 }
 
 impl DisplayComponentColumn {
+    pub fn is_image(&self) -> bool {
+        self.component_descr.component_type == Some(re_types::components::Blob::name())
+            && self
+                .component_data
+                .row_data(0)
+                .as_ref()
+                .and_then(|data| re_types::components::Blob::from_arrow(data).ok())
+                .is_some_and(|blob| {
+                    blob.first().is_some_and(|blob| {
+                        MediaType::guess_from_data(blob.as_ref())
+                            .is_some_and(|t| t.starts_with("image/"))
+                    })
+                })
+    }
+
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

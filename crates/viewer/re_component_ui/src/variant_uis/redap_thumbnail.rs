@@ -1,7 +1,7 @@
 use arrow::array::{Array as _, ListArray, UInt8Array};
 use re_log_types::TimelineName;
 use re_types::components::MediaType;
-use re_types_core::{ComponentDescriptor, RowId};
+use re_types_core::{ComponentDescriptor, Loggable, RowId};
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
 use re_viewer_context::external::re_chunk_store::LatestAtQuery;
@@ -17,25 +17,10 @@ pub fn redap_thumbnail(
 ) -> Result<(), Box<dyn Error>> {
     let row_id = row_id.ok_or("RowId is required for redap_thumbnail")?;
 
-    let blob = data.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
-        format!(
-            "unsupported arrow datatype: {}",
-            re_arrow_util::format_data_type(data.data_type())
-        )
-    })?;
+    let blobs = re_types::components::Blob::from_arrow(data)?;
+    let blob = blobs.first().ok_or("Blob data is empty")?;
 
-    let values = blob
-        .values()
-        .as_any()
-        .downcast_ref::<UInt8Array>()
-        .ok_or_else(|| {
-            format!(
-                "unsupported arrow datatype for values: {}",
-                re_arrow_util::format_data_type(blob.values().data_type())
-            )
-        })?;
-
-    let slice: &[u8] = &values.values()[..];
+    let slice = blob.as_ref();
 
     let media_type = MediaType::guess_from_data(slice);
 

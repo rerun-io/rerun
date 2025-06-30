@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
-use datafusion::prelude::SessionContext;
+use datafusion::prelude::{SessionContext, col};
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, RichText, TopBottomPanel, Ui, Widget as _};
@@ -17,6 +17,7 @@ use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
+use crate::display_record_batch::DisplayColumn;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
@@ -331,13 +332,18 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut row_height = viewer_ctx.tokens().table_line_height();
 
         // If the first column is a blob, we treat it as a thumbnail and increase the row height.
-        let first_col = table_config.visible_columns().next();
-        if let Some(first_col) = first_col {
-            if let Some(col) = columns.iter().find(|c| c.id == first_col.id()) {
-                if let ColumnDescriptorRef::Component(component) = col.desc {
-                    if component.component_type == Some(re_types::components::Blob::name()) {
-                        row_height *= 3.0;
-                    }
+        // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
+        let first_column = columns
+            .index_and_column_from_id(table_config.visible_column_ids().next())
+            .and_then(|(index, column)| {
+                display_record_batches
+                    .first()
+                    .and_then(|batch| batch.columns().get(index))
+            });
+        if let Some(column) = first_column {
+            if let DisplayColumn::Component(component) = column {
+                if component.is_image() {
+                    row_height *= 3.0;
                 }
             }
         }
