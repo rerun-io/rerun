@@ -21,7 +21,7 @@ pub fn coincident_nodes() {
     test_context.register_view_class::<re_view_graph::GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -53,7 +53,7 @@ pub fn self_and_multi_edges() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -101,7 +101,7 @@ pub fn multi_graphs() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity("graph1".into(), |builder| {
+    test_context.log_entity("graph1", |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -114,7 +114,7 @@ pub fn multi_graphs() {
                 &archetypes::GraphEdges::new([("A", "B")]),
             )
     });
-    test_context.log_entity("graph2".into(), |builder| {
+    test_context.log_entity("graph2", |builder| {
         builder
             .with_archetype(
                 RowId::new(),

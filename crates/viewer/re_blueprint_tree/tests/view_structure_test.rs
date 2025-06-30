@@ -114,11 +114,11 @@ fn test_context(test_case: &TestCase) -> TestContext {
     match test_case.recording_kind {
         RecordingKind::Empty => {}
         RecordingKind::Regular => {
-            test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/the/void", add_point_to_chunk_builder);
+            test_context.log_entity("/path/onto/their/coils", add_point_to_chunk_builder);
+            test_context.log_entity("/center/way", add_point_to_chunk_builder);
         }
     }
 

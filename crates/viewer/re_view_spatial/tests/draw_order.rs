@@ -14,7 +14,7 @@ pub fn test_draw_order() {
         use ndarray::{Array, ShapeBuilder as _, s};
 
         // Large gray background
-        test_context.log_entity("2d_layering/background".into(), |builder| {
+        test_context.log_entity("2d_layering/background", |builder| {
             let mut image = Array::<u8, _>::zeros((256, 512, 3).f());
             image.fill(64);
 
@@ -31,7 +31,7 @@ pub fn test_draw_order() {
         });
 
         // Smaller gradient in the middle
-        test_context.log_entity("2d_layering/middle_gradient".into(), |builder| {
+        test_context.log_entity("2d_layering/middle_gradient", |builder| {
             let mut image = Array::<u8, _>::zeros((256, 256, 3).f());
             image
                 .slice_mut(s![.., .., 0])
@@ -53,7 +53,7 @@ pub fn test_draw_order() {
         });
 
         // Slightly smaller blue in the middle, on the same layer as the previous.
-        test_context.log_entity("2d_layering/middle_blue".into(), |builder| {
+        test_context.log_entity("2d_layering/middle_blue", |builder| {
             let mut image = Array::<u8, _>::zeros((192, 192, 3).f());
             image.slice_mut(s![.., .., 2]).fill(255);
 
@@ -69,7 +69,7 @@ pub fn test_draw_order() {
             )
         });
 
-        test_context.log_entity("2d_layering/lines_behind_rect".into(), |builder| {
+        test_context.log_entity("2d_layering/lines_behind_rect", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -83,41 +83,35 @@ pub fn test_draw_order() {
             )
         });
 
-        test_context.log_entity(
-            "2d_layering/rect_between_top_and_middle".into(),
-            |builder| {
-                builder.with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &re_types::archetypes::Boxes2D::from_mins_and_sizes(
-                        [(64.0, 32.0)],
-                        [(256.0, 128.0)],
-                    )
-                    .with_draw_order(1.5)
-                    .with_colors([0x000000FF]),
+        test_context.log_entity("2d_layering/rect_between_top_and_middle", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::Boxes2D::from_mins_and_sizes(
+                    [(64.0, 32.0)],
+                    [(256.0, 128.0)],
                 )
-            },
-        );
+                .with_draw_order(1.5)
+                .with_colors([0x000000FF]),
+            )
+        });
 
-        test_context.log_entity(
-            "2d_layering/points_between_top_and_middle".into(),
-            |builder| {
-                builder.with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &re_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
-                        (
-                            32.0 + (i as i32 / 16) as f32 * 16.0,
-                            32.0 + (i as i32 % 16) as f32 * 16.0,
-                        )
-                    }))
-                    .with_draw_order(1.51),
-                )
-            },
-        );
+        test_context.log_entity("2d_layering/points_between_top_and_middle", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
+                    (
+                        32.0 + (i as i32 / 16) as f32 * 16.0,
+                        32.0 + (i as i32 % 16) as f32 * 16.0,
+                    )
+                }))
+                .with_draw_order(1.51),
+            )
+        });
 
         // Small white square on top
-        test_context.log_entity("2d_layering/top".into(), |builder| {
+        test_context.log_entity("2d_layering/top", |builder| {
             let mut image = Array::<u8, _>::zeros((128, 128, 3).f());
             image.fill(255);
 
@@ -134,7 +128,7 @@ pub fn test_draw_order() {
         });
 
         // 2D arrow sandwitched across
-        test_context.log_entity("2d_layering/arrow2d_between".into(), |builder| {
+        test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),

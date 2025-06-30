@@ -17,11 +17,11 @@ pub fn test_null_timeline() {
     let timeline_a = Timeline::new_sequence("timeline_a");
     let timeline_b = Timeline::new_sequence("timeline_b");
 
-    test_context.log_entity("first".into(), |builder| {
+    test_context.log_entity("first", |builder| {
         builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalars::single(10.0))
     });
 
-    test_context.log_entity("second".into(), |builder| {
+    test_context.log_entity("second", |builder| {
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 1), (timeline_b, 10)],
@@ -44,7 +44,7 @@ pub fn test_unknown_timeline() {
 
     let timeline = Timeline::new_sequence("existing_timeline");
 
-    test_context.log_entity("some_entity".into(), |builder| {
+    test_context.log_entity("some_entity", |builder| {
         builder
             .with_archetype(RowId::new(), [(timeline, 0)], &Scalars::single(10.0))
             .with_archetype(RowId::new(), [(timeline, 1)], &Scalars::single(20.0))

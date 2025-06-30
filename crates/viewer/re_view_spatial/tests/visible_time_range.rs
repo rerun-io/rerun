@@ -182,24 +182,21 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             );
 
             for y in [y_green, y_red] {
-                test_context.log_entity(
-                    format!("point_{:02}_{:02}", i, y as i32).into(),
-                    |builder| {
-                        builder.with_archetype(
-                            RowId::new(),
-                            TimePoint::default(),
-                            &re_types::archetypes::Points2D::new([(x, y)])
-                                .with_colors([0x555555FF])
-                                .with_radii([4.0])
-                                .with_draw_order(1.0),
-                        )
-                    },
-                );
+                test_context.log_entity(format!("point_{:02}_{:02}", i, y as i32), |builder| {
+                    builder.with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Points2D::new([(x, y)])
+                            .with_colors([0x555555FF])
+                            .with_radii([4.0])
+                            .with_draw_order(1.0),
+                    )
+                });
             }
 
             {
                 let time_point = time_point.clone();
-                test_context.log_entity("red".into(), |builder| {
+                test_context.log_entity("red", |builder| {
                     builder.with_archetype(
                         RowId::new(),
                         time_point,
@@ -211,7 +208,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                 });
             }
 
-            test_context.log_entity("green".into(), |builder| {
+            test_context.log_entity("green", |builder| {
                 builder.with_archetype(
                     RowId::new(),
                     time_point,

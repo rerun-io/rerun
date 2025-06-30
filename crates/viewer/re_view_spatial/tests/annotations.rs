@@ -14,7 +14,7 @@ pub fn test_annotations() {
         use ndarray::{Array, ShapeBuilder as _, s};
 
         // Log an annotation context to assign a label and color to each class
-        test_context.log_entity("/".into(), |builder| {
+        test_context.log_entity("/", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -27,7 +27,7 @@ pub fn test_annotations() {
         });
 
         // Log a batch of 2 rectangles with different `class_ids`
-        test_context.log_entity("detections".into(), |builder| {
+        test_context.log_entity("detections", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -39,7 +39,7 @@ pub fn test_annotations() {
             )
         });
 
-        test_context.log_entity("segmentation/image".into(), |builder| {
+        test_context.log_entity("segmentation/image", |builder| {
             let mut image = Array::<u8, _>::zeros((200, 300).f());
             image.slice_mut(s![50..100, 50..120]).fill(1);
             image.slice_mut(s![100..180, 130..280]).fill(2);

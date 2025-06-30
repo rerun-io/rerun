@@ -19,7 +19,7 @@ fn test_range_selection_in_blueprint_tree() {
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
     for i in 0..=10 {
-        test_context.log_entity(format!("/entity{i}").into(), add_point_to_chunk_builder);
+        test_context.log_entity(format!("/entity{i}"), add_point_to_chunk_builder);
     }
 
     test_context.setup_viewport_blueprint(|_, blueprint| {

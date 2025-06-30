@@ -25,14 +25,14 @@ pub fn test_clear_series_points_and_line() {
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let mut test_context = get_test_context();
 
-    test_context.log_entity("plots/line".into(), |builder| {
+    test_context.log_entity("plots/line", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
             &re_types::archetypes::SeriesLines::new(),
         )
     });
-    test_context.log_entity("plots/point".into(), |builder| {
+    test_context.log_entity("plots/point", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
@@ -45,7 +45,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
 
         match i {
             15 => {
-                test_context.log_entity("plots".into(), |builder| {
+                test_context.log_entity("plots", |builder| {
                     builder.with_archetype(
                         RowId::new(),
                         timepoint,
@@ -66,10 +66,10 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
                     re_types::archetypes::Scalars::single((i as f64 / 5.0).sin())
                 };
 
-                test_context.log_entity("plots/line".into(), |builder| {
+                test_context.log_entity("plots/line", |builder| {
                     builder.with_archetype(RowId::new(), timepoint.clone(), &data)
                 });
-                test_context.log_entity("plots/point".into(), |builder| {
+                test_context.log_entity("plots/point", |builder| {
                     builder.with_archetype(RowId::new(), timepoint, &data)
                 });
             }
@@ -145,7 +145,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
             .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
             .with_names(["static"])
     };
-    test_context.log_entity("entity_static_props".into(), |builder| {
+    test_context.log_entity("entity_static_props", |builder| {
         builder.with_archetype(RowId::new(), TimePoint::default(), &properties_static)
     });
 
@@ -166,10 +166,10 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         };
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
-        test_context.log_entity("entity_static_props".into(), |builder| {
+        test_context.log_entity("entity_static_props", |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
         });
-        test_context.log_entity("entity_dynamic_props".into(), |builder| {
+        test_context.log_entity("entity_dynamic_props", |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
                 .with_archetype(RowId::new(), timepoint, &scalars_dynamic)
@@ -203,7 +203,7 @@ fn test_per_series_visibility() {
     ] {
         let mut test_context = get_test_context();
 
-        test_context.log_entity("plots".into(), |builder| {
+        test_context.log_entity("plots", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -214,7 +214,7 @@ fn test_per_series_visibility() {
         for step in 0..32 {
             let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
             let (scalars, _) = scalars_for_properties_test(step, true);
-            test_context.log_entity("plots".into(), |builder| {
+            test_context.log_entity("plots", |builder| {
                 builder.with_archetype(RowId::new(), timepoint.clone(), &scalars)
             });
         }
@@ -274,7 +274,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
             .with_names(["static"])
     };
 
-    test_context.log_entity("entity_static_props".into(), |builder| {
+    test_context.log_entity("entity_static_props", |builder| {
         builder.with_archetype(RowId::new(), TimePoint::default(), &static_props)
     });
 
@@ -299,10 +299,10 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         };
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
-        test_context.log_entity("entity_static_props".into(), |builder| {
+        test_context.log_entity("entity_static_props", |builder| {
             builder.with_archetype(RowId::new(), timepoint.clone(), &scalars_static)
         });
-        test_context.log_entity("entity_dynamic_props".into(), |builder| {
+        test_context.log_entity("entity_dynamic_props", |builder| {
             builder
                 .with_archetype(RowId::new(), timepoint.clone(), &properties)
                 .with_archetype(RowId::new(), timepoint, &scalars_dynamic)

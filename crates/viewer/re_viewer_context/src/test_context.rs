@@ -344,10 +344,10 @@ impl TestContext {
     /// The provided closure should add content using the [`ChunkBuilder`] passed as argument.
     pub fn log_entity(
         &mut self,
-        entity_path: EntityPath,
+        entity_path: impl Into<EntityPath>,
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
-        let builder = build_chunk(Chunk::builder(entity_path));
+        let builder = build_chunk(Chunk::builder(entity_path.into()));
         self.recording_store
             .add_chunk(&Arc::new(
                 builder.build().expect("chunk should be successfully built"),

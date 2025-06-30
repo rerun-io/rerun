@@ -491,6 +491,24 @@ impl std::ops::Div<EntityPathPart> for &EntityPath {
     }
 }
 
+impl std::ops::Div<&str> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: &str) -> Self::Output {
+        self.join(&EntityPath::from(other))
+    }
+}
+
+impl std::ops::Div<&str> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: &str) -> Self::Output {
+        self.join(&Self::from(other))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;

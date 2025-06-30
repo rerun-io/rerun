@@ -15,7 +15,7 @@ pub fn test_transform_tree_origins() {
     let mut test_context = get_test_context();
 
     {
-        test_context.log_entity("/".into(), |builder| {
+        test_context.log_entity("/", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -24,7 +24,7 @@ pub fn test_transform_tree_origins() {
         });
 
         // Setup points, all are in the center of their own space:
-        test_context.log_entity("sun".into(), |builder| {
+        test_context.log_entity("sun", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -34,7 +34,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet".into(), |builder| {
+        test_context.log_entity("sun/planet", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -45,7 +45,7 @@ pub fn test_transform_tree_origins() {
         });
 
         // Add a bunch of small cubes around the planet, to test that poses are handled correctly.
-        test_context.log_entity("sun/planet/cuberoids".into(), |builder| {
+        test_context.log_entity("sun/planet/cuberoids", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -65,7 +65,7 @@ pub fn test_transform_tree_origins() {
                 )
         });
 
-        test_context.log_entity("sun/planet/moon".into(), |builder| {
+        test_context.log_entity("sun/planet/moon", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -81,7 +81,7 @@ pub fn test_transform_tree_origins() {
         let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);
         let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();
 
-        test_context.log_entity("sun/planet_path".into(), |builder| {
+        test_context.log_entity("sun/planet_path", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -95,7 +95,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet/moon_path".into(), |builder| {
+        test_context.log_entity("sun/planet/moon_path", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -111,7 +111,7 @@ pub fn test_transform_tree_origins() {
         let r_moon = 5.0_f32;
         let r_planet = 2.0_f32;
 
-        test_context.log_entity("sun/planet".into(), |builder| {
+        test_context.log_entity("sun/planet", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -125,7 +125,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet/moon".into(), |builder| {
+        test_context.log_entity("sun/planet/moon", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),

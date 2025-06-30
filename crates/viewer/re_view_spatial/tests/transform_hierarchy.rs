@@ -13,7 +13,7 @@ pub fn test_transform_hierarchy() {
     let timeline_step = Timeline::new_sequence("step");
 
     // The Rerun logo obj's convention is y up.
-    test_context.log_entity("/".into(), |builder| {
+    test_context.log_entity("/", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
@@ -27,7 +27,7 @@ pub fn test_transform_hierarchy() {
 
         let mut path: EntityPath = "/".into();
 
-        path = path.join(&"translate".into());
+        path = path / "translate";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -36,7 +36,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"translate_back".into());
+        path = path / "translate_back";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -45,7 +45,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"scale".into());
+        path = path / "scale";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -54,7 +54,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"scale_back_mat3x3".into());
+        path = path / "scale_back_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -67,7 +67,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_axis_origin".into());
+        path = path / "rotate_axis_origin";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -81,7 +81,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_quat".into());
+        path = path / "rotate_quat";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -96,7 +96,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_mat3x3".into());
+        path = path / "rotate_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -122,7 +122,7 @@ pub fn test_transform_hierarchy() {
                 .unwrap();
             let obj_path = workspace_dir.join("tests/assets/rerun.obj");
 
-            path = path.join(&"asset".into());
+            path = path / "asset";
             test_context.log_entity(path.clone(), |builder| {
                 builder.with_archetype(
                     RowId::new(),
