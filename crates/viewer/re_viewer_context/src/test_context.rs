@@ -227,10 +227,10 @@ impl Default for TestContext {
                     EntityPath::properties() / EntityPathPart::from("episode"),
                     ComponentDescriptor {
                         archetype: None,
-                        component: "building".into(),
+                        component: "location".into(),
                         component_type: Some(re_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Warehuse B"),
+                    &re_types::components::Text::from("Swallow Falls"),
                 )
                 .unwrap();
             recording_store
