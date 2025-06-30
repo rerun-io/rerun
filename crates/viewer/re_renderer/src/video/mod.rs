@@ -97,6 +97,12 @@ pub struct Video {
     decode_settings: DecodeSettings,
 }
 
+impl Drop for Video {
+    fn drop(&mut self) {
+        re_log::debug!("Dropping Video {:?}", self.debug_name);
+    }
+}
+
 impl Video {
     /// Loads a video from the given data.
     ///
