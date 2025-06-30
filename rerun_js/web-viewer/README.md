@@ -62,4 +62,4 @@ If your target browser does not support Wasm imports or top-level await, you may
 
 For more information about using the package, visit:
 - [Integration docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).
-- [Package docs](https://ref.rerun.io/docs/js/web-viewer/index.html).
+- [Package docs](https://ref.rerun.io/docs/js/0.24.0-alpha.1/web-viewer/index.html).
