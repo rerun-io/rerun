@@ -26,23 +26,6 @@ const fn const_round_f64(v: f64) -> i64 {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_const_round_f64() {
-        assert_eq!(const_round_f64(1.5), 2);
-        assert_eq!(const_round_f64(2.5), 3);
-        assert_eq!(const_round_f64(1.499999999), 1);
-        assert_eq!(const_round_f64(2.499999999), 2);
-        assert_eq!(const_round_f64(-1.5), -2);
-        assert_eq!(const_round_f64(-2.5), -3);
-        assert_eq!(const_round_f64(-1.499999999), -1);
-        assert_eq!(const_round_f64(-2.499999999), -2);
-    }
-}
-
 impl Time {
     pub const ZERO: Self = Self(0);
     pub const MAX: Self = Self(i64::MAX);
@@ -127,5 +110,22 @@ impl std::ops::Sub for Time {
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0.saturating_sub(rhs.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_const_round_f64() {
+        assert_eq!(const_round_f64(1.5), 2);
+        assert_eq!(const_round_f64(2.5), 3);
+        assert_eq!(const_round_f64(1.499999999), 1);
+        assert_eq!(const_round_f64(2.499999999), 2);
+        assert_eq!(const_round_f64(-1.5), -2);
+        assert_eq!(const_round_f64(-2.5), -3);
+        assert_eq!(const_round_f64(-1.499999999), -1);
+        assert_eq!(const_round_f64(-2.499999999), -2);
     }
 }
