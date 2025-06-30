@@ -2,9 +2,7 @@ use std::time::Duration;
 
 use web_time::Instant;
 
-use re_video::{
-    DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, Timescale,
-};
+use re_video::{DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time};
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
@@ -23,12 +21,18 @@ use crate::{
 /// This is wallclock time and independent of how fast a video is being played back.
 const DECODING_GRACE_DELAY_BEFORE_REPORTING: Duration = Duration::from_millis(400);
 
-/// Video time duration we allow to lag behind before no longer updating the output texture.
+/// Number of frames we allow to lag behind before no longer updating the output texture.
 ///
-/// Note that since this is video time based, not wallclock time.
-/// We can't do wallclock time here since this we don't know the playback speed.
-/// Also, hitting the tolerance limit for faster playback is desirable anyways.
-const TOLLERATED_OUTPUT_DELAY: Duration = Duration::from_millis(100);
+/// This a number of frames on the presentation timeline and independent of
+/// sample order for decoding purposes.
+///
+/// Discarded alternatives:
+/// * use video time based tollerance:
+///   -> makes it dependend on playback speed whether we hit the threshhold or not
+/// * use a wall clock time based tollerance:
+///   -> any seek operation that leads to waiting for the decoder to catch up,
+///      would cause us to show in-progress frames until the tollerance is hit
+const TOLLERATED_OUTPUT_DELAY_IN_NUM_FRAMES: usize = 3;
 
 #[derive(Debug)]
 pub struct TimedDecodingError {
@@ -80,6 +84,9 @@ pub struct VideoPlayer {
 
     /// The last time the decoder fully caught up with the frame we want to show, if ever.
     last_time_caught_up: Option<Instant>,
+
+    /// If true, we won't show any frames until the decoder has caught up with the requested frame time.
+    dont_update_texture_until_caught_up: bool,
 }
 
 impl VideoPlayer {
@@ -131,6 +138,7 @@ impl VideoPlayer {
             last_error: None,
 
             last_time_caught_up: None,
+            dont_update_texture_until_caught_up: false,
         })
     }
 
@@ -171,28 +179,24 @@ impl VideoPlayer {
             .sample_decoder
             .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
         {
-            // Update the texture only if:
-            // * we're not already up to date.
+            // Update the texture if it isn't already up to date and the `update_video_texture_with_frame` oracle says we should.
             let current_frame_info = self.video_texture.frame_info.as_ref();
-            let outdated_frame =
-                current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts);
+            if current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts) {
+                let update_texture = should_update_video_texture(
+                    &mut self.dont_update_texture_until_caught_up,
+                    video_description,
+                    requested_sample,
+                    decoded_frame.info.presentation_timestamp,
+                );
+                if update_texture {
+                    update_video_texture_with_frame(
+                        render_ctx,
+                        &mut self.video_texture,
+                        &decoded_frame,
+                    )?; // Update texture errors are very unusual, error out on those immediately.
 
-            // * the decoded frame isn't too far behind.
-            //   This happens when catching up on a seek, very rapid playback or simply too slow decoding.
-            //   Without this tolerance, we'd get a "rubber-band effect" in playback where we show a lot of outdated frames before (hopefully) catching up.
-            //   This is especially common when seeking to the end of a large GOP since the decoder has to start from its beginning.
-            let timescale = video_description.timescale.unwrap_or(Timescale::new(30)); // Assume 30 time units per second if there's no scale. As good as any guess!;
-            let pts_diff = decoded_frame.info.presentation_timestamp - requested_pts;
-            let not_too_far_behind = pts_diff.duration(timescale) <= TOLLERATED_OUTPUT_DELAY;
-
-            if outdated_frame && not_too_far_behind {
-                update_video_texture_with_frame(
-                    render_ctx,
-                    &mut self.video_texture,
-                    &decoded_frame,
-                )?; // Update texture errors are very unusual, error out on those immediately.
-
-                self.video_texture.frame_info = Some(decoded_frame.info.clone());
+                    self.video_texture.frame_info = Some(decoded_frame.info.clone());
+                }
             }
 
             // We apparently recovered from any errors we had previously!
@@ -228,6 +232,7 @@ impl VideoPlayer {
                     })
         } else {
             self.last_time_caught_up = Some(Instant::now());
+            self.dont_update_texture_until_caught_up = false;
             false
         };
 
@@ -473,5 +478,71 @@ impl VideoPlayer {
         self.last_enqueued = None;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
+    }
+}
+
+/// Determine whether we should update the video texture with the latest decoder result.
+fn should_update_video_texture(
+    dont_update_texture_until_caught_up: &mut bool,
+    video_description: &re_video::VideoDataDescription,
+    requested_sample: Option<&re_video::SampleMetadata>,
+    decoded_frame_pts: Time,
+) -> bool {
+    let Some(requested_pts) = requested_sample.map(|s| s.presentation_timestamp) else {
+        // Desired sample doesn't exist. So we'll by definition never able to catch up.
+        return false;
+    };
+
+    debug_assert!(
+        decoded_frame_pts <= requested_pts,
+        "Frame returned by sample decoder is expected to have a PTS no later than the requested PTS"
+    );
+
+    // We may want to refrain from updating the texture with the latest decoder result:
+    // * we did a non-trivial seek operation and are waiting for the decoder to catch up, showing between results would be irritating
+    // * the decoder is not fast enough to keep up with playback, i.e. we'll never catch up so anything we show will always be wrong
+    if decoded_frame_pts == requested_pts {
+        // Decoder caught up with request!
+        *dont_update_texture_until_caught_up = false;
+        true
+    } else {
+        // Decoder did not produce the desired frame, but something _before_ the requested frame.
+        if *dont_update_texture_until_caught_up {
+            // We're waiting until we're fully caught up before showing any new frames.
+            false
+        } else {
+            // Figure out how many frames we're behind. If this is higher than a certain tollerance, don't update the texture.
+            //
+            // Since frames aren't in presentation time order and may have varying durations (i.e. the video has variable frame rate),
+            // we have to successively use `latest_sample_index_at_presentation_timestamp`:
+            // Start at the desired sample and walk backwards from there until we find the sample for the actually produced frame.
+            let mut num_frames_behind = 0;
+            let mut sample = requested_sample;
+            loop {
+                let Some(current_sample) = sample else {
+                    // Sample doesn't exist anymore. Nothing we can do!
+                    break false;
+                };
+                if current_sample.presentation_timestamp == decoded_frame_pts {
+                    // This is the frame we actually got and we stayed under the tollerance.
+                    // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
+                    break true;
+                }
+
+                num_frames_behind += 1;
+                if num_frames_behind > TOLLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
+                    // Too far behind. Add hysteresis to avoid flipping in and out of this state.
+                    *dont_update_texture_until_caught_up = true;
+                    break false;
+                }
+
+                // Check the sample prior to this one.
+                sample = video_description
+                    .latest_sample_index_at_presentation_timestamp(
+                        current_sample.presentation_timestamp - Time::new(1),
+                    )
+                    .and_then(|sidx| video_description.samples.get(sidx));
+            }
+        }
     }
 }
