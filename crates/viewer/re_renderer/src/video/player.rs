@@ -68,6 +68,12 @@ pub struct VideoPlayer {
     last_error: Option<TimedDecodingError>,
 }
 
+impl Drop for VideoPlayer {
+    fn drop(&mut self) {
+        re_log::debug!("Dropping VideoPlayer {:?}", self.debug_name());
+    }
+}
+
 impl VideoPlayer {
     /// Create a new video player for a given video.
     ///
@@ -116,6 +122,10 @@ impl VideoPlayer {
 
             last_error: None,
         })
+    }
+
+    pub fn debug_name(&self) -> &str {
+        self.sample_decoder.debug_name()
     }
 
     /// Get the video frame at the given time stamp.

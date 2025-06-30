@@ -459,7 +459,7 @@ fn read_samples_from_chunk(
 }
 
 impl Cache for VideoStreamCache {
-    fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+    fn begin_frame(&mut self) {
         // TODO(andreas): This removal strategy is likely aggressive.
         // Scanning an entire video stream again is probably very costly. Have to evaluate.
         // Arguably it would be even better to keep this purging but not do full scans all the time.
@@ -473,9 +473,7 @@ impl Cache for VideoStreamCache {
         for entry in self.0.values_mut() {
             entry.used_this_frame.store(false, Ordering::Release);
             let video_stream = entry.video_stream.write();
-            video_stream
-                .video_renderer
-                .purge_unused_decoders(renderer_active_frame_idx);
+            video_stream.video_renderer.begin_frame();
         }
     }
 

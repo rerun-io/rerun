@@ -117,7 +117,7 @@ fn decode_image(
 }
 
 impl Cache for ImageDecodeCache {
-    fn begin_frame(&mut self, _renderer_active_frame_idx: u64) {
+    fn begin_frame(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         let max_decode_cache_use = 4_000_000_000;
 
