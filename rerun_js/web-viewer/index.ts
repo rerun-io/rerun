@@ -135,6 +135,7 @@ export type ViewerEvent =
 type ViewerEventBase = {
   application_id: string;
   recording_id: string;
+  partition_id?: string;
 }
 
 export type PlayEvent = ViewerEventBase & {

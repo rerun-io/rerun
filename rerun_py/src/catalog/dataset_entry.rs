@@ -247,6 +247,8 @@ impl PyDatasetEntry {
                     chunk_ids: vec![],
                     entity_paths: vec![],
                     select_all_entity_paths: true,
+                    exclude_static_data: false,
+                    exclude_temporal_data: false,
                     query: None,
                 })
                 .await

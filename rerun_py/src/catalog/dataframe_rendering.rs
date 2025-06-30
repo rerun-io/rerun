@@ -27,7 +27,23 @@ impl PyRerunHtmlTable {
         format!(
             r#"
             <div style="width: 100%; {max_width} {max_height} overflow: auto; border: 1px solid #ccc;">
-            <table style="border-collapse: collapse; min-width: 100%">
+            <style>
+            .rerun-table.rerun-table table {{
+                border-collapse: collapse;
+                min-width: 100%;
+                text-align: left;
+            }}
+
+            .rerun-table.rerun-table th {{
+                font-weight: normal;
+                text-align: left;
+            }}
+
+            .rerun-table.rerun-table td {{
+                text-align: left;
+            }}
+            </style>
+            <table class="rerun-table">
             "#
         )
     }
@@ -46,7 +62,7 @@ impl PyRerunHtmlTable {
             .iter()
             .map(|field| {
                 format!(
-                    "<th style=\"font-weight: normal;\"><strong>{}</strong><br>{}</th>",
+                    "<th><strong>{}</strong><br>{}</th>",
                     field.name(),
                     format_data_type(field.data_type())
                 )

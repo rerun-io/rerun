@@ -66,8 +66,8 @@ impl PyCatalogClientInternal {
 
         let format_fn = py
             .import("datafusion")
-            .and_then(|datafusion| datafusion.getattr("html_formatter"))
-            .and_then(|html_formatter| html_formatter.getattr("set_formatter"));
+            .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
+            .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
 
         if let Ok(format_fn) = format_fn {
             let _ = format_fn.call1((html_renderer,))?;

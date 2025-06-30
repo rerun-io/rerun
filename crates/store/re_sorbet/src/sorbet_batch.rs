@@ -8,6 +8,7 @@ use arrow::{
     error::ArrowError,
 };
 
+use itertools::Itertools as _;
 use re_log::ResultExt as _;
 
 use crate::{
@@ -21,6 +22,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SorbetBatch {
     schema: SorbetSchema,
+
+    /// This record batch contains has all the meta-data
+    /// required by a [`SorbetBatch`].
+    ///
+    /// It also has all non-Rerun metadata intact from wherever it was created from.
     batch: ArrowRecordBatch,
 }
 
@@ -160,6 +166,9 @@ impl SorbetBatch {
     /// Will perform some transformations:
     /// * Will automatically wrap data columns in `ListArrays` if they are not already
     /// * Will migrate legacy data to more modern form
+    ///
+    /// Non-Rerun metadata will be preserved (both at batch-level and column-level).
+    /// Rerun metadata will be updated and added to the batch if needed.
     #[tracing::instrument(level = "trace", skip_all)]
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
@@ -175,20 +184,27 @@ impl SorbetBatch {
 
         let _span = tracing::trace_span!("extend_metadata").entered();
 
-        for (field, column) in itertools::izip!(
+        let new_fields = itertools::izip!(
+            batch.schema_ref().fields(),
             sorbet_schema.columns.arrow_fields(batch_type),
             batch.columns()
-        ) {
-            debug_assert_eq!(field.data_type(), column.data_type());
-        }
+        )
+        .map(|(old_field, mut new_field, column)| {
+            debug_assert_eq!(new_field.data_type(), column.data_type());
 
-        // Extend with any metadata that might have been missing:
-        let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());
-        arrow_schema
-            .metadata
-            .extend(sorbet_schema.arrow_batch_metadata());
+            let mut metadata = old_field.metadata().clone();
+            metadata.extend(new_field.metadata().clone()); // overwrite old with new
+            new_field.set_metadata(metadata);
 
-        let arrow_schema = Arc::new(arrow_schema);
+            Arc::new(new_field)
+        })
+        .collect_vec();
+
+        let mut batch_metadata = batch.schema_ref().metadata.clone();
+        batch_metadata.extend(sorbet_schema.arrow_batch_metadata()); // overwrite old with new
+
+        let arrow_schema = Arc::new(ArrowSchema::new_with_metadata(new_fields, batch_metadata));
+
         let batch = ArrowRecordBatch::try_new_with_options(
             arrow_schema.clone(),
             batch.columns().to_vec(),
@@ -201,5 +217,99 @@ impl SorbetBatch {
             schema: sorbet_schema,
             batch,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
+
+    use super::*;
+
+    /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
+    ///
+    /// Also test that we add the proper Rerun metadata, and remove old Rerun metadata that is not relevant anymore.
+    #[test]
+    fn test_sorbet_batch_metadata() {
+        let original: ArrowRecordBatch = {
+            let mut row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
+            row_id_field
+                .metadata_mut()
+                .remove("ARROW:extension:metadata");
+            row_id_field.metadata_mut().insert(
+                "custom_column_key".to_owned(),
+                "custom_column_value".to_owned(),
+            );
+            let fields = vec![Arc::new(row_id_field)];
+            let arrow_schema = ArrowSchema::new_with_metadata(
+                fields,
+                [
+                    (
+                        "rerun.id".to_owned(),
+                        re_types_core::ChunkId::new().to_string(),
+                    ),
+                    (
+                        "custom_batch_key".to_owned(),
+                        "custom_batch_value".to_owned(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            );
+            ArrowRecordBatch::new_empty(arrow_schema.into())
+        };
+
+        {
+            // Check original has what we expect:
+            assert!(original.schema().metadata().contains_key("rerun.id"));
+            assert!(
+                original
+                    .schema()
+                    .metadata()
+                    .contains_key("custom_batch_key")
+            );
+            let row_id = original.schema_ref().field(0);
+            assert!(
+                !row_id.metadata().contains_key("ARROW:extension:metadata"),
+                "We intentionally omitted this from the original"
+            );
+        }
+
+        let sorbet_batch = sorbet_batch::SorbetBatch::try_from_record_batch(
+            &original,
+            crate::BatchType::Dataframe,
+        )
+        .unwrap();
+
+        let ret = ArrowRecordBatch::from(sorbet_batch);
+
+        assert!(
+            !ret.schema().metadata().contains_key("rerun.id"),
+            "This should have been removed/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("rerun:id"),
+            "This should have been added/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("custom_batch_key"),
+            "This should remain"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("sorbet:version"),
+            "This should have been added"
+        );
+
+        // Check field:
+        let row_id = ret.schema_ref().field(0);
+        assert!(
+            row_id.metadata().contains_key("custom_column_key"),
+            "This should remain"
+        );
+        assert!(
+            row_id.metadata().contains_key("ARROW:extension:metadata"),
+            "This should have been added"
+        );
     }
 }

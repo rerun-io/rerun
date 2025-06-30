@@ -118,7 +118,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libthrift-0.21.0-h0e7cc3e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.12.7-he7c6b58_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
@@ -131,14 +131,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.3-py311h5d046bc_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.3.2-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.5.0-h7b32b05_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.2-h690cf93_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/patchelf-0.17.2-h58526e2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -349,7 +349,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libthrift-0.21.0-h154c74f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libutf8proc-2.8.0-h4e544f5_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuuid-2.38.1-hb4cce97_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxcrypt-4.4.36-h31becfc_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.12.7-h00a45b3_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.1-h86ecc28_2.conda
@@ -361,13 +361,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ninja-1.11.1-hdd96247_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.2.3-py311h6c2b7b4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.3.2-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.5.0-hd08dc88_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/orc-2.0.2-h4ebe456_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/propcache-0.2.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/psutil-6.0.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -567,7 +567,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libssh2-1.11.0-hd019ec5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libthrift-0.21.0-h75589b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libutf8proc-2.8.0-hb7f2c08_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.49.0-hee94a50_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.51.0-h4cb831e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libxml2-2.12.7-heaf3512_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libzlib-1.3.1-hd23fc13_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-19.1.2-hf78d878_0.conda
@@ -580,13 +580,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ninja-1.11.1-hb8565cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.17.0-hd71786a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.18.1-hed2d4a2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/numpy-2.2.3-py311h27c81cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.3.2-hd23fc13_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.5.0-hc426f3f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.2-h52ea4d3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.2.5-hbd11d21_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.6.2-hcb1bf24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/propcache-0.2.0-py311h3336109_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/psutil-6.0.0-py311h1314207_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -785,7 +785,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libssh2-1.11.0-h7a5bd25_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-2.12.7-h01dff8b_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libzlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-19.1.2-hb52a8e5_0.conda
@@ -799,13 +799,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.3-py311h762c074_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.3.2-h8359307_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.5.0-h81ee809_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.2-h4a9587e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -990,13 +990,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.18.1-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.3-py311h5e411d1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.3.2-h2466b09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.2-h1c5a4bf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-h1bcbaab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthreads-win32-2.9.1-h2466b09_4.conda
@@ -1023,8 +1023,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.37.32822-h0123c8e_17.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vswhere-3.1.7-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xz-5.2.6-h8d14728_0.tar.bz2
@@ -1206,7 +1206,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libthrift-0.21.0-h0e7cc3e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.12.7-he7c6b58_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
@@ -1220,7 +1220,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.3-py311h5d046bc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.4.1-h7b32b05_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.2-h690cf93_1.conda
@@ -1228,7 +1228,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/patchelf-0.17.2-h58526e2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -1427,7 +1427,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libthrift-0.21.0-h154c74f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libutf8proc-2.8.0-h4e544f5_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuuid-2.38.1-hb4cce97_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxcrypt-4.4.36-h31becfc_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.12.7-h00a45b3_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.1-h86ecc28_2.conda
@@ -1440,14 +1440,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ninja-1.11.1-hdd96247_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.2.3-py311h6c2b7b4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.4.1-hd08dc88_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/orc-2.0.2-h4ebe456_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/propcache-0.2.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/psutil-6.0.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -1633,7 +1633,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libssh2-1.11.0-hd019ec5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libthrift-0.21.0-h75589b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libutf8proc-2.8.0-hb7f2c08_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.49.0-hee94a50_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.51.0-h4cb831e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libxml2-2.12.7-heaf3512_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libzlib-1.3.1-hd23fc13_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-19.1.2-hf78d878_0.conda
@@ -1646,14 +1646,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ninja-1.11.1-hb8565cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.17.0-hd71786a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-22.13.0-hffbc63d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/numpy-2.2.3-py311h27c81cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.4.1-hc426f3f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.2-h52ea4d3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.2.5-hbd11d21_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.6.2-h672e660_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/propcache-0.2.0-py311h3336109_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/psutil-6.0.0-py311h1314207_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -1836,7 +1836,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libssh2-1.11.0-h7a5bd25_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-2.12.7-h01dff8b_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libzlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-19.1.2-hb52a8e5_0.conda
@@ -1850,14 +1850,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.3-py311h762c074_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.4.1-h81ee809_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.2-h4a9587e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -2041,14 +2041,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.13.0-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.3-py311h5e411d1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.3.2-h2466b09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.2-h1c5a4bf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-hc95d2ff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthreads-win32-2.9.1-h2466b09_4.conda
@@ -2076,8 +2076,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.38.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/xz-5.2.6-h8d14728_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/yarl-1.15.3-py311he736701_0.conda
@@ -2580,49 +2580,49 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/52/2da48b35193e39ac53cfb141467d9f259851522d0e8c87153f0ba4205fb1/wrapt-1.16.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aws-c-auth-0.7.31-hee1f4ab_5.conda
@@ -2965,49 +2965,49 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0f/16/ea627d7817394db04518f62934a5de59874b587b792300991b3c347ff5e0/wrapt-1.16.0-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.7.31-h459cf4e_5.conda
@@ -3340,49 +3340,49 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cf/c3/0084351951d9579ae83a3d9e38c140371e4c6b038136909235079f2e6e78/wrapt-1.16.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
   examples-pypi:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -3769,47 +3769,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/52/2da48b35193e39ac53cfb141467d9f259851522d0e8c87153f0ba4205fb1/wrapt-1.16.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/buf-1.50.0-h75b854d_0.conda
@@ -4107,47 +4107,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0f/16/ea627d7817394db04518f62934a5de59874b587b792300991b3c347ff5e0/wrapt-1.16.0-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/buf-1.50.0-hd02998f_0.conda
@@ -4442,47 +4442,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cf/c3/0084351951d9579ae83a3d9e38c140371e4c6b038136909235079f2e6e78/wrapt-1.16.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
   py:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -4658,7 +4658,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.7.0-he137b08_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libva-2.22.0-h8a09558_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libvpx-1.14.1-hac33072_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libwebp-base-1.5.0-h851e524_0.conda
@@ -4679,7 +4679,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.3-py311h5d046bc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.2-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/opencv-4.10.0-qt6_py311haa8c16d_609.conda
@@ -4696,7 +4696,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.43.2-h59595ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
@@ -4867,8 +4867,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/52/2da48b35193e39ac53cfb141467d9f259851522d0e8c87153f0ba4205fb1/wrapt-1.16.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
       linux-aarch64:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-2_gnu.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/aiohttp-3.9.5-py311hcd402e7_0.conda
@@ -5020,7 +5020,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libtiff-4.7.0-hec21d91_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libutf8proc-2.8.0-h4e544f5_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuuid-2.38.1-hb4cce97_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libvpx-1.14.1-h0a1ffab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libwebp-base-1.5.0-h0886dbf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxcb-1.17.0-h262b8f6_0.conda
@@ -5036,7 +5036,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ninja-1.11.1-hdd96247_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.2.3-py311h6c2b7b4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/opencv-4.10.0-headless_py311h765a288_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openexr-3.3.1-h2673917_1.conda
@@ -5050,7 +5050,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pixman-0.43.4-h2f0025b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/propcache-0.2.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/psutil-6.0.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pthread-stubs-0.4-h86ecc28_1002.conda
@@ -5191,8 +5191,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/7f/a7/f1212ba098f3de0fd244e2de0f8791ad2539c03bef6c05a9fcb03e45b089/wrapt-1.16.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/b6/677e65c095d8e12b66b8f862b069bcf1f1d781b9c9c6f12eb55000d57583/zstandard-0.23.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -5331,7 +5331,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libtiff-4.7.0-hfce79cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libvpx-1.14.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libwebp-base-1.5.0-h2471fea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxcb-1.17.0-hdb1d25a_0.conda
@@ -5348,7 +5348,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.3-py311h762c074_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/opencv-4.10.0-headless_py311he215df6_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openexr-3.3.1-h0aba339_1.conda
@@ -5362,7 +5362,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pixman-0.43.4-hebf3989_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
@@ -5490,8 +5490,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0f/16/ea627d7817394db04518f62934a5de59874b587b792300991b3c347ff5e0/wrapt-1.16.0-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -5641,7 +5641,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.13.0-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.3-py311h5e411d1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/opencv-4.10.0-qt6_py311h1e0bd2a_609.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openexr-3.3.1-h81979ff_1.conda
@@ -5656,7 +5656,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.2-had0cd8c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-hc95d2ff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-hcd874cb_1001.tar.bz2
@@ -5691,8 +5691,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.38.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x264-1!164.3095-h8ffe710_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
@@ -5791,8 +5791,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cf/c3/0084351951d9579ae83a3d9e38c140371e4c6b038136909235079f2e6e78/wrapt-1.16.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: rerun_notebook
-      - pypi: rerun_py
+      - pypi: ./rerun_notebook
+      - pypi: ./rerun_py
   py-docs:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -5899,7 +5899,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libthrift-0.21.0-h0e7cc3e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.12.7-he7c6b58_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
@@ -5912,14 +5912,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.3-py311h5d046bc_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.3.2-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.5.0-h7b32b05_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/orc-2.0.2-h690cf93_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/patchelf-0.17.2-h58526e2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -6144,7 +6144,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libthrift-0.21.0-h154c74f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libutf8proc-2.8.0-h4e544f5_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuuid-2.38.1-hb4cce97_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxcrypt-4.4.36-h31becfc_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.12.7-h00a45b3_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.1-h86ecc28_2.conda
@@ -6156,13 +6156,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ninja-1.11.1-hdd96247_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.2.3-py311h6c2b7b4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.3.2-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.5.0-hd08dc88_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/orc-2.0.2-h4ebe456_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/propcache-0.2.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/psutil-6.0.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -6374,7 +6374,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libssh2-1.11.0-hd019ec5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libthrift-0.21.0-h75589b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libutf8proc-2.8.0-hb7f2c08_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.49.0-hee94a50_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.51.0-h4cb831e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libxml2-2.12.7-heaf3512_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libzlib-1.3.1-hd23fc13_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-19.1.2-hf78d878_0.conda
@@ -6386,13 +6386,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ninja-1.11.1-hb8565cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.17.0-hd71786a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.18.1-hed2d4a2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/numpy-2.2.3-py311h27c81cd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.3.2-hd23fc13_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.5.0-hc426f3f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/orc-2.0.2-h52ea4d3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.2.5-hbd11d21_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.6.2-hcb1bf24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/propcache-0.2.0-py311h3336109_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/psutil-6.0.0-py311h1314207_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -6601,7 +6601,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libssh2-1.11.0-h7a5bd25_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-2.12.7-h01dff8b_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libzlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-19.1.2-hb52a8e5_0.conda
@@ -6614,13 +6614,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.3-py311h762c074_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.3.2-h8359307_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.5.0-h81ee809_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/orc-2.0.2-h4a9587e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_0.tar.bz2
@@ -6829,13 +6829,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.18.1-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.3-py311h5e411d1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.3.2-h2466b09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/orc-2.0.2-h1c5a4bf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-24.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-h1bcbaab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthreads-win32-2.9.1-h2466b09_4.conda
@@ -6862,8 +6862,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/xz-5.2.6-h8d14728_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/yarl-1.15.3-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
@@ -7140,7 +7140,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.7.0-he137b08_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libva-2.22.0-h8a09558_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libvpx-1.14.1-hac33072_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libwebp-base-1.5.0-h851e524_0.conda
@@ -7162,7 +7162,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.61.0-py311h4e1c48f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.1.3-py311h71ddf71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.2-hd590300_1.conda
@@ -7180,7 +7180,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.43.2-h59595ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.5.0-h12925eb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
@@ -7433,7 +7433,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/49/97/fa78e3d2f65c02c8e1268b9aba606569fe97f6c8f7c2d74394553347c145/rsa-4.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/ee/69e498a892f208bd1da4104d4b9be887f8611bf4942144718b6738482250/safetensors-0.4.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/54/24/b4293291fa1dd830f353d2cb163295742fa87f179fcc8a20a306a81978b7/SecretStorage-3.3.3-py3-none-any.whl
-      - pypi: git+https://github.com/facebookresearch/segment-anything#dca509fe793f601edb92606367a655c15ac00fdf
+      - pypi: git+https://github.com/facebookresearch/segment-anything.git#dca509fe793f601edb92606367a655c15ac00fdf
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/25/aa/53f145e5a610a49af9ac49f2f1be1ec8659ebd5c393d66ac94e57c83b00e/shapely-2.0.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
@@ -7479,47 +7479,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -7661,7 +7661,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libtiff-4.7.0-hfce79cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libvpx-1.14.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libwebp-base-1.5.0-h2471fea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxcb-1.17.0-hdb1d25a_0.conda
@@ -7679,7 +7679,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.61.0-py311h74daea0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.1.3-py311h649a571_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/opencv-4.10.0-headless_py311he215df6_9.conda
@@ -7694,7 +7694,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pixman-0.43.4-hebf3989_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.5.0-h61a8e3e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
@@ -7902,7 +7902,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0e/6a/2c9fdcc6d235ac0d61ec4fd9981184689c3e682abd05e3caa49bccb9c298/rpds_py-0.20.0-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/49/97/fa78e3d2f65c02c8e1268b9aba606569fe97f6c8f7c2d74394553347c145/rsa-4.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/8c/ece3bf8756506a890bd980eca02f47f9d98dfbf5ce16eda1368f53560f67/safetensors-0.4.5-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: git+https://github.com/facebookresearch/segment-anything#dca509fe793f601edb92606367a655c15ac00fdf
+      - pypi: git+https://github.com/facebookresearch/segment-anything.git#dca509fe793f601edb92606367a655c15ac00fdf
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/37/63/e182e43081fffa0a2d970c480f2ef91647a6ab94098f61748c23c2a485f2/shapely-2.0.6-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
@@ -7947,47 +7947,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -8140,7 +8140,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.13.0-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.61.0-py311h0673bce_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.1.3-py311h35ffc71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/opencv-4.10.0-qt6_py311h1e0bd2a_609.conda
@@ -8156,7 +8156,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.2-had0cd8c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-hc95d2ff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.5.0-hd9569ee_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
@@ -8199,8 +8199,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/umap-learn-0.5.7-py311h1ea47a8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.38.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x264-1!164.3095-h8ffe710_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
@@ -8375,7 +8375,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cc/ec/77d0674f9af4872919f3738018558dd9d37ad3f7ad792d062eadd4af7cba/rpds_py-0.20.0-cp311-none-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/49/97/fa78e3d2f65c02c8e1268b9aba606569fe97f6c8f7c2d74394553347c145/rsa-4.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6d/41/948c96c8a7e9fef57c2e051f1871c108a6dbbc6d285598bdb1d89b98617c/safetensors-0.4.5-cp311-none-win_amd64.whl
-      - pypi: git+https://github.com/facebookresearch/segment-anything#dca509fe793f601edb92606367a655c15ac00fdf
+      - pypi: git+https://github.com/facebookresearch/segment-anything.git#dca509fe793f601edb92606367a655c15ac00fdf
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b1/5a/6a67d929c467a1973b6bb9f0b00159cc343b02bf9a8d26db1abd2f87aa23/shapely-2.0.6-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
@@ -8421,47 +8421,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/51/31/72b8f5aa9ed9c4a6afd09c0bab491862ba5837facf7d81e1ed51a555ae8e/yfinance-0.2.44-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: examples/python/air_traffic_data
-      - pypi: examples/python/arkit_scenes
-      - pypi: examples/python/blueprint
-      - pypi: examples/python/blueprint_stocks
-      - pypi: examples/python/camera_video_stream
-      - pypi: examples/python/clock
-      - pypi: examples/python/controlnet
-      - pypi: examples/python/dataframe_query
-      - pypi: examples/python/detect_and_track_objects
-      - pypi: examples/python/dicom_mri
-      - pypi: examples/python/dna
-      - pypi: examples/python/drone_lidar
-      - pypi: examples/python/face_tracking
-      - pypi: examples/python/gesture_detection
-      - pypi: examples/python/graph_lattice
-      - pypi: examples/python/graphs
-      - pypi: examples/python/human_pose_tracking
-      - pypi: examples/python/imu_signals
-      - pypi: examples/python/incremental_logging
-      - pypi: examples/python/lidar
-      - pypi: examples/python/live_camera_edge_detection
-      - pypi: examples/python/live_scrolling_plot
-      - pypi: examples/python/llm_embedding_ner
-      - pypi: examples/python/log_file
-      - pypi: examples/python/minimal
-      - pypi: examples/python/minimal_options
-      - pypi: examples/python/multiprocess_logging
-      - pypi: examples/python/multithreading
-      - pypi: examples/python/nuscenes_dataset
-      - pypi: examples/python/nv12
-      - pypi: examples/python/objectron
-      - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/openstreetmap_data
-      - pypi: examples/python/plots
-      - pypi: examples/python/raw_mesh
-      - pypi: examples/python/rgbd
-      - pypi: examples/python/rrt_star
-      - pypi: examples/python/segment_anything_model
-      - pypi: examples/python/shared_recording
-      - pypi: examples/python/stdio
-      - pypi: examples/python/structure_from_motion
+      - pypi: ./examples/python/air_traffic_data
+      - pypi: ./examples/python/arkit_scenes
+      - pypi: ./examples/python/blueprint
+      - pypi: ./examples/python/blueprint_stocks
+      - pypi: ./examples/python/camera_video_stream
+      - pypi: ./examples/python/clock
+      - pypi: ./examples/python/controlnet
+      - pypi: ./examples/python/dataframe_query
+      - pypi: ./examples/python/detect_and_track_objects
+      - pypi: ./examples/python/dicom_mri
+      - pypi: ./examples/python/dna
+      - pypi: ./examples/python/drone_lidar
+      - pypi: ./examples/python/face_tracking
+      - pypi: ./examples/python/gesture_detection
+      - pypi: ./examples/python/graph_lattice
+      - pypi: ./examples/python/graphs
+      - pypi: ./examples/python/human_pose_tracking
+      - pypi: ./examples/python/imu_signals
+      - pypi: ./examples/python/incremental_logging
+      - pypi: ./examples/python/lidar
+      - pypi: ./examples/python/live_camera_edge_detection
+      - pypi: ./examples/python/live_scrolling_plot
+      - pypi: ./examples/python/llm_embedding_ner
+      - pypi: ./examples/python/log_file
+      - pypi: ./examples/python/minimal
+      - pypi: ./examples/python/minimal_options
+      - pypi: ./examples/python/multiprocess_logging
+      - pypi: ./examples/python/multithreading
+      - pypi: ./examples/python/nuscenes_dataset
+      - pypi: ./examples/python/nv12
+      - pypi: ./examples/python/objectron
+      - pypi: ./examples/python/open_photogrammetry_format
+      - pypi: ./examples/python/openstreetmap_data
+      - pypi: ./examples/python/plots
+      - pypi: ./examples/python/raw_mesh
+      - pypi: ./examples/python/rgbd
+      - pypi: ./examples/python/rrt_star
+      - pypi: ./examples/python/segment_anything_model
+      - pypi: ./examples/python/shared_recording
+      - pypi: ./examples/python/stdio
+      - pypi: ./examples/python/structure_from_motion
   wheel-test-min:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -8637,7 +8637,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.7.0-he137b08_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libutf8proc-2.8.0-h166bdaf_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.38.1-h0b41bf4_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.49.1-hb9d3cd8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libva-2.22.0-h8a09558_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libvpx-1.14.1-hac33072_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libwebp-base-1.5.0-h851e524_0.conda
@@ -8658,7 +8658,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.3-py311h5d046bc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.2-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/opencv-4.10.0-qt6_py311haa8c16d_609.conda
@@ -8675,7 +8675,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.43.2-h59595ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/propcache-0.2.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.0.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
@@ -8999,7 +8999,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libtiff-4.7.0-hec21d91_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libutf8proc-2.8.0-h4e544f5_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuuid-2.38.1-hb4cce97_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libvpx-1.14.1-h0a1ffab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libwebp-base-1.5.0-h0886dbf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxcb-1.17.0-h262b8f6_0.conda
@@ -9015,7 +9015,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ninja-1.11.1-hdd96247_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.2.3-py311h6c2b7b4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/opencv-4.10.0-headless_py311h765a288_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openexr-3.3.1-h2673917_1.conda
@@ -9029,7 +9029,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pixman-0.43.4-h2f0025b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/propcache-0.2.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/psutil-6.0.0-py311ha879c10_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pthread-stubs-0.4-h86ecc28_1002.conda
@@ -9310,7 +9310,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libthrift-0.21.0-h64651cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libtiff-4.7.0-hfce79cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libutf8proc-2.8.0-h1a8c8d9_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libvpx-1.14.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libwebp-base-1.5.0-h2471fea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libxcb-1.17.0-hdb1d25a_0.conda
@@ -9327,7 +9327,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ninja-1.11.1-hffc8910_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.3-py311h762c074_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/opencv-4.10.0-headless_py311he215df6_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openexr-3.3.1-h0aba339_1.conda
@@ -9341,7 +9341,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pixman-0.43.4-hebf3989_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/propcache-0.2.0-py311h460d6c5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.0.0-py311hae2e1ce_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
@@ -9620,7 +9620,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.13.0-hfeaa22a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.3-py311h5e411d1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/opencv-4.10.0-qt6_py311h1e0bd2a_609.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openexr-3.3.1-h81979ff_1.conda
@@ -9635,7 +9635,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyh8b19718_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.2-had0cd8c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pluggy-1.5.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-hc95d2ff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/propcache-0.2.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.0.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-hcd874cb_1001.tar.bz2
@@ -9670,8 +9670,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ucrt-10.0.22621.0-h57928b3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.3-ha32ba9b_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.40.33810-hcc2c482_22.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.40.33810-h3bf8584_22.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.38.4-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x264-1!164.3095-h8ffe710_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/x265-3.5-h2d74725_3.tar.bz2
@@ -9988,7 +9988,7 @@ packages:
   - pkg:pypi/aiosignal?source=hash-mapping
   size: 12730
   timestamp: 1667935912504
-- pypi: examples/python/air_traffic_data
+- pypi: ./examples/python/air_traffic_data
   name: air-traffic-data
   version: 0.1.0
   sha256: 3d5600bb5caf00e2fdef1cf4f1f368b06da955d385b95cd6b7a7ccd6d47f5a91
@@ -10174,7 +10174,7 @@ packages:
   name: argparse
   version: 1.4.0
   sha256: c31647edb69fd3d465a847ea3157d37bed1f95f19760b11a47aa91c04b666314
-- pypi: examples/python/arkit_scenes
+- pypi: ./examples/python/arkit_scenes
   name: arkit-scenes
   version: 0.1.0
   sha256: 1ea1defa403966ebbc7e54ff7b92f65fdb6c98ee3e242d8af0be46023ed87961
@@ -11624,6 +11624,19 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
+  - grpclib
+  - stringcase
+  - black ; extra == 'compiler'
+  - jinja2 ; extra == 'compiler'
+  - protobuf ; extra == 'compiler'
+  requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
+  name: betterproto
+  version: 1.2.5
+  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
+  requires_dist:
   - grpclib
   - stringcase
   - dataclasses ; python_full_version < '3.7'
@@ -11833,7 +11846,7 @@ packages:
   - webencodings
   - tinycss2>=1.1.0,<1.3 ; extra == 'css'
   requires_python: '>=3.8'
-- pypi: examples/python/blueprint
+- pypi: ./examples/python/blueprint
   name: blueprint
   version: 0.1.0
   sha256: d9a358e5994ec1e9144942903e46148b16825344cddc19e7188b285f59bc61c1
@@ -11841,7 +11854,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: examples/python/blueprint_stocks
+- pypi: ./examples/python/blueprint_stocks
   name: blueprint-stocks
   version: 0.1.0
   sha256: 931c90b4c05a2f881a1c68dcb9a84887e1a185ff0fc9d366fd7e5e60e1738b50
@@ -12178,7 +12191,7 @@ packages:
   purls: []
   size: 1524254
   timestamp: 1741555212198
-- pypi: examples/python/camera_video_stream
+- pypi: ./examples/python/camera_video_stream
   name: camera-video-stream
   version: 0.1.0
   sha256: 663e01444d7ff1349d6bfea4aab12ed69d420af9070be9d04d17de808fd12bb7
@@ -13001,7 +13014,7 @@ packages:
   - colorama ; sys_platform == 'win32'
   - importlib-metadata ; python_full_version < '3.8'
   requires_python: '>=3.7'
-- pypi: examples/python/clock
+- pypi: ./examples/python/clock
   name: clock
   version: 0.1.0
   sha256: 1ae48a7222b2fc2bd9942a31bb48fefb34225a946859ad95c25ad00bfb754cd7
@@ -13257,7 +13270,7 @@ packages:
   - pytest-xdist ; extra == 'test-no-images'
   - wurlitzer ; extra == 'test-no-images'
   requires_python: '>=3.9'
-- pypi: examples/python/controlnet
+- pypi: ./examples/python/controlnet
   name: controlnet
   version: 0.1.0
   sha256: d61a3951deeba8da095757b597ccaa369b6afc66b97f0ed0a627a60325132944
@@ -13484,7 +13497,7 @@ packages:
   - marshmallow>=3.18.0,<4.0.0
   - typing-inspect>=0.4.0,<1
   requires_python: '>=3.7,<4.0'
-- pypi: examples/python/dataframe_query
+- pypi: ./examples/python/dataframe_query
   name: dataframe-query
   version: 0.1.0
   sha256: cfd25d2d2872eef690801817f4a3bf4660d4b232cc594d0bcc3ee70a783dfd46
@@ -13615,7 +13628,7 @@ packages:
   sha256: 4c62dc41109689d03e4b35de0a2bcbdeeb81047badc607c4415d5c753bd683af
   requires_dist:
   - matplotlib
-- pypi: examples/python/detect_and_track_objects
+- pypi: ./examples/python/detect_and_track_objects
   name: detect-and-track-objects
   version: 0.1.0
   sha256: c32b28287bb59655d802892eb835bae1fc6e50019469686421ef65456ba3d2ea
@@ -13629,7 +13642,7 @@ packages:
   - torch==2.6.0
   - transformers
   editable: true
-- pypi: examples/python/dicom_mri
+- pypi: ./examples/python/dicom_mri
   name: dicom-mri
   version: 0.1.0
   sha256: 98cb91dc5758ae59e3cd0fb797f86f40fcf627f63e659365806f59feed4618d8
@@ -13734,7 +13747,7 @@ packages:
   name: distlib
   version: 0.3.9
   sha256: 47f8c22fd27c27e25a65601af709b38e4f0a45ea4fc2e710f65755fa8caaaf87
-- pypi: examples/python/dna
+- pypi: ./examples/python/dna
   name: dna
   version: 0.1.0
   sha256: 15dd8b0ce0ee55262916ea9bc8fb93c72c2012cb01a78e6d24a526d92537eab4
@@ -13825,7 +13838,7 @@ packages:
   purls: []
   size: 4861033
   timestamp: 1687333355663
-- pypi: examples/python/drone_lidar
+- pypi: ./examples/python/drone_lidar
   name: drone-lidar
   version: 0.1.0
   sha256: 4de8d4135d07f9b0389eeb8a3616a5a9941a868b4d876cc91d8b5351c3b8984d
@@ -13919,7 +13932,7 @@ packages:
   purls: []
   size: 230615
   timestamp: 1725569133557
-- pypi: examples/python/face_tracking
+- pypi: ./examples/python/face_tracking
   name: face-tracking
   version: 0.1.0
   sha256: b8725fe4d36c11aad2c6c936ba2b57c7f65a856aa179badca5d041db63119d55
@@ -14994,7 +15007,7 @@ packages:
   - black ; extra == 'dev'
   - pre-commit ; extra == 'dev'
   requires_python: '>=3.9'
-- pypi: examples/python/gesture_detection
+- pypi: ./examples/python/gesture_detection
   name: gesture-detection
   version: 0.1.0
   sha256: 36dfc4cc822ee47f7aa29ba951bab8a94e96b9fd737daa324a441e6962a620bd
@@ -15293,7 +15306,7 @@ packages:
   - protobuf!=3.20.0,!=3.20.1,>=3.20.2,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0.dev0
   - grpcio>=1.44.0,<2.0.0.dev0 ; extra == 'grpc'
   requires_python: '>=3.7'
-- pypi: examples/python/graph_lattice
+- pypi: ./examples/python/graph_lattice
   name: graph-lattice
   version: 0.1.0
   sha256: f92a889e55062d414fbf9847d0b2b216b8e4bcaf8ee2965476de877102ee52f8
@@ -15344,7 +15357,7 @@ packages:
   purls: []
   size: 95406
   timestamp: 1711634622644
-- pypi: examples/python/graphs
+- pypi: ./examples/python/graphs
   name: graphs
   version: 0.1.0
   sha256: 4e848c8bfec82cd0d79a4080a37ea03ee24c33d3c64019af981b76ba0bd8d10c
@@ -15804,7 +15817,7 @@ packages:
   - types-tqdm ; extra == 'typing'
   - types-urllib3 ; extra == 'typing'
   requires_python: '>=3.8.0'
-- pypi: examples/python/human_pose_tracking
+- pypi: ./examples/python/human_pose_tracking
   name: human-pose-tracking
   version: 0.1.0
   sha256: 8a80b67528d3f6d0c82671dc5c36cf551faa4b879f4434f0d386d8ef85666e86
@@ -15992,7 +16005,7 @@ packages:
   - importlib-resources>=1.3 ; python_full_version < '3.9' and extra == 'test'
   - pytest-mypy ; extra == 'type'
   requires_python: '>=3.8'
-- pypi: examples/python/imu_signals
+- pypi: ./examples/python/imu_signals
   name: imu-signals
   version: 0.1.0
   sha256: 75508db835c17913b995958c786a75cff8b309fee80913fc343992fb0c7a79c2
@@ -16004,7 +16017,7 @@ packages:
   - tqdm
   requires_python: <3.12
   editable: true
-- pypi: examples/python/incremental_logging
+- pypi: ./examples/python/incremental_logging
   name: incremental-logging
   version: 0.1.0
   sha256: c1efe33868c31fe5a07ab5f6e60d28f856735a9e0b221ff96abd2e711d60e894
@@ -21928,26 +21941,37 @@ packages:
   purls: []
   size: 879954
   timestamp: 1728653174677
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.49.1-h86ecc28_0.conda
-  sha256: 79236d2c04e90231df4de2fd75e61aef9bdf1a62d00db2c88a00086848d4b9a5
-  md5: 5fd74100363fa0a57515800d57b764e1
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.51.0-hb9d3cd8_0.conda
+  sha256: 770ca175d64323976c9fe4303042126b2b01c1bd54c8c96cafeaba81bdb481b8
+  md5: 1349c022c92c5efd3fd705a79a5804d8
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 890145
+  timestamp: 1748304699136
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libuv-1.51.0-h86ecc28_0.conda
+  sha256: 2b3811ac29005edb63b85e4eb24d13e04b93e3c9b33dcb11b11a11681af0665d
+  md5: bd76e353d6a09ae834fc9056343f2f73
   depends:
   - libgcc >=13
   license: MIT
   license_family: MIT
   purls: []
-  size: 606994
-  timestamp: 1728653097318
-- conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.49.0-hee94a50_0.conda
-  sha256: 78fde5f3a8d959f575e2f9974be4338dc23ab8f3ca3f842dc331141d8a53c3cf
-  md5: 7bf2331bb296918912506cc06fba82a0
+  size: 645133
+  timestamp: 1748304599853
+- conda: https://conda.anaconda.org/conda-forge/osx-64/libuv-1.51.0-h4cb831e_0.conda
+  sha256: 2c820c8e26d680f74035f58c3d46593461bb8aeefa00faafa5ca39d8a51c87fa
+  md5: 8afd5432c2e6776d145d94f4ea4d4db5
   depends:
   - __osx >=11.0
   license: MIT
   license_family: MIT
   purls: []
-  size: 415238
-  timestamp: 1727283251435
+  size: 420355
+  timestamp: 1748304826637
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.49.1-h7ab814d_0.conda
   sha256: 47c3d7fad65258d13aa30967609310f8ff8b27b414bb8087fa60343b7e9fc400
   md5: e3efd5e5ca0eaa06fd7619f9f1c80e9c
@@ -21958,6 +21982,16 @@ packages:
   purls: []
   size: 412704
   timestamp: 1728653228204
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libuv-1.51.0-h5505292_0.conda
+  sha256: 41c1230a3f4e0d265e5053c671f112a16be4405b9047d3da5581e03e9d53de65
+  md5: 230a885fe67a3e945a4586b944b6020a
+  depends:
+  - __osx >=11.0
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 420654
+  timestamp: 1748304893204
 - conda: https://conda.anaconda.org/conda-forge/win-64/libuv-1.49.1-h2466b09_0.conda
   sha256: 2dbf9f337e980950eed7b3c63a7a8b838fc42c94a7b9315ae778b7afd3e756f1
   md5: 1785e24e029e7f07c69d57f1de7eb14d
@@ -22373,7 +22407,7 @@ packages:
   purls: []
   size: 55476
   timestamp: 1727963768015
-- pypi: examples/python/lidar
+- pypi: ./examples/python/lidar
   name: lidar
   version: 0.1.0
   sha256: 10fe6d7b3a80959f913aada12c01bfecd6cd9854beaf6a8843a7ecd2215cd4bd
@@ -22384,7 +22418,7 @@ packages:
   - requests
   - rerun-sdk
   editable: true
-- pypi: examples/python/live_camera_edge_detection
+- pypi: ./examples/python/live_camera_edge_detection
   name: live-camera-edge-detection
   version: 0.1.0
   sha256: f1edef43efce87f55726e3b5d6a2f813667968f8e8185873a74b9dc61c0f040f
@@ -22392,7 +22426,7 @@ packages:
   - opencv-python
   - rerun-sdk
   editable: true
-- pypi: examples/python/live_scrolling_plot
+- pypi: ./examples/python/live_scrolling_plot
   name: live-scrolling-plot
   version: 0.1.0
   sha256: 1debab1814169399bb2ed23af2cd97a4693e7a4d4ee55e74bcb8804bf421e8fc
@@ -22400,7 +22434,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: examples/python/llm_embedding_ner
+- pypi: ./examples/python/llm_embedding_ner
   name: llm-embedding-ner
   version: 0.1.0
   sha256: 6f5925cbe333d529421ef9a5114f85317bdd8b4200c1e9ff6798dff5e3a7f16f
@@ -22534,7 +22568,7 @@ packages:
   - pkg:pypi/llvmlite?source=hash-mapping
   size: 18128467
   timestamp: 1738108854446
-- pypi: examples/python/log_file
+- pypi: ./examples/python/log_file
   name: log-file
   version: 0.1.0
   sha256: fb6af8faeaac3e8d16da4ab40e26a73dd0e63483f34aa36298c32f7e39324fd3
@@ -23057,7 +23091,7 @@ packages:
   version: 1.3.4
   sha256: 70775750742b25c0d8f36c55aed03d24c3384d17c951b3175d898bd778ef0307
   requires_python: '>=3.6'
-- pypi: examples/python/minimal
+- pypi: ./examples/python/minimal
   name: minimal
   version: 0.1.0
   sha256: 871c1ec39ceb3af42679653369402d66672d4bb9850a727b27db05c16653c8dd
@@ -23065,7 +23099,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: examples/python/minimal_options
+- pypi: ./examples/python/minimal_options
   name: minimal-options
   version: 0.1.0
   sha256: 84d5a8787772da382454f2f3b44d54027a606bff043872dab559cc4604ac82f0
@@ -23378,7 +23412,7 @@ packages:
   - pkg:pypi/multidict?source=hash-mapping
   size: 57534
   timestamp: 1729066160777
-- pypi: examples/python/multiprocess_logging
+- pypi: ./examples/python/multiprocess_logging
   name: multiprocess-logging
   version: 0.1.0
   sha256: 90ae836d45110662ac53e73a092a5298ab67d89873eed81d1773dba601a62eb2
@@ -23389,7 +23423,7 @@ packages:
   name: multitasking
   version: 0.0.11
   sha256: 1e5b37a5f8fc1e6cfaafd1a82b6b1cc6d2ed20037d3b89c25a84f499bd7b3dd4
-- pypi: examples/python/multithreading
+- pypi: ./examples/python/multithreading
   name: multithreading
   version: 0.1.0
   sha256: 85b43cb06183386edd0a8820c0c9eb50398c197fd0da8ba5050f2cf2b24bc23e
@@ -23809,23 +23843,23 @@ packages:
   purls: []
   size: 279200
   timestamp: 1676838681615
-- conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.17.0-hc55a1b2_0.conda
-  sha256: 3aafbba0a70e7f2ede7b87854e7d7146e4f6b25214f21c3c2cc6e50c19ff0522
-  md5: 40a9a1d8f7b2d8b719a6ff5e2194061e
+- conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.13.0-hf235a45_0.conda
+  sha256: 925ea8839d6f26d0eb4204675b98a862803a9a9657fd36a4a22c4c29a479a911
+  md5: 1f9efd96347aa008bd2c735d7d88fc75
   depends:
-  - __glibc >=2.17,<3.0.a0
+  - __glibc >=2.28,<3.0.a0
   - icu >=75.1,<76.0a0
   - libgcc >=13
   - libstdcxx >=13
-  - libuv >=1.48.0,<2.0a0
+  - libuv >=1.50.0,<2.0a0
   - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.3.2,<4.0a0
+  - openssl >=3.4.1,<4.0a0
   - zlib
   license: MIT
   license_family: MIT
   purls: []
-  size: 17218811
-  timestamp: 1726732499126
+  size: 21691794
+  timestamp: 1741809786920
 - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-22.9.0-hf235a45_0.conda
   sha256: 1bc6445b7ecb3bff478d5a11eb3504e45eb5a3cdde24c6ec7339f80c193d24c8
   md5: 40255c9ffb722d614b02ca7aaee6abcb
@@ -23843,54 +23877,71 @@ packages:
   purls: []
   size: 21198038
   timestamp: 1726661026112
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-20.17.0-heaf42f6_0.conda
-  sha256: 80d5bce0f27b3fdffe6c2688022a1575c01caa2cf941064ad99b0a05d7c7e7dc
-  md5: a3c01fedff2dae780a6ef671d2d93ad4
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-22.13.0-h8374285_0.conda
+  sha256: 7878e84a0162041c7c45814832f1635ea0b4454481af619a20a3be291744c032
+  md5: 3a81ef0e4e847685774c35bbf42598e2
   depends:
+  - __glibc >=2.28,<3.0.a0
   - icu >=75.1,<76.0a0
   - libgcc >=13
   - libstdcxx >=13
-  - libuv >=1.48.0,<2.0a0
+  - libuv >=1.50.0,<2.0a0
   - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.3.2,<4.0a0
+  - openssl >=3.4.0,<4.0a0
   - zlib
   license: MIT
   license_family: MIT
   purls: []
-  size: 17353469
-  timestamp: 1726737369084
-- conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.17.0-hd71786a_0.conda
-  sha256: aeab7dbecab9dee9aae908b59a33b8a8e3ccf2ebfeb75dd6fa13790b5bdd57d7
-  md5: 20119f75b5bd7a8d7d6a7bace51c7321
+  size: 22156450
+  timestamp: 1737394666729
+- conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.18.1-hed2d4a2_0.conda
+  sha256: b7c7dcdff10ef3841921f4dae441586677a7cd8773edeb1786f6adfeb2f47db7
+  md5: 28864169334549822027e94110f5e30f
   depends:
   - __osx >=10.15
   - icu >=75.1,<76.0a0
-  - libcxx >=17
-  - libuv >=1.48.0,<2.0a0
+  - libcxx >=18
+  - libuv >=1.49.2,<2.0a0
   - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.3.2,<4.0a0
+  - openssl >=3.4.0,<4.0a0
   - zlib
   license: MIT
   license_family: MIT
   purls: []
-  size: 12195642
-  timestamp: 1726731461399
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.17.0-h08fde81_0.conda
-  sha256: fa969632f4c0df5399935abce7f00292fd01980c6a9e787057954d684c4df8cc
-  md5: a0b8b602cfed203fcb14b454306150c0
+  size: 12333957
+  timestamp: 1734115912606
+- conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-22.13.0-hffbc63d_0.conda
+  sha256: 24afdefa36b68ec1a8159891ed458a7c79b81b35953b9028de142ce640b578b0
+  md5: 74b4d1661ede30e27fdafb0ddb49e13d
+  depends:
+  - __osx >=10.15
+  - icu >=75.1,<76.0a0
+  - libcxx >=18
+  - libuv >=1.50.0,<2.0a0
+  - libzlib >=1.3.1,<2.0a0
+  - openssl >=3.4.0,<4.0a0
+  - zlib
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 15878764
+  timestamp: 1737395834264
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.13.0-h02a13b7_0.conda
+  sha256: d390651526630468e385a74474bb3f17849861182257c161bbca8fca7734d578
+  md5: 93cd91b998422ebf2dace6c13c1842ce
   depends:
   - __osx >=11.0
   - icu >=75.1,<76.0a0
-  - libcxx >=17
-  - libuv >=1.48.0,<2.0a0
+  - libcxx >=18
+  - libuv >=1.50.0,<2.0a0
   - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.3.2,<4.0a0
+  - openssl >=3.4.0,<4.0a0
   - zlib
   license: MIT
   license_family: MIT
   purls: []
-  size: 11778646
-  timestamp: 1726733933441
+  size: 15490642
+  timestamp: 1737401388520
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-22.9.0-h08fde81_0.conda
   sha256: 736a4738aba32a03401aa25c8f740e4afe4aea02bc06651b59b06f0fdc024fdf
   md5: 3771a3a6abe5a8db8910d5ebf144811b
@@ -23907,14 +23958,22 @@ packages:
   purls: []
   size: 14859715
   timestamp: 1726671037225
-- conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.17.0-h57928b3_0.conda
-  sha256: 43f30cff6034a4635664002268ef51343b542a2d76168ee701f0804ea4f7896a
-  md5: 41e0fe9861a85bacaa3ce5c8349388b9
+- conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.18.1-hfeaa22a_0.conda
+  sha256: dd4b69a2e5ebf3fc12365e40fb9df94adc7de9fe3742d03baf408165c5d21a67
+  md5: c3be6dc0ed995c7b4786e46abc43dc8b
   license: MIT
   license_family: MIT
   purls: []
-  size: 22715775
-  timestamp: 1726725065318
+  size: 22652518
+  timestamp: 1734108980369
+- conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.13.0-hfeaa22a_0.conda
+  sha256: 2e72f510715960a0579a2a5452104d20044e8ba74742b87899e24c11cb72d578
+  md5: bd7dde69cfd032aec6ba645297315aff
+  license: MIT
+  license_family: MIT
+  purls: []
+  size: 26232097
+  timestamp: 1737384238153
 - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-22.9.0-h57928b3_0.conda
   sha256: 6d74f0dbb91eb2049199ba801a3db67965f990aef44084f9ae51a1f70c2996f6
   md5: 6aa54ed90a643a11a005491ff316b1c4
@@ -24200,7 +24259,7 @@ packages:
   - pkg:pypi/numpy?source=hash-mapping
   size: 7658962
   timestamp: 1739426668456
-- pypi: examples/python/nuscenes_dataset
+- pypi: ./examples/python/nuscenes_dataset
   name: nuscenes-dataset
   version: 0.1.0
   sha256: 78903b7670fac2b4c27637efc9aa6f63b7b70502ce3d5f88e4353aef5607cf40
@@ -24231,7 +24290,7 @@ packages:
   - tqdm
   - pycocotools>=2.0.1
   requires_python: '>=3.6'
-- pypi: examples/python/nv12
+- pypi: ./examples/python/nv12
   name: nv12
   version: 0.1.0
   sha256: c8ca97c5d8c04037cd5eb9a65be7b1e7d667c11d4dba3ee9aad5956ccf926dc4
@@ -24312,7 +24371,7 @@ packages:
   version: 12.4.127
   sha256: 781e950d9b9f60d8241ccea575b32f5105a5baf4c2351cab5256a24869f12a1a
   requires_python: '>=3'
-- pypi: examples/python/objectron
+- pypi: ./examples/python/objectron
   name: objectron
   version: 0.1.0
   sha256: b2be2b675353b4238e7778b1cef8351950832c32b5e5c34415601c030a421a27
@@ -24334,7 +24393,7 @@ packages:
   purls: []
   size: 135681
   timestamp: 1710946531879
-- pypi: examples/python/open_photogrammetry_format
+- pypi: ./examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
   sha256: 1bf1ac24e064bb75c7f5672b761e519b8b941354a6d9c44d824643ff64f15e80
@@ -24657,17 +24716,18 @@ packages:
   purls: []
   size: 2939306
   timestamp: 1739301879343
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.3.2-h86ecc28_0.conda
-  sha256: 4669d26dbf81e4d72093d8260f55d19d57204d82b1d9440be83d11d313b5990c
-  md5: 9e1e477b3f8ee3789297883faffa708b
+- conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.5.0-h7b32b05_1.conda
+  sha256: b4491077c494dbf0b5eaa6d87738c22f2154e9277e5293175ec187634bd808a0
+  md5: de356753cfdbffcde5bb1e86e3aa6cd0
   depends:
+  - __glibc >=2.17,<3.0.a0
   - ca-certificates
   - libgcc >=13
   license: Apache-2.0
   license_family: Apache
   purls: []
-  size: 3428083
-  timestamp: 1725412266679
+  size: 3117410
+  timestamp: 1746223723843
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.4.1-hd08dc88_0.conda
   sha256: d80b52b56b2206053968270069616868cbeb289ef855cf1584b1bb0fef61b37c
   md5: 09036190605c57eaecf01218e0e9542d
@@ -24679,17 +24739,17 @@ packages:
   purls: []
   size: 3476570
   timestamp: 1739303256089
-- conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.3.2-hd23fc13_0.conda
-  sha256: 2b75d4b56e45992adf172b158143742daeb316c35274b36f385ccb6644e93268
-  md5: 2ff47134c8e292868a4609519b1ea3b6
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openssl-3.5.0-hd08dc88_1.conda
+  sha256: 58120daf06a52ba203f94eccb43900213a9f2b3cc310bbaa868505ccd7afbdaa
+  md5: ee68fdc3a8723e9c58bdd2f10544658f
   depends:
-  - __osx >=10.13
   - ca-certificates
+  - libgcc >=13
   license: Apache-2.0
   license_family: Apache
   purls: []
-  size: 2544654
-  timestamp: 1725410973572
+  size: 3642633
+  timestamp: 1746225726804
 - conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.4.1-hc426f3f_0.conda
   sha256: 505a46671dab5d66df8e684f99a9ae735a607816b12810b572d63caa512224df
   md5: a7d63f8e7ab23f71327ea6d27e2d5eae
@@ -24701,6 +24761,17 @@ packages:
   purls: []
   size: 2591479
   timestamp: 1739302628009
+- conda: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.5.0-hc426f3f_1.conda
+  sha256: bcac94cb82a458b4e3164da8d9bced08cc8c3da2bc3bd7330711a3689c1464a5
+  md5: 919faa07b9647beb99a0e7404596a465
+  depends:
+  - __osx >=10.13
+  - ca-certificates
+  license: Apache-2.0
+  license_family: Apache
+  purls: []
+  size: 2739181
+  timestamp: 1746224401118
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.3.2-h8359307_0.conda
   sha256: 940fa01c4dc6152158fe8943e05e55a1544cab639df0994e3b35937839e4f4d1
   md5: 1773ebccdc13ec603356e8ff1db9e958
@@ -24723,6 +24794,17 @@ packages:
   purls: []
   size: 2934522
   timestamp: 1739301896733
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.5.0-h81ee809_1.conda
+  sha256: 73d366c1597a10bcd5f3604b5f0734b31c23225536e03782c6a13f9be9d01bff
+  md5: 5c7aef00ef60738a14e0e612cfc5bcde
+  depends:
+  - __osx >=11.0
+  - ca-certificates
+  license: Apache-2.0
+  license_family: Apache
+  purls: []
+  size: 3064197
+  timestamp: 1746223530698
 - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.3.2-h2466b09_0.conda
   sha256: a45c42f3577294e22ac39ddb6ef5a64fd5322e8a6725afefbf4f2b4109340bf9
   md5: 1dc86753693df5e3326bb8a85b74c589
@@ -24749,7 +24831,7 @@ packages:
   purls: []
   size: 9025176
   timestamp: 1746227349882
-- pypi: examples/python/openstreetmap_data
+- pypi: ./examples/python/openstreetmap_data
   name: openstreetmap-data
   version: 0.1.0
   sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
@@ -25636,7 +25718,7 @@ packages:
   - pytest>=8.3.2 ; extra == 'test'
   - mypy>=1.11.2 ; extra == 'type'
   requires_python: '>=3.8'
-- pypi: examples/python/plots
+- pypi: ./examples/python/plots
   name: plots
   version: 0.1.0
   sha256: 398c85932db816f766e2d703568060efe4520a6e734f91d69387bbdd143b3f97
@@ -25760,57 +25842,86 @@ packages:
   - cudf-polars-cu12 ; extra == 'gpu'
   - polars[async,cloudpickle,database,deltalake,excel,fsspec,graph,iceberg,numpy,pandas,plot,pyarrow,pydantic,style,timezone] ; extra == 'all'
   requires_python: '>=3.9'
-- conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.2.5-h31abb78_0.conda
-  sha256: 998881927638de0d6bbed983217f194f261bf3ad56bc6aea75950db997e3894f
-  md5: c39304bb246986f8495cd19d57020111
+- conda: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.6.2-h4c22ac6_0.conda
+  sha256: ac249bcdc72fdcbcb34e1b48262fa06b7728cdb626fab907c78ae59db59ec956
+  md5: 6cab1b3928d9e5cdf3eee32b5b2d8198
   depends:
+  - nodejs
   - __glibc >=2.17,<3.0.a0
-  - nodejs >=20.9.0,<21.0a0
+  - nodejs >=22.13.0,<23.0a0
   license: MIT
-  license_family: MIT
   purls: []
-  size: 999015
-  timestamp: 1707033152117
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.2.5-h4e45a9e_0.conda
-  sha256: 2c2c14d7b6cda57b56ca90b88c0a018c99819d8867525ecc76d6c5d579b9c8a5
-  md5: 5d30d29a41d53b32679ace090d5cada1
+  size: 1084773
+  timestamp: 1751001668145
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/prettier-3.6.2-h1e5041c_0.conda
+  sha256: 20e9ac4d8b064c11fb270e72c2aacc24a8da2afc63ab8d544e976954dcad1664
+  md5: de2993bfe2792b6a4766c1bd3315759d
   depends:
-  - nodejs >=20.9.0,<21.0a0
+  - nodejs
+  - nodejs >=22.13.0,<23.0a0
   license: MIT
-  license_family: MIT
   purls: []
-  size: 1001031
-  timestamp: 1707033093064
-- conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.2.5-hbd11d21_0.conda
-  sha256: 16ac0f3d9ebe08dafd773601ee7ca6903a880c94637216635d74aa6e0c0379ce
-  md5: fe9a3066af863ddaa13d4b86991c3a44
+  size: 1085939
+  timestamp: 1751001696495
+- conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.6.2-h672e660_0.conda
+  sha256: 0375bbf4d9c5c930b22299c21345185a7ca22d8eb9be43f762eb39925357ec5e
+  md5: a4f8f97e07835d0df70dba3cc29fc5d3
   depends:
-  - nodejs >=20.9.0,<21.0a0
+  - nodejs
+  - __osx >=10.13
+  - nodejs >=22.13.0,<23.0a0
   license: MIT
-  license_family: MIT
   purls: []
-  size: 999535
-  timestamp: 1707033141882
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.2.5-hb67532b_0.conda
-  sha256: 3e3f20534b72d523d74b9a2df375f551acb9364b096a09d187fcacb8e92d9c48
-  md5: ba831dcb62f21f13e303d64e3076fce8
+  size: 1083631
+  timestamp: 1751001679571
+- conda: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.6.2-hcb1bf24_0.conda
+  sha256: 1eed336416a1f541d20882634eb234134f6dee6bb223547afc57319e92a2cac2
+  md5: 90a07e529463c0b02f0450dd31248dae
   depends:
-  - nodejs >=20.9.0,<21.0a0
+  - nodejs
+  - __osx >=10.13
+  - nodejs >=20.18.1,<21.0a0
   license: MIT
-  license_family: MIT
   purls: []
-  size: 1002362
-  timestamp: 1707033187655
-- conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.2.5-h98b3114_0.conda
-  sha256: de088637ed01d973dbbd6ab37d30ea76fba970cdf7375d114e9db330fcc07ebb
-  md5: e62fb1708fa88409bc3cfcb66f172854
+  size: 1083629
+  timestamp: 1751001687683
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.6.2-h79221d7_0.conda
+  sha256: 799b7767144c474185919f2d63abf5ed7037a5d5b2b10de55378457e589c941c
+  md5: c087ed95e7d9d6d6279e2b1ef9faf94f
   depends:
-  - nodejs >=20.9.0,<21.0a0
+  - nodejs
+  - __osx >=11.0
+  - nodejs >=22.13.0,<23.0a0
   license: MIT
-  license_family: MIT
   purls: []
-  size: 1002255
-  timestamp: 1707033279132
+  size: 1084335
+  timestamp: 1751001682812
+- conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-h1bcbaab_0.conda
+  sha256: 3fdd37c9fddf189444534a3b5e4b802e1ffab92ffa804a77cd417153895e1c42
+  md5: 5c5a1cf272734f3f45cdf46cd2cb5e95
+  depends:
+  - nodejs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - nodejs >=20.18.1,<21.0a0
+  license: MIT
+  purls: []
+  size: 1086974
+  timestamp: 1751001697629
+- conda: https://conda.anaconda.org/conda-forge/win-64/prettier-3.6.2-hc95d2ff_0.conda
+  sha256: 1083f4fedd64f779d75898ea257852da6584af1b6316bf04ec241200569c2775
+  md5: c32df67730aa710f6b490a58303e6556
+  depends:
+  - nodejs
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - nodejs >=22.13.0,<23.0a0
+  license: MIT
+  purls: []
+  size: 1086966
+  timestamp: 1751001694335
 - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.5.0-h12925eb_0.conda
   sha256: 936de8754054d97223e87cc87b72641d2c7582d536ee9eee4b0443fa66e2733f
   md5: 8c29983ebe50cc7e0998c34bc7614222
@@ -26808,6 +26919,15 @@ packages:
   version: 1.16.2
   sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
   requires_dist:
+  - dataclasses ; python_full_version == '3.6.*'
+  - dataclasses-json>=0.0.25
+  - deprecated
+  requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
+  name: pygltflib
+  version: 1.16.2
+  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
+  requires_dist:
   - dataclasses-json>=0.0.25
   - deprecated
   - dataclasses ; python_full_version == '3.6.*'
@@ -27454,7 +27574,7 @@ packages:
   purls: []
   size: 93521358
   timestamp: 1728406725577
-- pypi: examples/python/raw_mesh
+- pypi: ./examples/python/raw_mesh
   name: raw-mesh
   version: 0.1.0
   sha256: 941add74b4fc4866e3e91bb4a5866d8556ab1ae39cc7819e5d1ab0463ad3fc33
@@ -27611,7 +27731,7 @@ packages:
   - hatch ; extra == 'dev'
   - jupyterlab ; extra == 'dev'
   - watchfiles ; extra == 'dev'
-- pypi: rerun_notebook
+- pypi: ./rerun_notebook
   name: rerun-notebook
   version: 0.24.0a1+dev
   sha256: 6f36c1848bb89622aa53fd747da3b12721c9b387f75bc38ec6acd7aee75c6e1d
@@ -27674,7 +27794,7 @@ packages:
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.23.4a2 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: rerun_py
+- pypi: ./rerun_py
   name: rerun-sdk
   version: 0.24.0a1+dev
   sha256: b9daa6c2b4c0a3451a73e1bc2c75322443da1f074406d2a93d3d975f08222be4
@@ -27700,7 +27820,7 @@ packages:
   version: 0.1.1
   sha256: 2f235c432ef459970b4306369336b9d5dbdda31b510ca1e327636e01f528bfa9
   requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*'
-- pypi: examples/python/rgbd
+- pypi: ./examples/python/rgbd
   name: rgbd
   version: 0.1.0
   sha256: b2ef153b0bedd672c3e0ce89b7be1f64f4344b2b75d71748899faea270383fa2
@@ -27787,7 +27907,7 @@ packages:
   version: 0.20.0
   sha256: 8d7919548df3f25374a1f5d01fbcd38dacab338ef5f33e044744b5c36729c8db
   requires_python: '>=3.8'
-- pypi: examples/python/rrt_star
+- pypi: ./examples/python/rrt_star
   name: rrt-star
   version: 0.1.0
   sha256: 41993fc9e48ad077ad59ee5918ccc59c86628fd3d8ea4d36bd0706e9880ce6df
@@ -28201,7 +28321,20 @@ packages:
   - isort ; extra == 'dev'
   - black ; extra == 'dev'
   - mypy ; extra == 'dev'
-- pypi: examples/python/segment_anything_model
+- pypi: git+https://github.com/facebookresearch/segment-anything.git#dca509fe793f601edb92606367a655c15ac00fdf
+  name: segment-anything
+  version: '1.0'
+  requires_dist:
+  - matplotlib ; extra == 'all'
+  - pycocotools ; extra == 'all'
+  - opencv-python ; extra == 'all'
+  - onnx ; extra == 'all'
+  - onnxruntime ; extra == 'all'
+  - flake8 ; extra == 'dev'
+  - isort ; extra == 'dev'
+  - black ; extra == 'dev'
+  - mypy ; extra == 'dev'
+- pypi: ./examples/python/segment_anything_model
   name: segment-anything-model
   version: 0.1.0
   sha256: cd28a6734bbfa0ecd557c8252352df894ffff29e999163f0bc2b3cd3dd037b4c
@@ -28360,7 +28493,7 @@ packages:
   - pytest ; extra == 'test'
   - pytest-cov ; extra == 'test'
   requires_python: '>=3.7'
-- pypi: examples/python/shared_recording
+- pypi: ./examples/python/shared_recording
   name: shared-recording
   version: 0.1.0
   sha256: 6f605379e813578a2304663522ed82ab2fd6486cee725b969abd533b5ac8072f
@@ -28564,7 +28697,7 @@ packages:
   - pygments ; extra == 'tests'
   - littleutils ; extra == 'tests'
   - cython ; extra == 'tests'
-- pypi: examples/python/stdio
+- pypi: ./examples/python/stdio
   name: stdio
   version: 0.1.0
   sha256: 15fb60d3e1c8b7b2d1a4dfcc223bddb267451e8ef7534d42f663d116166d92e2
@@ -28575,7 +28708,7 @@ packages:
   name: stringcase
   version: 1.2.0
   sha256: 48a06980661908efe8d9d34eab2b6c13aefa2163b3ced26972902e3bdfd87008
-- pypi: examples/python/structure_from_motion
+- pypi: ./examples/python/structure_from_motion
   name: structure-from-motion
   version: 0.1.0
   sha256: b20b79aa7bb2b4225b37d3cb28872a70dc7e9ab2ca9ab138b90d60fc8d7b4c15
@@ -29088,20 +29221,20 @@ packages:
   - networkx
   - jinja2
   - fsspec
-  - nvidia-cuda-nvrtc-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-runtime-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cuda-cupti-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cudnn-cu12==9.1.0.70 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cublas-cu12==12.4.5.8 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cufft-cu12==11.2.1.3 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-curand-cu12==10.3.5.147 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusolver-cu12==11.6.1.9 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusparse-cu12==12.3.1.170 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-cusparselt-cu12==0.6.2 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nccl-cu12==2.21.5 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nvtx-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - nvidia-nvjitlink-cu12==12.4.127 ; platform_machine == 'x86_64' and platform_system == 'Linux'
-  - triton==3.2.0 ; platform_machine == 'x86_64' and platform_system == 'Linux'
+  - nvidia-cuda-nvrtc-cu12==12.4.127 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cuda-runtime-cu12==12.4.127 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cuda-cupti-cu12==12.4.127 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cudnn-cu12==9.1.0.70 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cublas-cu12==12.4.5.8 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cufft-cu12==11.2.1.3 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-curand-cu12==10.3.5.147 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cusolver-cu12==11.6.1.9 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cusparse-cu12==12.3.1.170 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-cusparselt-cu12==0.6.2 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-nccl-cu12==2.21.5 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-nvtx-cu12==12.4.127 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - nvidia-nvjitlink-cu12==12.4.127 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+  - triton==3.2.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
   - optree>=0.13.0 ; extra == 'optree'
   - opt-einsum>=3.3 ; extra == 'opt-einsum'
   requires_python: '>=3.9.0'
@@ -29940,6 +30073,18 @@ packages:
   purls: []
   size: 750719
   timestamp: 1728401055788
+- conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.44.35208-h818238b_26.conda
+  sha256: 7bad6e25a7c836d99011aee59dcf600b7f849a6fa5caa05a406255527e80a703
+  md5: 14d65350d3f5c8ff163dc4f76d6e2830
+  depends:
+  - ucrt >=10.0.20348.0
+  constrains:
+  - vs2015_runtime 14.44.35208.* *_26
+  license: LicenseRef-MicrosoftVisualCpp2015-2022Runtime
+  license_family: Proprietary
+  purls: []
+  size: 756109
+  timestamp: 1750371459116
 - pypi: https://files.pythonhosted.org/packages/59/90/57b8ac0c8a231545adc7698c64c5a36fa7cd8e376c691b9bde877269f2eb/virtualenv-20.26.6-py3-none-any.whl
   name: virtualenv
   version: 20.26.6
@@ -29979,6 +30124,16 @@ packages:
   purls: []
   size: 17453
   timestamp: 1728400827536
+- conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
+  sha256: d18d77c8edfbad37fa0e0bb0f543ad80feb85e8fe5ced0f686b8be463742ec0b
+  md5: 312f3a0a6b3c5908e79ce24002411e32
+  depends:
+  - vc14_runtime >=14.44.35208
+  license: BSD-3-Clause
+  license_family: BSD
+  purls: []
+  size: 17888
+  timestamp: 1750371463202
 - conda: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.37.32822-h0123c8e_17.conda
   sha256: 259b5d4ac07b131bf15bf1a2d101eb9eb039e32cfef57de79061cb4c8f1889fe
   md5: 8b02594cf497f7516a3ed20a164de75e
