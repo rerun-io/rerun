@@ -12,7 +12,7 @@ use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
-use re_ui::{ContextExt as _, UiExt as _, icons};
+use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
@@ -633,12 +633,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 is_semantically_empty,
             } = desc;
 
-            header_property_ui(ui, "Type", "component");
-            header_property_ui(
-                ui,
-                "Component type",
-                component_type.map(|a| a.as_str()).unwrap_or("-"),
-            );
+            header_property_ui(ui, "Column type", "Component");
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
@@ -646,10 +641,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype.map(|a| a.full_name()).unwrap_or("-"),
             );
+            header_property_ui(ui, "Component", component);
             header_property_ui(
                 ui,
-                "Archetype field",
-                desc.component_descriptor().archetype_field_name(),
+                "Component type",
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
 
             if false {
@@ -658,12 +654,6 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 header_property_ui(ui, "Indicator", is_indicator.to_string());
                 header_property_ui(ui, "Tombstone", is_tombstone.to_string());
                 header_property_ui(ui, "Empty", is_semantically_empty.to_string());
-            }
-
-            if cfg!(debug_assertions) {
-                ui.add_space(8.0);
-                ui.label(ui.ctx().warning_text("Only in debug builds:"));
-                header_property_ui(ui, "component", component);
             }
         }
     }

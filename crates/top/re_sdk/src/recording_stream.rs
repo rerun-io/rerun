@@ -933,7 +933,7 @@ impl RecordingStreamInner {
             // We pre-populate the batcher with a chunk the contains the `RecordingInfo`
             // so that these get automatically sent to the sink.
 
-            re_log::debug!(recording_info = ?recording_info, "Adding RecordingInfo to batcher");
+            re_log::trace!(recording_info = ?recording_info, "Adding RecordingInfo to batcher");
 
             let chunk = Chunk::builder(EntityPath::properties())
                 .with_archetype(RowId::new(), TimePoint::default(), recording_info)
