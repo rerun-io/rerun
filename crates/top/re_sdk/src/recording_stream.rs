@@ -940,7 +940,7 @@ impl RecordingStreamInner {
             // We pre-populate the batcher with a chunk the contains the recording
             // properties, so that these get automatically sent to the sink.
 
-            re_log::debug!(properties = ?properties, "adding recording properties to batcher");
+            re_log::trace!(properties = ?properties, "adding recording properties to batcher");
 
             let properties_chunk = Chunk::builder(EntityPath::recording_properties())
                 .with_archetype(RowId::new(), TimePoint::default(), properties)
