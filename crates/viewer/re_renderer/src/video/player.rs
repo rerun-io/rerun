@@ -27,12 +27,12 @@ const DECODING_GRACE_DELAY_BEFORE_REPORTING: Duration = Duration::from_millis(40
 /// sample order for decoding purposes.
 ///
 /// Discarded alternatives:
-/// * use video time based tollerance:
-///   -> makes it dependend on playback speed whether we hit the threshhold or not
-/// * use a wall clock time based tollerance:
+/// * use video time based tolerance:
+///   -> makes it depend on playback speed whether we hit the threshold or not
+/// * use a wall clock time based tolerance:
 ///   -> any seek operation that leads to waiting for the decoder to catch up,
-///      would cause us to show in-progress frames until the tollerance is hit
-const TOLLERATED_OUTPUT_DELAY_IN_NUM_FRAMES: usize = 3;
+///      would cause us to show in-progress frames until the tolerance is hit
+const TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES: usize = 3;
 
 #[derive(Debug)]
 pub struct TimedDecodingError {
@@ -511,7 +511,7 @@ fn should_update_video_texture(
             // We're waiting until we're fully caught up before showing any new frames.
             false
         } else {
-            // Figure out how many frames we're behind. If this is higher than a certain tollerance, don't update the texture.
+            // Figure out how many frames we're behind. If this is higher than a certain tolerance, don't update the texture.
             //
             // Since frames aren't in presentation time order and may have varying durations (i.e. the video has variable frame rate),
             // we have to successively use `latest_sample_index_at_presentation_timestamp`:
@@ -524,13 +524,13 @@ fn should_update_video_texture(
                     break false;
                 };
                 if current_sample.presentation_timestamp == decoded_frame_pts {
-                    // This is the frame we actually got and we stayed under the tollerance.
+                    // This is the frame we actually got and we stayed under the tolerance.
                     // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
                     break true;
                 }
 
                 num_frames_behind += 1;
-                if num_frames_behind > TOLLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
+                if num_frames_behind > TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
                     // Too far behind. Add hysteresis to avoid flipping in and out of this state.
                     *dont_update_texture_until_caught_up = true;
                     break false;
