@@ -66,7 +66,11 @@ pub fn texture_preview_ui(
     texture: ColormappedTexture,
 ) -> egui::Response {
     if ui_layout.is_single_line() {
-        let preview_size = Vec2::splat(ui.available_height());
+        let height = ui.available_height();
+        let [texture_width, texture_height] = texture.width_height();
+        let width =
+            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
+        let preview_size = Vec2::new(width, height);
         ui.allocate_ui_with_layout(
             preview_size,
             egui::Layout::centered_and_justified(egui::Direction::TopDown),

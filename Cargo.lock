@@ -7109,6 +7109,7 @@ dependencies = [
  "parking_lot",
  "re_arrow_util",
  "re_chunk_store",
+ "re_component_ui",
  "re_dataframe",
  "re_format",
  "re_log",

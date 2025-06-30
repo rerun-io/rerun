@@ -21,6 +21,7 @@ all-features = true
 [dependencies]
 re_arrow_util.workspace = true
 re_chunk_store.workspace = true
+re_component_ui.workspace = true
 re_dataframe.workspace = true
 re_format.workspace = true
 re_log.workspace = true

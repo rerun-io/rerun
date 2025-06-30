@@ -107,6 +107,10 @@ impl ColumnConfig {
     pub fn new_with_visible(id: Id, name: String, visible: bool) -> Self {
         Self { id, name, visible }
     }
+
+    pub fn id(&self) -> Id {
+        self.id
+    }
 }
 
 // TODO(lucasmerlin): It would be nice to have this in egui_table, so egui_table could do the work
