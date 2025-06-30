@@ -316,8 +316,8 @@ build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
-# Update the results of `insta` snapshot regression tests
-rs-update-insta-tests = "INSTA_FORCE_UPDATE=1 cargo nextest run --all-targets --all-features --cargo-quiet"
+# Update the results of `insta` and `kittest` snapshot regression tests
+rs-update-snapshot-tests = "INSTA_FORCE_UPDATE=1 UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet"
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"

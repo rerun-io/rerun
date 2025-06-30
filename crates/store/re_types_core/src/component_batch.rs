@@ -117,10 +117,10 @@ fn assert_component_batch_object_safe() {
 /// [`AsComponents`]: [crate::AsComponents]
 #[derive(Debug, Clone)]
 pub struct SerializedComponentBatch {
-    pub array: arrow::array::ArrayRef,
-
     // TODO(cmc): Maybe Cow<> this one if it grows bigger. Or intern descriptors altogether, most likely.
     pub descriptor: ComponentDescriptor,
+
+    pub array: arrow::array::ArrayRef,
 }
 
 impl re_byte_size::SizeBytes for SerializedComponentBatch {
