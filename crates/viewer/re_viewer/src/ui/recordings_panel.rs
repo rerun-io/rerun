@@ -1,9 +1,8 @@
 use re_data_ui::item_ui::table_id_button_ui;
-use re_log_types::LogMsg;
 use re_redap_browser::{
     EXAMPLES_ORIGIN, EntryKind, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
 };
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::ItemMenuButton;
 use re_ui::{UiExt as _, UiLayout, list_item};
 use re_viewer_context::{
@@ -16,7 +15,6 @@ use crate::app_state::WelcomeScreenState;
 /// Also shows the currently loading receivers.
 pub fn recordings_panel_ui(
     ctx: &ViewerContext<'_>,
-    rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
     servers: &RedapServers,
@@ -43,13 +41,13 @@ pub fn recordings_panel_ui(
 
                     // Show currently loading things after.
                     // They will likely end up here as recordings soon.
-                    loading_receivers_ui(ctx, rx, ui);
+                    loading_receivers_ui(ctx, ui);
                 });
             });
         });
 }
 
-fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
+fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
         .storage_context
         .bundle
@@ -57,7 +55,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         .filter_map(|store| store.data_source.clone())
         .collect();
 
-    for source in rx.sources() {
+    for source in ctx.connected_receivers.sources() {
         let string = match source.as_ref() {
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
@@ -87,7 +85,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                         .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
                         .on_hover_text("Disconnect from this source");
                     if resp.clicked() {
-                        rx.remove(&source);
+                        ctx.connected_receivers.remove(&source);
                     }
                     resp
                 }),
