@@ -1400,6 +1400,8 @@ impl PyComponentDescriptor {
     }
 
     /// Unconditionally sets `archetype` & `component_type` to the given ones (if specified).
+    ///
+    /// This also changes the archetype part of the descriptor.
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
@@ -1413,6 +1415,8 @@ impl PyComponentDescriptor {
     }
 
     /// Sets `archetype` & `component_type` to the given one iff it's not already set.
+    ///
+    /// This also changes the archetype part of the descriptor.
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();

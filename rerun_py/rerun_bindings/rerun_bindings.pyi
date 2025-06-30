@@ -794,10 +794,19 @@ class ComponentDescriptor:
         """
 
     def with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
+        """
+        Unconditionally sets `archetype` & `component_type` to the given ones (if specified).
+
+        This also changes the archetype part of the descriptor.
+
+        """
 
     def or_with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Sets `archetype` & `component_type` to the given one iff it's not already set."""
+        """
+        Sets `archetype` & `component_type` to the given one iff it's not already set.
+
+        This also changes the archetype part of the descriptor.
+        """
 
 #
 # sinks
