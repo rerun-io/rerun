@@ -13,10 +13,9 @@ use itertools::Itertools as _;
 use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 
+#[derive(Debug)]
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
-    query_expression: QueryExpression,
-    // query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
     partition_streams: Vec<Arc<DataframePartitionStream>>,
 }
 
@@ -56,7 +55,6 @@ impl DataframeQueryTableProvider {
 
         Ok(Self {
             schema,
-            query_expression,
             partition_streams,
         })
     }
@@ -128,15 +126,6 @@ impl PartitionStream for DataframePartitionStream {
 impl std::fmt::Debug for DataframePartitionStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DataframePartitionStream")
-            .field("schema", &self.schema)
-            .field("query_expression", &self.query_expression)
-            .finish()
-    }
-}
-
-impl std::fmt::Debug for DataframeQueryTableProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DataframeQueryTableProvider")
             .field("schema", &self.schema)
             .field("query_expression", &self.query_expression)
             .finish()
