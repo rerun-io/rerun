@@ -781,7 +781,7 @@ class ComponentDescriptor:
         """
 
     @property
-    def component_type(self) -> str| None:
+    def component_type(self) -> str | None:
         """
         Optional, semantic type associated with this data.
 
@@ -793,10 +793,8 @@ class ComponentDescriptor:
     def with_overrides(self, component, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
         """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
 
-
     def or_with_overrides(self, component, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
         """Sets `archetype` & `component_type` to the given one iff it's not already set."""
-
 
 #
 # sinks
