@@ -32,6 +32,8 @@ class VideoStream(Archetype):
     All components except `sample` are typically logged statically once per entity.
     `sample` is then logged repeatedly for each frame on the timeline.
 
+    TODO(#10422): [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference] does not yet work with [`archetypes.VideoStream`][rerun.archetypes.VideoStream].
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
     Example

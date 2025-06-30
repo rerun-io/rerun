@@ -30,6 +30,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
     See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
+    TODO(#10422): [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference] does not yet work with [`archetypes.VideoStream`][rerun.archetypes.VideoStream].
+
     Examples
     --------
     ### Video with automatically determined frames:
