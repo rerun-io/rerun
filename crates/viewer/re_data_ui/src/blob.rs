@@ -161,7 +161,6 @@ pub fn blob_preview_and_save_ui(
                             blob,
                             media_type,
                             ctx.app_options().video_decoder_settings(),
-                            ctx.render_ctx().active_frame_idx(),
                         )
                     });
             video_asset_result_ui(ui, ui_layout, &video_result);

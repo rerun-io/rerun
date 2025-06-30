@@ -1,6 +1,6 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, Ordering},
 };
 
 use ahash::HashMap;
@@ -17,7 +17,7 @@ use crate::{Cache, cache::filter_blob_removed_events, image_info::StoredBlobCach
 // ----------------------------------------------------------------------------
 
 struct Entry {
-    last_frame_used: AtomicU64,
+    used_this_frame: AtomicBool,
 
     /// Keeps failed loads around, so we can don't try again and again.
     video: Arc<Result<Video, VideoLoadError>>,
@@ -41,7 +41,6 @@ impl VideoAssetCache {
         video_buffer: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
-        renderer_active_frame_idx: u64,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
 
@@ -73,9 +72,8 @@ impl VideoAssetCache {
                     &debug_name,
                 )
                 .map(|data| Video::load(debug_name, data, decode_settings));
-
                 Entry {
-                    last_frame_used: AtomicU64::new(renderer_active_frame_idx),
+                    used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
                 }
             });
@@ -83,9 +81,7 @@ impl VideoAssetCache {
         // Using acquire/release here to be on the safe side and for semantical soundness:
         // Whatever thread is acquiring the fact that this was used, should also see/acquire
         // the side effect of having the entry contained in the cache.
-        entry
-            .last_frame_used
-            .store(renderer_active_frame_idx, Ordering::Release);
+        entry.used_this_frame.store(true, Ordering::Release);
         entry.video.clone()
     }
 }
@@ -93,17 +89,15 @@ impl VideoAssetCache {
 impl Cache for VideoAssetCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
         // Clean up unused video data.
-        let last_renderer_frame_idx = renderer_active_frame_idx.saturating_sub(1);
         self.0.retain(|_row_id, per_key| {
-            per_key.retain(|_, v| {
-                v.last_frame_used.load(Ordering::Acquire) >= last_renderer_frame_idx
-            });
+            per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
             !per_key.is_empty()
         });
 
         // Of the remaining video data, remove all unused decoders.
         for per_key in self.0.values() {
             for v in per_key.values() {
+                v.used_this_frame.store(false, Ordering::Release);
                 if let Ok(video) = v.video.as_ref() {
                     video.purge_unused_decoders(renderer_active_frame_idx);
                 }

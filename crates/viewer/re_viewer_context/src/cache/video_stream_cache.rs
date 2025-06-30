@@ -1,6 +1,6 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, Ordering},
 };
 
 use ahash::HashMap;
@@ -60,7 +60,7 @@ impl PlayableVideoStream {
 ///
 /// Keeps track of usage so we know when to remove from the cache.
 struct VideoStreamCacheEntry {
-    last_frame_used: AtomicU64,
+    used_this_frame: AtomicBool,
     video_stream: Arc<RwLock<PlayableVideoStream>>,
 }
 
@@ -113,7 +113,6 @@ impl VideoStreamCache {
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
-        renderer_active_frame_idx: u64,
     ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
@@ -133,7 +132,7 @@ impl VideoStreamCache {
                     decode_settings,
                 );
                 vacant_entry.insert(VideoStreamCacheEntry {
-                    last_frame_used: AtomicU64::new(renderer_active_frame_idx),
+                    used_this_frame: AtomicBool::new(true),
                     video_stream: Arc::new(RwLock::new(PlayableVideoStream {
                         video_renderer: video,
                         video_sample_buffers,
@@ -145,9 +144,7 @@ impl VideoStreamCache {
         // Using acquire/release here to be on the safe side and for semantical soundness:
         // Whatever thread is acquiring the fact that this was used, should also see/acquire
         // the side effect of having the entry contained in the cache.
-        entry
-            .last_frame_used
-            .store(renderer_active_frame_idx, Ordering::Release);
+        entry.used_this_frame.store(true, Ordering::Release);
         Ok(entry.video_stream.clone())
     }
 }
@@ -469,13 +466,12 @@ impl Cache for VideoStreamCache {
         // (have some handwavy limit of number of samples around the current frame?)
 
         // Clean up unused video data.
-        let last_renderer_frame_idx = renderer_active_frame_idx.saturating_sub(1);
-        self.0.retain(|_, entry| {
-            entry.last_frame_used.load(Ordering::Acquire) >= last_renderer_frame_idx
-        });
+        self.0
+            .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
 
         // Of the remaining video data, remove all unused decoders.
         for entry in self.0.values_mut() {
+            entry.used_this_frame.store(false, Ordering::Release);
             let video_stream = entry.video_stream.write();
             video_stream
                 .video_renderer
