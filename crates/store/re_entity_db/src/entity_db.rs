@@ -210,7 +210,11 @@ impl EntityDb {
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
-        debug_assert!(component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()));
+        debug_assert!(
+            component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()),
+            "This function should only be used for built-in RecordingInfo components, which are the only recording properties at {}",
+            EntityPath::properties()
+        );
 
         self.latest_at_component::<C>(
             &EntityPath::properties(),
