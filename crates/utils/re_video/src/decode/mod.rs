@@ -97,7 +97,7 @@ mod gop_detection;
 
 pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
-use crate::{Time, VideoDataDescription};
+use crate::{SampleIndex, Time, VideoDataDescription};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
@@ -341,13 +341,15 @@ pub struct FrameInfo {
 
     /// Which sample in the video is this from?
     ///
-    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
+    /// We always assume one sample leads one frame
+    /// (but may provide arbitrary additional information which may be needed for other frames in the GOP).
     ///
     /// This is the order of which the samples appear in the container,
-    /// which is usually ordered by [`Self::latest_decode_timestamp`].
+    /// which is ordered by [`Self::latest_decode_timestamp`].
+    /// I.e. this is NOT ordered by [`Self::presentation_timestamp`].
     ///
     /// None = unknown.
-    pub sample_idx: Option<usize>,
+    pub sample_idx: Option<SampleIndex>,
 
     /// Which frame is this?
     ///
