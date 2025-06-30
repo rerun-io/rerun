@@ -16,7 +16,7 @@ This package is framework-agnostic. A React wrapper is available at <https://www
 
 ## Install
 
-```txt
+```sh
 npm i @rerun-io/web-viewer
 ```
 

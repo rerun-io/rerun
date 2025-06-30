@@ -16,8 +16,8 @@ If you'd like to use a framework-agnostic package instead, see <https://www.npmj
 
 ## Install
 
-```
-$ npm i @rerun-io/web-viewer-react
+```sh
+npm i @rerun-io/web-viewer-react
 ```
 
 ℹ️ Note:
