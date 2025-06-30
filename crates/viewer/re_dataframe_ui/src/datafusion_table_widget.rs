@@ -330,7 +330,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut row_height = viewer_ctx.tokens().table_line_height();
 
-        /// If the first column is a blob, we treat it as a thumbnail and increase the row height.
+        // If the first column is a blob, we treat it as a thumbnail and increase the row height.
         let first_col = table_config.visible_columns().next();
         if let Some(first_col) = first_col {
             if let Some(col) = columns.iter().find(|c| c.id == first_col.id()) {
