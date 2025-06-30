@@ -163,10 +163,6 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     fn __repr__(&self) -> String {
-        self.0.column_name(re_sorbet::BatchType::Dataframe)
-    }
-
-    fn __str__(&self) -> String {
         format!(
             "Column name: {col}\n\
              \tEntity path: {path}\n\
@@ -223,6 +219,14 @@ impl PyComponentColumnDescriptor {
     #[getter]
     fn is_static(&self) -> bool {
         self.0.is_static
+    }
+
+    /// Whether the column is an indicator column.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn is_indicator(&self) -> bool {
+        self.0.component_descriptor().is_indicator_component()
     }
 }
 
@@ -485,20 +489,11 @@ pub struct PySchema {
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
-    fn __str__(&self) -> String {
+    fn __repr__(&self) -> String {
         self.component_columns()
             .iter()
-            .filter(|field| {
-                !field.entity_path().contains("link") && !field.component().contains("Indicator")
-            })
-            .map(|col| col.__str__())
+            .map(|col| col.__repr__())
             .join("\n")
-    }
-
-    // Technically this violates python's `__repr__` definition
-    // but since we previously didn't have anything that's ok for now.
-    fn __repr__(&self) -> String {
-        self.__str__()
     }
 
     /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
