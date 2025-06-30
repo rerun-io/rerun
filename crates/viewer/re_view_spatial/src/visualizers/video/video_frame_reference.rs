@@ -179,6 +179,10 @@ impl VideoFrameReferenceVisualizer {
 
             Some((video, video_buffer)) => match video.as_ref() {
                 Ok(video) => {
+                    if let Some([w, h]) = video.dimensions() {
+                        video_resolution = glam::vec2(w as _, h as _);
+                    }
+
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
                         ctx.viewer_ctx(),
                         *video_timestamp,
