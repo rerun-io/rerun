@@ -6,13 +6,13 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      JS_DOCS_VERSION_NAME:
+        required: true
+        type: string
       PY_DOCS_VERSION_NAME:
         required: true
         type: string
       CPP_DOCS_VERSION_NAME:
-        required: true
-        type: string
-      RS_DOCS_VERSION_NAME:
         required: true
         type: string
       RELEASE_VERSION:
@@ -81,6 +81,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
+
       - name: Build docs
         run: pixi run -e py-docs mkdocs build -f rerun_py/mkdocs.yml -d site
 
@@ -92,14 +97,29 @@ jobs:
           process_gcloudignore: false
           parent: false
 
-      - name: "Upload Python Docs (stable)"
+      - name: "Update latest"
         if: ${{ inputs.UPDATE_LATEST }}
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: "rerun_py/site"
-          destination: "rerun-docs/docs/python/stable"
-          process_gcloudignore: false
-          parent: false
+        run: |
+          cat <<EOF > index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting</title>
+            <noscript>
+              <meta http-equiv="refresh" content="1; url=../${{ inputs.PY_DOCS_VERSION_NAME }}/" />
+            </noscript>
+            <script>
+              window.location.replace("../${{ inputs.PY_DOCS_VERSION_NAME }}/" + window.location.hash);
+            </script>
+          </head>
+          <body>
+            Redirecting to <a href="../${{ inputs.PY_DOCS_VERSION_NAME }}/">../${{ inputs.PY_DOCS_VERSION_NAME }}/</a>
+          </body>
+          </html>
+          EOF
+
+          gsutil cp ./index.html gs://rerun-docs/docs/python/stable/
 
   # ---------------------------------------------------------------------------
 
@@ -150,3 +170,62 @@ jobs:
           path: "rerun_cpp/docs/html"
           destination: "rerun-docs/docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }}"
           process_gcloudignore: false
+
+  js-deploy-docs:
+    name: JS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          pixi-version: v0.41.4
+          environments: py-docs
+
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
+
+      - name: Build docs
+        run: pixi run js-docs
+
+      - name: "Upload (version)"
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_js/docs"
+          destination: "rerun-docs/docs/js/${{ inputs.JS_DOCS_VERSION_NAME }}"
+          process_gcloudignore: false
+          parent: false
+
+      - name: "Update latest"
+        if: ${{ inputs.UPDATE_LATEST }}
+        run: |
+          cat <<EOF > index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting</title>
+            <noscript>
+              <meta http-equiv="refresh" content="1; url=../${{ inputs.JS_DOCS_VERSION_NAME }}/" />
+            </noscript>
+            <script>
+              window.location.replace("../${{ inputs.JS_DOCS_VERSION_NAME }}/" + window.location.hash);
+            </script>
+          </head>
+          <body>
+            Redirecting to <a href="../${{ inputs.JS_DOCS_VERSION_NAME }}/">../${{ inputs.JS_DOCS_VERSION_NAME }}/</a>
+          </body>
+          </html>
+          EOF
+
+          gsutil cp ./index.html gs://rerun-docs/docs/js/stable/
