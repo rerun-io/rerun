@@ -9,7 +9,7 @@ use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
 use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D, SpatialViewState};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
 
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
@@ -115,7 +115,6 @@ fn show_video_error(
 ) {
     // Register the full video bounds regardless for more stable default view extents for when the error
     // goes in and out of existence.
-    // The size of the error icon depends on the bounds in turn, making this extra important!
     register_video_bounds_with_bounding_box(
         entity_path.hash(),
         visualizer_data,
@@ -163,28 +162,30 @@ fn show_video_error(
         return; // We failed at failing…
     };
 
+    let video_error_rect_size = {
+        // Show the error icon with 2 texel per scene unit by default.
+        let mut rect_size = glam::vec2(
+            video_error_texture.width() as f32,
+            video_error_texture.height() as f32,
+        ) / 2.0;
+
+        // But never larger than the area the video would take up.
+        // (If we have to go smaller because of that, preserve the aspect ratio.)
+        if rect_size.x > video_size.x {
+            let scale = video_size.x / rect_size.x;
+            rect_size *= scale;
+        }
+        if rect_size.y > video_size.y {
+            let scale = video_size.y / rect_size.y;
+            rect_size *= scale;
+        }
+
+        rect_size
+    };
+
     // Center the icon in the middle of the video rectangle.
     // Don't ignore translation - if the user moved the video frame, we move the error message along.
     // But do ignore any rotation/scale on this, gets complicated to center and weird generally.
-    let mut video_error_rect_size = glam::vec2(
-        video_error_texture.width() as _,
-        video_error_texture.height() as _,
-    );
-    // If we're in a 2D view, make the error rect take a fixed amount of view space.
-    // This makes it look a lot nicer for very small & very large videos.
-    if let Some(state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() {
-        if let Some(bounds) = state.visual_bounds_2d {
-            // Aim for 1/8 of the larger visual bounds axis.
-            let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;
-            if max_extent > 0.0 {
-                let video_error_rect_aspect = video_error_rect_size.x / video_error_rect_size.y;
-                let extent_x = max_extent / 8.0;
-                let extent_y = extent_x / video_error_rect_aspect;
-                video_error_rect_size = glam::vec2(extent_x, extent_y);
-            }
-        }
-    }
-
     let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
     let top_left_corner_position = center - video_error_rect_size * 0.5;
 
