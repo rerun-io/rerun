@@ -166,23 +166,18 @@ impl PyComponentColumnDescriptor {
     }
 
     fn __str__(&self) -> String {
-        let mut pretty_str = format!(
-            "Column name: {}",
-            self.0.column_name(re_sorbet::BatchType::Dataframe)
-        );
-        pretty_str.push_str(format!("\n\tEntity path: {}", self.entity_path()).as_str());
-        pretty_str.push_str(
-            format!("\n\tArchetype type: {}", self.archetype().unwrap_or("None")).as_str(),
-        );
-        pretty_str.push_str(
-            format!(
-                "\n\tComponent type: {}",
-                self.component_type().unwrap_or("")
-            )
-            .as_str(),
-        );
-        pretty_str.push_str(format!("\n\tComponent: {}", self.component()).as_str());
-        pretty_str
+        format!(
+            "Column name: {col}\n\
+             \tEntity path: {path}\n\
+             \tArchetype: {arch}\n\
+             \tComponent type: {ctype}\n\
+             \tComponent: {comp}",
+            col   = self.0.column_name(re_sorbet::BatchType::Dataframe),
+            path  = self.entity_path(),
+            arch  = self.archetype().unwrap_or("None"),
+            ctype = self.component_type().unwrap_or(""),
+            comp  = self.component(),
+        )
     }
 
     fn __eq__(&self, other: &Self) -> bool {
