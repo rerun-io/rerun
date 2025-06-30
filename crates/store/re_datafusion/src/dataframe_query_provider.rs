@@ -29,7 +29,7 @@ pub struct DataframePartitionStream {
 impl DataframeQueryTableProvider {
     pub fn new(
         query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
-        query_expression: QueryExpression,
+        query_expression: &QueryExpression,
     ) -> Result<Self, DataFusionError> {
         let all_schemas = query_engines
             .values()

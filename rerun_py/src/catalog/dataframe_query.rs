@@ -440,7 +440,7 @@ impl PyDataframeQueryView {
             .collect();
 
         let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engines, self_.query_expression.clone())
+            DataframeQueryTableProvider::new(query_engines, &self_.query_expression)
                 .map_err(to_py_err)?
                 .try_into()
                 .map_err(to_py_err)?;
