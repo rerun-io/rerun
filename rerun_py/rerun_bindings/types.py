@@ -1,4 +1,3 @@
-from rerun_bindings import ComponentDescriptor
 from __future__ import annotations
 
 from collections.abc import Sequence
