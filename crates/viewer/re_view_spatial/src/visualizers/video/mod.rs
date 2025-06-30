@@ -36,7 +36,7 @@ fn visualize_video_frame_texture(
 ) {
     let re_renderer::video::VideoFrameTexture {
         texture,
-        is_pending,
+        decoder_delay_state,
         show_spinner,
         frame_info: _,
         source_pixel_format: _,
@@ -54,7 +54,7 @@ fn visualize_video_frame_texture(
     let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
     let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
 
-    if is_pending {
+    if decoder_delay_state.should_rerequest_frame() {
         // Keep polling for a fresh texture
         ctx.egui_ctx().request_repaint();
     }

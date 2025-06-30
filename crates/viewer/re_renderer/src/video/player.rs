@@ -8,7 +8,7 @@ use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
-    video::{VideoPlayerError, chunk_decoder::update_video_texture_with_frame},
+    video::{DecoderDelayState, VideoPlayerError, chunk_decoder::update_video_texture_with_frame},
 };
 
 /// Don't report hickups lasting shorter than this.
@@ -85,8 +85,8 @@ pub struct VideoPlayer {
     /// The last time the decoder fully caught up with the frame we want to show, if ever.
     last_time_caught_up: Option<Instant>,
 
-    /// If true, we won't show any frames until the decoder has caught up with the requested frame time.
-    dont_update_texture_until_caught_up: bool,
+    /// Tracks whether we're waiting for the decoder to catch up or not.
+    decoder_delay_state: DecoderDelayState,
 }
 
 impl VideoPlayer {
@@ -138,7 +138,7 @@ impl VideoPlayer {
             last_error: None,
 
             last_time_caught_up: None,
-            dont_update_texture_until_caught_up: false,
+            decoder_delay_state: DecoderDelayState::UpToDate,
         })
     }
 
@@ -166,9 +166,6 @@ impl VideoPlayer {
             .latest_sample_index_at_presentation_timestamp(requested_pts)
             .ok_or(VideoPlayerError::EmptyVideo)?;
         let requested_sample = video_description.samples.get(requested_sample_idx); // This is only `None` if we no longer have the sample around.
-        let requested_pts = requested_sample
-            .map(|s| s.presentation_timestamp)
-            .unwrap_or(requested_pts);
 
         // Ensure we have enough samples enqueued to the decoder to cover the request.
         // (This method also makes sure that the next few frames become available, so call this even if we already have the frame we want.)
@@ -179,66 +176,78 @@ impl VideoPlayer {
             .sample_decoder
             .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
         {
-            // Update the texture if it isn't already up to date and the `update_video_texture_with_frame` oracle says we should.
-            let current_frame_info = self.video_texture.frame_info.as_ref();
-            if current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts) {
-                let update_texture = should_update_video_texture(
-                    &mut self.dont_update_texture_until_caught_up,
-                    video_description,
-                    requested_sample,
-                    decoded_frame.info.presentation_timestamp,
-                );
-                if update_texture {
-                    update_video_texture_with_frame(
-                        render_ctx,
-                        &mut self.video_texture,
-                        &decoded_frame,
-                    )?; // Update texture errors are very unusual, error out on those immediately.
+            self.decoder_delay_state = update_decoder_delay_state(
+                self.decoder_delay_state,
+                video_description,
+                requested_sample,
+                decoded_frame.info.presentation_timestamp,
+            );
 
-                    self.video_texture.frame_info = Some(decoded_frame.info.clone());
-                }
+            // Update the texture if it isn't already up to date and we're not waiting for the decoder to catch up.
+            let current_frame_info = self.video_texture.frame_info.as_ref();
+            if current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts)
+                && self.decoder_delay_state != DecoderDelayState::Behind
+            {
+                update_video_texture_with_frame(
+                    render_ctx,
+                    &mut self.video_texture,
+                    &decoded_frame,
+                )?; // Update texture errors are very unusual, error out on those immediately.
+                self.video_texture.frame_info = Some(decoded_frame.info.clone());
             }
 
             // We apparently recovered from any errors we had previously!
             // (otherwise we wouldn't have received a frame from the decoder)
             self.last_error = None;
-        };
-
-        let current_frame_info = self.video_texture.frame_info.as_ref();
-        let is_pending = self.video_texture.texture.is_none()
-            || current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts);
+        } else {
+            // If there was no on the sample decoder, the last decoded frame is what we previously reported (if any).
+            let current_frame_info = self.video_texture.frame_info.as_ref();
+            self.decoder_delay_state = if let Some(last_decoded_pts) =
+                current_frame_info.map(|info| info.presentation_timestamp)
+            {
+                update_decoder_delay_state(
+                    self.decoder_delay_state,
+                    video_description,
+                    requested_sample,
+                    last_decoded_pts,
+                )
+            } else {
+                DecoderDelayState::Behind
+            };
+        }
 
         // Decide whether to show a spinner or even error out.
-        let show_spinner = if is_pending {
-            // Might we be pending because of an error?
-            if let Some(last_error) = self.last_error.as_ref() {
-                // If we've been in this error state for a while now, report the error.
-                // (sometimes errors are very transient and we recover from them quickly)
-                if last_error.time_of_first_error.elapsed() > DECODING_GRACE_DELAY_BEFORE_REPORTING
-                {
-                    // Report the error only if we have been in an error state for a certain amount of time.
-                    // Don't immediately report the error, since we might immediately recover from it.
-                    // Otherwise, this would cause aggressive flickering!
-                    return Err(last_error.latest_error.clone());
-                }
+        let show_spinner = match self.decoder_delay_state {
+            DecoderDelayState::UpToDate => {
+                self.last_time_caught_up = Some(Instant::now());
+                false
             }
 
-            self.video_texture.texture.is_none() ||
-                // Show spinner if we haven't caught up in a while.
-                self
-                    .last_time_caught_up
-                    .is_none_or(|last_time_caught_up| {
+            DecoderDelayState::UpToDateWithinTolerance | DecoderDelayState::Behind => {
+                // Might we be pending because of an error?
+                if let Some(last_error) = self.last_error.as_ref() {
+                    // If we've been in this error state for a while now, report the error.
+                    // (sometimes errors are very transient and we recover from them quickly)
+                    if last_error.time_of_first_error.elapsed()
+                        > DECODING_GRACE_DELAY_BEFORE_REPORTING
+                    {
+                        // Report the error only if we have been in an error state for a certain amount of time.
+                        // Don't immediately report the error, since we might immediately recover from it.
+                        // Otherwise, this would cause aggressive flickering!
+                        return Err(last_error.latest_error.clone());
+                    }
+                }
+
+                self.video_texture.texture.is_none()
+                    || self.last_time_caught_up.is_none_or(|last_time_caught_up| {
                         last_time_caught_up.elapsed() > DECODING_GRACE_DELAY_BEFORE_REPORTING
                     })
-        } else {
-            self.last_time_caught_up = Some(Instant::now());
-            self.dont_update_texture_until_caught_up = false;
-            false
+            }
         };
 
         Ok(VideoFrameTexture {
             texture: self.video_texture.texture.clone(),
-            is_pending,
+            decoder_delay_state: self.decoder_delay_state,
             show_spinner,
             frame_info: self.video_texture.frame_info.clone(),
             source_pixel_format: self.video_texture.source_pixel_format,
@@ -481,68 +490,98 @@ impl VideoPlayer {
     }
 }
 
-/// Determine whether we should update the video texture with the latest decoder result.
-fn should_update_video_texture(
-    dont_update_texture_until_caught_up: &mut bool,
+/// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
+fn update_decoder_delay_state(
+    previous_decoder_delay_state: DecoderDelayState,
+    video_description: &re_video::VideoDataDescription,
+    requested_sample: Option<&re_video::SampleMetadata>,
+    last_decoded_frame_pts: Time,
+) -> DecoderDelayState {
+    let up_to_date =
+        requested_sample.is_some_and(|s| s.presentation_timestamp == last_decoded_frame_pts);
+
+    match previous_decoder_delay_state {
+        DecoderDelayState::UpToDate | DecoderDelayState::UpToDateWithinTolerance => {
+            if up_to_date {
+                DecoderDelayState::UpToDate
+            } else {
+                if is_decoder_catching_up(
+                    video_description,
+                    requested_sample,
+                    last_decoded_frame_pts,
+                ) {
+                    DecoderDelayState::Behind
+                } else {
+                    DecoderDelayState::UpToDateWithinTolerance
+                }
+            }
+        }
+
+        DecoderDelayState::Behind => {
+            // Only exit behind state if we caught up to the requested frame.
+            if up_to_date {
+                DecoderDelayState::UpToDate
+            } else {
+                DecoderDelayState::Behind
+            }
+        }
+    }
+}
+
+/// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
+fn is_decoder_catching_up(
     video_description: &re_video::VideoDataDescription,
     requested_sample: Option<&re_video::SampleMetadata>,
     decoded_frame_pts: Time,
 ) -> bool {
     let Some(requested_pts) = requested_sample.map(|s| s.presentation_timestamp) else {
-        // Desired sample doesn't exist. So we'll by definition never able to catch up.
-        return false;
+        // Desired sample doesn't exist. We're technically not catching up, but we may as well behave as if we are.
+        return true;
     };
 
-    debug_assert!(
-        decoded_frame_pts <= requested_pts,
-        "Frame returned by sample decoder is expected to have a PTS no later than the requested PTS"
-    );
-
-    // We may want to refrain from updating the texture with the latest decoder result:
-    // * we did a non-trivial seek operation and are waiting for the decoder to catch up, showing between results would be irritating
-    // * the decoder is not fast enough to keep up with playback, i.e. we'll never catch up so anything we show will always be wrong
     if decoded_frame_pts == requested_pts {
         // Decoder caught up with request!
-        *dont_update_texture_until_caught_up = false;
-        true
-    } else {
-        // Decoder did not produce the desired frame, but something _before_ the requested frame.
-        if *dont_update_texture_until_caught_up {
-            // We're waiting until we're fully caught up before showing any new frames.
-            false
-        } else {
-            // Figure out how many frames we're behind. If this is higher than a certain tolerance, don't update the texture.
-            //
-            // Since frames aren't in presentation time order and may have varying durations (i.e. the video has variable frame rate),
-            // we have to successively use `latest_sample_index_at_presentation_timestamp`:
-            // Start at the desired sample and walk backwards from there until we find the sample for the actually produced frame.
-            let mut num_frames_behind = 0;
-            let mut sample = requested_sample;
-            loop {
-                let Some(current_sample) = sample else {
-                    // Sample doesn't exist anymore. Nothing we can do!
-                    break false;
-                };
-                if current_sample.presentation_timestamp == decoded_frame_pts {
-                    // This is the frame we actually got and we stayed under the tolerance.
-                    // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
-                    break true;
-                }
+        return false;
+    }
 
-                num_frames_behind += 1;
-                if num_frames_behind > TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
-                    // Too far behind. Add hysteresis to avoid flipping in and out of this state.
-                    *dont_update_texture_until_caught_up = true;
-                    break false;
-                }
+    if decoded_frame_pts > requested_pts {
+        // We did a backwards seek and haven't decoded a single frame since then.
+        return true;
+    }
 
-                // Check the sample prior to this one.
-                sample = video_description
-                    .latest_sample_index_at_presentation_timestamp(
-                        current_sample.presentation_timestamp - Time::new(1),
-                    )
-                    .and_then(|sidx| video_description.samples.get(sidx));
-            }
+    // Decoder did not produce the desired frame, but something _before_ the requested frame.
+    // Figure out how many frames we're behind. If this is higher than a certain tolerance, don't report it as catching up.
+    //
+    // Note that this can happen either because:
+    // * we did a non-trivial seek operation and are waiting for the decoder to catch up, showing between results would be irritating
+    // * the decoder is not fast enough to keep up with playback, i.e. we'll never catch up so anything we show will always be wrong
+    //
+    // Since frames aren't in presentation time order and may have varying durations (i.e. the video has variable frame rate),
+    // we have to successively use `latest_sample_index_at_presentation_timestamp`:
+    // Start at the desired sample and walk backwards from there until we find the sample for the actually produced frame.
+    let mut num_frames_behind = 0;
+    let mut sample = requested_sample;
+    loop {
+        let Some(current_sample) = sample else {
+            // Sample doesn't exist anymore. We're technically not catching up, but we may as well behave as if we are.
+            return true;
+        };
+        if current_sample.presentation_timestamp == decoded_frame_pts {
+            // This is the frame we actually got and we stayed under the tolerance.
+            // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
+            return false;
         }
+
+        num_frames_behind += 1;
+        if num_frames_behind > TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
+            return true;
+        }
+
+        // Check the sample prior to this one.
+        sample = video_description
+            .latest_sample_index_at_presentation_timestamp(
+                current_sample.presentation_timestamp - Time::new(1),
+            )
+            .and_then(|sidx| video_description.samples.get(sidx));
     }
 }
