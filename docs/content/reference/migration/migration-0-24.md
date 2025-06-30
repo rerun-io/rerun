@@ -45,50 +45,44 @@ snippet: howto/serve_web_viewer
 
 Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 
-## Tagged components
+## Component descriptors
 
-<!-- TODO(grtlr): These are ad-hoc notes from https://github.com/rerun-io/rerun/pull/10082 and need to be cleaned up! -->
+One limitation that we previously had with our data model was that it was only possible to use any `Component` once per entity path.
+This severely effected the design and flexbility of our archetypes.
+The underlying reason for this was that the our internal datastructures used [`Component`] to index into the data.
+This release changes how components are identified within the viewer and within our APIs:
+Instead of specifying the [`Component`] name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).
 
-#### `re_types_core`
+As an example, `Points3D:positions` refers to the `positions` component (`rerun.components.Position3D`) in the `rerun.archetypes.Points3D` archetype.
+For custom data, such as `AnyValues`, it is possible to omit the archetype part of this syntax and only specify the fied name.
 
-* The obvious `ComponentDescriptor` changes.
+Internally we use, what we call a `ComponentDescriptor` to uniquely identify a component.
+Conceptually, it looks like the following:
 
-#### `re_types`
-
-* Indicator components now become indicator fields. This is only temporary until we get rid of indicators.
-
-#### `re_log_types`
-
-* Removed auto-filling of `rerun.components.` to `ComponentType` in path parsing.
-
-#### `re_sorbet`
-
-* Lookup `ColumnDescriptor` by `ComponentIdentifier` instead of `ComponentType`.
-* Changed `ComponentColumnSelector`.
-* Changed `ComponentColumnDescriptor::column_name` to use fully-qualified column names.
-
-#### `rerun_py`
-
-* Dataframe queries now use the new string representation everywhere. It's not allowed to pass in components anymore.
-* `resolve_component_column_selector` now returns an `Option`.
-
-With tagged components, our data model becomes much more flexible.
-We can now have multiple components of the same type living on the same archetype, so we also need a new way to identify columns in a recording.
-For this we introduce the following new string-based representation:
-
-```
-<entity_path>:[<archetype_name>]:<component>
+```rs
+struct ComponentDescriptor {
+  archetype:      Option<String>, // e.g. `rerun.archetypes.Points3D
+  component:      String,         // e.g. `Points3D:positions`
+  component_type: Option<String>, // e.g. `rerun.components.Position3D
+}
 ```
 
-Note that the `archetype_name` section is optional, because components can also be logged as plain fields.
+### Changes
 
-### Blueprints
+When logging data to Rerun using the builtin archetypes no changes to user code should be required.
+There is also migration code in place so that you can open `.rrd` files that were created with `v0.23`.
 
-We have updated our logic so that the `component` field of `blueprint.datatypes.ComponentColumnSelector` follows the same schema.
+These changes are reflected in various parts of Rerun:
 
-#### LeRobot dataloader
+* The selection panel UI comes with a revamped display of archetypes that uses the new syntax to show the `ComponentDescriptor` for each component.
+* The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
+* Custom data can still use simple field names such as `confidences`, but it is advised to supply a full `ComponentDescriptor`, if possible.
 
-* Fixed an issue where the LeRobot dataloader logged untagged `Name` components for robot observations and actions, `.rrd` files created before `0.24` may include these untagged entries. To fix this, load the dataset in `0.24.0` and resave your episodes to `.rrd` (`0.24.0` now supports saving all selected recordings).
+### Limitations
+
+* In rare cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI.
+* Currently, only Rerun-builtin components are picked up by the visualizers and therefore shown in the views (except for the dataframe view which shows all components).
+* In `v0.23`, the LeRobot dataloader logged incomplete `ComponentDescriptors` for robot observations and actions. To fix this, load the dataset in `v0.24` and resave your episodes to `.rrd` (`v0.24` now supports saving all selected recordings).
 
 ## Dataframe API: `View.select_static` is deprecated
 
