@@ -1,9 +1,11 @@
+// @ts-ignore
 import type { WebHandle, wasm_bindgen } from "./re_viewer";
 
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
 
 async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
+  // @ts-ignore
   return (await import("./re_viewer")).default;
 }
 
@@ -31,7 +33,7 @@ async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
   return class extends bindgen.WebHandle {
     free() {
       super.free();
-      // @ts-expect-error
+      // @ts-ignore
       bindgen.deinit();
     }
   };
