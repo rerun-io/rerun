@@ -11,107 +11,109 @@ from attrs import define, fields
 
 from .error_utils import catch_and_log_exceptions
 
+from rerun_bindings import ComponentDescriptor
+
 T = TypeVar("T")
 
 
-class ComponentDescriptor:
-    """
-    A `ComponentDescriptor` fully describes the semantics of a column of data.
+# class ComponentDescriptor:
+#     """
+#     A `ComponentDescriptor` fully describes the semantics of a column of data.
 
-    Every component is uniquely identified by its `ComponentDescriptor`.
-    """
+#     Every component is uniquely identified by its `ComponentDescriptor`.
+#     """
 
-    archetype: str | None
-    """
-    Optional name of the `Archetype` associated with this data.
+#     archetype: str | None
+#     """
+#     Optional name of the `Archetype` associated with this data.
 
-    `None` if the data wasn't logged through an archetype.
+#     `None` if the data wasn't logged through an archetype.
 
-    Example: `rerun.archetypes.Points3D`.
-    """
+#     Example: `rerun.archetypes.Points3D`.
+#     """
 
-    component: str
-    """
-    Name of the field within `Archetype` associated with this data.
+#     component: str
+#     """
+#     Name of the field within `Archetype` associated with this data.
 
-    `None` if the data wasn't logged through an archetype.
+#     `None` if the data wasn't logged through an archetype.
 
-    Example: `positions`.
-    """
+#     Example: `positions`.
+#     """
 
-    component_type: str | None
-    """
-    Optional semantic name associated with this data.
+#     component_type: str | None
+#     """
+#     Optional semantic name associated with this data.
 
-    This is fully implied by the `component`, but included for semantic convenience.
+#     This is fully implied by the `component`, but included for semantic convenience.
 
-    Example: `rerun.components.Position3D`.
-    """
+#     Example: `rerun.components.Position3D`.
+#     """
 
-    def __init__(
-        self,
-        component: str,
-        *,
-        archetype: str | None = None,
-        component_type: str | None = None,
-    ) -> None:
-        assert component_type is None or not component_type.startswith("rerun.components.rerun.components."), (
-            f"Bad component type: {component_type}'"
-        )
-        if archetype is not None:
-            assert not archetype.startswith("rerun.archetypes.rerun.archetypes."), f"Bad archetype name '{archetype}'"
+#     def __init__(
+#         self,
+#         component: str,
+#         *,
+#         archetype: str | None = None,
+#         component_type: str | None = None,
+#     ) -> None:
+#         assert component_type is None or not component_type.startswith("rerun.components.rerun.components."), (
+#             f"Bad component type: {component_type}'"
+#         )
+#         if archetype is not None:
+#             assert not archetype.startswith("rerun.archetypes.rerun.archetypes."), f"Bad archetype name '{archetype}'"
 
-        self.archetype = archetype
-        self.component = component
-        self.component_type = component_type
+#         self.archetype = archetype
+#         self.component = component
+#         self.component_type = component_type
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ComponentDescriptor):
-            return NotImplemented
-        return (
-            self.archetype == other.archetype
-            and self.component == other.component
-            and self.component_type == other.component_type
-        )
+#     def __eq__(self, other: object) -> bool:
+#         if not isinstance(other, ComponentDescriptor):
+#             return NotImplemented
+#         return (
+#             self.archetype == other.archetype
+#             and self.component == other.component
+#             and self.component_type == other.component_type
+#         )
 
-    def __hash__(self) -> int:
-        return hash((self.archetype, self.component, self.component_type))
+#     def __hash__(self) -> int:
+#         return hash((self.archetype, self.component, self.component_type))
 
-    def __str__(self) -> str:
-        archetype = self.archetype
-        component = self.component
-        component_type = self.component_type
+#     def __str__(self) -> str:
+#         archetype = self.archetype
+#         component = self.component
+#         component_type = self.component_type
 
-        if archetype is not None and component_type is None:
-            return f"{archetype}:{component}"
-        elif archetype is None and component_type is not None:
-            return f"{component}#{component_type}"
-        elif archetype is not None and component_type is not None:
-            return f"{archetype}:{component}#{component_type}"
+#         if archetype is not None and component_type is None:
+#             return f"{archetype}:{component}"
+#         elif archetype is None and component_type is not None:
+#             return f"{component}#{component_type}"
+#         elif archetype is not None and component_type is not None:
+#             return f"{archetype}:{component}#{component_type}"
 
-        return component
+#         return component
 
-    def with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
-        component = self.component
-        archetype = archetype if archetype is not None else self.archetype
-        component_type = component_type if component_type is not None else self.component_type
-        return ComponentDescriptor(
-            component,
-            component_type=component_type,
-            archetype=archetype,
-        )
+#     def with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+#         """Unconditionally sets `archetype` & `component_type` to the given ones (if specified)."""
+#         component = self.component
+#         archetype = archetype if archetype is not None else self.archetype
+#         component_type = component_type if component_type is not None else self.component_type
+#         return ComponentDescriptor(
+#             component,
+#             component_type=component_type,
+#             archetype=archetype,
+#         )
 
-    def or_with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """Sets `archetype` & `component_type` to the given one iff it's not already set."""
-        component = self.component
-        archetype = self.archetype if self.archetype is not None else archetype
-        component_type = self.component_type if self.component_type is not None else component_type
-        return ComponentDescriptor(
-            component,
-            archetype=archetype,
-            component_type=component_type,
-        )
+#     def or_with_overrides(self, *, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+#         """Sets `archetype` & `component_type` to the given one iff it's not already set."""
+#         component = self.component
+#         archetype = self.archetype if self.archetype is not None else archetype
+#         component_type = self.component_type if self.component_type is not None else component_type
+#         return ComponentDescriptor(
+#             component,
+#             archetype=archetype,
+#             component_type=component_type,
+#         )
 
 
 class DescribedComponentBatch:
