@@ -140,10 +140,9 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
         // TODO(#7594): Support HDR video.
         // We currently handle HDR videos by throwing away the lowest bits,
         // and doing so rather slowly on CPU. It works, but the colors won't be perfectly correct.
-        re_log::warn_once!(
-            "{debug_name:?} is a High-Dynamic-Range (HDR) video with {bits_per_component} bits per component. Rerun does not support this fully. Color accuracy and performance may suffer.",
-        );
         // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
+        //
+        // Don't trigger a warning here: we already warn separately for detecting 10bit elsewhere as well as for HDR primaries.
         2
     } else {
         return Err(DecodeError::BadBitsPerComponent(bits_per_component));

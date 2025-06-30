@@ -1,14 +1,15 @@
 mod video_frame_reference;
 mod video_stream;
 
+use re_types::ViewClassIdentifier;
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use re_log_types::{EntityPath, hash::Hash64};
+use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
 use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewContext, ViewId, ViewSystemIdentifier};
+use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialViewState};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
 
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
@@ -90,6 +91,16 @@ fn visualize_video_frame_texture(
             },
             ctx.view_class_identifier,
         );
+    } else {
+        // If we don't have a texture, still expand the bounding box,
+        // so the default extents of the view show the spinner in the same place as if we had a texture.
+        register_video_bounds_with_bounding_box(
+            entity_path.hash(),
+            visualizer_data,
+            world_from_entity,
+            video_size,
+            ctx.view_class_identifier,
+        );
     }
 }
 
@@ -102,6 +113,16 @@ fn show_video_error(
     video_size: glam::Vec2,
     entity_path: &EntityPath,
 ) {
+    // Register the full video bounds regardless for more stable default view extents for when the error
+    // goes in and out of existence.
+    register_video_bounds_with_bounding_box(
+        entity_path.hash(),
+        visualizer_data,
+        world_from_entity,
+        video_size,
+        ctx.view_class_identifier,
+    );
+
     let render_ctx = ctx.viewer_ctx.render_ctx();
 
     let video_error_image = match re_ui::icons::VIDEO_ERROR
@@ -141,28 +162,30 @@ fn show_video_error(
         return; // We failed at failing…
     };
 
+    let video_error_rect_size = {
+        // Show the error icon with 2 texel per scene unit by default.
+        let mut rect_size = glam::vec2(
+            video_error_texture.width() as f32,
+            video_error_texture.height() as f32,
+        ) / 2.0;
+
+        // But never larger than the area the video would take up.
+        // (If we have to go smaller because of that, preserve the aspect ratio.)
+        if rect_size.x > video_size.x {
+            let scale = video_size.x / rect_size.x;
+            rect_size *= scale;
+        }
+        if rect_size.y > video_size.y {
+            let scale = video_size.y / rect_size.y;
+            rect_size *= scale;
+        }
+
+        rect_size
+    };
+
     // Center the icon in the middle of the video rectangle.
     // Don't ignore translation - if the user moved the video frame, we move the error message along.
     // But do ignore any rotation/scale on this, gets complicated to center and weird generally.
-    let mut video_error_rect_size = glam::vec2(
-        video_error_texture.width() as _,
-        video_error_texture.height() as _,
-    );
-    // If we're in a 2D view, make the error rect take a fixed amount of view space.
-    // This makes it look a lot nicer for very small & very large videos.
-    if let Some(state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() {
-        if let Some(bounds) = state.visual_bounds_2d {
-            // Aim for 1/8 of the larger visual bounds axis.
-            let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;
-            if max_extent > 0.0 {
-                let video_error_rect_aspect = video_error_rect_size.x / video_error_rect_size.y;
-                let extent_x = max_extent / 8.0;
-                let extent_y = extent_x / video_error_rect_aspect;
-                video_error_rect_size = glam::vec2(extent_x, extent_y);
-            }
-        }
-    }
-
     let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
     let top_left_corner_position = center - video_error_rect_size * 0.5;
 
@@ -204,5 +227,32 @@ fn show_video_error(
             source_data: PickableRectSourceData::ErrorPlaceholder,
         },
         ctx.view_class_identifier,
+    );
+}
+
+fn register_video_bounds_with_bounding_box(
+    entity_path: EntityPathHash,
+    visualizer_data: &mut SpatialViewVisualizerData,
+    world_from_entity: glam::Affine3A,
+    video_size: glam::Vec2,
+    class_identifier: ViewClassIdentifier,
+) {
+    // Only update the bounding box if this is a 2D view.
+    // This is avoids a cyclic relationship where the image plane grows
+    // the bounds which in turn influence the size of the image plane.
+    // See: https://github.com/rerun-io/rerun/issues/3728
+    if class_identifier != SpatialView2D::identifier() {
+        return;
+    }
+
+    let top_left = glam::Vec3::from(world_from_entity.translation);
+
+    visualizer_data.add_bounding_box(
+        entity_path,
+        macaw::BoundingBox {
+            min: top_left,
+            max: top_left + glam::Vec3::new(video_size.x, video_size.y, 0.0),
+        },
+        world_from_entity,
     );
 }
