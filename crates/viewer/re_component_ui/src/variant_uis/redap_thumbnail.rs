@@ -1,13 +1,10 @@
-use arrow::array::{Array, GenericListArray, ListArray, PrimitiveArray, UInt8Array};
-use arrow::buffer::ScalarBuffer;
-use arrow::datatypes::{ToByteSlice, UInt8Type};
-use re_log_types::{TimeInt, TimelineName};
-use re_types::components::{Blob, MediaType};
+use arrow::array::{Array as _, ListArray, UInt8Array};
+use re_log_types::TimelineName;
+use re_types::components::MediaType;
 use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::UiLayout;
-use re_uri::RedapUri;
+use re_viewer_context::ViewerContext;
 use re_viewer_context::external::re_chunk_store::LatestAtQuery;
-use re_viewer_context::{ImageInfo, ViewerContext};
 use std::error::Error;
 
 /// Display a thumbnail that takes all the available space.
@@ -46,7 +43,7 @@ pub fn redap_thumbnail(
         .store_context
         .caches
         .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-            c.entry(row_id, &component_descriptor, slice, media_type.as_ref())
+            c.entry(row_id, component_descriptor, slice, media_type.as_ref())
         })?;
 
     re_data_ui::image_preview_ui(
