@@ -118,6 +118,10 @@ fn top_bar_ui(
                 latency_snapshot_button_ui(ui, latency_snapshot);
             }
         }
+
+        if cfg!(debug_assertions) {
+            multi_pass_warning_dot_ui(ui);
+        }
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -173,6 +177,58 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+/// Show an orange dot to warn about multi-pass layout in egui.
+///
+/// If it is shown, it means something called `egui::Context::request_discard` the previous pass,
+/// causing a multi-pass layout frame in egui.
+/// This is used to cover up some visual glitches, but it is also
+/// a bit costly and we shouldn't do it too often.
+///
+/// An infrequent blinking of the dot (e.g. when opening a new panel) is expected,
+/// but it should not be sustained.
+fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
+    let is_multi_pass = 0 < ui.ctx().current_pass_index();
+
+    // Showing the dot just one frame is not enough (e.g. easily missed at 120Hz),
+    // so we blink it up and then fade it out quickly.
+
+    let now = ui.ctx().input(|i| i.time);
+    let last_multipass_time = ui.data_mut(|data| {
+        let last_multipass_time = data
+            .get_temp_mut_or_insert_with(egui::Id::new("last_multipass_time"), || {
+                f64::NEG_INFINITY
+            });
+        if is_multi_pass {
+            *last_multipass_time = now;
+        }
+        *last_multipass_time
+    });
+    let time_since_last_multipass = (now - last_multipass_time) as f32;
+
+    let intensity = egui::remap_clamp(time_since_last_multipass, 0.0..=0.5, 1.0..=0.0);
+
+    let radius = 5.0 * egui::emath::ease_in_ease_out(intensity);
+
+    let (response, painter) = ui.allocate_painter(egui::Vec2::splat(12.0), egui::Sense::hover());
+
+    if intensity <= 0.0 {
+        // Nothing to show, but we still allocate space so we can show a tooltip to developers
+        // who wondered what the hell that blinking orange dot was
+    } else {
+        // Paint dot:
+        painter.circle_filled(response.rect.center(), radius, egui::Color32::ORANGE);
+
+        // Make sure we ask for a repaint so we can animate the dot fading out:
+        ui.ctx().request_repaint();
+    }
+
+    response.on_hover_text(
+        "A blinking orange dot appears here in debug builds whenever request_discard is called.\n\
+        It is expect that the dot appears occasionally, e.g. when showing a new panel for the first time.\n\
+        However, it should not be sustained, as that would indicate a performance bug.",
+    );
 }
 
 fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>) {
