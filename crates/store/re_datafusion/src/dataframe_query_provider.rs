@@ -1,33 +1,63 @@
-use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
-
 use arrow::array::{Array, ArrayRef, RecordBatch, StringArray, new_null_array};
+use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use datafusion::{
-    catalog::{TableProvider, streaming::StreamingTable},
-    error::DataFusionError,
-    execution::SendableRecordBatchStream,
-    physical_plan::{stream::RecordBatchStreamAdapter, streaming::PartitionStream},
+use arrow::error::ArrowError;
+use async_trait::async_trait;
+use datafusion::catalog::Session;
+use datafusion::common::{plan_datafusion_err, plan_err};
+use datafusion::datasource::TableType;
+use datafusion::execution::{RecordBatchStream, TaskContext};
+use datafusion::logical_expr::Expr;
+use datafusion::physical_expr::expressions::Column;
+use datafusion::physical_expr::{
+    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
+use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
+use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
+use datafusion::{
+    catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
+};
+use futures_util::Stream;
 use itertools::Itertools as _;
-use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
+use re_arrow_util::concat_arrays;
+use re_dataframe::{Index, QueryEngine, QueryExpression, QueryHandle, StorageEngine};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use std::any::Any;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
 
-#[derive(Debug)]
+const DEFAULT_BATCH_SIZE: usize = 8000;
+
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
-    partition_streams: Vec<Arc<DataframePartitionStream>>,
+    // partition_streams: Vec<Arc<DataframePartitionStream>>,
+    query_engines: Vec<(String, QueryEngine<StorageEngine>)>,
+    query_expression: QueryExpression,
+    sort_index: Option<Index>,
+}
+
+impl Debug for DataframeQueryTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DataframeQueryTableProvider")
+            .field("schema", &self.schema)
+            .field("sort_index", &self.sort_index)
+            .finish()
+    }
 }
 
 pub struct DataframePartitionStream {
-    pub schema: SchemaRef,
-    query_expression: QueryExpression,
-    query_engine: QueryEngine<StorageEngine>,
+    query_handle: QueryHandle<StorageEngine>,
     partition_id: String,
+    projected_schema: SchemaRef,
+    limit: Option<usize>,
+    collected_rows: usize,
 }
 
 impl DataframeQueryTableProvider {
-    #[tracing::instrument(level = "info", skip_all)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn new(
         query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
         query_expression: &QueryExpression,
@@ -43,94 +73,132 @@ impl DataframeQueryTableProvider {
             DATASET_MANIFEST_ID_FIELD_NAME,
         ));
 
-        let partition_streams = query_engines
-            .into_iter()
-            .map(|(partition_id, query_engine)| DataframePartitionStream {
-                schema: Arc::clone(&schema),
-                query_expression: query_expression.clone(),
-                query_engine,
-                partition_id,
-            })
-            .map(Arc::new)
-            .collect();
+        let query_engines = query_engines.into_iter().collect();
 
         Ok(Self {
             schema,
-            partition_streams,
+            query_engines,
+            query_expression: query_expression.to_owned(),
+            sort_index: query_expression.filtered_index,
         })
     }
 }
 
-impl TryFrom<DataframeQueryTableProvider> for Arc<dyn TableProvider> {
-    type Error = DataFusionError;
-
-    fn try_from(value: DataframeQueryTableProvider) -> Result<Self, Self::Error> {
-        let schema = Arc::clone(&value.schema);
-
-        let partition_streams = value
-            .partition_streams
-            .into_iter()
-            .map(|p| p as Arc<dyn PartitionStream>)
-            .collect();
-        let table = StreamingTable::try_new(schema, partition_streams)?;
-
-        Ok(Arc::new(table))
+#[async_trait]
+impl TableProvider for DataframeQueryTableProvider {
+    fn as_any(&self) -> &dyn Any {
+        self
     }
-}
 
-impl PartitionStream for DataframePartitionStream {
-    fn schema(&self) -> &SchemaRef {
-        &self.schema
+    fn schema(&self) -> SchemaRef {
+        Arc::clone(&self.schema)
+    }
+
+    fn table_type(&self) -> TableType {
+        TableType::Base
     }
 
     #[tracing::instrument(level = "trace", skip_all)]
-    fn execute(&self, _ctx: Arc<datafusion::execution::TaskContext>) -> SendableRecordBatchStream {
-        let partition_id = self.partition_id.clone();
-        let query_engine = self.query_engine.clone();
-        let query_expression = self.query_expression.clone();
-
-        let mut partition_id_columns: HashMap<String, (Field, ArrayRef)> = HashMap::new();
-
-        let target_schema = self.schema.clone();
-
-        let stream = futures_util::stream::iter({
-            let (pid_field, pid_array) = partition_id_columns
-                .entry(partition_id.clone())
-                .or_insert_with(|| {
-                    // The batches returned by re_dataframe are guaranteed to always have a
-                    // single row in them. This will change some day, hopefully, but it's been
-                    // true for years so we should at least leverage it for now.
-                    (
-                        Field::new(DATASET_MANIFEST_ID_FIELD_NAME, DataType::Utf8, false),
-                        Arc::new(StringArray::from(vec![partition_id.clone()])) as Arc<dyn Array>,
-                    )
-                });
-            let (pid_field, pid_array) = (pid_field.clone(), pid_array.clone());
-
-            let inner_schema = target_schema.clone();
-            query_engine
-                .query(query_expression.clone())
-                .into_batch_iter()
-                .map(move |batch| {
-                    align_record_batch_to_schema(
-                        &prepend_partition_id_column(&batch, pid_field.clone(), pid_array.clone())?,
-                        &inner_schema,
-                    )
-                })
-        });
-
-        let adapter = RecordBatchStreamAdapter::new(Arc::clone(&self.schema), stream);
-
-        Box::pin(adapter)
+    async fn scan(
+        &self,
+        _state: &dyn Session,
+        projection: Option<&Vec<usize>>,
+        _filters: &[Expr],
+        limit: Option<usize>,
+    ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        PartitionStreamExec::try_new(
+            &self.schema,
+            self.sort_index,
+            projection,
+            limit,
+            self.query_engines.clone(),
+            self.query_expression.clone(),
+        )
+        .map(|exec| Arc::new(exec) as Arc<dyn ExecutionPlan>)
     }
 }
 
-impl std::fmt::Debug for DataframePartitionStream {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DataframePartitionStream")
-            .field("schema", &self.schema)
-            .field("query_expression", &self.query_expression)
-            .finish()
+impl Stream for DataframePartitionStream {
+    type Item = Result<RecordBatch, DataFusionError>;
+
+    #[tracing::instrument(level = "trace", skip_all)]
+    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        let query_handle = &this.query_handle;
+
+        if let Some(limit) = this.limit {
+            if this.collected_rows >= limit {
+                return Poll::Ready(None);
+            }
+        }
+
+        let num_fields = query_handle.schema().fields.len();
+
+        let mut this_batch = vec![Vec::with_capacity(DEFAULT_BATCH_SIZE); num_fields];
+
+        loop {
+            let Some(mut this_row) = query_handle.next_row() else {
+                break;
+            };
+            if this_row.is_empty() {
+                break;
+            }
+
+            if let Some(limit) = this.limit {
+                if this_row[0].len() + this.collected_rows > limit {
+                    let new_len = this_row[0].len() + this.collected_rows - limit;
+                    this_row = this_row
+                        .into_iter()
+                        .map(|arr| arr.slice(0, new_len))
+                        .collect();
+                }
+            }
+
+            if num_fields != this_row.len() {
+                return Poll::Ready(Some(plan_err!(
+                    "Unexpected number of columns returned from query"
+                )));
+            }
+
+            this_batch
+                .iter_mut()
+                .zip(this_row)
+                .for_each(|(batch, element)| batch.push(element));
+        }
+
+        if this_batch.first().map(|a| a.is_empty()).unwrap_or(true) {
+            Poll::Ready(None)
+        } else {
+            let arrays = this_batch
+                .into_iter()
+                .map(|vec_of_arrays| {
+                    let vec_of_refs = vec_of_arrays.iter().map(|a| a.as_ref()).collect::<Vec<_>>();
+                    concat_arrays(&vec_of_refs)
+                })
+                .collect::<Result<Vec<_>, ArrowError>>()?;
+
+            let batch = RecordBatch::try_new(Arc::clone(query_handle.schema()), arrays)?;
+            this.collected_rows += batch.num_rows();
+
+            let pid_field = Field::new(DATASET_MANIFEST_ID_FIELD_NAME, DataType::Utf8, false);
+            let pid_array = Arc::new(StringArray::from(vec![
+                this.partition_id.clone();
+                batch.num_rows()
+            ])) as Arc<dyn Array>;
+
+            let output_batch = align_record_batch_to_schema(
+                &prepend_partition_id_column(&batch, pid_field.clone(), pid_array.clone())?,
+                &this.projected_schema,
+            )?;
+
+            Poll::Ready(Some(Ok(output_batch)))
+        }
+    }
+}
+
+impl RecordBatchStream for DataframePartitionStream {
+    fn schema(&self) -> SchemaRef {
+        Arc::clone(&self.projected_schema)
     }
 }
 
@@ -146,7 +214,7 @@ fn prepend_partition_id_column(
     batch: &RecordBatch,
     partition_id_field: Field,
     partition_id_column: ArrayRef,
-) -> Result<RecordBatch, arrow::error::ArrowError> {
+) -> Result<RecordBatch, ArrowError> {
     let fields = std::iter::once(partition_id_field)
         .chain(batch.schema().fields().iter().map(|f| (**f).clone()))
         .collect_vec();
@@ -185,4 +253,144 @@ pub fn align_record_batch_to_schema(
         target_schema.clone(),
         aligned_columns,
     )?)
+}
+
+struct PartitionStreamExec {
+    props: PlanProperties,
+    query_engines: Vec<(String, QueryEngine<StorageEngine>)>,
+    query_expression: QueryExpression,
+    projected_schema: Arc<Schema>,
+    limit: Option<usize>,
+}
+
+impl Debug for PartitionStreamExec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartitionStreamExec")
+            .field("props", &self.props)
+            .field("projected_schema", &self.projected_schema)
+            .finish()
+    }
+}
+
+impl PartitionStreamExec {
+    #[tracing::instrument(level = "trace", skip_all)]
+    pub fn try_new(
+        table_schema: &SchemaRef,
+        sort_index: Option<Index>,
+        projection: Option<&Vec<usize>>,
+        limit: Option<usize>,
+        query_engines: Vec<(String, QueryEngine<StorageEngine>)>,
+        query_expression: QueryExpression,
+    ) -> datafusion::common::Result<Self> {
+        let projected_schema = match projection {
+            Some(p) => Arc::new(table_schema.project(p)?),
+            None => Arc::clone(table_schema),
+        };
+
+        let order_col = sort_index
+            .and_then(|index| {
+                let index_name = index.as_str();
+                projected_schema
+                    .fields()
+                    .iter()
+                    .enumerate()
+                    .find(|(_idx, field)| field.name() == index_name)
+                    .map(|(index_col, _)| Column::new(index_name, index_col))
+            })
+            .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+        let orderings = match order_col {
+            Some(col_expr) => vec![LexOrdering::new(vec![PhysicalSortExpr::new(
+                col_expr,
+                SortOptions::new(false, true),
+            )])],
+            None => vec![],
+        };
+
+        let eq_properties =
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
+
+        let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
+
+        let output_partitioning = if partition_in_output_schema {
+            Partitioning::Hash(
+                vec![Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0))],
+                query_engines.len(),
+            )
+        } else {
+            Partitioning::UnknownPartitioning(query_engines.len())
+        };
+
+        let props = PlanProperties::new(
+            eq_properties,
+            output_partitioning,
+            EmissionType::Incremental,
+            Boundedness::Bounded,
+        );
+
+        Ok(Self {
+            props,
+            query_engines,
+            query_expression,
+            projected_schema,
+            limit,
+        })
+    }
+}
+
+impl ExecutionPlan for PartitionStreamExec {
+    fn name(&self) -> &'static str {
+        "PartitionStreamExec"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn properties(&self) -> &PlanProperties {
+        &self.props
+    }
+
+    fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
+        vec![]
+    }
+
+    fn with_new_children(
+        self: Arc<Self>,
+        _children: Vec<Arc<dyn ExecutionPlan>>,
+    ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        plan_err!("PartitionStreamExec does not support children")
+    }
+
+    #[tracing::instrument(level = "trace", skip_all)]
+    fn execute(
+        &self,
+        partition: usize,
+        _context: Arc<TaskContext>,
+    ) -> datafusion::common::Result<SendableRecordBatchStream> {
+        let (partition_id, engine) = self
+            .query_engines
+            .get(partition)
+            .ok_or(plan_datafusion_err!("Invalid partition index"))?;
+        let query_handle = engine.query(self.query_expression.clone());
+
+        let stream = DataframePartitionStream {
+            query_handle,
+            partition_id: partition_id.clone(),
+            projected_schema: self.projected_schema.clone(),
+            limit: self.limit,
+            collected_rows: 0,
+        };
+
+        Ok(Box::pin(stream))
+    }
+}
+
+impl DisplayAs for PartitionStreamExec {
+    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "StreamingTableExec: num_partitions={:?}",
+            self.query_engines.len(),
+        )
+    }
 }

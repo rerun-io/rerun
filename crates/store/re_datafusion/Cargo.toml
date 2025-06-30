@@ -30,6 +30,7 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_util.workspace = true
 re_dataframe.workspace = true
 re_grpc_client.workspace = true
 re_log_encoding.workspace = true
