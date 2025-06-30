@@ -3,15 +3,26 @@ use crate::{Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyUri {
     pub origin: Origin,
-    pub path_prefix: String,
+
+    /// Path segments before the `/proxy` endpoint.
+    ///
+    /// - `None` for URLs like `rerun://host/proxy` (no prefix)
+    /// - `Some(vec!["prefix"])` for URLs like `rerun://host/prefix/proxy`
+    /// - `Some(vec!["a", "b"])` for URLs like `rerun://host/a/b/proxy`
+    pub prefix_segments: Option<Vec<String>>,
 }
 
 impl std::fmt::Display for ProxyUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.path_prefix.is_empty() {
-            write!(f, "{}/proxy", self.origin)
-        } else {
-            write!(f, "{}{}/proxy", self.origin, self.path_prefix)
+        match &self.prefix_segments {
+            None => write!(f, "{}/proxy", self.origin),
+            Some(segments) => {
+                if segments.is_empty() {
+                    write!(f, "{}/proxy", self.origin)
+                } else {
+                    write!(f, "{}/{}/proxy", self.origin, segments.join("/"))
+                }
+            }
         }
     }
 }
@@ -20,7 +31,7 @@ impl ProxyUri {
     pub fn new(origin: Origin) -> Self {
         Self {
             origin,
-            path_prefix: String::new(),
+            prefix_segments: None,
         }
     }
 }

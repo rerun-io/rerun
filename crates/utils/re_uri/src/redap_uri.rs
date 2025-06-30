@@ -1,3 +1,5 @@
+use std::str::FromStr as _;
+
 use re_log_types::StoreId;
 
 use crate::{
@@ -78,46 +80,93 @@ impl std::str::FromStr for RedapUri {
 
         let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
 
-        // :warning: We limit the amount of segments, which might need to be
-        // adjusted when adding additional resources.
         let segments = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
-            .take(10) // increased to handle arbitrary proxy prefixes
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        match segments.as_slice() {
-            ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
+        Self::parse_endpoint_with_prefixes(&segments, origin, &http_url)
+    }
+}
 
-            // Handle proxy endpoint with pathname prefix - fix for issue #10373
-            segments if segments.last() == Some(&"proxy") => {
-                // Extract the path prefix (everything except the last "proxy" segment)
-                let prefix_segments = &segments[..segments.len() - 1];
-                let path_prefix = if prefix_segments.is_empty() {
-                    String::new()
-                } else {
-                    format!("/{}", prefix_segments.join("/"))
-                };
-                Ok(Self::Proxy(ProxyUri { origin, path_prefix }))
+impl RedapUri {
+    /// Parse endpoint from path segments, checking from the end to support path prefixes.
+    fn parse_endpoint_with_prefixes(
+        segments: &[&str],
+        origin: Origin,
+        http_url: &url::Url,
+    ) -> Result<Self, Error> {
+        let endpoint_match = Self::match_endpoint(segments)?;
+
+        match endpoint_match {
+            EndpointMatch::Proxy => {
+                let prefix_segments = Self::extract_proxy_prefix(segments);
+                Ok(Self::Proxy(ProxyUri {
+                    origin,
+                    prefix_segments,
+                }))
             }
-
-            ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
-
-            ["entry", entry_id] => {
+            EndpointMatch::Catalog => Ok(Self::Catalog(CatalogUri::new(origin))),
+            EndpointMatch::Entry { entry_id } => {
                 let entry_id =
                     re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
                 Ok(Self::Entry(EntryUri::new(origin, entry_id)))
             }
-
-            ["dataset", dataset_id, "data"] => {
+            EndpointMatch::Dataset { dataset_id } => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
-
-                DatasetDataUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
+                DatasetDataUri::new(origin, dataset_id, http_url).map(Self::DatasetData)
             }
-            [unknown, ..] => Err(Error::UnexpectedUri(format!("{unknown}/"))),
         }
     }
+
+    /// Extract prefix segments for proxy endpoints, returning None if no prefix.
+    fn extract_proxy_prefix(segments: &[&str]) -> Option<Vec<String>> {
+        // Proxy endpoint has 1 segment: "proxy"
+        const PROXY_ENDPOINT_LEN: usize = 1;
+
+        if segments.len() <= PROXY_ENDPOINT_LEN {
+            None
+        } else {
+            Some(
+                segments[..segments.len() - PROXY_ENDPOINT_LEN]
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+            )
+        }
+    }
+
+    /// Match endpoint pattern from the end of path segments.
+    fn match_endpoint<'a>(segments: &'a [&'a str]) -> Result<EndpointMatch<'a>, Error> {
+        match segments {
+            // Empty path or explicit catalog endpoint defaults to catalog
+            [] | [.., "catalog"] => Ok(EndpointMatch::Catalog),
+
+            // Single segment proxy endpoint
+            [.., "proxy"] => Ok(EndpointMatch::Proxy),
+
+            // Two segment endpoints: /entry/{id} and /dataset/{id}
+            [.., "entry", entry_id] => Ok(EndpointMatch::Entry { entry_id }),
+
+            // Dataset endpoints: /dataset/{id} or /dataset/{id}/data
+            [.., "dataset", dataset_id] | [.., "dataset", dataset_id, "data"] => {
+                Ok(EndpointMatch::Dataset { dataset_id })
+            }
+
+            // Unknown endpoint
+            _ => Err(Error::UnexpectedUri("unknown endpoint".to_owned())),
+        }
+    }
+}
+
+/// Represents a matched endpoint with its parameters.
+#[derive(Debug)]
+enum EndpointMatch<'a> {
+    Proxy,
+    Catalog,
+    Entry { entry_id: &'a str },
+    Dataset { dataset_id: &'a str },
 }
 
 // --------------------------------
@@ -454,9 +503,10 @@ mod tests {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
         let address: Result<RedapUri, _> = url.parse();
 
+        // The new logic returns "unknown endpoint" for unrecognized paths
         assert!(matches!(
             address.unwrap_err(),
-            super::Error::UnexpectedUri(unknown) if &unknown == "redap/"
+            super::Error::UnexpectedUri(unknown) if unknown == "unknown endpoint"
         ));
     }
 
@@ -471,7 +521,7 @@ mod tests {
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
-            path_prefix: String::new(),
+            prefix_segments: None,
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -481,7 +531,7 @@ mod tests {
 
         assert_eq!(address.unwrap(), expected);
 
-        // Test the specific case mentioned in issue #10373
+        // Test proxy endpoint with single path prefix
         let url = "rerun+http://13.31.13.31/rerun/proxy";
         let address: Result<RedapUri, _> = url.parse();
 
@@ -491,12 +541,12 @@ mod tests {
                 host: url::Host::Ipv4("13.31.13.31".parse().unwrap()),
                 port: 80,
             },
-            path_prefix: "/rerun".to_owned(),
+            prefix_segments: Some(vec!["rerun".to_owned()]),
         });
 
         assert_eq!(address.unwrap(), expected);
 
-        // Test multi-segment prefix case
+        // Test proxy endpoint with multi-segment path prefix
         let url = "rerun+http://13.31.13.31/cell/vscode/rerun/proxy";
         let address: Result<RedapUri, _> = url.parse();
 
@@ -506,7 +556,11 @@ mod tests {
                 host: url::Host::Ipv4("13.31.13.31".parse().unwrap()),
                 port: 80,
             },
-            path_prefix: "/cell/vscode/rerun".to_owned(),
+            prefix_segments: Some(vec![
+                "cell".to_owned(),
+                "vscode".to_owned(),
+                "rerun".to_owned(),
+            ]),
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -543,7 +597,7 @@ mod tests {
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_PROXY_PORT,
                     },
-                    path_prefix: String::new(),
+                    prefix_segments: None,
                 }),
             ),
             (
@@ -554,7 +608,7 @@ mod tests {
                         host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
                         port: DEFAULT_PROXY_PORT,
                     },
-                    path_prefix: String::new(),
+                    prefix_segments: None,
                 }),
             ),
             (
@@ -643,5 +697,88 @@ mod tests {
         });
 
         assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_invalid_endpoints_rejected() {
+        // Test that unknown endpoints are rejected to reserve them for future use
+        let invalid_urls = [
+            "rerun://localhost/unknown",
+            "rerun://localhost/invalid/endpoint",
+            "rerun://localhost/prefix/unknown",
+            "rerun://localhost/some/random/path",
+        ];
+
+        for url in invalid_urls {
+            let result: Result<RedapUri, _> = url.parse();
+            assert!(
+                result.is_err(),
+                "URL {url} should be rejected but was accepted"
+            );
+        }
+    }
+    #[test]
+    fn test_path_prefixes() {
+        // Test that all endpoint types support path prefixes (regression test for #10373)
+
+        // Test proxy endpoints specifically (the original issue)
+        let proxy_test_cases = [
+            ("rerun://localhost/proxy", None),
+            ("rerun+http://13.31.13.31/rerun/proxy", Some(vec!["rerun"])),
+            (
+                "rerun+http://host/cell/vscode/rerun/proxy",
+                Some(vec!["cell", "vscode", "rerun"]),
+            ),
+            (
+                "rerun://localhost/a/b/c/d/e/proxy",
+                Some(vec!["a", "b", "c", "d", "e"]),
+            ),
+        ];
+
+        for (url, expected_prefix) in proxy_test_cases {
+            let result: RedapUri = url
+                .parse()
+                .unwrap_or_else(|err| panic!("Failed to parse proxy URL {url}: {err}"));
+
+            if let RedapUri::Proxy(proxy_uri) = result {
+                let expected_segments =
+                    expected_prefix.map(|p| p.into_iter().map(String::from).collect());
+                assert_eq!(
+                    proxy_uri.prefix_segments, expected_segments,
+                    "Proxy URL {url} parsed with wrong prefix segments"
+                );
+            } else {
+                panic!("URL {url} should parse as Proxy but got different type");
+            }
+        }
+
+        // Test that other endpoint types also accept prefixes (they just don't store them)
+        let other_endpoint_test_cases = [
+            ("rerun://localhost/catalog", "Catalog"),
+            ("rerun://localhost/prefix/catalog", "Catalog"),
+            (
+                "rerun://localhost/a/b/entry/1830B33B45B963E7774455beb91701ae",
+                "Entry",
+            ),
+            (
+                "rerun://localhost/x/y/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+                "DatasetData",
+            ),
+        ];
+
+        for (url, expected_type) in other_endpoint_test_cases {
+            let result: RedapUri = url
+                .parse()
+                .unwrap_or_else(|err| panic!("Failed to parse URL {url}: {err}"));
+
+            let actual_type = match result {
+                RedapUri::Proxy(_) => "Proxy",
+                RedapUri::Catalog(_) => "Catalog",
+                RedapUri::Entry(_) => "Entry",
+                RedapUri::DatasetData(_) => "DatasetData",
+            };
+
+            assert_eq!(actual_type, expected_type, "URL {url} parsed as wrong type");
+        }
     }
 }
