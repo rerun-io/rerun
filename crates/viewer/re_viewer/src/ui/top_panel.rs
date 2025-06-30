@@ -90,32 +90,38 @@ fn top_bar_ui(
     website_link_ui(ui);
 
     if !app.is_screenshotting() {
+        let latency_snapshot = store_context
+            .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
+
         if app.app_options().show_metrics {
             ui.separator();
             frame_time_label_ui(ui, app);
             memory_use_label_ui(ui, gpu_resource_stats);
-        }
 
-        let latency_snapshot = store_context
-            .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
-
-        if let Some(latency_snapshot) = latency_snapshot {
-            // Should we show the e2e latency?
-
-            // High enough to be consering; low enough to be believable (and almost realtime).
-            let is_latency_interesting = latency_snapshot
-                .e2e
-                .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
-
-            // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
-
-            if is_latency_interesting {
-                app.latest_latency_interest = web_time::Instant::now();
-            }
-
-            if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
-                ui.separator();
+            if let Some(latency_snapshot) = latency_snapshot {
+                // Always show latency when metrics are enabled:
                 latency_snapshot_button_ui(ui, latency_snapshot);
+            }
+        } else {
+            // Show latency metrics only if high enough to be "interesting":
+            if let Some(latency_snapshot) = latency_snapshot {
+                // Should we show the e2e latency?
+
+                // High enough to be consering; low enough to be believable (and almost realtime).
+                let is_latency_interesting = latency_snapshot
+                    .e2e
+                    .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
+
+                // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
+
+                if is_latency_interesting {
+                    app.latest_latency_interest = web_time::Instant::now();
+                }
+
+                if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                    ui.separator();
+                    latency_snapshot_button_ui(ui, latency_snapshot);
+                }
             }
         }
 

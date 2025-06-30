@@ -7318,6 +7318,7 @@ dependencies = [
  "re_memory",
  "re_protos",
  "re_smart_channel",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_uri",
