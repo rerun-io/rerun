@@ -11,7 +11,6 @@ use nohash_hasher::IntMap;
 use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_types_core::Component as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -334,17 +333,15 @@ impl<'a> DataFusionTableWidget<'a> {
         // If the first column is a blob, we treat it as a thumbnail and increase the row height.
         // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
         let first_column = columns
-            .index_and_column_from_id(table_config.visible_column_ids().next())
-            .and_then(|(index, column)| {
+            .index_from_id(table_config.visible_column_ids().next())
+            .and_then(|index| {
                 display_record_batches
                     .first()
                     .and_then(|batch| batch.columns().get(index))
             });
-        if let Some(column) = first_column {
-            if let DisplayColumn::Component(component) = column {
-                if component.is_image() {
-                    row_height *= 3.0;
-                }
+        if let Some(DisplayColumn::Component(component)) = first_column {
+            if component.is_image() {
+                row_height *= 3.0;
             }
         }
 
