@@ -760,7 +760,7 @@ class ComponentDescriptor:
     Every component is uniquely identified by its `ComponentDescriptor`.
     """
 
-    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None):
+    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
         """Creates a new component descriptor."""
 
     @property
