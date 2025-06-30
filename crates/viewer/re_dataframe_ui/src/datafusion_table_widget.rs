@@ -11,6 +11,7 @@ use nohash_hasher::IntMap;
 use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_types_core::Component;
 use re_ui::menu::menu_style;
 use re_ui::{ContextExt as _, UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -327,6 +328,20 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut new_blueprint = table_state.blueprint().clone();
 
+        let mut row_height = viewer_ctx.tokens().table_line_height();
+
+        /// If the first column is a blob, we treat it as a thumbnail and increase the row height.
+        let first_col = table_config.visible_columns().next();
+        if let Some(first_col) = first_col {
+            if let Some(col) = columns.iter().find(|c| c.id == first_col.id()) {
+                if let ColumnDescriptorRef::Component(component) = col.desc {
+                    if (component.component_type == Some(re_types::components::Blob::name())) {
+                        row_height = row_height * 3.0;
+                    }
+                }
+            }
+        }
+
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             fields,
@@ -335,6 +350,7 @@ impl<'a> DataFusionTableWidget<'a> {
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
+            row_height,
         };
 
         let visible_columns = table_delegate.table_config.visible_columns().count();
@@ -482,6 +498,7 @@ struct DataFusionTableDelegate<'a> {
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
+    row_height: f32,
 }
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
@@ -596,7 +613,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height() * 4.0
+        self.row_height
     }
 }
 
