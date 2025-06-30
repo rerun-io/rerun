@@ -15,6 +15,7 @@ use arrow::{
 };
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
+use itertools::Itertools as _;
 use numpy::PyArrayMethods as _;
 use pyo3::{
     IntoPyObjectExt as _,
@@ -172,11 +173,11 @@ impl PyComponentColumnDescriptor {
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
              \tComponent: {comp}",
-            col   = self.0.column_name(re_sorbet::BatchType::Dataframe),
-            path  = self.entity_path(),
-            arch  = self.archetype().unwrap_or("None"),
+            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
+            path = self.entity_path(),
+            arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
-            comp  = self.component(),
+            comp = self.component(),
         )
     }
 
@@ -491,7 +492,6 @@ impl PySchema {
                 !field.entity_path().contains("link") && !field.component().contains("Indicator")
             })
             .map(|col| col.__str__())
-            .collect::<Vec<_>>()
             .join("\n")
     }
 
