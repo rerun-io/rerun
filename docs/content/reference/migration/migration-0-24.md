@@ -49,21 +49,25 @@ Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 
 One limitation that we previously had with our data model was that it was only possible to use any `Component` once per entity path.
 This severely effected the design and flexbility of our archetypes.
-The underlying reason for this was that the our internal datastructures used [`Component`] to index into the data.
+The underlying reason for this was that the our internal datastructures used the component's type names (previously also referred to as `ComponentName`) to index into the data.
 This release changes how components are identified within the viewer and within our APIs:
-Instead of specifying the [`Component`] name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).
+Instead of specifying the component's type name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).
 
-As an example, `Points3D:positions` refers to the `positions` component (`rerun.components.Position3D`) in the `rerun.archetypes.Points3D` archetype.
+As an example, `Points3D:positions` refers to the `positions` component in the `rerun.archetypes.Points3D` archetype.
+(Previously, it would only be identified by its component type, i.e. `rerun.components.Position3D`.)
 For custom data, such as `AnyValues`, it is possible to omit the archetype part of this syntax and only specify the field name.
-To uniqule identify a component in a recording we can prefix the entity path, for example: `/helix/structure/left:Points3D:positions`.
+
+To `View.select` columns in dataframe queries, we additionally need to specify the entity that a component belongs to.
+Starting with this release, this is achieved by adding the `entity_path` as a prefix to the component identifier, for example: `/helix/structure/left:Points3D:positions`.
 In general, the syntax for uniquely identifying a component in recording then becomes:
 
 ```
 <entity_path>:[<archetype>:]<field>
 ```
 
+### Custom data
 
-Internally we use, what we call a `ComponentDescriptor` to uniquely identify a component.
+Internally we use, what we call a `ComponentDescriptor` to describe the structure and semantics of a component.
 Conceptually, it looks like the following:
 
 ```rs
@@ -74,23 +78,27 @@ struct ComponentDescriptor {
 }
 ```
 
+Custom data can still use simple field names such as `confidences`, but it is advised to supply a full `ComponentDescriptor`, if possible.
+For this we also provide a new `AnyValues.with_field` method.
+
 ### Changes
 
 When logging data to Rerun using the builtin archetypes no changes to user code should be required.
 There is also migration code in place so that you can open `.rrd` files that were created with `v0.23`.
+Recordings from `v0.22` can also be loaded, but need to be migrated using the migration tool from `v0.23` first.
 
-These changes are reflected in various parts of Rerun:
+These changes are reflected in various parts of the Rerun viewer:
 
 * The selection panel UI comes with a revamped display of archetypes that uses the new syntax to show the `ComponentDescriptor` for each component.
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
-* Custom data can still use simple field names such as `confidences`, but it is advised to supply a full `ComponentDescriptor`, if possible.
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
 
 ### Limitations
 
-* In rare cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI.
+* In some cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI_.
 * Currently, only Rerun-builtin components are picked up by the visualizers and therefore shown in the views (except for the dataframe view which shows all components).
 * In `v0.23`, the LeRobot dataloader logged incomplete `ComponentDescriptors` for robot observations and actions. To fix this, load the dataset in `v0.24` and resave your episodes to `.rrd` (`v0.24` now supports saving all selected recordings).
+* Overriding visualizers to reinterpret data (e.g. show a point-cloud for mesh vertices) is no longer possible, since visualizers now match for <archetype>:<field> instead of component type name. This will be addressed in the future with blueprint-driven overrides that will allow to remap data to arbitrary archtypes.
 
 ## Dataframe API: `View.select_static` is deprecated
 
