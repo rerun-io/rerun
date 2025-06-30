@@ -54,7 +54,14 @@ This release changes how components are identified within the viewer and within 
 Instead of specifying the [`Component`] name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).
 
 As an example, `Points3D:positions` refers to the `positions` component (`rerun.components.Position3D`) in the `rerun.archetypes.Points3D` archetype.
-For custom data, such as `AnyValues`, it is possible to omit the archetype part of this syntax and only specify the fied name.
+For custom data, such as `AnyValues`, it is possible to omit the archetype part of this syntax and only specify the field name.
+To uniqule identify a component in a recording we can prefix the entity path, for example: `/helix/structure/left:Points3D:positions`.
+In general, the syntax for uniquely identifying a component in recording then becomes:
+
+```
+<entity_path>:[<archetype>:]<field>
+```
+
 
 Internally we use, what we call a `ComponentDescriptor` to uniquely identify a component.
 Conceptually, it looks like the following:
@@ -77,6 +84,7 @@ These changes are reflected in various parts of Rerun:
 * The selection panel UI comes with a revamped display of archetypes that uses the new syntax to show the `ComponentDescriptor` for each component.
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
 * Custom data can still use simple field names such as `confidences`, but it is advised to supply a full `ComponentDescriptor`, if possible.
+* Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
 
 ### Limitations
 
