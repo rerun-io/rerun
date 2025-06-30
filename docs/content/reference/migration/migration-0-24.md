@@ -89,6 +89,7 @@ Recordings from `v0.22` can also be loaded, but need to be migrated using the mi
 
 These changes are reflected in various parts of the Rerun viewer:
 
+* It is now possible to log arbitrary overlapping archetypes on a single entity path. It is also now possible to re-use the same component type for different fields of the same archetype.
 * The selection panel UI comes with a revamped display of archetypes that uses the new syntax to show the `ComponentDescriptor` for each component.
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
@@ -98,7 +99,7 @@ These changes are reflected in various parts of the Rerun viewer:
 * In some cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI_.
 * Currently, only Rerun-builtin components are picked up by the visualizers and therefore shown in the views (except for the dataframe view which shows all components).
 * In `v0.23`, the LeRobot dataloader logged incomplete `ComponentDescriptors` for robot observations and actions. To fix this, load the dataset in `v0.24` and resave your episodes to `.rrd` (`v0.24` now supports saving all selected recordings).
-* Overriding visualizers to reinterpret data (e.g. show a point-cloud for mesh vertices) is no longer possible, since visualizers now match for <archetype>:<field> instead of component type name. This will be addressed in the future with blueprint-driven overrides that will allow to remap data to arbitrary archtypes.
+* Overriding visualizers to reinterpret data (e.g. show a point-cloud for mesh vertices) is no longer possible, since visualizers now match for <archetype>:<field> instead of component type name. This will be addressed in the future with blueprint-driven overrides that will allow to remap data to arbitrary archetypes.
 
 ## Dataframe API: `View.select_static` is deprecated
 
