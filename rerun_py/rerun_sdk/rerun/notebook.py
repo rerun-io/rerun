@@ -360,6 +360,25 @@ class Viewer:
 
         self._viewer.set_active_recording(recording_id)
 
+    def set_active_partition_uri(
+        self,
+        *,
+        partition_uri: str,
+    ) -> None:
+        """
+        Set the active partition uri for the viewer.
+
+        This is equivalent to clicking on the partition in the dataset table.
+
+        Parameters
+        ----------
+        partition_uri: str
+            The URI of the partition to set the viewer to.
+
+        """
+
+        self._viewer.set_active_recording(recording_id)
+
     @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
     @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(
