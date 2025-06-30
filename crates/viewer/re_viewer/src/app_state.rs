@@ -325,6 +325,7 @@ impl AppState {
                     },
                     component_ui_registry,
                     view_class_registry,
+                    connected_receivers: rx_log,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:
@@ -403,6 +404,7 @@ impl AppState {
                     },
                     component_ui_registry,
                     view_class_registry,
+                    connected_receivers: rx_log,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:
@@ -561,7 +563,6 @@ impl AppState {
                                         .show_inside(ui, |ui| {
                                             recordings_panel_ui(
                                                 &ctx,
-                                                rx_log,
                                                 ui,
                                                 welcome_screen_state,
                                                 redap_servers,
@@ -570,7 +571,6 @@ impl AppState {
                                 } else {
                                     recordings_panel_ui(
                                         &ctx,
-                                        rx_log,
                                         ui,
                                         welcome_screen_state,
                                         redap_servers,
