@@ -47,6 +47,17 @@ Current limitations:
 * [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
 * [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
 
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(9815): fix above if ticket is outdated.
+TODO(10184): fix above if ticket is outdated.
+TODO(10185): fix above if ticket is outdated.
+TODO(10186): fix above if ticket is outdated.
+TODO(10090): fix above if ticket is outdated.
+TODO(10422): fix above if ticket is outdated.
+-->
+
+
 ## Video files
 
 You can use [`AssetVideo`](../reference/types/archetypes/asset_video.md) to log readily encoded video files.
@@ -58,6 +69,11 @@ To ease this, the SDK's `read_frame_timestamps_nanos` utility allows to read out
 snippet: archetypes/video_auto_frames
 
 [#7354](https://github.com/rerun-io/rerun/issues/7354): Currently, only MP4 files are supported.
+
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(7354): fix above if ticket is outdated.
+-->
 
 ## Codec support in detail
 
@@ -145,6 +161,13 @@ There are still some limitations to encoded Video in Rerun which will be address
 * [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
 * There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
   Refer to TODO: 
+
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(7594): fix above if ticket is outdated.
+TODO(5181): fix above if ticket is outdated.
+-->
+
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
