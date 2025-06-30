@@ -609,6 +609,7 @@ fn preview_if_video_stream_ui(
             entity_path,
             query.timeline(),
             ctx.app_options().video_decoder_settings(),
+            ctx.render_ctx().active_frame_idx(),
         )
     });
     video_stream_result_ui(ui, ui_layout, &video_stream_result);

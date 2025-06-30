@@ -97,6 +97,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         entity_path,
                         view_query.timeline,
                         viewer_ctx.app_options().video_decoder_settings(),
+                        viewer_ctx.render_ctx().active_frame_idx(),
                     )
                 }) {
                 Ok(video) => video,

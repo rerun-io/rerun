@@ -1507,6 +1507,13 @@ impl App {
                         );
 
                         render_ctx.begin_frame();
+
+                        // Call begin_frame on caches only after starting the re_renderer frame
+                        // since we rely on the renderer frame index for some tracking of outdated resources.
+                        if let Some(store_hub) = &mut self.store_hub {
+                            store_hub.begin_frame_caches(render_ctx.active_frame_idx());
+                        }
+
                         self.state.show(
                             app_blueprint,
                             ui,
@@ -2310,23 +2317,6 @@ impl eframe::App for App {
         self.check_keyboard_shortcuts(egui_ctx);
 
         self.purge_memory_if_needed(&mut store_hub);
-
-        {
-            let egui_renderer = frame
-                .wgpu_render_state()
-                .expect("Failed to get frame render state")
-                .renderer
-                .read();
-
-            let render_ctx = egui_renderer
-                .callback_resources
-                .get::<re_renderer::RenderContext>()
-                .expect("Failed to get render context");
-
-            // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
-            let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
-            store_hub.begin_frame(renderer_active_frame_idx);
-        }
 
         self.receive_messages(&mut store_hub, egui_ctx);
 
