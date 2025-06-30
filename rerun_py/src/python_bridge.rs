@@ -1329,6 +1329,9 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 // --- Components ---
 
+/// A `ComponentDescriptor` fully describes the semantics of a column of data.
+///
+/// Every component is uniquely identified by its `ComponentDescriptor`.
 #[pyclass(name = "ComponentDescriptor")]
 #[derive(Clone)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
@@ -1364,21 +1367,37 @@ impl PyComponentDescriptor {
         self.0.display_name().to_owned()
     }
 
-    #[getter]
-    fn component(&self) -> String {
-        self.0.component.to_string()
-    }
-
+    /// Optional name of the `Archetype` associated with this data.
+    ///
+    /// `None` if the data wasn't logged through an archetype.
+    ///
+    /// Example: `rerun.archetypes.Points3D`.
     #[getter]
     fn archetype(&self) -> Option<String> {
         self.0.archetype.map(|a| a.to_string())
     }
 
+    /// Identifier of the component associated with this data.
+    ///
+    /// If `archetype` is `None`, this will be a simple field name.
+    ///
+    /// Example: `Points3D:positions`. Warning: Never parse this string to retrieve an archetype!
+    #[getter]
+    fn component(&self) -> String {
+        self.0.component.to_string()
+    }
+
+    /// Optional, semantic type associated with this data.
+    ///
+    /// This is fully implied by the `component`, but included for semantic convenience.
+    ///
+    /// Example: `rerun.components.Position3D`.
     #[getter]
     fn component_type(&self) -> Option<String> {
         self.0.component_type.map(|a| a.to_string())
     }
 
+    /// Unconditionally sets `archetype` & `component_type` to the given ones (if specified).
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
@@ -1391,6 +1410,7 @@ impl PyComponentDescriptor {
         Self(cloned)
     }
 
+    /// Sets `archetype` & `component_type` to the given one iff it's not already set.
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();

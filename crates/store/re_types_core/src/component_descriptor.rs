@@ -15,7 +15,7 @@ pub struct ComponentDescriptor {
     /// Example: `rerun.archetypes.Points3D`.
     pub archetype: Option<ArchetypeName>,
 
-    /// Name of the component associated with this data.
+    /// Identifier of the component associated with this data.
     ///
     /// If `archetype` is `None`, this will be a simple field name.
     /// [`ArchetypeName::with_field`] is a convenient method to create a [`ComponentIdentifier`].

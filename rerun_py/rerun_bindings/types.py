@@ -1,3 +1,4 @@
+from rerun_bindings import ComponentDescriptor
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -10,6 +11,7 @@ from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from .rerun_bindings import (
+        ComponentDescriptor as ComponentDescriptor,
         ComponentColumnDescriptor as ComponentColumnDescriptor,
         ComponentColumnSelector as ComponentColumnSelector,
         IndexColumnDescriptor as IndexColumnDescriptor,
