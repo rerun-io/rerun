@@ -58,6 +58,10 @@ for (const pkg_path of root_package_json.workspaces) {
       /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
+    readme = readme.replace(
+      /https:\/\/ref\.rerun\.io\/docs\/js\/.*\/web-viewer/,
+      `https://ref.rerun.io/docs/js/${version}/web-viewer`
+    )
     if (index_ts) {
       index_ts = index_ts.replace(
         /https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd/,
