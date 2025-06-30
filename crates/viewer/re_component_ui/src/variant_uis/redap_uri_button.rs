@@ -3,6 +3,7 @@ use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentDescriptor, RowId};
+use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -44,6 +45,12 @@ pub fn redap_uri_button(
             None
         }
     });
+    let is_loading = loaded_recording_id.is_none()
+        && ctx
+            .connected_receivers
+            .sources()
+            .iter()
+            .any(|source| source.redap_uri().as_ref() == Some(&uri));
 
     let put_left_aligned = |ui: &mut Ui, link| {
         ui.scope_builder(
@@ -67,6 +74,18 @@ pub fn redap_uri_button(
                     re_viewer_context::Item::StoreId(loaded_recording_id),
                 ));
         }
+    } else if is_loading {
+        ui.horizontal(|ui| {
+            ui.spinner();
+
+            if ui
+                .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Cancel loading the recording")
+                .on_hover_text("Cancel")
+                .clicked()
+            {
+                ctx.connected_receivers.remove_by_uri(&uri.to_string());
+            }
+        });
     } else {
         let response = put_left_aligned(ui, Link::new("Open")).on_hover_ui(|ui| {
             ui.label(uri.to_string());
