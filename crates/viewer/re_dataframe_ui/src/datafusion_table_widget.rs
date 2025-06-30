@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
-use datafusion::prelude::{SessionContext, col};
+use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, RichText, TopBottomPanel, Ui, Widget as _};

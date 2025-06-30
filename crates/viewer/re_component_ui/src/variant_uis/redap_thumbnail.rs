@@ -1,7 +1,6 @@
-use arrow::array::{Array as _, ListArray, UInt8Array};
 use re_log_types::TimelineName;
 use re_types::components::MediaType;
-use re_types_core::{ComponentDescriptor, Loggable, RowId};
+use re_types_core::{ComponentDescriptor, Loggable as _, RowId};
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
 use re_viewer_context::external::re_chunk_store::LatestAtQuery;
