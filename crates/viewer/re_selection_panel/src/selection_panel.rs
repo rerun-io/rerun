@@ -190,7 +190,7 @@ impl SelectionPanel {
 
                 let ComponentDescriptor {
                     archetype: archetype_name,
-                    component: _,
+                    component,
                     component_type,
                 } = component_descriptor;
 
@@ -211,8 +211,7 @@ impl SelectionPanel {
                 }
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Component")
-                        .value_text(component_descriptor.component.as_str()),
+                    PropertyContent::new("Component").value_text(component.as_str()),
                 );
 
                 if let Some(component_type) = component_type {
