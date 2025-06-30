@@ -84,7 +84,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            let show_last_modified_time = !cfg!(feature = "testing"); // Hide in tests because it is non-deterministic.
+            let show_last_modified_time = !ctx.global_context.is_test; // Hide in tests because it is non-deterministic.
             if show_last_modified_time {
                 if let Some(latest_row_id) = self.latest_row_id() {
                     if let Ok(nanos_since_epoch) =

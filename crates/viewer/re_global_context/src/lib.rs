@@ -24,6 +24,11 @@ use re_log_types::TableId;
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
+    /// Set during tests (e.g. snapshot tests).
+    ///
+    /// Used to hide non-deterministic UI elements such as the current time.
+    pub is_test: bool,
+
     /// Global options for the whole viewer.
     pub app_options: &'a AppOptions,
 

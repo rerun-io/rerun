@@ -479,6 +479,8 @@ impl TestContext {
 
         let ctx = ViewerContext {
             global_context: GlobalContext {
+                is_test: true,
+
                 app_options: &Default::default(),
                 reflection: &self.reflection,
 

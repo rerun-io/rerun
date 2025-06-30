@@ -21,7 +21,7 @@ all-features = true
 
 [features]
 ## Enable for testing utilities.
-testing = ["re_data_ui/testing", "re_viewer_context/testing"]
+testing = ["re_viewer_context/testing"]
 
 
 [dependencies]
