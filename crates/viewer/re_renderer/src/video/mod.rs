@@ -82,9 +82,9 @@ pub struct VideoPlayerStreamId(pub u64);
 struct PlayerEntry {
     player: player::VideoPlayer,
 
-    /// The global `re_renderer` frame index at which the player was last used.
-    /// (this is NOT a video frame index of any kind)
-    last_global_frame_idx: u64,
+    /// Was this used last frame?
+    /// This is reset every frame, and used to determine whether to purge the player.
+    used_last_frame: bool,
 }
 
 /// Video data + decoder(s).
@@ -172,8 +172,6 @@ impl Video {
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
-        let global_frame_idx = render_context.active_frame_idx();
-
         // We could protect this hashmap by a RwLock and the individual decoders by a Mutex.
         // However, dealing with the RwLock efficiently is complicated:
         // Upgradable-reads exclude other upgradable-reads which means that if an element is not found,
@@ -190,12 +188,12 @@ impl Video {
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
-                    last_global_frame_idx: global_frame_idx,
+                    used_last_frame: true,
                 })
             }
         };
 
-        decoder_entry.last_global_frame_idx = render_context.active_frame_idx();
+        decoder_entry.used_last_frame = true;
         decoder_entry.player.frame_at(
             render_context,
             video_time,
@@ -207,12 +205,15 @@ impl Video {
     /// Removes all decoders that have been unused in the last frame.
     ///
     /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer needed.
-    pub fn purge_unused_decoders(&self, active_frame_idx: u64) {
-        if active_frame_idx == 0 {
-            return;
-        }
+    pub fn begin_frame(&self) {
+        re_tracing::profile_function!();
 
         let mut players = self.players.lock();
-        players.retain(|_, decoder| decoder.last_global_frame_idx >= active_frame_idx - 1);
+        players.retain(|_id, entry| entry.used_last_frame);
+
+        // Reset for the next frame:
+        for entry in players.values_mut() {
+            entry.used_last_frame = false;
+        }
     }
 }

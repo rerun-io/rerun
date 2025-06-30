@@ -1500,11 +1500,11 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
+                        render_ctx.begin_frame();
+
                         // In some (rare) circumstances we run two egui passes in a single frame.
                         // This happens on call to `egui::Context::request_discard`.
                         let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
-
-                        render_ctx.begin_frame();
 
                         if is_start_of_new_frame {
                             self.state.redap_servers.on_frame_start(
@@ -1512,10 +1512,6 @@ impl App {
                                 &self.async_runtime,
                                 &self.egui_ctx,
                             );
-
-                            if let Some(store_hub) = &mut self.store_hub {
-                                store_hub.begin_frame_caches(render_ctx.active_frame_idx()); // TODO: this index increments every _pass_, so this is wrong
-                            }
                         }
 
                         self.state.show(
@@ -2321,6 +2317,15 @@ impl eframe::App for App {
         self.check_keyboard_shortcuts(egui_ctx);
 
         self.purge_memory_if_needed(&mut store_hub);
+
+        // In some (rare) circumstances we run two egui passes in a single frame.
+        // This happens on call to `egui::Context::request_discard`.
+        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+        if is_start_of_new_frame {
+            // IMPORTANT: only call this once per FRAME even if we run multiple passes.
+            // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
+            store_hub.begin_frame_caches();
+        }
 
         self.receive_messages(&mut store_hub, egui_ctx);
 
