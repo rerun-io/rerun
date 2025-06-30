@@ -1500,7 +1500,7 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        render_ctx.begin_frame();
+                        render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
 
                         // In some (rare) circumstances we run two egui passes in a single frame.
                         // This happens on call to `egui::Context::request_discard`.
