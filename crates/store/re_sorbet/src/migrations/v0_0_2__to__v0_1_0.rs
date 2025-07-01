@@ -194,8 +194,6 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
         if entity_path == "/__properties/recording" {
             re_log::debug_once!("Migrating RecordingProperties -> RecordingInfo");
             *entity_path = "/__properties".to_owned();
-        } else {
-            return; // We only logged `RecordingProperties` to `/__properties/recording`.
         }
     }
 
