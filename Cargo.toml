@@ -150,7 +150,6 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # egui-crates:
 ecolor = "0.31.1"
 eframe = { version = "0.31.1", default-features = false, features = [
-  "accesskit",
   "default_fonts",
   "wayland",
   "x11",
@@ -744,13 +743,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
-eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
-emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "lucas/fix-macos-fullscreen" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
