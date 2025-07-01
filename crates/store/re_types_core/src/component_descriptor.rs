@@ -93,15 +93,6 @@ impl ComponentDescriptor {
         self.component.ends_with("Indicator")
     }
 
-    /// If this is an indicator component, for which archetype?
-    // TODO(#8129): Remove
-    pub fn indicator_component_archetype_short_name(&self) -> Option<String> {
-        ComponentType::new(&self.component)
-            .short_name()
-            .strip_suffix("Indicator")
-            .map(|name| name.to_owned())
-    }
-
     /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:positions#rerun.components.Position3D`.
     ///
     /// The result explicitly contains the [`ComponentType`], so in most cases [`ComponentDescriptor::display_name`] should be used instead.
