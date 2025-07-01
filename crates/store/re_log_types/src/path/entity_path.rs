@@ -761,7 +761,7 @@ mod tests {
 
     #[test]
     fn test_strip_prefix() {
-        let entity_path = EntityPath::properties() / EntityPathPart::from("episode");
+        let entity_path = EntityPath::properties() / "episode";
         assert_eq!(entity_path.to_string(), "/__properties/episode");
         assert_eq!(
             entity_path.strip_prefix(&EntityPath::properties()),
