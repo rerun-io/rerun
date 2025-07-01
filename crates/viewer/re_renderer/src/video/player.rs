@@ -506,16 +506,14 @@ fn update_decoder_delay_state(
         DecoderDelayState::UpToDate | DecoderDelayState::UpToDateWithinTolerance => {
             if up_to_date {
                 DecoderDelayState::UpToDate
+            } else if is_significantly_behind(
+                video_description,
+                requested_sample,
+                last_decoded_frame_pts,
+            ) {
+                DecoderDelayState::Behind
             } else {
-                if is_significantly_behind(
-                    video_description,
-                    requested_sample,
-                    last_decoded_frame_pts,
-                ) {
-                    DecoderDelayState::Behind
-                } else {
-                    DecoderDelayState::UpToDateWithinTolerance
-                }
+                DecoderDelayState::UpToDateWithinTolerance
             }
         }
 
