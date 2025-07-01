@@ -509,8 +509,6 @@ fn show_recording_properties(
         .collect::<Vec<_>>();
     property_entities.sort();
 
-    // TODO(#10226): improve fix the UI for built-in properties (`RecordingInfo`) vs custom ones.
-
     if property_entities.is_empty() {
         ui.label("No properties found for this recording.");
     } else {
