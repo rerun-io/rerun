@@ -170,8 +170,6 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
 
 #[test]
 fn test_default_column_display_name() {
-    use re_log_types::EntityPathPart;
-
     // Built-in recording property:
     assert_eq!(
         default_display_name_for_column(&ColumnDescriptorRef::Component(

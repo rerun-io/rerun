@@ -152,7 +152,7 @@ fn mono_points_arrow(c: &mut Criterion) {
 
 fn mono_points_arrow_batched(c: &mut Criterion) {
     fn generate_chunk() -> Chunk {
-        let mut builder = Chunk::builder("points".into());
+        let mut builder = Chunk::builder("points");
         for _ in 0..NUM_POINTS {
             builder = builder.with_component_batches(
                 RowId::ZERO,

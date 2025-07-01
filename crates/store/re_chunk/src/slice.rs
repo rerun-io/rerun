@@ -867,7 +867,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let mut chunk = Chunk::builder(entity_path.into())
+        let mut chunk = Chunk::builder(entity_path)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint4,
@@ -989,7 +989,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk = Chunk::builder(entity_path.into())
+        let chunk = Chunk::builder(entity_path)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint1,
@@ -1120,7 +1120,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk = Chunk::builder(entity_path.into())
+        let chunk = Chunk::builder(entity_path)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint_static.clone(),
@@ -1254,7 +1254,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk = Chunk::builder(entity_path.into())
+        let chunk = Chunk::builder(entity_path)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint1,
@@ -1403,7 +1403,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk = Chunk::builder(entity_path.into())
+        let chunk = Chunk::builder(entity_path)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint1,

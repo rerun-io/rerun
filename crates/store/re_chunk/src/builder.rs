@@ -24,16 +24,16 @@ pub struct ChunkBuilder {
 impl Chunk {
     /// Initializes a new [`ChunkBuilder`].
     #[inline]
-    pub fn builder(entity_path: EntityPath) -> ChunkBuilder {
-        ChunkBuilder::new(ChunkId::new(), entity_path)
+    pub fn builder(entity_path: impl Into<EntityPath>) -> ChunkBuilder {
+        ChunkBuilder::new(ChunkId::new(), entity_path.into())
     }
 
     /// Initializes a new [`ChunkBuilder`].
     ///
     /// The final [`Chunk`] will have the specified `id`.
     #[inline]
-    pub fn builder_with_id(id: ChunkId, entity_path: EntityPath) -> ChunkBuilder {
-        ChunkBuilder::new(id, entity_path)
+    pub fn builder_with_id(id: ChunkId, entity_path: impl Into<EntityPath>) -> ChunkBuilder {
+        ChunkBuilder::new(id, entity_path.into())
     }
 }
 

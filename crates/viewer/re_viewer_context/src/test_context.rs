@@ -347,7 +347,7 @@ impl TestContext {
         entity_path: impl Into<EntityPath>,
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
-        let builder = build_chunk(Chunk::builder(entity_path.into()));
+        let builder = build_chunk(Chunk::builder(entity_path));
         self.recording_store
             .add_chunk(&Arc::new(
                 builder.build().expect("chunk should be successfully built"),

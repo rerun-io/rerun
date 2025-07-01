@@ -30,7 +30,7 @@ mod tests {
         let points1 = &[MyPoint::new(1.0, 1.0)];
         let points2 = &[MyPoint::new(2.0, 2.0)];
 
-        Chunk::builder("mypoints".into())
+        Chunk::builder("mypoints")
             .with_component_batches(
                 row_id1,
                 timepoint1,
