@@ -1162,6 +1162,7 @@ class DatasetEntry(Entry):
         -------
         partition_id: str
             The partition ID of the registered RRD.
+
         """
 
     def register_batch(self, recording_uris: list[str]) -> Tasks:

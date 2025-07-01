@@ -197,6 +197,7 @@ impl PyDatasetEntry {
     /// -------
     /// partition_id: str
     ///     The partition ID of the registered RRD.
+    ///
     #[pyo3(signature = (recording_uri, timeout_secs = 60))]
     fn register(
         self_: PyRef<'_, Self>,
