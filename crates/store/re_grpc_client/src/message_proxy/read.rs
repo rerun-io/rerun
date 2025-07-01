@@ -38,7 +38,7 @@ async fn stream_async(
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {
-        let url = uri.origin.as_url();
+        let url = uri.endpoint_url();
 
         #[cfg(target_arch = "wasm32")]
         let tonic_client = {

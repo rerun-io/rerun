@@ -34,6 +34,21 @@ impl ProxyUri {
             prefix_segments: None,
         }
     }
+
+    /// Returns the HTTP URL for connecting to this proxy endpoint.
+    /// This includes the path prefix if present.
+    pub fn endpoint_url(&self) -> String {
+        match &self.prefix_segments {
+            None => self.origin.as_url(),
+            Some(segments) => {
+                if segments.is_empty() {
+                    self.origin.as_url()
+                } else {
+                    format!("{}/{}", self.origin.as_url(), segments.join("/"))
+                }
+            }
+        }
+    }
 }
 
 impl std::str::FromStr for ProxyUri {

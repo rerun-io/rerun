@@ -120,21 +120,25 @@ impl RedapUri {
         }
     }
 
-    /// Extract prefix segments for proxy endpoints, returning None if no prefix.
-    fn extract_proxy_prefix(segments: &[&str]) -> Option<Vec<String>> {
-        // Proxy endpoint has 1 segment: "proxy"
-        const PROXY_ENDPOINT_LEN: usize = 1;
-
-        if segments.len() <= PROXY_ENDPOINT_LEN {
+    /// Extract prefix segments for any endpoint type based on endpoint length.
+    fn extract_prefix_segments(segments: &[&str], endpoint_len: usize) -> Option<Vec<String>> {
+        if segments.len() <= endpoint_len {
             None
         } else {
             Some(
-                segments[..segments.len() - PROXY_ENDPOINT_LEN]
+                segments[..segments.len() - endpoint_len]
                     .iter()
                     .map(ToString::to_string)
                     .collect(),
             )
         }
+    }
+
+    /// Extract prefix segments for proxy endpoints, returning None if no prefix.
+    fn extract_proxy_prefix(segments: &[&str]) -> Option<Vec<String>> {
+        // Proxy endpoint has 1 segment: "proxy"
+        const PROXY_ENDPOINT_LEN: usize = 1;
+        Self::extract_prefix_segments(segments, PROXY_ENDPOINT_LEN)
     }
 
     /// Match endpoint pattern from the end of path segments.
@@ -779,6 +783,133 @@ mod tests {
             };
 
             assert_eq!(actual_type, expected_type, "URL {url} parsed as wrong type");
+        }
+    }
+
+    #[test]
+    fn test_proxy_uri_round_trip() {
+        // Test round-trip parsing for proxy URIs with various path prefix configurations
+        // This addresses the specific issue #10373 and ensures path prefixes are preserved correctly
+
+        let test_cases = [
+            // No prefix
+            ("rerun://localhost/proxy", None),
+            ("rerun+http://127.0.0.1:9876/proxy", None),
+            // Single prefix segment
+            ("rerun+http://13.31.13.31/rerun/proxy", Some(vec!["rerun"])),
+            ("rerun://localhost/prefix/proxy", Some(vec!["prefix"])),
+            // Multiple prefix segments
+            (
+                "rerun+http://host/cell/vscode/rerun/proxy",
+                Some(vec!["cell", "vscode", "rerun"]),
+            ),
+            (
+                "rerun://localhost/a/b/c/d/e/proxy",
+                Some(vec!["a", "b", "c", "d", "e"]),
+            ),
+            // Edge cases
+            (
+                "rerun+https://example.com:8080/single/proxy",
+                Some(vec!["single"]),
+            ),
+        ];
+
+        for (original_url, expected_prefix) in test_cases {
+            // Parse the original URL
+            let parsed_uri: RedapUri = original_url
+                .parse()
+                .unwrap_or_else(|err| panic!("Failed to parse URL {original_url}: {err}"));
+
+            // Verify it's a proxy URI with correct prefix
+            if let RedapUri::Proxy(proxy_uri) = &parsed_uri {
+                let expected_segments =
+                    expected_prefix.map(|p| p.into_iter().map(String::from).collect());
+                assert_eq!(
+                    proxy_uri.prefix_segments, expected_segments,
+                    "URL {original_url} parsed with wrong prefix segments"
+                );
+            } else {
+                panic!("URL {original_url} should parse as Proxy but got different type");
+            }
+
+            // Test round-trip: convert back to string and parse again
+            let round_trip_url = parsed_uri.to_string();
+            let round_trip_parsed: RedapUri = round_trip_url.parse().unwrap_or_else(|err| {
+                panic!("Round-trip parsing failed for {round_trip_url}: {err}")
+            });
+
+            // Verify the round-trip result matches the original
+            if let (RedapUri::Proxy(original), RedapUri::Proxy(round_trip)) =
+                (&parsed_uri, &round_trip_parsed)
+            {
+                assert_eq!(
+                    original.prefix_segments, round_trip.prefix_segments,
+                    "Round-trip failed: prefix segments differ for {original_url}"
+                );
+                assert_eq!(
+                    original.origin, round_trip.origin,
+                    "Round-trip failed: origin differs for {original_url}"
+                );
+            } else {
+                panic!("Round-trip parsing changed URI type for {original_url}");
+            }
+        }
+    }
+
+    #[test]
+    fn resolved_endpoints_with_prefix() {
+        let cases = [
+            // HTTP - Only proxy URIs currently support path prefixes
+            (
+                "rerun+http://localhost/a/b/proxy",
+                "http://localhost:9876/a/b",
+            ),
+            // Other endpoint types currently only return origin URLs (no path prefix support)
+            (
+                "rerun+http://localhost/a/b/catalog",
+                "http://localhost:51234", // Note: no /a/b path prefix
+            ),
+            (
+                "rerun+http://localhost/a/b/entry/1830B33B45B963E7774455beb91701ae",
+                "http://localhost:51234", // Note: no /a/b path prefix
+            ),
+            (
+                "rerun+http://localhost/a/b/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+                "http://localhost:51234", // Note: no /a/b path prefix
+            ),
+            // HTTPS - Only proxy URIs currently support path prefixes
+            (
+                "rerun://example.com/foo/bar/proxy",
+                "https://example.com:443/foo/bar",
+            ),
+            // Other endpoint types currently only return origin URLs (no path prefix support)  
+            (
+                "rerun://example.com/foo/bar/catalog",
+                "https://example.com:443", // Note: no /foo/bar path prefix
+            ),
+            (
+                "rerun://example.com/foo/bar/entry/1830B33B45B963E7774455beb91701ae",
+                "https://example.com:443", // Note: no /foo/bar path prefix
+            ),
+            (
+                "rerun://example.com/foo/bar/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+                "https://example.com:443", // Note: no /foo/bar path prefix
+            ),
+        ];
+
+        for (url, expected) in cases {
+            let result: RedapUri = url.parse().expect("failed to parse URI");
+            
+            let actual_url = match &result {
+                RedapUri::Proxy(proxy_uri) => proxy_uri.endpoint_url(),
+                _ => result.origin().as_url(),
+            };
+            
+            assert_eq!(
+                expected,
+                actual_url,
+                "failed to resolve {url}"
+            );
         }
     }
 }

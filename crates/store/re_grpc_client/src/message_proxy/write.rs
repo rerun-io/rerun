@@ -144,7 +144,7 @@ async fn message_proxy_client(
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
 ) {
-    let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
+    let endpoint = match Endpoint::from_shared(uri.endpoint_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
             re_log::error!("Invalid message proxy server endpoint: {err}");
