@@ -28,7 +28,7 @@ from .mesh3d import Mesh3D
 from .pinhole import Pinhole
 from .points2d import Points2D
 from .points3d import Points3D
-from .recording_properties import RecordingProperties
+from .recording_info import RecordingInfo
 from .scalars import Scalars
 from .segmentation_image import SegmentationImage
 from .series_lines import SeriesLines
@@ -68,7 +68,7 @@ __all__ = [
     "Pinhole",
     "Points2D",
     "Points3D",
-    "RecordingProperties",
+    "RecordingInfo",
     "Scalars",
     "SegmentationImage",
     "SeriesLines",

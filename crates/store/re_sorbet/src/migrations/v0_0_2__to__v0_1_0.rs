@@ -19,7 +19,9 @@ impl super::Migration for Migration {
     const TARGET_VERSION: semver::Version = semver::Version::new(0, 1, 0);
 
     fn migrate(batch: ArrowRecordBatch) -> ArrowRecordBatch {
-        rewire_tagged_components(&batch)
+        let mut batch = rewire_tagged_components(&batch);
+        port_recording_info(&mut batch);
+        batch
     }
 }
 
@@ -181,4 +183,67 @@ fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     )
     .ok_or_log_error()
     .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
+}
+
+/// Look for old `RecordingProperties` at `/__properties/recording`
+/// and rename it to `RecordingInfo` and move it to `/__properties`.
+///
+/// User properties are still on `/__properties/$FOO` with column name `property:$FOO:…` - no change there.
+fn port_recording_info(batch: &mut ArrowRecordBatch) {
+    re_tracing::profile_function!();
+
+    // We renamed `RecordingProperties` to `RecordingInfo`,
+    // and moved it from `/__properties/recording` to `/__properties`.
+    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path") {
+        if entity_path == "/__properties/recording" {
+            *entity_path = "/__properties".to_owned();
+        }
+    }
+
+    fn migrate_column_name(name: &str) -> String {
+        name.replace("RecordingProperties", "RecordingInfo")
+            .replace(
+                "property:recording:RecordingInfo:",
+                "property:RecordingInfo:",
+            )
+    }
+
+    let modified_fields: arrow::datatypes::Fields = batch
+        .schema()
+        .fields()
+        .iter()
+        .map(|field| {
+            // Migrate field name:
+            let mut field = arrow::datatypes::Field::new(
+                migrate_column_name(field.name()),
+                field.data_type().clone(),
+                field.is_nullable(),
+            )
+            .with_metadata(field.metadata().clone());
+
+            // Migrate per-column entity paths (if any):
+            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path") {
+                if entity_path == "/__properties/recording" {
+                    *entity_path = "/__properties".to_owned();
+                }
+            }
+
+            // Rename `RecordingProperties` to `RecordingInfo` in metadata keys:
+            for value in field.metadata_mut().values_mut() {
+                *value = value.replace("RecordingProperties", "RecordingInfo");
+            }
+
+            Arc::new(field)
+        })
+        .collect();
+
+    *batch = ArrowRecordBatch::try_new_with_options(
+        Arc::new(ArrowSchema::new_with_metadata(
+            modified_fields,
+            batch.schema().metadata().clone(),
+        )),
+        batch.columns().to_vec(),
+        &ArrowRecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .expect("Can't fail - we've only modified metadata");
 }

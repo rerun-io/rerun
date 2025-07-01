@@ -340,7 +340,7 @@ impl ChunkStore {
 
             let Self {
                 id: _,
-                info: _,
+                store_info: _,
                 config: _,
                 time_type_registry: _,
                 type_registry: _,

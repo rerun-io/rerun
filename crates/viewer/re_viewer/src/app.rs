@@ -1196,7 +1196,7 @@ impl App {
 
             let file_name = if let Some(rec_name) = store
                 .recording_property::<re_types::components::Name>(
-                    &re_types::archetypes::RecordingProperties::descriptor_name(),
+                    &re_types::archetypes::RecordingInfo::descriptor_name(),
                 ) {
                 rec_name.to_string()
             } else {
@@ -2639,7 +2639,7 @@ fn save_recording(
 
     let file_name = if let Some(recording_name) = entity_db
         .recording_property::<re_types::components::Name>(
-            &re_types::archetypes::RecordingProperties::descriptor_name(),
+            &re_types::archetypes::RecordingInfo::descriptor_name(),
         ) {
         format!("{}.rrd", santitize_file_name(&recording_name))
     } else {

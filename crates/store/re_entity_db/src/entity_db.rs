@@ -205,14 +205,9 @@ impl EntityDb {
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
-        debug_assert_eq!(
-            component_descr.archetype,
-            // String from re_types::RecordingProperties::name()
-            Some("rerun.archetypes.RecordingProperties".into())
-        );
 
         self.latest_at_component::<C>(
-            &EntityPath::recording_properties(),
+            &EntityPath::properties(),
             &LatestAtQuery::latest(TimelineName::log_tick()),
             component_descr,
         )

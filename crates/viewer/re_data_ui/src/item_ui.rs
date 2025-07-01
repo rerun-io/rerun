@@ -6,7 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
 use re_types::{
-    archetypes::RecordingProperties,
+    archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
@@ -693,12 +693,12 @@ pub fn entity_db_button_ui(
     };
 
     let recording_name = if let Some(recording_name) =
-        entity_db.recording_property::<Name>(&RecordingProperties::descriptor_name())
+        entity_db.recording_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
     } else {
         entity_db
-            .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time())
+            .recording_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             .map(|started| {
                 re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)

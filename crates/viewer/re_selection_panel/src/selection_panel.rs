@@ -10,7 +10,7 @@ use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
 use re_ui::{
-    ContextExt as _, UiExt as _, icons,
+    ContextExt as _, SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
@@ -502,29 +502,40 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    let filtered = db
+    let mut property_entities = db
         .entity_paths()
         .into_iter()
-        .filter(|entity_path| {
-            // Only check for properties, but skip the recording properties,
-            // because we display them already elsewhere in the UI.
-            entity_path.is_descendant_of(&EntityPath::properties())
-        })
+        .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
+    property_entities.sort();
 
-    if filtered.is_empty() {
+    // TODO(#10226): improve fix the UI for built-in properties (`RecordingInfo`) vs custom ones.
+
+    if property_entities.is_empty() {
         ui.label("No properties found for this recording.");
     } else {
-        for entity_path in filtered {
-            // We strip the property part
-            let name = entity_path
-                .to_string()
-                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                .map(re_case::to_human_case)
-                .unwrap_or("<unknown>".to_owned());
-            ui.label(name);
-            entity_path.data_ui(ctx, ui, ui_layout, query, db);
-        }
+        list_item::list_item_scope(ui, "recording_properties", |ui| {
+            for suffix_path in property_entities {
+                let entity_path = EntityPath::properties() / suffix_path.clone();
+                if suffix_path.is_root() {
+                    // No header - this is likely `RecordingInfo`.
+                } else if suffix_path.len() == 1 {
+                    // Single nested - this is what we expect in the normal case.
+                    ui.add_space(8.0);
+                    ui.label(re_case::to_human_case(suffix_path[0].unescaped_str()))
+                        .on_hover_ui(|ui| {
+                            ui.label(entity_path.syntax_highlighted(ui.style()));
+                        });
+                } else {
+                    // Deeply nested - show the full path.
+                    ui.add_space(8.0);
+                    ui.label(suffix_path.to_string()).on_hover_ui(|ui| {
+                        ui.label(entity_path.syntax_highlighted(ui.style()));
+                    });
+                }
+                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+            }
+        });
     }
 }
 

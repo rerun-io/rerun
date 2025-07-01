@@ -14,7 +14,7 @@ use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails},
 };
 use re_sorbet::SorbetError;
-use re_types::archetypes::RecordingProperties;
+use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_ui::{UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
@@ -254,10 +254,9 @@ pub fn dataset_and_its_recordings_ui(
     entity_dbs.sort_by_cached_key(|entity_db| {
         (
             entity_db
-                .recording_property::<Name>(&RecordingProperties::descriptor_name())
+                .recording_property::<Name>(&RecordingInfo::descriptor_name())
                 .map(|s| natural_ordering::OrderedString(s.to_string())),
-            entity_db
-                .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time()),
+            entity_db.recording_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
         )
     });
 

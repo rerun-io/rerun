@@ -830,25 +830,15 @@ impl TimePanel {
         let engine = entity_db.storage_engine();
         let store = engine.store();
 
-        for (archetype, components) in components_for_entity(ctx, store, entity_path) {
-            let response = ui
-                .list_item()
-                .with_y_offset(1.0)
-                .with_height(20.0)
-                .interactive(false)
-                .show_hierarchical(
-                    ui,
-                    list_item::LabelContent::new(
-                        RichText::new(
-                            archetype
-                                .map(|a| a.short_name())
-                                .unwrap_or("Without archetype"),
-                        )
-                        .size(10.0),
-                    ),
-                );
-
-            self.next_col_right = self.next_col_right.max(response.rect.right());
+        let components_by_archetype = components_for_entity(ctx, store, entity_path);
+        let num_archetypes = components_by_archetype.len();
+        for (archetype, components) in components_by_archetype {
+            if archetype.is_none() && num_archetypes == 1 {
+                // They are all without archetype, so we can skip the label.
+            } else {
+                let response = archetype_label_ui(ui, archetype);
+                self.next_col_right = self.next_col_right.max(response.rect.right());
+            }
 
             for component_descr in components {
                 let is_static = store.entity_has_static_component(entity_path, &component_descr);
@@ -1436,6 +1426,24 @@ impl TimePanel {
                 });
         }
     }
+}
+
+fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) -> egui::Response {
+    ui.list_item()
+        .with_y_offset(1.0)
+        .with_height(20.0)
+        .interactive(false)
+        .show_hierarchical(
+            ui,
+            list_item::LabelContent::new(
+                RichText::new(
+                    archetype
+                        .map(|a| a.short_name())
+                        .unwrap_or("Without archetype"),
+                )
+                .size(10.0),
+            ),
+        )
 }
 
 /// Draw the hovered/selected highlight background for a timeline row.

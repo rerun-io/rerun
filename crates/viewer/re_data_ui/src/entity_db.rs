@@ -195,9 +195,12 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
-                if store_id.as_ref() == hub.active_recording_id() {
-                    ui.add_space(8.0);
-                    ui.label("This is the active recording.");
+                if false {
+                    // Just confusing and unnecessary to show this.
+                    if store_id.as_ref() == hub.active_recording_id() {
+                        ui.add_space(8.0);
+                        ui.label("This is the active recording.");
+                    }
                 }
             }
             StoreKind::Blueprint => {
