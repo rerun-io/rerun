@@ -221,12 +221,12 @@ impl UrdfTree {
 
     fn get_joint_path(&self, joint: &Joint) -> EntityPath {
         let parent_path = self.get_link_path_by_name(&joint.parent.link);
-        parent_path / &joint.name
+        parent_path / EntityPathPart::new(&joint.name)
     }
 
     fn get_link_path_by_name(&self, link_name: &str) -> EntityPath {
         if let Some(parent_joint) = self.get_parent_of_link(link_name) {
-            self.get_joint_path(parent_joint) / link_name
+            self.get_joint_path(parent_joint) / EntityPathPart::new(link_name)
         } else {
             format!("{}/{link_name}", self.name).into()
         }
@@ -279,7 +279,7 @@ fn walk_tree(
         .get(link_name)
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     debug_assert_eq!(link_name, link.name);
-    let link_path = parent_path / link_name;
+    let link_path = parent_path / EntityPathPart::new(link_name);
 
     log_link(urdf_tree, tx, store_id, link, &link_path)?;
 
@@ -289,7 +289,7 @@ fn walk_tree(
     };
 
     for joint in joints {
-        let joint_path = &link_path / &joint.name;
+        let joint_path = &link_path / EntityPathPart::new(&joint.name);
         log_joint(tx, store_id, &joint_path, joint)?;
 
         // Recurse
@@ -419,7 +419,7 @@ fn log_link(
             material,
         } = visual;
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
-        let vis_entity = link_entity / name;
+        let vis_entity = link_entity / EntityPathPart::new(name);
 
         // We need to look up the material by name, because the `Visuals::Material`
         // only has a name, no color or texture.
@@ -446,7 +446,7 @@ fn log_link(
             geometry,
         } = collision;
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
-        let collision_entity = link_entity / name;
+        let collision_entity = link_entity / EntityPathPart::new(name);
 
         send_transform(tx, store_id, collision_entity.clone(), origin)?;
 
