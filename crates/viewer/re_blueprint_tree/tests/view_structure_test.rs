@@ -175,7 +175,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
         let blueprint =
-            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
+            ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -199,7 +199,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                     true,
                 );
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     viewer_ctx.blueprint_query,
                 );
@@ -231,7 +231,7 @@ fn test_all_insta_test_cases() {
 
             let blueprint_tree_data =
                 test_context.run_once_in_egui_central_panel(|viewer_ctx, _| {
-                    let blueprint = ViewportBlueprint::try_from_db(
+                    let blueprint = ViewportBlueprint::from_db(
                         viewer_ctx.store_context.blueprint,
                         viewer_ctx.blueprint_query,
                     );

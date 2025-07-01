@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{
+    Chunk, ChunkBuilder, ChunkId, ChunkResult, LatestAtQuery, RowId, TimeInt, TimePoint, Timeline,
+    TimelineName,
+};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
@@ -50,6 +53,7 @@ pub enum EntityDbClass<'a> {
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
+#[derive(Clone)] // Useful for tests
 pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
     ///
@@ -200,11 +204,17 @@ impl EntityDb {
         }
     }
 
-    pub fn recording_property<C: re_types_core::Component>(
+    /// Read one of the built-in `RecordingInfo` properties.
+    pub fn recording_info_property<C: re_types_core::Component>(
         &self,
         component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_type, Some(C::name()));
+        debug_assert!(
+            component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()),
+            "This function should only be used for built-in RecordingInfo components, which are the only recording properties at {}",
+            EntityPath::properties()
+        );
 
         self.latest_at_component::<C>(
             &EntityPath::properties(),
@@ -212,6 +222,33 @@ impl EntityDb {
             component_descr,
         )
         .map(|(_, value)| value)
+    }
+
+    /// Use can use this both for setting the built-in `RecordingInfo` components,
+    /// and for setting custom properties on the recording.
+    pub fn set_recording_property<Component: re_types_core::Component>(
+        &mut self,
+        entity_path: EntityPath,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> Result<(), Error> {
+        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        debug_assert!(entity_path.starts_with(&EntityPath::properties()));
+        debug_assert!(
+            (entity_path == EntityPath::properties())
+                == (component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into())),
+            "RecordingInfo should be logged at {}. Custom properties should be under a child entity",
+            EntityPath::properties()
+        );
+
+        let chunk = ChunkBuilder::new(ChunkId::new(), entity_path)
+            .with_component(RowId::new(), TimePoint::STATIC, component_descr, value)
+            .map_err(|err| Error::Chunk(err.into()))?
+            .build()?;
+
+        self.add_chunk(&Arc::new(chunk))?;
+
+        Ok(())
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {

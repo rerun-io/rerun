@@ -1195,7 +1195,7 @@ impl App {
             let messages = store.to_messages(None).collect_vec();
 
             let file_name = if let Some(rec_name) = store
-                .recording_property::<re_types::components::Name>(
+                .recording_info_property::<re_types::components::Name>(
                     &re_types::archetypes::RecordingInfo::descriptor_name(),
                 ) {
                 rec_name.to_string()
@@ -2638,7 +2638,7 @@ fn save_recording(
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     let file_name = if let Some(recording_name) = entity_db
-        .recording_property::<re_types::components::Name>(
+        .recording_info_property::<re_types::components::Name>(
             &re_types::archetypes::RecordingInfo::descriptor_name(),
         ) {
         format!("{}.rrd", santitize_file_name(&recording_name))

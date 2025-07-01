@@ -42,7 +42,8 @@ impl crate::DataUi for ApplicationId {
             .recordings()
             .filter(|db| db.app_id() == Some(self))
             .sorted_by_key(|entity_db| {
-                entity_db.recording_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+                entity_db
+                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             })
             .collect();
 

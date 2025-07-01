@@ -1,6 +1,7 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
+snapshot_kind: text
 ---
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
 │ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:MyPoints:AFieldTh ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AArchetypeNameTha │

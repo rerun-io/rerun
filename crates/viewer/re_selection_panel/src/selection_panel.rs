@@ -1090,3 +1090,49 @@ fn visible_interactive_toggle_ui(
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "testing")]
+mod tests {
+    use re_chunk::LatestAtQuery;
+    use re_viewer_context::{blueprint_timeline, test_context::TestContext};
+
+    use super::*;
+
+    /// Snapshot test for the selection panel when a recording is selected.
+    #[test]
+    fn selection_panel_recording_snapshot() {
+        let mut test_context = TestContext::default();
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+
+        // Select recording:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(test_context.recording_store.store_id()));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            &test_context.blueprint_store,
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_recording");
+    }
+}

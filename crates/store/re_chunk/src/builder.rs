@@ -125,6 +125,25 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
+    /// Add the serialized value of a single component to the chunk.
+    pub fn with_component<Component: re_types_core::Component>(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> re_types_core::SerializationResult<Self> {
+        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        Ok(self.with_serialized_batches(
+            row_id,
+            timepoint,
+            vec![re_types_core::SerializedComponentBatch {
+                descriptor: component_descr,
+                array: Component::to_arrow([std::borrow::Cow::Borrowed(value)])?,
+            }],
+        ))
+    }
+
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
     pub fn with_component_batch(

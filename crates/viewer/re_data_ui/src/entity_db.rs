@@ -84,14 +84,17 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(latest_row_id) = self.latest_row_id() {
-                if let Ok(nanos_since_epoch) =
-                    i64::try_from(latest_row_id.nanos_since_epoch())
-                {
-                    let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
-                    ui.grid_left_hand_label("Modified");
-                    ui.label(time.format(ctx.app_options().timestamp_format));
-                    ui.end_row();
+            let show_last_modified_time = !ctx.global_context.is_test; // Hide in tests because it is non-deterministic (it's based on `RowId`).
+            if show_last_modified_time {
+                if let Some(latest_row_id) = self.latest_row_id() {
+                    if let Ok(nanos_since_epoch) =
+                        i64::try_from(latest_row_id.nanos_since_epoch())
+                    {
+                        let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
+                        ui.grid_left_hand_label("Modified");
+                        ui.label(time.format(ctx.app_options().timestamp_format));
+                        ui.end_row();
+                    }
                 }
             }
 

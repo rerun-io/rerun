@@ -80,7 +80,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         *should_expand,
                     );
 
-                    let blueprint = ViewportBlueprint::try_from_db(
+                    let blueprint = ViewportBlueprint::from_db(
                         viewer_ctx.store_context.blueprint,
                         viewer_ctx.blueprint_query,
                     );
@@ -160,7 +160,7 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
         let blueprint =
-            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
+            ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -195,7 +195,7 @@ fn run_blueprint_panel_and_save_snapshot(
         .with_size(Vec2::new(400.0, 800.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     viewer_ctx.blueprint_query,
                 );

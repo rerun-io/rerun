@@ -288,7 +288,7 @@ fn run_time_panel_and_save_snapshot(
                     );
                 }
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );

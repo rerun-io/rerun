@@ -43,7 +43,7 @@ fn test_range_selection_in_blueprint_tree() {
                 .default_width(400.0)
                 .show(ctx, |ui| {
                     test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                        let blueprint = ViewportBlueprint::try_from_db(
+                        let blueprint = ViewportBlueprint::from_db(
                             viewer_ctx.store_context.blueprint,
                             viewer_ctx.blueprint_query,
                         );

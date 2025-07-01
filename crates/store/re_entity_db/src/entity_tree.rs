@@ -14,7 +14,7 @@ use re_types_core::ComponentDescriptor;
 /// A recursive, manually updated [`ChunkStoreSubscriber`] that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
