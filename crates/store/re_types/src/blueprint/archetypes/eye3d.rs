@@ -19,25 +19,16 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: 3D Eye
+/// **Archetype**: 3D Eye in a spatial 3D view
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct Eye3D {
-    /// Eye Kind
+    /// Eye kind
     pub kind: Option<SerializedComponentBatch>,
 
-    /// Position of eye.
-    pub position: Option<SerializedComponentBatch>,
-
-    /// target for eye
-    pub target: Option<SerializedComponentBatch>,
-
-    /// Translation speed of the eye -- should be positive only (more constrainted than scalar)
-    pub speed: Option<SerializedComponentBatch>,
-
-    /// Spinning speed of the eye around the "up" axis of the eye.
-    pub spin_speed: Option<SerializedComponentBatch>,
+    /// Translation speed of the eye in the view.
+    pub translation_speed: Option<SerializedComponentBatch>,
 }
 
 impl Eye3D {
@@ -53,51 +44,15 @@ impl Eye3D {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::position`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::translation_speed`].
     ///
-    /// The corresponding component is [`crate::components::Position3D`].
+    /// The corresponding component is [`crate::components::LinearSpeed`].
     #[inline]
-    pub fn descriptor_position() -> ComponentDescriptor {
+    pub fn descriptor_translation_speed() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
-            component: "Eye3D:position".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::target`].
-    ///
-    /// The corresponding component is [`crate::components::Position3D`].
-    #[inline]
-    pub fn descriptor_target() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
-            component: "Eye3D:target".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::speed`].
-    ///
-    /// The corresponding component is [`crate::components::Scalar`].
-    #[inline]
-    pub fn descriptor_speed() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
-            component: "Eye3D:speed".into(),
-            component_type: Some("rerun.components.Scalar".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::spin_speed`].
-    ///
-    /// The corresponding component is [`crate::components::Scalar`].
-    #[inline]
-    pub fn descriptor_spin_speed() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
-            component: "Eye3D:spin_speed".into(),
-            component_type: Some("rerun.components.Scalar".into()),
+            component: "Eye3D:translation_speed".into(),
+            component_type: Some("rerun.components.LinearSpeed".into()),
         }
     }
 
@@ -112,38 +67,32 @@ impl Eye3D {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Eye3D::descriptor_kind(),
-            Eye3D::descriptor_position(),
-            Eye3D::descriptor_target(),
-            Eye3D::descriptor_speed(),
-            Eye3D::descriptor_spin_speed(),
-        ]
-    });
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Eye3D::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
-
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Eye3D::descriptor_kind(),
-            Eye3D::descriptor_position(),
-            Eye3D::descriptor_target(),
-            Eye3D::descriptor_speed(),
-            Eye3D::descriptor_spin_speed(),
+            Eye3D::descriptor_translation_speed(),
+        ]
+    });
+
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
             Eye3D::descriptor_indicator(),
+            Eye3D::descriptor_kind(),
+            Eye3D::descriptor_translation_speed(),
         ]
     });
 
 impl Eye3D {
-    /// The total number of components in the archetype: 5 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Eye3D`] [`::re_types_core::Archetype`]
@@ -200,26 +149,14 @@ impl ::re_types_core::Archetype for Eye3D {
         let kind = arrays_by_descr
             .get(&Self::descriptor_kind())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
-        let position = arrays_by_descr
-            .get(&Self::descriptor_position())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_position()));
-        let target = arrays_by_descr
-            .get(&Self::descriptor_target())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_target()));
-        let speed = arrays_by_descr
-            .get(&Self::descriptor_speed())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_speed()));
-        let spin_speed = arrays_by_descr
-            .get(&Self::descriptor_spin_speed())
+        let translation_speed = arrays_by_descr
+            .get(&Self::descriptor_translation_speed())
             .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_spin_speed())
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_translation_speed())
             });
         Ok(Self {
             kind,
-            position,
-            target,
-            speed,
-            spin_speed,
+            translation_speed,
         })
     }
 }
@@ -231,10 +168,7 @@ impl ::re_types_core::AsComponents for Eye3D {
         [
             Some(Self::indicator()),
             self.kind.clone(),
-            self.position.clone(),
-            self.target.clone(),
-            self.speed.clone(),
-            self.spin_speed.clone(),
+            self.translation_speed.clone(),
         ]
         .into_iter()
         .flatten()
@@ -247,19 +181,10 @@ impl ::re_types_core::ArchetypeReflectionMarker for Eye3D {}
 impl Eye3D {
     /// Create a new `Eye3D`.
     #[inline]
-    pub fn new(
-        kind: impl Into<crate::blueprint::components::Eye3DKind>,
-        position: impl Into<crate::components::Position3D>,
-        target: impl Into<crate::components::Position3D>,
-        speed: impl Into<crate::components::Scalar>,
-        spin_speed: impl Into<crate::components::Scalar>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            kind: try_serialize_field(Self::descriptor_kind(), [kind]),
-            position: try_serialize_field(Self::descriptor_position(), [position]),
-            target: try_serialize_field(Self::descriptor_target(), [target]),
-            speed: try_serialize_field(Self::descriptor_speed(), [speed]),
-            spin_speed: try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]),
+            kind: None,
+            translation_speed: None,
         }
     }
 
@@ -278,57 +203,28 @@ impl Eye3D {
                 crate::blueprint::components::Eye3DKind::arrow_empty(),
                 Self::descriptor_kind(),
             )),
-            position: Some(SerializedComponentBatch::new(
-                crate::components::Position3D::arrow_empty(),
-                Self::descriptor_position(),
-            )),
-            target: Some(SerializedComponentBatch::new(
-                crate::components::Position3D::arrow_empty(),
-                Self::descriptor_target(),
-            )),
-            speed: Some(SerializedComponentBatch::new(
-                crate::components::Scalar::arrow_empty(),
-                Self::descriptor_speed(),
-            )),
-            spin_speed: Some(SerializedComponentBatch::new(
-                crate::components::Scalar::arrow_empty(),
-                Self::descriptor_spin_speed(),
+            translation_speed: Some(SerializedComponentBatch::new(
+                crate::components::LinearSpeed::arrow_empty(),
+                Self::descriptor_translation_speed(),
             )),
         }
     }
 
-    /// Eye Kind
+    /// Eye kind
     #[inline]
     pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
         self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
         self
     }
 
-    /// Position of eye.
+    /// Translation speed of the eye in the view.
     #[inline]
-    pub fn with_position(mut self, position: impl Into<crate::components::Position3D>) -> Self {
-        self.position = try_serialize_field(Self::descriptor_position(), [position]);
-        self
-    }
-
-    /// target for eye
-    #[inline]
-    pub fn with_target(mut self, target: impl Into<crate::components::Position3D>) -> Self {
-        self.target = try_serialize_field(Self::descriptor_target(), [target]);
-        self
-    }
-
-    /// Translation speed of the eye -- should be positive only (more constrainted than scalar)
-    #[inline]
-    pub fn with_speed(mut self, speed: impl Into<crate::components::Scalar>) -> Self {
-        self.speed = try_serialize_field(Self::descriptor_speed(), [speed]);
-        self
-    }
-
-    /// Spinning speed of the eye around the "up" axis of the eye.
-    #[inline]
-    pub fn with_spin_speed(mut self, spin_speed: impl Into<crate::components::Scalar>) -> Self {
-        self.spin_speed = try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]);
+    pub fn with_translation_speed(
+        mut self,
+        translation_speed: impl Into<crate::components::LinearSpeed>,
+    ) -> Self {
+        self.translation_speed =
+            try_serialize_field(Self::descriptor_translation_speed(), [translation_speed]);
         self
     }
 }
@@ -336,10 +232,6 @@ impl Eye3D {
 impl ::re_byte_size::SizeBytes for Eye3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes()
-            + self.position.heap_size_bytes()
-            + self.target.heap_size_bytes()
-            + self.speed.heap_size_bytes()
-            + self.spin_speed.heap_size_bytes()
+        self.kind.heap_size_bytes() + self.translation_speed.heap_size_bytes()
     }
 }

@@ -3,10 +3,16 @@ use glam::{Mat4, Quat, Vec3, vec3};
 
 use macaw::IsoTransform;
 
+use re_types::{
+    blueprint::{archetypes::Eye3D, components::Eye3DKind},
+    components::LinearSpeed,
+};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
+use re_viewer_context::{TypedComponentFallbackProvider, ViewContext};
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
 
@@ -398,8 +404,10 @@ impl ViewEye {
         response: &egui::Response,
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
+        view_ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
     ) -> bool {
-        let mut speed = self.speed(bounding_boxes);
+        let mut speed = self.linear_speed_from_property(bounding_boxes, view_ctx, eye_property);
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
@@ -410,6 +418,19 @@ impl ViewEye {
                 speed *= 0.1;
             }
         });
+
+        let kind = eye_property.component_or_fallback::<Eye3DKind>(
+            view_ctx,
+            self,
+            &Eye3D::descriptor_kind(),
+        );
+        match kind {
+            Ok(Eye3DKind::FirstPerson) => self.set_mode(EyeMode::FirstPerson),
+            Ok(Eye3DKind::Orbital) => self.set_mode(EyeMode::Orbital),
+            Err(err) => {
+                re_log::error!("error while getting eye 3d kind: {}", err);
+            }
+        };
 
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
@@ -470,6 +491,26 @@ impl ViewEye {
         }
 
         did_interact
+    }
+
+    fn linear_speed_from_property(
+        &self,
+        bounding_boxes: &SceneBoundingBoxes,
+        view_ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
+    ) -> f32 {
+        let eye_linear_speed = eye_property.component_or_fallback::<LinearSpeed>(
+            view_ctx,
+            self,
+            &Eye3D::descriptor_translation_speed(),
+        );
+        match eye_linear_speed {
+            Ok(linear_speed) => **linear_speed as f32,
+            Err(err) => {
+                re_log::error!("Error while getting linear speed for eye {}", err);
+                self.fallback_speed_for_mode(bounding_boxes)
+            }
+        }
     }
 
     /// Listen to WSAD and QE to move the eye.
@@ -572,5 +613,35 @@ impl ViewEye {
         let translate = delta_in_view.x * right + delta_in_view.y * up;
 
         self.center += translate;
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Eye3DKind]);
+
+impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+        {
+            let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<
+                crate::SpatialViewState,
+            >(ctx.view_ctx.view_state);
+            let speed = match maybe_state {
+                Ok(spatial_view_state) => {
+                    let bounding_boxes = &spatial_view_state.bounding_boxes;
+                    self.fallback_speed_for_mode(bounding_boxes) as f64
+                }
+                Err(view_system_execution_error) => {
+                    re_log::error!("Error while downcasting {}", view_system_execution_error);
+                    // is there a good default?
+                    1.0
+                }
+            };
+            LinearSpeed(re_types::datatypes::Float64(speed))
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Eye3DKind> for ViewEye {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Eye3DKind {
+        Eye3DKind::Orbital
     }
 }

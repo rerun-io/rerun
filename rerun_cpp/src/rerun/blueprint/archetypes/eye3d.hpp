@@ -7,8 +7,7 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../components/position3d.hpp"
-#include "../../components/scalar.hpp"
+#include "../../components/linear_speed.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -18,25 +17,16 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: 3D Eye
+    /// **Archetype**: 3D Eye in a spatial 3D view
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct Eye3D {
-        /// Eye Kind
+        /// Eye kind
         std::optional<ComponentBatch> kind;
 
-        /// Position of eye.
-        std::optional<ComponentBatch> position;
-
-        /// target for eye
-        std::optional<ComponentBatch> target;
-
-        /// Translation speed of the eye -- should be positive only (more constrainted than scalar)
-        std::optional<ComponentBatch> speed;
-
-        /// Spinning speed of the eye around the "up" axis of the eye.
-        std::optional<ComponentBatch> spin_speed;
+        /// Translation speed of the eye in the view.
+        std::optional<ComponentBatch> translation_speed;
 
       public:
         static constexpr const char IndicatorComponentType[] =
@@ -52,21 +42,10 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "Eye3D:kind",
             Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
         );
-        /// `ComponentDescriptor` for the `position` field.
-        static constexpr auto Descriptor_position = ComponentDescriptor(
-            ArchetypeName, "Eye3D:position", Loggable<rerun::components::Position3D>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `target` field.
-        static constexpr auto Descriptor_target = ComponentDescriptor(
-            ArchetypeName, "Eye3D:target", Loggable<rerun::components::Position3D>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `speed` field.
-        static constexpr auto Descriptor_speed = ComponentDescriptor(
-            ArchetypeName, "Eye3D:speed", Loggable<rerun::components::Scalar>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `spin_speed` field.
-        static constexpr auto Descriptor_spin_speed = ComponentDescriptor(
-            ArchetypeName, "Eye3D:spin_speed", Loggable<rerun::components::Scalar>::ComponentType
+        /// `ComponentDescriptor` for the `translation_speed` field.
+        static constexpr auto Descriptor_translation_speed = ComponentDescriptor(
+            ArchetypeName, "Eye3D:translation_speed",
+            Loggable<rerun::components::LinearSpeed>::ComponentType
         );
 
       public:
@@ -76,24 +55,6 @@ namespace rerun::blueprint::archetypes {
         Eye3D& operator=(const Eye3D& other) = default;
         Eye3D& operator=(Eye3D&& other) = default;
 
-        explicit Eye3D(
-            rerun::blueprint::components::Eye3DKind _kind, rerun::components::Position3D _position,
-            rerun::components::Position3D _target, rerun::components::Scalar _speed,
-            rerun::components::Scalar _spin_speed
-        )
-            : kind(ComponentBatch::from_loggable(std::move(_kind), Descriptor_kind).value_or_throw()
-              ),
-              position(ComponentBatch::from_loggable(std::move(_position), Descriptor_position)
-                           .value_or_throw()),
-              target(ComponentBatch::from_loggable(std::move(_target), Descriptor_target)
-                         .value_or_throw()),
-              speed(ComponentBatch::from_loggable(std::move(_speed), Descriptor_speed)
-                        .value_or_throw()),
-              spin_speed(
-                  ComponentBatch::from_loggable(std::move(_spin_speed), Descriptor_spin_speed)
-                      .value_or_throw()
-              ) {}
-
         /// Update only some specific fields of a `Eye3D`.
         static Eye3D update_fields() {
             return Eye3D();
@@ -102,35 +63,17 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `Eye3D`.
         static Eye3D clear_fields();
 
-        /// Eye Kind
+        /// Eye kind
         Eye3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
             kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
             return std::move(*this);
         }
 
-        /// Position of eye.
-        Eye3D with_position(const rerun::components::Position3D& _position) && {
-            position =
-                ComponentBatch::from_loggable(_position, Descriptor_position).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// target for eye
-        Eye3D with_target(const rerun::components::Position3D& _target) && {
-            target = ComponentBatch::from_loggable(_target, Descriptor_target).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// Translation speed of the eye -- should be positive only (more constrainted than scalar)
-        Eye3D with_speed(const rerun::components::Scalar& _speed) && {
-            speed = ComponentBatch::from_loggable(_speed, Descriptor_speed).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// Spinning speed of the eye around the "up" axis of the eye.
-        Eye3D with_spin_speed(const rerun::components::Scalar& _spin_speed) && {
-            spin_speed =
-                ComponentBatch::from_loggable(_spin_speed, Descriptor_spin_speed).value_or_throw();
+        /// Translation speed of the eye in the view.
+        Eye3D with_translation_speed(const rerun::components::LinearSpeed& _translation_speed) && {
+            translation_speed =
+                ComponentBatch::from_loggable(_translation_speed, Descriptor_translation_speed)
+                    .value_or_throw();
             return std::move(*this);
         }
 

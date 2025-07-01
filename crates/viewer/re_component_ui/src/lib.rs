@@ -41,10 +41,10 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Position2D, Range1D, Scalar, Scale3D, SeriesVisible, ShowLabels,
-        StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, VideoCodec,
-        Visible,
+        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
+        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Range1D, Scalar, Scale3D,
+        SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
+        ValueRange, VideoCodec, Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
@@ -83,10 +83,11 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GridSpacing>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<LinearSpeed>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
-    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
     registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<Scalar>(edit_f64_zero_to_max);
+    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);

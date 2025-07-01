@@ -1,0 +1,10 @@
+namespace rerun.components;
+
+/// Linear speed, used for translation speed for example.
+table LinearSpeed (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike"
+) {
+  /// Speed value in units of length per units of time.
+  speed: rerun.datatypes.Float64 (order: 100);
+}

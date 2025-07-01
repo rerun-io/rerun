@@ -13,7 +13,7 @@ use re_types::{
         archetypes::{Background, Eye3D, LineGrid3D},
         components::GridSpacing,
     },
-    components::{Scalar, ViewCoordinates, Visible},
+    components::{ViewCoordinates, Visible},
     view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
@@ -116,6 +116,7 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
+        view_ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
     ) -> ViewEye {
         // FIXME: test on self.last_eye_interaction.is_none() is disabled for now,
@@ -130,6 +131,16 @@ impl View3DState {
         //         scene_view_coordinates,
         //     ));
         // }
+        //
+        // FIXME: can we use this for time comparison?
+        // let at = eye_property.query_results.compound_index;
+        // if at.0.is_static() {
+        //     self.interpolate_to_view_eye(default_eye(
+        //         &bounding_boxes.current,
+        //         scene_view_coordinates,
+        //     ));
+        // }
+        // dbg!(at);
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
         if scene_view_coordinates != self.scene_view_coordinates {
@@ -160,15 +171,13 @@ impl View3DState {
             .view_eye
             .get_or_insert_with(|| default_eye(&bounding_boxes.current, scene_view_coordinates));
 
-        let maybe_eye_spin = extract_eye_spin_speed(eye_property);
-        if let Some(speed) = maybe_eye_spin {
-            let delta = egui::vec2(
-                -response.ctx.input(|i| i.stable_dt).at_most(0.1) * speed,
+        if self.spin {
+            view_eye.rotate(egui::vec2(
+                -response.ctx.input(|i| i.stable_dt).at_most(0.1) * 150.0,
                 0.0,
-            );
-            view_eye.rotate(delta);
+            ));
             response.ctx.request_repaint();
-        };
+        }
 
         if let Some(cam_interpolation) = &mut self.eye_interpolation {
             cam_interpolation.elapsed_time += response.ctx.input(|i| i.stable_dt).at_most(0.1);
@@ -204,7 +213,13 @@ impl View3DState {
             0.0
         };
 
-        if view_eye.update(response, view_eye_drag_threshold, bounding_boxes) {
+        if view_eye.update(
+            response,
+            view_eye_drag_threshold,
+            bounding_boxes,
+            view_ctx,
+            eye_property,
+        ) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -345,25 +360,6 @@ impl View3DState {
     }
 }
 
-fn extract_eye_spin_speed(eye_property: &ViewProperty) -> Option<f32> {
-    let eye_spin_comp_descr = re_types::ComponentDescriptor {
-        archetype: Some("rerun.blueprint.archetypes.Eye3D".into()),
-        component: "Eye3D:spin_speed".into(),
-        component_type: Some("rerun.components.Scalar".into()),
-    };
-    let eye_spin_component = eye_property.component_array::<Scalar>(&eye_spin_comp_descr);
-    if let Ok(Some(speed_arr)) = eye_spin_component {
-        if let Some(Scalar(re_types::datatypes::Float64(speed))) = speed_arr.first() {
-            if *speed > 0.0 {
-                // FIXME: see how conversion is done in the rest of the code base
-                let speed = *speed as f32;
-                return Some(speed);
-            }
-        }
-    }
-    None
-}
-
 #[derive(Clone, PartialEq)]
 struct EyeInterpolation {
     elapsed_time: f32,
@@ -473,12 +469,15 @@ impl SpatialView3D {
             ctx.blueprint_query,
             query.view_id,
         );
+        let state1 = state.clone();
+        let view_ctx = self.view_context(ctx, query.view_id, &state1);
 
         let view_eye = state.state_3d.update_eye(
             &response,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
+            &view_ctx,
             &eye_property,
         );
         let eye = view_eye.to_eye();
@@ -696,8 +695,6 @@ impl SpatialView3D {
         for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
-
-        let view_ctx = self.view_context(ctx, query.view_id, state);
 
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(

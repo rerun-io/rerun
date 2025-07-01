@@ -22,18 +22,16 @@ __all__ = ["Eye3D"]
 @define(str=False, repr=False, init=False)
 class Eye3D(Archetype):
     """
-    **Archetype**: 3D Eye.
+    **Archetype**: 3D Eye in a spatial 3D view.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     def __init__(
         self: Any,
-        kind: blueprint_components.Eye3DKindLike,
-        position: datatypes.Vec3DLike,
-        target: datatypes.Vec3DLike,
-        speed: datatypes.Float64Like,
-        spin_speed: datatypes.Float64Like,
+        *,
+        kind: blueprint_components.Eye3DKindLike | None = None,
+        translation_speed: datatypes.Float64Like | None = None,
     ) -> None:
         """
         Create a new instance of the Eye3D archetype.
@@ -41,21 +39,15 @@ class Eye3D(Archetype):
         Parameters
         ----------
         kind:
-            Eye Kind
-        position:
-            Position of eye.
-        target:
-            target for eye
-        speed:
-            Translation speed of the eye -- should be positive only (more constrainted than scalar)
-        spin_speed:
-            Spinning speed of the eye around the "up" axis of the eye.
+            Eye kind
+        translation_speed:
+            Translation speed of the eye in the view.
 
         """
 
         # You can define your own __init__ function as a member of Eye3DExt in eye3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(kind=kind, position=position, target=target, speed=speed, spin_speed=spin_speed)
+            self.__attrs_init__(kind=kind, translation_speed=translation_speed)
             return
         self.__attrs_clear__()
 
@@ -63,10 +55,7 @@ class Eye3D(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             kind=None,
-            position=None,
-            target=None,
-            speed=None,
-            spin_speed=None,
+            translation_speed=None,
         )
 
     @classmethod
@@ -82,10 +71,7 @@ class Eye3D(Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
-        position: datatypes.Vec3DLike | None = None,
-        target: datatypes.Vec3DLike | None = None,
-        speed: datatypes.Float64Like | None = None,
-        spin_speed: datatypes.Float64Like | None = None,
+        translation_speed: datatypes.Float64Like | None = None,
     ) -> Eye3D:
         """
         Update only some specific fields of a `Eye3D`.
@@ -95,15 +81,9 @@ class Eye3D(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         kind:
-            Eye Kind
-        position:
-            Position of eye.
-        target:
-            target for eye
-        speed:
-            Translation speed of the eye -- should be positive only (more constrainted than scalar)
-        spin_speed:
-            Spinning speed of the eye around the "up" axis of the eye.
+            Eye kind
+        translation_speed:
+            Translation speed of the eye in the view.
 
         """
 
@@ -111,10 +91,7 @@ class Eye3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "kind": kind,
-                "position": position,
-                "target": target,
-                "speed": speed,
-                "spin_speed": spin_speed,
+                "translation_speed": translation_speed,
             }
 
             if clear_unset:
@@ -136,43 +113,16 @@ class Eye3D(Archetype):
         default=None,
         converter=blueprint_components.Eye3DKindBatch._converter,  # type: ignore[misc]
     )
-    # Eye Kind
+    # Eye kind
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    position: components.Position3DBatch | None = field(
+    translation_speed: components.LinearSpeedBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.Position3DBatch._converter,  # type: ignore[misc]
+        converter=components.LinearSpeedBatch._converter,  # type: ignore[misc]
     )
-    # Position of eye.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    target: components.Position3DBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.Position3DBatch._converter,  # type: ignore[misc]
-    )
-    # target for eye
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    speed: components.ScalarBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.ScalarBatch._converter,  # type: ignore[misc]
-    )
-    # Translation speed of the eye -- should be positive only (more constrainted than scalar)
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    spin_speed: components.ScalarBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.ScalarBatch._converter,  # type: ignore[misc]
-    )
-    # Spinning speed of the eye around the "up" axis of the eye.
+    # Translation speed of the eye in the view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

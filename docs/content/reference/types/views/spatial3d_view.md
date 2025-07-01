@@ -24,11 +24,8 @@ Configuration for the 3D line grid.
 ### `eye_3d`
 Configuration for the 3D eye
 
-* `kind`: Eye Kind
-* `position`: Position of eye.
-* `target`: target for eye
-* `speed`: Translation speed of the eye -- should be positive only (more constrainted than scalar)
-* `spin_speed`: Spinning speed of the eye around the "up" axis of the eye.
+* `kind`: Eye kind
+* `translation_speed`: Translation speed of the eye in the view.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

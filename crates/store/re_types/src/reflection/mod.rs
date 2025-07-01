@@ -731,6 +731,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LinearSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Linear speed, used for translation speed for example.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: LinearSpeed::arrow_datatype(),
+                verify_arrow_array: LinearSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <MagnificationFilter as Component>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
@@ -2463,21 +2473,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "kind", display_name : "Kind",
                     component_type : "rerun.blueprint.components.Eye3DKind".into(),
-                    docstring_md : "Eye Kind", is_required : true, },
-                    ArchetypeFieldReflection { name : "position", display_name :
-                    "Position", component_type : "rerun.components.Position3D".into(),
-                    docstring_md : "Position of eye.", is_required : true, },
-                    ArchetypeFieldReflection { name : "target", display_name : "Target",
-                    component_type : "rerun.components.Position3D".into(), docstring_md :
-                    "target for eye", is_required : true, }, ArchetypeFieldReflection {
-                    name : "speed", display_name : "Speed", component_type :
-                    "rerun.components.Scalar".into(), docstring_md :
-                    "Translation speed of the eye -- should be positive only (more constrainted than scalar)",
-                    is_required : true, }, ArchetypeFieldReflection { name :
-                    "spin_speed", display_name : "Spin speed", component_type :
-                    "rerun.components.Scalar".into(), docstring_md :
-                    "Spinning speed of the eye around the \"up\" axis of the eye.",
-                    is_required : true, },
+                    docstring_md : "Eye kind", is_required : false, },
+                    ArchetypeFieldReflection { name : "translation_speed", display_name :
+                    "Translation speed", component_type : "rerun.components.LinearSpeed"
+                    .into(), docstring_md : "Translation speed of the eye in the view.",
+                    is_required : false, },
                 ],
             },
         ),

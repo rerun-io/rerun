@@ -11,36 +11,20 @@ namespace rerun::blueprint::archetypes {
         archetype.kind =
             ComponentBatch::empty<rerun::blueprint::components::Eye3DKind>(Descriptor_kind)
                 .value_or_throw();
-        archetype.position =
-            ComponentBatch::empty<rerun::components::Position3D>(Descriptor_position)
-                .value_or_throw();
-        archetype.target = ComponentBatch::empty<rerun::components::Position3D>(Descriptor_target)
-                               .value_or_throw();
-        archetype.speed =
-            ComponentBatch::empty<rerun::components::Scalar>(Descriptor_speed).value_or_throw();
-        archetype.spin_speed =
-            ComponentBatch::empty<rerun::components::Scalar>(Descriptor_spin_speed)
+        archetype.translation_speed =
+            ComponentBatch::empty<rerun::components::LinearSpeed>(Descriptor_translation_speed)
                 .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> Eye3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(6);
+        columns.reserve(3);
         if (kind.has_value()) {
             columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
-        if (position.has_value()) {
-            columns.push_back(position.value().partitioned(lengths_).value_or_throw());
-        }
-        if (target.has_value()) {
-            columns.push_back(target.value().partitioned(lengths_).value_or_throw());
-        }
-        if (speed.has_value()) {
-            columns.push_back(speed.value().partitioned(lengths_).value_or_throw());
-        }
-        if (spin_speed.has_value()) {
-            columns.push_back(spin_speed.value().partitioned(lengths_).value_or_throw());
+        if (translation_speed.has_value()) {
+            columns.push_back(translation_speed.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(
             ComponentColumn::from_indicators<Eye3D>(static_cast<uint32_t>(lengths_.size()))
@@ -53,17 +37,8 @@ namespace rerun::blueprint::archetypes {
         if (kind.has_value()) {
             return columns(std::vector<uint32_t>(kind.value().length(), 1));
         }
-        if (position.has_value()) {
-            return columns(std::vector<uint32_t>(position.value().length(), 1));
-        }
-        if (target.has_value()) {
-            return columns(std::vector<uint32_t>(target.value().length(), 1));
-        }
-        if (speed.has_value()) {
-            return columns(std::vector<uint32_t>(speed.value().length(), 1));
-        }
-        if (spin_speed.has_value()) {
-            return columns(std::vector<uint32_t>(spin_speed.value().length(), 1));
+        if (translation_speed.has_value()) {
+            return columns(std::vector<uint32_t>(translation_speed.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -76,22 +51,13 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(3);
 
         if (archetype.kind.has_value()) {
             cells.push_back(archetype.kind.value());
         }
-        if (archetype.position.has_value()) {
-            cells.push_back(archetype.position.value());
-        }
-        if (archetype.target.has_value()) {
-            cells.push_back(archetype.target.value());
-        }
-        if (archetype.speed.has_value()) {
-            cells.push_back(archetype.speed.value());
-        }
-        if (archetype.spin_speed.has_value()) {
-            cells.push_back(archetype.spin_speed.value());
+        if (archetype.translation_speed.has_value()) {
+            cells.push_back(archetype.translation_speed.value());
         }
         {
             auto result = ComponentBatch::from_indicator<Eye3D>();
