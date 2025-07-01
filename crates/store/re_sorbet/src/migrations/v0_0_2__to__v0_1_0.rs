@@ -194,7 +194,6 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
     // and moved it from `/__properties/recording` to `/__properties`.
     if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path") {
         if entity_path == "/__properties/recording" {
-            re_log::debug_once!("Migrating RecordingProperties -> RecordingInfo");
             *entity_path = "/__properties".to_owned();
         }
     }
@@ -204,22 +203,23 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
         .fields()
         .iter()
         .map(|field| {
+            // Migrate field name:
             let mut field = arrow::datatypes::Field::new(
                 field.name().replace("RecordingProperties", "RecordingInfo"),
                 field.data_type().clone(),
                 field.is_nullable(),
             );
 
-            // Rename `RecordingProperties` to `RecordingInfo`:
-            for key in [
-                "rerun:archetype",
-                "rerun:component_type",
-                "rerun:component",
-                "rerun:entity_path",
-            ] {
-                if let Some(archetype) = field.metadata_mut().get_mut(key) {
-                    *archetype = archetype.replace("RecordingProperties", "RecordingInfo");
+            // Migrate per-column entity paths (if any):
+            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path") {
+                if entity_path == "/__properties/recording" {
+                    *entity_path = "/__properties".to_owned();
                 }
+            }
+
+            // Rename `RecordingProperties` to `RecordingInfo` in metadata keys:
+            for value in field.metadata_mut().values_mut() {
+                *value = value.replace("RecordingProperties", "RecordingInfo");
             }
 
             Arc::new(field)
