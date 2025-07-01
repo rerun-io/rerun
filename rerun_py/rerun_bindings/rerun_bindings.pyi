@@ -1156,7 +1156,7 @@ class DatasetEntry(Entry):
             The URI of the RRD to register
 
         timeout_secs: int
-            The timeout after which this method returns.
+            The timeout after which this method raises a `TimeoutError` if the task is not completed.
 
         Returns
         -------
