@@ -373,8 +373,8 @@ mod test {
         assert_eq!(descr.display_name(), "MyExample:test");
 
         let archetype_name: ArchetypeName = "rerun.archetypes.MyOtherExample".into();
-        let descr = descr.with_archetype(archetype_name);
-        assert_eq!(descr.archetype_field_name(), "MyExample:test");
+        let descr = descr.with_builtin_archetype(archetype_name);
+        assert_eq!(descr.archetype_field_name(), "test");
         assert_eq!(descr.display_name(), "MyOtherExample:test");
     }
 }
