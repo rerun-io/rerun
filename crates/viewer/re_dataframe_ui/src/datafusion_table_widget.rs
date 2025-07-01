@@ -396,6 +396,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         egui_table::Table::new()
             .id_salt(session_id)
+            .num_sticky_cols(1) // Row number column is sticky.
             .columns(
                 iter::once(
                     egui_table::Column::new(max_row_number_width)
