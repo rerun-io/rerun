@@ -982,6 +982,7 @@ impl RecordingStreamInner {
 enum Command {
     RecordMsg(LogMsg),
     SwapSink(Box<dyn LogSink>),
+    // TODO(#10444): This should go away with more explicit sinks.
     InspectSink(Box<dyn FnOnce(&dyn LogSink) + Send + 'static>),
     Flush(Sender<()>),
     PopPendingChunks,
@@ -1879,6 +1880,7 @@ impl RecordingStream {
     /// # Experimental
     ///
     /// This is an experimental API and may change in future releases.
+    // TODO(#10444): This should become a lot more straight forward with explicit sinks.
     pub fn inspect_sink(&self, f: impl FnOnce(&dyn LogSink) + Send + 'static) {
         self.with(|inner| inner.cmds_tx.send(Command::InspectSink(Box::new(f))).ok());
     }
