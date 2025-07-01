@@ -836,7 +836,8 @@ impl TimePanel {
             if archetype.is_none() && num_archetypes == 1 {
                 // They are all without archetype, so we can skip the label.
             } else {
-                archetype_label_ui(ui, archetype);
+                let response = archetype_label_ui(ui, archetype);
+                self.next_col_right = self.next_col_right.max(response.rect.right());
             }
 
             for component_descr in components {
@@ -1427,7 +1428,7 @@ impl TimePanel {
     }
 }
 
-fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) {
+fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) -> egui::Response {
     ui.list_item()
         .with_y_offset(1.0)
         .with_height(20.0)
@@ -1442,7 +1443,7 @@ fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) {
                 )
                 .size(10.0),
             ),
-        );
+        )
 }
 
 /// Draw the hovered/selected highlight background for a timeline row.

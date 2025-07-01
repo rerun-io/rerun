@@ -354,6 +354,20 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = 
   "js-install",
 ] }
 
+# Build individual package JS docs in their own directories
+js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depends-on = [
+  "js-install",
+] }
+
+# Combine the output of individual package docs into a single directory
+js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = [
+  "js-build-package-docs",
+] }
+
+js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = [
+  "js-docs",
+] }
+
 [feature.wheel-build.tasks]
 # Build and install a development version of the rerun-sdk Python package.
 #

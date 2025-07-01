@@ -55,7 +55,7 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PY_DOCS_VERSION_NAME: "main"
       CPP_DOCS_VERSION_NAME: "main"
-      RS_DOCS_VERSION_NAME: "head"
+      JS_DOCS_VERSION_NAME: "main"
       UPDATE_LATEST: false
     secrets: inherit
 

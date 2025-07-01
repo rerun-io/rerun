@@ -27,6 +27,7 @@ struct DecoderOutput {
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
 // TODO(andreas): Meld this into `super::player::VideoPlayer`.
 pub struct VideoSampleDecoder {
+    debug_name: String,
     decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
@@ -43,6 +44,7 @@ impl VideoSampleDecoder {
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
         let on_output = {
+            let debug_name = debug_name.clone();
             let decoder_output = decoder_output.clone();
             move |frame: re_video::DecodeResult<Frame>| match frame {
                 Ok(frame) => {
@@ -73,9 +75,14 @@ impl VideoSampleDecoder {
         let decoder = make_decoder(Box::new(on_output))?;
 
         Ok(Self {
+            debug_name,
             decoder,
             decoder_output,
         })
+    }
+
+    pub fn debug_name(&self) -> &str {
+        &self.debug_name
     }
 
     /// Start decoding the given chunk.

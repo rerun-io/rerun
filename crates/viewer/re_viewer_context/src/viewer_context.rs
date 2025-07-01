@@ -67,6 +67,9 @@ pub struct ViewerContext<'a> {
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
 
+    /// Where we are getting our data from.
+    pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+
     pub store_context: &'a StoreContext<'a>,
 }
 
