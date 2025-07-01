@@ -170,8 +170,6 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
 
 #[test]
 fn test_default_column_display_name() {
-    use re_log_types::EntityPathPart;
-
     // Built-in recording property:
     assert_eq!(
         default_display_name_for_column(&ColumnDescriptorRef::Component(
@@ -196,7 +194,7 @@ fn test_default_column_display_name() {
             &re_sorbet::ComponentColumnDescriptor {
                 store_datatype: arrow::datatypes::DataType::Binary, // ignored
                 component_type: None,
-                entity_path: EntityPath::properties() / EntityPathPart::from("episode"),
+                entity_path: EntityPath::properties() / "episode",
                 archetype: None,
                 component: "building".into(),
                 is_static: false,

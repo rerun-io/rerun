@@ -20,19 +20,14 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    test_context.log_entity("/entity0".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity1".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity2".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/entity0", add_point_to_chunk_builder);
+    test_context.log_entity("/entity1", add_point_to_chunk_builder);
+    test_context.log_entity("/entity2", add_point_to_chunk_builder);
 
-    test_context.setup_viewport_blueprint(|_, blueprint| {
-        blueprint.add_views(
-            std::iter::once(ViewBlueprint::new(
-                re_view_spatial::SpatialView3D::identifier(),
-                RecommendedView::root(),
-            )),
-            None,
-            None,
-        );
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView3D::identifier(),
+        ))
     });
 
     let blueprint_tree = BlueprintTree::default();
@@ -51,20 +46,18 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
 
         test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-        test_context.log_entity("/path/to/entity0".into(), add_point_to_chunk_builder);
-        test_context.log_entity("/path/to/entity1".into(), add_point_to_chunk_builder);
-        test_context.log_entity("/another/way/to/entity2".into(), add_point_to_chunk_builder);
+        test_context.log_entity("/path/to/entity0", add_point_to_chunk_builder);
+        test_context.log_entity("/path/to/entity1", add_point_to_chunk_builder);
+        test_context.log_entity("/another/way/to/entity2", add_point_to_chunk_builder);
 
         let view_id = ViewId::hashed_from_str("some-view-id-hash");
 
         test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            let view = ViewBlueprint::new_with_id(
+            blueprint.add_view_at_root(ViewBlueprint::new_with_id(
                 re_view_spatial::SpatialView3D::identifier(),
                 RecommendedView::root(),
                 view_id,
-            );
-
-            blueprint.add_views(std::iter::once(view), None, None);
+            ))
 
             // TODO(ab): add containers in the hierarchy (requires work on the container API,
             // currently very cumbersome to use for testing purposes).
@@ -142,9 +135,9 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     let mut test_context = TestContext::default();
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/path/is/outside".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
+    test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
+    test_context.log_entity("/path/is/outside", add_point_to_chunk_builder);
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
         blueprint.add_views(

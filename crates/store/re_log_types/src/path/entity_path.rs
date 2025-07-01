@@ -483,6 +483,27 @@ impl std::ops::Div<EntityPathPart> for &EntityPath {
     }
 }
 
+// Allow concatting string literals (!) with entity paths via `/`.
+// Don't do this on strings with arbitrary lifetime, since it's easy to accidentally misinterpret
+// path parts whose `/` should be escaped.
+impl std::ops::Div<&'static str> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: &'static str) -> Self::Output {
+        self.join(&EntityPath::from(other))
+    }
+}
+
+impl std::ops::Div<&'static str> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: &'static str) -> Self::Output {
+        self.join(&Self::from(other))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;
@@ -728,11 +749,51 @@ mod tests {
 
     #[test]
     fn test_strip_prefix() {
-        let entity_path = EntityPath::properties() / EntityPathPart::from("episode");
+        let entity_path = EntityPath::properties() / "episode";
         assert_eq!(entity_path.to_string(), "/__properties/episode");
         assert_eq!(
             entity_path.strip_prefix(&EntityPath::properties()),
             Some(EntityPath::from("episode"))
+        );
+    }
+
+    #[test]
+    fn concat_with_div() {
+        // String literal with single part.
+        assert_eq!(EntityPath::from("foo") / "bar", EntityPath::from("foo/bar"));
+        assert_eq!(
+            &EntityPath::from("foo") / "bar",
+            EntityPath::from("foo/bar")
+        );
+
+        // String literal with multiple parts.
+        assert_eq!(
+            EntityPath::from("world") / "robot/arm",
+            EntityPath::from("world/robot/arm")
+        );
+        assert_eq!(
+            &EntityPath::from("world") / "robot/arm",
+            EntityPath::from("world/robot/arm")
+        );
+
+        // Explicit EntityPathPart without escaped slash.
+        assert_eq!(
+            EntityPath::from("foo") / EntityPathPart::new("bar"),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            &EntityPath::from("foo") / EntityPathPart::new("bar"),
+            EntityPath::from("foo/bar")
+        );
+
+        // Explicit EntityPathPart with escaped slash.
+        assert_eq!(
+            EntityPath::from("world") / EntityPathPart::new("robot/arm"),
+            EntityPath::from("world/robot\\/arm")
+        );
+        assert_eq!(
+            &EntityPath::from("world") / EntityPathPart::new("robot/arm"),
+            EntityPath::from("world/robot\\/arm")
         );
     }
 }

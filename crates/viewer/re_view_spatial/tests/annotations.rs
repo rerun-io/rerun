@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::test_context::{HarnessExt as _, TestContext};
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
@@ -14,7 +14,7 @@ pub fn test_annotations() {
         use ndarray::{Array, ShapeBuilder as _, s};
 
         // Log an annotation context to assign a label and color to each class
-        test_context.log_entity("/".into(), |builder| {
+        test_context.log_entity("/", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -27,7 +27,7 @@ pub fn test_annotations() {
         });
 
         // Log a batch of 2 rectangles with different `class_ids`
-        test_context.log_entity("detections".into(), |builder| {
+        test_context.log_entity("detections", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -39,7 +39,7 @@ pub fn test_annotations() {
             )
         });
 
-        test_context.log_entity("segmentation/image".into(), |builder| {
+        test_context.log_entity("segmentation/image", |builder| {
             let mut image = Array::<u8, _>::zeros((200, 300).f());
             image.slice_mut(s![50..100, 50..120]).fill(1);
             image.slice_mut(s![100..180, 130..280]).fill(2);
@@ -54,7 +54,11 @@ pub fn test_annotations() {
         });
     }
 
-    let view_id = setup_blueprint(&mut test_context);
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView2D::identifier(),
+        ))
+    });
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
@@ -78,20 +82,6 @@ fn get_test_context() -> TestContext {
     re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
     test_context
-}
-
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView2D::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
-    })
 }
 
 fn run_view_ui_and_save_snapshot(

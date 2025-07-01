@@ -657,7 +657,7 @@ mod tests {
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
             let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
-            let chunk = Chunk::builder(entity_path.into())
+            let chunk = Chunk::builder(entity_path)
                 .with_component_batch(
                     row_id,
                     timepoint.clone(),

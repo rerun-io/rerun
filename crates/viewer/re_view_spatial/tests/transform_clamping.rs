@@ -11,7 +11,7 @@ pub fn test_transform_clamping() {
     let mut test_context = get_test_context();
 
     {
-        test_context.log_entity("boxes/clamped_colors".into(), |builder| {
+        test_context.log_entity("boxes/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -20,7 +20,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("boxes/ignored_colors".into(), |builder| {
+        test_context.log_entity("boxes/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -32,7 +32,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("boxes/more_transforms_than_sizes".into(), |builder| {
+        test_context.log_entity("boxes/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -55,7 +55,7 @@ pub fn test_transform_clamping() {
                 )
         });
 
-        test_context.log_entity("boxes/no_primaries".into(), |builder| {
+        test_context.log_entity("boxes/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -74,7 +74,7 @@ pub fn test_transform_clamping() {
     }
 
     {
-        test_context.log_entity("spheres/clamped_colors".into(), |builder| {
+        test_context.log_entity("spheres/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -86,7 +86,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/ignored_colors".into(), |builder| {
+        test_context.log_entity("spheres/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -98,7 +98,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/more_transforms_than_sizes".into(), |builder| {
+        test_context.log_entity("spheres/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -117,7 +117,7 @@ pub fn test_transform_clamping() {
                 )
         });
 
-        test_context.log_entity("spheres/no_primaries".into(), |builder| {
+        test_context.log_entity("spheres/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),

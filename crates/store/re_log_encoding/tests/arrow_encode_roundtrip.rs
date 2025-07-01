@@ -16,7 +16,7 @@ fn encode_roundtrip() {
         TimePoint::default().with(Timeline::new_sequence("my_index"), time)
     }
 
-    let chunk = Chunk::builder("points".into())
+    let chunk = Chunk::builder("points")
         .with_archetype(
             RowId::new(),
             timepoint(1),

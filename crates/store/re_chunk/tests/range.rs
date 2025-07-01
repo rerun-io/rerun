@@ -56,7 +56,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         MyLabel("c".into()),
     ];
 
-    let chunk = Chunk::builder(ENTITY_PATH.into())
+    let chunk = Chunk::builder(ENTITY_PATH)
         .with_component_batches(
             row_id1,
             timepoint1,
@@ -81,7 +81,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         let query =
             RangeQuery::with_extras(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint1,
@@ -103,7 +103,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -116,7 +116,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -137,7 +137,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         let expected = chunk.emptied();
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -150,7 +150,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -201,7 +201,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         MyLabel("c".into()),
     ];
 
-    let chunk = Chunk::builder(ENTITY_PATH.into())
+    let chunk = Chunk::builder(ENTITY_PATH)
         .with_component_batches(
             row_id2,
             timepoint2,
@@ -226,7 +226,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         let query =
             RangeQuery::with_extras(TimelineName::log_time(), ResolvedTimeRange::EVERYTHING);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id1,
                 timepoint1,
@@ -248,7 +248,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -261,7 +261,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -282,7 +282,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         let expected = chunk.emptied();
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -295,7 +295,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
@@ -335,7 +335,7 @@ fn static_sorted() -> anyhow::Result<()> {
         MyLabel("c".into()),
     ];
 
-    let chunk = Chunk::builder(ENTITY_PATH.into())
+    let chunk = Chunk::builder(ENTITY_PATH)
         .with_component_batches(
             row_id1,
             timepoint.clone(),
@@ -362,7 +362,7 @@ fn static_sorted() -> anyhow::Result<()> {
     ];
 
     for query in queries {
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id3,
                 timepoint.clone(),
@@ -375,7 +375,7 @@ fn static_sorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
@@ -388,7 +388,7 @@ fn static_sorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
@@ -428,7 +428,7 @@ fn static_unsorted() -> anyhow::Result<()> {
         MyLabel("c".into()),
     ];
 
-    let chunk = Chunk::builder(ENTITY_PATH.into())
+    let chunk = Chunk::builder(ENTITY_PATH)
         .with_component_batches(
             row_id3,
             timepoint.clone(),
@@ -455,7 +455,7 @@ fn static_unsorted() -> anyhow::Result<()> {
     ];
 
     for query in queries {
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id3,
                 timepoint.clone(),
@@ -468,7 +468,7 @@ fn static_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_points(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
@@ -481,7 +481,7 @@ fn static_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyPoints::descriptor_colors(), &query), &chunk, &expected);
 
-        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),

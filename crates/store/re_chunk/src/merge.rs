@@ -375,7 +375,7 @@ mod tests {
         ];
         let labels5 = &[MyLabel("d".into())];
 
-        let chunk1 = Chunk::builder(entity_path.into())
+        let chunk1 = Chunk::builder(entity_path)
             .with_component_batches(
                 row_id1,
                 timepoint1,
@@ -396,7 +396,7 @@ mod tests {
             )
             .build()?;
 
-        let chunk2 = Chunk::builder(entity_path.into())
+        let chunk2 = Chunk::builder(entity_path)
             .with_component_batches(
                 row_id4,
                 timepoint4,
@@ -419,7 +419,7 @@ mod tests {
             assert!(chunk1.concatenable(&chunk2));
 
             let got = chunk1.concatenated(&chunk2).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
@@ -489,7 +489,7 @@ mod tests {
             assert!(chunk2.concatenable(&chunk1));
 
             let got = chunk2.concatenated(&chunk1).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
@@ -602,7 +602,7 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk1 = Chunk::builder(entity_path.into())
+        let chunk1 = Chunk::builder(entity_path)
             .with_component_batches(
                 row_id1,
                 timepoint1,
@@ -626,7 +626,7 @@ mod tests {
             )
             .build()?;
 
-        let chunk2 = Chunk::builder(entity_path.into())
+        let chunk2 = Chunk::builder(entity_path)
             .with_component_batches(
                 row_id4,
                 timepoint4,
@@ -652,7 +652,7 @@ mod tests {
             assert!(chunk1.concatenable(&chunk2));
 
             let got = chunk1.concatenated(&chunk2).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
@@ -722,7 +722,7 @@ mod tests {
             assert!(chunk2.concatenable(&chunk1));
 
             let got = chunk2.concatenated(&chunk1).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
@@ -814,7 +814,7 @@ mod tests {
             let points1 = &[MyPoint::new(1.0, 1.0)];
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
-            let chunk1 = Chunk::builder(entity_path1.into())
+            let chunk1 = Chunk::builder(entity_path1)
                 .with_component_batches(
                     row_id1,
                     timepoint1,
@@ -822,7 +822,7 @@ mod tests {
                 )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path2.into())
+            let chunk2 = Chunk::builder(entity_path2)
                 .with_component_batches(
                     row_id2,
                     timepoint2,
@@ -853,7 +853,7 @@ mod tests {
             let points1 = &[MyPoint::new(1.0, 1.0)];
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
-            let chunk1 = Chunk::builder(entity_path.into())
+            let chunk1 = Chunk::builder(entity_path)
                 .with_component_batches(
                     row_id1,
                     timepoint1,
@@ -861,7 +861,7 @@ mod tests {
                 )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path.into())
+            let chunk2 = Chunk::builder(entity_path)
                 .with_component_batches(
                     row_id2,
                     timepoint2,
@@ -894,7 +894,7 @@ mod tests {
             let points64bit =
                 <MyPoint64 as re_types_core::ComponentBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
 
-            let chunk1 = Chunk::builder(entity_path.into())
+            let chunk1 = Chunk::builder(entity_path)
                 .with_row(
                     row_id1,
                     timepoint1,
@@ -904,7 +904,7 @@ mod tests {
                 )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path.into())
+            let chunk2 = Chunk::builder(entity_path)
                 .with_row(
                     row_id2,
                     timepoint2,

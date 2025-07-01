@@ -292,7 +292,7 @@ fn log_episode_task(
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
         .with_context(|| "Failed to get task_index field from dataset!")?;
 
-    let mut chunk = Chunk::builder("task".into());
+    let mut chunk = Chunk::builder("task");
     let mut row_id = RowId::new();
     let mut time_int = TimeInt::ZERO;
 
@@ -329,7 +329,7 @@ fn load_episode_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -358,7 +358,7 @@ fn load_episode_depth_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -428,7 +428,7 @@ fn load_episode_video(
     };
 
     // Put video asset into its own (static) chunk since it can be fairly large.
-    let video_asset_chunk = Chunk::builder(entity_path.into())
+    let video_asset_chunk = Chunk::builder(entity_path)
         .with_archetype(RowId::new(), TimePoint::default(), &video_asset)
         .build()?;
 

@@ -6,7 +6,7 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId, test_context::TestContext};
+use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
 use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
@@ -182,24 +182,21 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             );
 
             for y in [y_green, y_red] {
-                test_context.log_entity(
-                    format!("point_{:02}_{:02}", i, y as i32).into(),
-                    |builder| {
-                        builder.with_archetype(
-                            RowId::new(),
-                            TimePoint::default(),
-                            &re_types::archetypes::Points2D::new([(x, y)])
-                                .with_colors([0x555555FF])
-                                .with_radii([4.0])
-                                .with_draw_order(1.0),
-                        )
-                    },
-                );
+                test_context.log_entity(format!("point_{:02}_{:02}", i, y as i32), |builder| {
+                    builder.with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Points2D::new([(x, y)])
+                            .with_colors([0x555555FF])
+                            .with_radii([4.0])
+                            .with_draw_order(1.0),
+                    )
+                });
             }
 
             {
                 let time_point = time_point.clone();
-                test_context.log_entity("red".into(), |builder| {
+                test_context.log_entity("red", |builder| {
                     builder.with_archetype(
                         RowId::new(),
                         time_point,
@@ -211,7 +208,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                 });
             }
 
-            test_context.log_entity("green".into(), |builder| {
+            test_context.log_entity("green", |builder| {
                 builder.with_archetype(
                     RowId::new(),
                     time_point,
@@ -325,11 +322,9 @@ fn setup_blueprint(
     green_time_range: Option<VisibleTimeRange>,
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view_blueprint =
-            ViewBlueprint::new(SpatialView2D::identifier(), RecommendedView::root());
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            SpatialView2D::identifier(),
+        ));
 
         // Set the bounds such that the points are fully visible, that way we get more pixels contributing to the output.
         let property_path = re_viewport_blueprint::entity_path_for_view_property(

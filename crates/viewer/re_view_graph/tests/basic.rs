@@ -7,7 +7,7 @@ use re_log_types::TimePoint;
 use re_types::archetypes;
 use re_view_graph::GraphView;
 use re_viewer_context::test_context::HarnessExt as _;
-use re_viewer_context::{RecommendedView, ViewClass as _, test_context::TestContext};
+use re_viewer_context::{ViewClass as _, test_context::TestContext};
 use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 #[test]
@@ -21,7 +21,7 @@ pub fn coincident_nodes() {
     test_context.register_view_class::<re_view_graph::GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -53,7 +53,7 @@ pub fn self_and_multi_edges() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -101,7 +101,7 @@ pub fn multi_graphs() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity("graph1".into(), |builder| {
+    test_context.log_entity("graph1", |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -114,7 +114,7 @@ pub fn multi_graphs() {
                 &archetypes::GraphEdges::new([("A", "B")]),
             )
     });
-    test_context.log_entity("graph2".into(), |builder| {
+    test_context.log_entity("graph2", |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -133,15 +133,10 @@ pub fn multi_graphs() {
 }
 
 fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
-    let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_graph::GraphView::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-        view_id
+        ))
     });
 
     let mut harness = test_context

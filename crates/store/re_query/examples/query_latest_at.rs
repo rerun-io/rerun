@@ -117,7 +117,7 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
     {
         let timepoint = [build_frame_nr(123)];
 
-        let chunk = Chunk::builder(entity_path.into())
+        let chunk = Chunk::builder(entity_path)
             .with_archetype(
                 RowId::new(),
                 timepoint,

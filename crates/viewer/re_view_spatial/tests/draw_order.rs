@@ -1,10 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 #[test]
 pub fn test_draw_order() {
@@ -14,7 +12,7 @@ pub fn test_draw_order() {
         use ndarray::{Array, ShapeBuilder as _, s};
 
         // Large gray background
-        test_context.log_entity("2d_layering/background".into(), |builder| {
+        test_context.log_entity("2d_layering/background", |builder| {
             let mut image = Array::<u8, _>::zeros((256, 512, 3).f());
             image.fill(64);
 
@@ -31,7 +29,7 @@ pub fn test_draw_order() {
         });
 
         // Smaller gradient in the middle
-        test_context.log_entity("2d_layering/middle_gradient".into(), |builder| {
+        test_context.log_entity("2d_layering/middle_gradient", |builder| {
             let mut image = Array::<u8, _>::zeros((256, 256, 3).f());
             image
                 .slice_mut(s![.., .., 0])
@@ -53,7 +51,7 @@ pub fn test_draw_order() {
         });
 
         // Slightly smaller blue in the middle, on the same layer as the previous.
-        test_context.log_entity("2d_layering/middle_blue".into(), |builder| {
+        test_context.log_entity("2d_layering/middle_blue", |builder| {
             let mut image = Array::<u8, _>::zeros((192, 192, 3).f());
             image.slice_mut(s![.., .., 2]).fill(255);
 
@@ -69,7 +67,7 @@ pub fn test_draw_order() {
             )
         });
 
-        test_context.log_entity("2d_layering/lines_behind_rect".into(), |builder| {
+        test_context.log_entity("2d_layering/lines_behind_rect", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -83,41 +81,35 @@ pub fn test_draw_order() {
             )
         });
 
-        test_context.log_entity(
-            "2d_layering/rect_between_top_and_middle".into(),
-            |builder| {
-                builder.with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &re_types::archetypes::Boxes2D::from_mins_and_sizes(
-                        [(64.0, 32.0)],
-                        [(256.0, 128.0)],
-                    )
-                    .with_draw_order(1.5)
-                    .with_colors([0x000000FF]),
+        test_context.log_entity("2d_layering/rect_between_top_and_middle", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::Boxes2D::from_mins_and_sizes(
+                    [(64.0, 32.0)],
+                    [(256.0, 128.0)],
                 )
-            },
-        );
+                .with_draw_order(1.5)
+                .with_colors([0x000000FF]),
+            )
+        });
 
-        test_context.log_entity(
-            "2d_layering/points_between_top_and_middle".into(),
-            |builder| {
-                builder.with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &re_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
-                        (
-                            32.0 + (i as i32 / 16) as f32 * 16.0,
-                            32.0 + (i as i32 % 16) as f32 * 16.0,
-                        )
-                    }))
-                    .with_draw_order(1.51),
-                )
-            },
-        );
+        test_context.log_entity("2d_layering/points_between_top_and_middle", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
+                    (
+                        32.0 + (i as i32 / 16) as f32 * 16.0,
+                        32.0 + (i as i32 % 16) as f32 * 16.0,
+                    )
+                }))
+                .with_draw_order(1.51),
+            )
+        });
 
         // Small white square on top
-        test_context.log_entity("2d_layering/top".into(), |builder| {
+        test_context.log_entity("2d_layering/top", |builder| {
             let mut image = Array::<u8, _>::zeros((128, 128, 3).f());
             image.fill(255);
 
@@ -134,7 +126,7 @@ pub fn test_draw_order() {
         });
 
         // 2D arrow sandwitched across
-        test_context.log_entity("2d_layering/arrow2d_between".into(), |builder| {
+        test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -147,7 +139,11 @@ pub fn test_draw_order() {
         });
     }
 
-    let view_id = setup_blueprint(&mut test_context);
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView2D::identifier(),
+        ))
+    });
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
@@ -165,20 +161,6 @@ fn get_test_context() -> TestContext {
     test_context.register_view_class::<re_view_spatial::SpatialView2D>();
 
     test_context
-}
-
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView2D::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
-    })
 }
 
 fn run_view_ui_and_save_snapshot(
