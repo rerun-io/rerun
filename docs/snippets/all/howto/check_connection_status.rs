@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         if let Ok(status) = rx.recv_timeout(std::time::Duration::from_secs(1)) {
-            println!("Connection status: {:?}", status);
+            println!("Connection status: {status:?}");
 
             if matches!(
                 status,

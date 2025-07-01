@@ -979,11 +979,13 @@ impl RecordingStreamInner {
     }
 }
 
+type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
+
 enum Command {
     RecordMsg(LogMsg),
     SwapSink(Box<dyn LogSink>),
     // TODO(#10444): This should go away with more explicit sinks.
-    InspectSink(Box<dyn FnOnce(&dyn LogSink) + Send + 'static>),
+    InspectSink(InspectSinkFn),
     Flush(Sender<()>),
     PopPendingChunks,
     Shutdown,
