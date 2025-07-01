@@ -21,7 +21,9 @@ README = """\
 =================================================
 ITEM                      CONTEXT MENU CONTENT
 =================================================
-'group/' entity           Expand all
+'group/' entity           Copy entity path
+
+                          Expand all
                           Collapse all
 
                           Add to new view

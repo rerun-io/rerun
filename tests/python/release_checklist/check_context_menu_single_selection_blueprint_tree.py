@@ -53,6 +53,8 @@ View                       Hide (or Show, depending on visibility)
 'group' data result        Hide (or Show, depending on visibility)
                            Remove
 
+                           Copy entity path
+
                            Expand all
                            Collapse all
 
@@ -60,6 +62,8 @@ View                       Hide (or Show, depending on visibility)
 ------------------------------------------------------------------
 'boxes3d' data result      Hide (or Show, depending on visibility)
                            Remove
+
+                           Copy entity path
 
                            Add to new view
 ```
