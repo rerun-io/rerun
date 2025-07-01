@@ -25,7 +25,7 @@ struct DecoderOutput {
     /// (i.e. the order in which they were submitted)
     /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
     /// reset decoder.
-    /// See also https://github.com/rerun-io/rerun/issues/7961
+    /// See also <https://github.com/rerun-io/rerun/issues/7961>
     frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
