@@ -19,3 +19,4 @@ anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 emath.workspace = true
 glam.workspace = true
+rand.workspace = true

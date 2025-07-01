@@ -4988,6 +4988,7 @@ dependencies = [
  "clap",
  "emath",
  "glam",
+ "rand",
  "re_tracing",
  "rerun",
 ]

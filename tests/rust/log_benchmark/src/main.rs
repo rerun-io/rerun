@@ -38,6 +38,7 @@ mod image;
 mod points3d_large_batch;
 mod points3d_many_individual;
 mod points3d_shared;
+mod scalars;
 
 // ---
 
@@ -53,6 +54,9 @@ pub fn lcg(lcg_state: &mut i64) -> i64 {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
 enum Benchmark {
+    #[value(name("scalars"))]
+    Scalars,
+
     #[value(name("points3d_large_batch"))]
     Points3DLargeBatch,
 
@@ -115,6 +119,7 @@ fn main() -> anyhow::Result<()> {
         println!("Running benchmark: {benchmark:?}");
 
         match benchmark {
+            Benchmark::Scalars => scalars::run(&rec)?,
             Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
             Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
             Benchmark::Boxes3D => boxes3d_batch::run(&rec)?,
