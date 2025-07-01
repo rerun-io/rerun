@@ -208,7 +208,8 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
                 field.name().replace("RecordingProperties", "RecordingInfo"),
                 field.data_type().clone(),
                 field.is_nullable(),
-            );
+            )
+            .with_metadata(field.metadata().clone());
 
             // Migrate per-column entity paths (if any):
             if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path") {
