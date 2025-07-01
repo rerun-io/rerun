@@ -1143,7 +1143,7 @@ class DatasetEntry(Entry):
     def partition_url(self, partition_id: str) -> str:
         """Return the URL for the given partition."""
 
-    def register(self, recording_uri: str, timeout_secs: int = 60) -> None:
+    def register(self, recording_uri: str, timeout_secs: int = 60) -> str:
         """
         Register a RRD URI to the dataset and wait for completion.
 
@@ -1158,6 +1158,10 @@ class DatasetEntry(Entry):
         timeout_secs: int
             The timeout after which this method returns.
 
+        Returns
+        -------
+        partition_id: str
+            The partition ID of the registered RRD.
         """
 
     def register_batch(self, recording_uris: list[str]) -> Tasks:

@@ -191,18 +191,35 @@ impl PyDatasetEntry {
     ///     The URI of the RRD to register
     ///
     /// timeout_secs: int
-    ///     The timeout after which this method returns.
+    ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
+    ///
+    /// Returns
+    /// -------
+    /// partition_id: str
+    ///     The partition ID of the registered RRD.
     #[pyo3(signature = (recording_uri, timeout_secs = 60))]
-    fn register(self_: PyRef<'_, Self>, recording_uri: String, timeout_secs: u64) -> PyResult<()> {
+    fn register(
+        self_: PyRef<'_, Self>,
+        recording_uri: String,
+        timeout_secs: u64,
+    ) -> PyResult<String> {
         let register_timeout = std::time::Duration::from_secs(timeout_secs);
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let task_ids =
+        let mut results =
             connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
 
-        connection.wait_for_tasks(self_.py(), &task_ids, register_timeout)
+        let Some((task_id, partition_id)) = results.pop() else {
+            return Err(PyRuntimeError::new_err(
+                "Failed to register recording, no task ID returned.",
+            ));
+        };
+
+        connection.wait_for_tasks(self_.py(), vec![task_id], register_timeout)?;
+
+        Ok(partition_id.id)
     }
 
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
@@ -220,9 +237,12 @@ impl PyDatasetEntry {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let task_ids = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
+        let results = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
 
-        Ok(PyTasks::new(super_.client.clone_ref(self_.py()), task_ids))
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|(task_id, _)| task_id),
+        ))
     }
 
     /// Download a partition from the dataset.

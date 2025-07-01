@@ -17,7 +17,7 @@ use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::DatasetDetails;
-use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::common::v1alpha1::ext::{PartitionId, ScanParameters};
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
 use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use re_protos::{
@@ -187,7 +187,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
-    ) -> PyResult<Vec<TaskId>> {
+    ) -> PyResult<Vec<(TaskId, PartitionId)>> {
         wait_for_future(py, async {
             let data_sources = recording_uris
                 .iter()
@@ -225,19 +225,46 @@ impl ConnectionHandle {
                 ));
             }
 
-            response
+            let task_id_column = response
                 .column_by_name(RegisterWithDatasetResponse::TASK_ID)
                 .and_then(|column| {
                     column
                         .try_downcast_array_ref::<arrow::array::StringArray>()
                         .ok()
-                        .map(|col| {
-                            col.iter()
-                                .filter_map(|v| v.map(|id| TaskId { id: id.to_owned() }))
-                                .collect::<Vec<_>>()
-                        })
                 })
-                .ok_or_else(|| PyValueError::new_err("bug: invalid response schema"))
+                .ok_or_else(|| {
+                    PyValueError::new_err("missing task_id column in response schema")
+                })?;
+
+            let partition_id_column = response
+                .column_by_name(RegisterWithDatasetResponse::PARTITION_ID)
+                .and_then(|column| {
+                    column
+                        .try_downcast_array_ref::<arrow::array::StringArray>()
+                        .ok()
+                })
+                .ok_or_else(|| {
+                    PyValueError::new_err("missing partition_id column in response schema")
+                })?;
+
+            task_id_column
+                .iter()
+                .zip(partition_id_column.iter())
+                .map(|(task_id, partition_id)| {
+                    let task_id = task_id.ok_or_else(|| {
+                        PyValueError::new_err("missing task_id in response schema")
+                    })?;
+                    let partition_id = partition_id.ok_or_else(|| {
+                        PyValueError::new_err("missing partition_id in response schema")
+                    })?;
+                    Ok((
+                        TaskId {
+                            id: task_id.to_owned(),
+                        },
+                        PartitionId::new(partition_id.to_owned()),
+                    ))
+                })
+                .collect::<Result<Vec<_>, _>>()
         })
     }
 
@@ -270,7 +297,7 @@ impl ConnectionHandle {
     pub fn wait_for_tasks(
         &self,
         py: Python<'_>,
-        task_ids: &[TaskId],
+        task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
     ) -> PyResult<()> {
         use futures::StreamExt as _;
@@ -282,7 +309,7 @@ impl ConnectionHandle {
                 ))
             })?;
             let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
-                ids: task_ids.to_vec(),
+                ids: task_ids,
                 timeout: Some(timeout),
             };
             let mut response_stream = self
@@ -306,7 +333,7 @@ impl ConnectionHandle {
                     .decode()
                     .map_err(to_py_err)?;
 
-                // TODO(andrea): all this column unrwapping is a bit hideous. Maybe the idea of returning a dataframe rather
+                // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
                 // than a nicely typed object should be revisited.
 
                 let schema = item.schema();
