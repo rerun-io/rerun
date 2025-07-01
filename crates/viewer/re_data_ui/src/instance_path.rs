@@ -59,7 +59,7 @@ impl DataUi for InstancePath {
             ui_layout.label(
                 ui,
                 format!(
-                    "{self} has no components on timeline {:?}",
+                    "only subpaths of {self} have components on timeline {:?}",
                     query.timeline()
                 ),
             );
