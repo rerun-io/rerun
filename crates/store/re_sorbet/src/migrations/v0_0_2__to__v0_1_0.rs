@@ -187,6 +187,8 @@ fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
 /// Look for old `RecordingProperties` at `/__properties/recording`
 /// and rename it to `RecordingInfo` and move it to `/__properties`.
+///
+/// User properties are still on `/__properties/$FOO` with column name `property:$FOO:…` - no change there.
 fn port_recording_info(batch: &mut ArrowRecordBatch) {
     re_tracing::profile_function!();
 
@@ -198,6 +200,11 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
         }
     }
 
+    fn migrate_column_name(name: &str) -> String {
+        name.replace("RecordingProperties", "RecordingInfo")
+            .replace("property:recording:", "property:RecordingInfo:")
+    }
+
     let modified_fields: arrow::datatypes::Fields = batch
         .schema()
         .fields()
@@ -205,7 +212,7 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
         .map(|field| {
             // Migrate field name:
             let mut field = arrow::datatypes::Field::new(
-                field.name().replace("RecordingProperties", "RecordingInfo"),
+                migrate_column_name(field.name()),
                 field.data_type().clone(),
                 field.is_nullable(),
             )
