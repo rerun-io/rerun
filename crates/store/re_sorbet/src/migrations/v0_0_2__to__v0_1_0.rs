@@ -188,6 +188,8 @@ fn rewire_tagged_components(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 /// Look for old `RecordingProperties` at `/__properties/recording`
 /// and rename it to `RecordingInfo` and move it to `/__properties`.
 fn port_recording_info(batch: &mut ArrowRecordBatch) {
+    re_tracing::profile_function!();
+
     // We renamed `RecordingProperties` to `RecordingInfo`,
     // and moved it from `/__properties/recording` to `/__properties`.
     if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path") {
@@ -202,7 +204,11 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
         .fields()
         .iter()
         .map(|field| {
-            let mut field = arrow::datatypes::Field::clone(field.as_ref());
+            let mut field = arrow::datatypes::Field::new(
+                field.name().replace("RecordingProperties", "RecordingInfo"),
+                field.data_type().clone(),
+                field.is_nullable(),
+            );
 
             // Rename `RecordingProperties` to `RecordingInfo`:
             for key in [
