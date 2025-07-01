@@ -57,7 +57,7 @@ pub enum DecoderDelayState {
     /// The decoder is caught up with the most recent requested frame.
     UpToDate,
 
-    /// The decoder is caught up within [`chunk_decoder::TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES`] frames.
+    /// The decoder is caught up within a certain tolerance.
     ///
     /// I.e. the video texture is not the most recently requested frame, but it's quite close.
     UpToDateWithinTolerance,
@@ -70,7 +70,7 @@ pub enum DecoderDelayState {
 }
 
 impl DecoderDelayState {
-    /// Whether a user of [`player::VideoPlayer`] should keep requesting a more up to date video frame even
+    /// Whether a user of a video player should keep requesting a more up to date video frame even
     /// if the requested time has not changed.
     pub fn should_rerequest_frame(&self) -> bool {
         match self {
