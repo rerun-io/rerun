@@ -1331,7 +1331,9 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 /// A `ComponentDescriptor` fully describes the semantics of a column of data.
 ///
-/// Every component is uniquely identified by its `ComponentDescriptor`.
+/// Every component at a given `EntityPath` is uniquely identified by the
+/// `component` field of the descriptor. The `archetype` and `component_type`
+/// fields provide additional information about the semantics of the data.
 #[pyclass(name = "ComponentDescriptor")]
 #[derive(Clone)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
@@ -1379,19 +1381,17 @@ impl PyComponentDescriptor {
         self.0.archetype.map(|a| a.to_string())
     }
 
-    /// Identifier of the component associated with this data.
+    /// Uniquely identifies of the component associated with this data.
     ///
-    /// If `archetype` is `None`, this will be a simple field name.
-    ///
-    /// Example: `Points3D:positions`. Warning: Never parse this string to retrieve an archetype!
+    /// Example: `Points3D:positions`.
     #[getter]
     fn component(&self) -> String {
         self.0.component.to_string()
     }
 
-    /// Optional, semantic type associated with this data.
+    /// Optional type information for this component.
     ///
-    /// This is fully implied by the `component`, but included for semantic convenience.
+    /// Can be used to inform applications on how to interpret the data.
     ///
     /// Example: `rerun.components.Position3D`.
     #[getter]
@@ -1399,7 +1399,7 @@ impl PyComponentDescriptor {
         self.0.component_type.map(|a| a.to_string())
     }
 
-    /// Unconditionally sets `archetype` & `component_type` to the given ones (if specified).
+    /// Unconditionally sets `archetype` and `component_type` to the given ones (if specified).
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
@@ -1412,7 +1412,7 @@ impl PyComponentDescriptor {
         Self(cloned)
     }
 
-    /// Sets `archetype` & `component_type` to the given one iff it's not already set.
+    /// Sets `archetype` and `component_type` to the given one iff it's not already set.
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();

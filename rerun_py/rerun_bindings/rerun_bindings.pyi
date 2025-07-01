@@ -757,7 +757,9 @@ class ComponentDescriptor:
     """
     A `ComponentDescriptor` fully describes the semantics of a column of data.
 
-    Every component is uniquely identified by its `ComponentDescriptor`.
+    Every component at a given `EntityPath` is uniquely identified by the
+    `component` field of the descriptor. The `archetype` and `component_type`
+    fields provide additional information about the semantics of the data.
     """
 
     def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
@@ -776,37 +778,26 @@ class ComponentDescriptor:
     @property
     def component(self) -> str:
         """
-        Identifier of the component associated with this data.
+        Uniquely identifies of the component associated with this data.
 
-        If `archetype` is `None`, this will be a simple field name.
-
-        Example: `Points3D:positions`. Warning: Never parse this string to retrieve an archetype!
+        Example: `Points3D:positions`.
         """
 
     @property
     def component_type(self) -> str | None:
         """
-        Optional, semantic type associated with this data.
+        Optional type information for this component.
 
-        This is fully implied by the `component`, but included for semantic convenience.
+        Can be used to inform applications on how to interpret the data.
 
         Example: `rerun.components.Position3D`.
         """
 
     def with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """
-        Unconditionally sets `archetype` & `component_type` to the given ones (if specified).
-
-        This also changes the archetype part of the descriptor.
-
-        """
+        """Unconditionally sets `archetype` and `component_type` to the given ones (if specified)."""
 
     def or_with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
-        """
-        Sets `archetype` & `component_type` to the given one iff it's not already set.
-
-        This also changes the archetype part of the descriptor.
-        """
+        """Sets `archetype` and `component_type` to the given one iff it's not already set."""
 
 #
 # sinks

@@ -19,7 +19,6 @@ pub struct ComponentDescriptor {
 
     /// Uniquely identifies of the component associated with this data.
     ///
-    ///
     /// Example: `Points3D:positions`.
     pub component: ComponentIdentifier,
 
