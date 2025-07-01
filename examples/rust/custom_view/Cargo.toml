@@ -1,6 +1,6 @@
 [package]
 name = "custom_view"
-version = "0.24.0-alpha.5"
+version = "0.24.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
