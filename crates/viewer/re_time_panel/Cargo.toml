@@ -20,11 +20,7 @@ all-features = true
 
 [features]
 default = []
-testing = [
-  "re_viewer_context/testing",
-  "re_viewport_blueprint/testing",
-  "smallvec/serde",
-]
+testing = ["re_viewer_context/testing", "smallvec/serde"]
 
 [dependencies]
 re_chunk_store.workspace = true
@@ -52,7 +48,6 @@ vec1.workspace = true
 
 [dev-dependencies]
 re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport_blueprint = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
 criterion.workspace = true

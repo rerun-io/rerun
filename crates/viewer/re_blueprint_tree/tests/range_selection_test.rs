@@ -8,9 +8,8 @@ use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{Timeline, build_frame_nr};
 use re_types::archetypes::Points3D;
 use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow, test_context::TestContext};
-use re_viewport_blueprint::{
-    ViewBlueprint, ViewportBlueprint, test_context_ext::TestContextExt as _,
-};
+use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn test_range_selection_in_blueprint_tree() {

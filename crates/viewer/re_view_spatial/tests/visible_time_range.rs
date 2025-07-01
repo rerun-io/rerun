@@ -7,7 +7,8 @@ use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
+use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
     let timeline = Timeline::new_sequence("frame");
@@ -378,34 +379,7 @@ fn run_view_ui_and_save_snapshot(
         .setup_kittest_for_rendering()
         .with_size(size)
         .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(SpatialView2D::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+            test_context.run_with_single_view(ctx, view_id);
         });
 
     harness.run();
