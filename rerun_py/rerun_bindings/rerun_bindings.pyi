@@ -763,6 +763,7 @@ class ComponentDescriptor:
     """
 
     def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
+        """Creates a component descriptor."""
 
     @property
     def archetype(self) -> str | None:
