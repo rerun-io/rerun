@@ -71,6 +71,10 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn flush_blocking(&self) {
         Self::flush_blocking(self);
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ---------------
@@ -87,7 +91,7 @@ pub mod sink {
         MultiSink,
     };
 
-    pub use crate::log_sink::GrpcSink;
+    pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};

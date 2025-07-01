@@ -972,9 +972,13 @@ impl RecordingStreamInner {
     }
 }
 
+type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
+
 enum Command {
     RecordMsg(LogMsg),
     SwapSink(Box<dyn LogSink>),
+    // TODO(#10444): This should go away with more explicit sinks.
+    InspectSink(InspectSinkFn),
     Flush(Sender<()>),
     PopPendingChunks,
     Shutdown,
@@ -1470,6 +1474,9 @@ fn forwarding_thread(
 
                 *sink = new_sink;
             }
+            Command::InspectSink(f) => {
+                f(sink.as_ref());
+            }
             Command::Flush(oneshot) => {
                 re_log::trace!("Flushing…");
                 // Flush the underlying sink if possible.
@@ -1854,6 +1861,21 @@ impl RecordingStream {
         let sink = sinks.into_multi_sink();
 
         self.set_sink(Box::new(sink));
+    }
+
+    /// Asynchronously calls a method that has read access to the currently active sink.
+    ///
+    /// Since a recording stream's sink is owned by a different thread there is no guarantee when
+    /// the callback is going to be called.
+    /// It's advised to return as quickly as possible from the callback since
+    /// as long as the callback doesn't return, the sink will not receive any new data,
+    ///
+    /// # Experimental
+    ///
+    /// This is an experimental API and may change in future releases.
+    // TODO(#10444): This should become a lot more straight forward with explicit sinks.
+    pub fn inspect_sink(&self, f: impl FnOnce(&dyn LogSink) + Send + 'static) {
+        self.with(|inner| inner.cmds_tx.send(Command::InspectSink(Box::new(f))).ok());
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use

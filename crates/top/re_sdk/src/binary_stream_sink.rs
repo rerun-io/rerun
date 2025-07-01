@@ -101,4 +101,8 @@ impl LogSink for BinaryStreamSink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }

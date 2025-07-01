@@ -80,6 +80,10 @@ impl crate::sink::LogSink for GrpcServerSink {
             re_log::error_once!("Failed to flush: {err}");
         }
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Drop for GrpcServerSink {
