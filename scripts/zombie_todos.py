@@ -13,6 +13,7 @@ from gitignore_parser import parse_gitignore
 
 parser = argparse.ArgumentParser(description="Hunt down zombie TODOs.")
 parser.add_argument("--token", dest="GITHUB_TOKEN", help="Github token to fetch issues", required=True)
+parser.add_argument("--markdown", action="store_true", help="Format output as markdown checklist")
 
 args = parser.parse_args()
 
@@ -25,6 +26,7 @@ headers = {
 }
 
 issues: list[int] = []
+authors: dict[int, str] = {}
 
 repo_owner = "rerun-io"
 repo_name = "rerun"
@@ -43,6 +45,8 @@ async def fetch_issues() -> None:
 
             data = await response.json()
             issues.extend([issue["number"] for issue in data])
+            for issue in data:
+                authors[issue["number"]] = issue["user"]["login"]
             links = response.links
 
             while "next" in links:
@@ -52,6 +56,8 @@ async def fetch_issues() -> None:
                         return None
                     data = await response.json()
                     issues.extend([issue["number"] for issue in data])
+                    for issue in data:
+                        authors[issue["number"]] = issue["user"]["login"]
                     links = response.links
                     print("fetched", len(issues), "issues")
 
@@ -76,10 +82,19 @@ def check_file(path: str) -> bool:
             if matches is not None:
                 for match in matches.groups():
                     if match is not None and int(match) in closed_issues:
-                        print(f"{path}:{i}: {line.strip()}")
+                        issue_num = int(match)
+                        author = authors.get(issue_num, "unknown")
+                        if args.markdown:
+                            # Convert path to relative path for clean display
+                            display_path = path.lstrip("./")
+                            github_url = f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i+1}"
+                            print(f"* [ ] `{line.strip()}`")
+                            print(f"   * #{issue_num} (Issue author: @{author})")
+                            print(f"   * [`{display_path}#L{i}`]({github_url})")
+                        else:
+                            print(f"{path}:{i}: {line.strip()}")
                         ok &= False
     return ok
-
 
 # ---
 
