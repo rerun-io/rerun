@@ -29,7 +29,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-const DEFAULT_BATCH_SIZE: usize = 8000;
+/// Sets the size for output record batches in rows. The last batch will likely be smaller.
+/// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
+/// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
+/// the pitfall of executing a single row at a time, but we will likely want to consider
+/// at some point moving to a dynamic sizing.
+const DEFAULT_BATCH_SIZE: usize = 2048;
 
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
@@ -135,6 +140,7 @@ impl Stream for DataframePartitionStream {
         let num_fields = query_handle.schema().fields.len();
 
         let mut this_batch = vec![Vec::with_capacity(DEFAULT_BATCH_SIZE); num_fields];
+        let mut curr_rows = 0;
 
         loop {
             let Some(mut this_row) = query_handle.next_row() else {
@@ -160,10 +166,16 @@ impl Stream for DataframePartitionStream {
                 )));
             }
 
+            curr_rows += this_row[0].len();
+
             this_batch
                 .iter_mut()
                 .zip(this_row)
                 .for_each(|(batch, element)| batch.push(element));
+
+            if curr_rows >= DEFAULT_BATCH_SIZE {
+                break;
+            }
         }
 
         if this_batch.first().map(|a| a.is_empty()).unwrap_or(true) {
