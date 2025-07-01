@@ -1,10 +1,14 @@
+use std::iter;
 use std::sync::Arc;
 
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, RichText, TopBottomPanel, Ui, Widget as _};
+use egui::{
+    FontSelection, Frame, Id, Margin, Rangef, RichText, TextWrapMode, TopBottomPanel, Ui,
+    Widget as _, WidgetText,
+};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
@@ -376,14 +380,36 @@ impl<'a> DataFusionTableWidget<'a> {
             None => {}
         }
 
+        // Calculate the maximum width of the row number column. Since we use monospace text,
+        // calculating the width of the highest row number is sufficient.
+        let max_row_number_width = (Self::row_number_text(num_rows)
+            .into_galley(
+                ui,
+                Some(TextWrapMode::Extend),
+                1000.0,
+                FontSelection::Default,
+            )
+            .rect
+            .width()
+            + ui.tokens().table_cell_margin().sum().x)
+            .ceil();
+
         egui_table::Table::new()
             .id_salt(session_id)
             .columns(
-                table_delegate
-                    .table_config
-                    .visible_column_ids()
-                    .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
-                    .collect::<Vec<_>>(),
+                iter::once(
+                    egui_table::Column::new(max_row_number_width)
+                        .resizable(false)
+                        .range(Rangef::new(max_row_number_width, max_row_number_width))
+                        .id(Id::new("row_number")),
+                )
+                .chain(
+                    table_delegate
+                        .table_config
+                        .visible_column_ids()
+                        .map(|id| egui_table::Column::new(200.0).resizable(true).id(id)),
+                )
+                .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
                 tokens.table_header_height(),
@@ -396,6 +422,10 @@ impl<'a> DataFusionTableWidget<'a> {
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
         }
+    }
+
+    fn row_number_text(rows: u64) -> WidgetText {
+        WidgetText::from(RichText::new(format_uint(rows)).weak().monospace())
     }
 
     fn bottom_bar_ui(
@@ -508,72 +538,82 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         let tokens = ui.tokens();
 
-        ui.set_truncate_style();
+        if cell.group_index == 0 {
+            header_ui(ui, false, |ui| ui.weak("#"));
+        } else {
+            ui.set_truncate_style();
+            // Offset by one for the row number column.
+            let column_index = cell.group_index - 1;
 
-        let id = self.table_config.visible_column_ids().nth(cell.group_index);
+            let id = self.table_config.visible_column_ids().nth(column_index);
 
-        if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-            let column_dataframe_name = self.fields[index].name();
-            let column_display_name = column.display_name();
+            if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
+                let column_dataframe_name = self.fields[index].name();
+                let column_display_name = column.display_name();
 
-            let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
-                (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
-            });
+                let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
+                    (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
+                });
 
-            header_ui(ui, true, |ui| {
-                egui::Sides::new()
-                    .show(
-                        ui,
-                        |ui| {
-                            ui.set_height(ui.tokens().table_content_height());
-                            let response = ui.label(
-                                egui::RichText::new(column_display_name)
-                                    .strong()
-                                    .monospace(),
-                            );
+                header_ui(ui, true, |ui| {
+                    egui::Sides::new()
+                        .show(
+                            ui,
+                            |ui| {
+                                ui.set_height(ui.tokens().table_content_height());
+                                let response = ui.label(
+                                    egui::RichText::new(column_display_name)
+                                        .strong()
+                                        .monospace(),
+                                );
 
-                            if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
-                            {
-                                ui.add_space(-5.0);
-                                ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
-                            }
-
-                            response
-                        },
-                        |ui| {
-                            ui.set_height(ui.tokens().table_content_height());
-                            egui::containers::menu::MenuButton::from_button(
-                                ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
-                            )
-                            .config(MenuConfig::new().style(menu_style()))
-                            .ui(ui, |ui| {
-                                for sort_direction in SortDirection::iter() {
-                                    let already_sorted =
-                                        Some(&sort_direction) == current_sort_direction;
-
-                                    if ui
-                                        .add_enabled_ui(!already_sorted, |ui| {
-                                            sort_direction.menu_button(ui)
-                                        })
-                                        .inner
-                                        .clicked()
-                                    {
-                                        self.new_blueprint.sort_by = Some(SortBy {
-                                            column: column_dataframe_name.to_owned(),
-                                            direction: sort_direction,
-                                        });
-                                        ui.close();
-                                    }
+                                if let Some(dir_icon) =
+                                    current_sort_direction.map(SortDirection::icon)
+                                {
+                                    ui.add_space(-5.0);
+                                    ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
                                 }
-                            });
-                        },
-                    )
-                    .0
-            })
-            .inner
-            .on_hover_ui(|ui| {
-                column_descriptor_ui(ui, &column.desc);
-            });
+
+                                response
+                            },
+                            |ui| {
+                                ui.set_height(ui.tokens().table_content_height());
+                                egui::containers::menu::MenuButton::from_button(
+                                    ui.small_icon_button_widget(
+                                        &re_ui::icons::MORE,
+                                        "More options",
+                                    ),
+                                )
+                                .config(MenuConfig::new().style(menu_style()))
+                                .ui(ui, |ui| {
+                                    for sort_direction in SortDirection::iter() {
+                                        let already_sorted =
+                                            Some(&sort_direction) == current_sort_direction;
+
+                                        if ui
+                                            .add_enabled_ui(!already_sorted, |ui| {
+                                                sort_direction.menu_button(ui)
+                                            })
+                                            .inner
+                                            .clicked()
+                                        {
+                                            self.new_blueprint.sort_by = Some(SortBy {
+                                                column: column_dataframe_name.to_owned(),
+                                                direction: sort_direction,
+                                            });
+                                            ui.close();
+                                        }
+                                    }
+                                });
+                            },
+                        )
+                        .0
+                })
+                .inner
+                .on_hover_ui(|ui| {
+                    column_descriptor_ui(ui, &column.desc);
+                });
+            }
         }
     }
 
@@ -584,31 +624,37 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
             ui.set_truncate_style();
 
-            let id = self.table_config.visible_column_ids().nth(cell.col_nr);
+            if cell.col_nr == 0 {
+                // This is the row number column.
+                ui.label(DataFusionTableWidget::row_number_text(cell.row_nr));
+            } else {
+                let col_index = cell.col_nr - 1; // Offset by one for the row number column.
+                let id = self.table_config.visible_column_ids().nth(col_index);
 
-            if let Some(col_idx) = self.columns.index_from_id(id) {
-                //TODO(ab): make an utility for that
-                for display_record_batch in self.display_record_batches {
-                    let row_count = display_record_batch.num_rows();
-                    if row_index < row_count {
-                        // this is the one
-                        let column = &display_record_batch.columns()[col_idx];
+                if let Some(col_idx) = self.columns.index_from_id(id) {
+                    //TODO(ab): make an utility for that
+                    for display_record_batch in self.display_record_batches {
+                        let row_count = display_record_batch.num_rows();
+                        if row_index < row_count {
+                            // this is the one
+                            let column = &display_record_batch.columns()[col_idx];
 
-                        // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-                        // avoiding doing so needs significant refactoring work.
-                        column.data_ui(
-                            self.ctx,
-                            ui,
-                            &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                                TimelineName::new("unknown"),
-                            ),
-                            row_index,
-                            None,
-                        );
+                            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+                            // avoiding doing so needs significant refactoring work.
+                            column.data_ui(
+                                self.ctx,
+                                ui,
+                                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                                    TimelineName::new("unknown"),
+                                ),
+                                row_index,
+                                None,
+                            );
 
-                        break;
-                    } else {
-                        row_index -= row_count;
+                            break;
+                        } else {
+                            row_index -= row_count;
+                        }
                     }
                 }
             }
