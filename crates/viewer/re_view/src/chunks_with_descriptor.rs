@@ -34,7 +34,7 @@ impl ChunksWithDescriptor<'_> {
 ///
 /// Note that the descriptor is not owned, but borrowed here since it's typically returned
 /// only by iterating over a [`ChunksWithDescriptor`].
-// TODO(#9903): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
+// TODO(#10460): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
 #[derive(Debug, Clone)]
 pub struct ChunkWithDescriptor<'chunk, 'descriptor> {
     pub chunk: &'chunk Chunk,
