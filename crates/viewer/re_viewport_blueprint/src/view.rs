@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_component_overrides() {
-        let mut test_ctx = TestContext::default();
+        let mut test_ctx = TestContext::new();
         let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.

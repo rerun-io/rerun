@@ -1100,7 +1100,7 @@ mod tests {
     /// Snapshot test for the selection panel when a recording is selected.
     #[test]
     fn selection_panel_recording_snapshot() {
-        let mut test_context = TestContext::default();
+        let mut test_context = TestContext::new();
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 

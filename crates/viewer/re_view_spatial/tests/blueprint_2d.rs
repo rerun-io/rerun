@@ -10,7 +10,7 @@ const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);
 
 #[test]
 pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
 
     log_arrows(&mut test_context);
 
@@ -25,7 +25,7 @@ pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
 
 #[test]
 pub fn test_blueprint_overrides_with_spatial_2d() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
 
     log_arrows(&mut test_context);
 
@@ -40,7 +40,7 @@ pub fn test_blueprint_overrides_with_spatial_2d() {
 
 #[test]
 pub fn test_blueprint_defaults_with_spatial_2d() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
 
     log_arrows(&mut test_context);
 
@@ -112,17 +112,6 @@ fn setup_blueprint(
 
         blueprint.add_view_at_root(view)
     })
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<SpatialView2D>();
-
-    test_context
 }
 
 fn run_view_ui_and_save_snapshot(

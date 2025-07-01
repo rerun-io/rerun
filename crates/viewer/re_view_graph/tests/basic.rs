@@ -13,7 +13,7 @@ use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn coincident_nodes() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "coincident_nodes";
 
     // It's important to first register the view class before adding any entities,
@@ -42,7 +42,7 @@ pub fn coincident_nodes() {
 
 #[test]
 pub fn self_and_multi_edges() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "self_and_multi_edges";
 
     // It's important to first register the view class before adding any entities,
@@ -90,7 +90,7 @@ pub fn self_and_multi_edges() {
 
 #[test]
 pub fn multi_graphs() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "multi_graphs";
 
     // It's important to first register the view class before adding any entities,

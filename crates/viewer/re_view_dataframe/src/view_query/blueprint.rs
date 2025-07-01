@@ -307,7 +307,7 @@ mod test {
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
     fn test_latest_at_enabled() {
-        let mut test_context = TestContext::default();
+        let mut test_context = TestContext::new();
 
         let view_id = ViewId::random();
 

@@ -107,9 +107,7 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
 }
 
 fn test_context(test_case: &TestCase) -> TestContext {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     match test_case.recording_kind {
         RecordingKind::Empty => {}
