@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
@@ -19,7 +19,14 @@ use crate::{
 #[derive(Default)]
 struct DecoderOutput {
     /// Frames sorted by PTS.
-    frames: Vec<Frame>,
+    ///
+    /// *Almost* all decoders are outputting frames in presentation timestamp order.
+    /// However, WebCodec decoders on Firefox & Safari have been observed to output frames in decode order.
+    /// (i.e. the order in which they were submitted)
+    /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
+    /// reset decoder.
+    /// See also <https://github.com/rerun-io/rerun/issues/7961>
+    frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
     error: Option<TimedDecodingError>,
@@ -56,15 +63,9 @@ impl VideoSampleDecoder {
                     );
                     let mut output = decoder_output.lock();
 
-                    if let Some(last_frame) = output.frames.last() {
-                        debug_assert!(
-                            last_frame.info.presentation_timestamp
-                                < frame.info.presentation_timestamp,
-                            "Expect new incoming frames to be in increasing PTS order. We expect the sample decoder to be reset upon backwards seeking."
-                        );
-                    }
-
-                    output.frames.push(frame);
+                    output
+                        .frames_by_pts
+                        .insert(frame.info.presentation_timestamp, frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
                 }
                 Err(err) => {
@@ -129,16 +130,19 @@ impl VideoSampleDecoder {
     ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
 
-        if let Some(idx) = latest_at_idx(
-            &decoder_output.frames,
-            |frame| frame.info.presentation_timestamp,
-            &pts,
-        ) {
-            decoder_output.frames.drain(0..idx);
+        // Keep everything at or after the given PTS.
+        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&pts);
 
+        if !decoder_output.frames_by_pts.is_empty() {
             Some(parking_lot::MutexGuard::map(
                 decoder_output,
-                |decoder_output| &mut decoder_output.frames[0],
+                |decoder_output| {
+                    decoder_output
+                        .frames_by_pts
+                        .first_entry()
+                        .expect("We just checked that the map is not empty")
+                        .into_mut()
+                },
             ))
         } else {
             None
@@ -151,7 +155,7 @@ impl VideoSampleDecoder {
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;
-        decoder_output.frames.clear();
+        decoder_output.frames_by_pts.clear();
 
         Ok(())
     }
@@ -351,50 +355,4 @@ fn copy_native_video_frame_to_texture(
     )?;
 
     Ok(format)
-}
-
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-///
-/// Like `re_video::latest_at_idx`, but works with regular slices.
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::latest_at_idx;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 }
