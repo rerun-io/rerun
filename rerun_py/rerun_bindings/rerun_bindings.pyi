@@ -757,7 +757,7 @@ class ComponentDescriptor:
     """
     A `ComponentDescriptor` fully describes the semantics of a column of data.
 
-    Every component at a given `EntityPath` is uniquely identified by the
+    Every component at a given entity path is uniquely identified by the
     `component` field of the descriptor. The `archetype` and `component_type`
     fields provide additional information about the semantics of the data.
     """
@@ -793,10 +793,10 @@ class ComponentDescriptor:
         Example: `rerun.components.Position3D`.
         """
 
-    def with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+    def with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
         """Unconditionally sets `archetype` and `component_type` to the given ones (if specified)."""
 
-    def or_with_overrides(self, archetype: str | None, component_type: str | None) -> ComponentDescriptor:
+    def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
         """Sets `archetype` and `component_type` to the given one iff it's not already set."""
 
 #

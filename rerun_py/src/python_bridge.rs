@@ -1331,7 +1331,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 /// A `ComponentDescriptor` fully describes the semantics of a column of data.
 ///
-/// Every component at a given `EntityPath` is uniquely identified by the
+/// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
 #[pyclass(name = "ComponentDescriptor")]
@@ -1343,7 +1343,7 @@ impl PyComponentDescriptor {
     /// Creates a new component descriptor.
     #[new]
     #[pyo3(signature = (component, archetype=None, component_type=None))]
-    #[pyo3(text_signature = "(self, url=None, flush_timeout_sec=None)")]
+    #[pyo3(text_signature = "(self, archetype=None, component_type=None)")]
     fn partial(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let descr = ComponentDescriptor {
             archetype: archetype.map(Into::into),

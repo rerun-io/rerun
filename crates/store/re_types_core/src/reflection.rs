@@ -293,9 +293,7 @@ impl ArchetypeFieldReflection {
 /// constraints on the [`ComponentDescriptor::component`] field, which can be arbitrary.
 ///
 /// Components that are built into the Rerun viewer follow the convention that
-/// the `component` field starts with the short name of its archetype. For these
-/// cases, [`ArchetypeName::with_field`] is a convenient method to create a
-/// [`ComponentIdentifier`] that follows the viewer's conventions.
+/// the `component` field starts with the short name of its archetype.
 pub trait ComponentDescriptorExt {
     /// Returns the field name of a Rerun-builtin type.
     ///
@@ -303,13 +301,13 @@ pub trait ComponentDescriptorExt {
     /// from [`ComponentDescriptor::component`].
     fn archetype_field_name(&self) -> &str;
 
-    /// Unconditionally sets [`Self::archetype`] to the given one.
+    /// Unconditionally sets [`ComponentDescriptor::archetype`] to the given one.
     ///
     /// Following the viewer's conventions, this also changes the archetype
     /// part of [`ComponentDescriptor::component`].
     fn with_builtin_archetype(self, archetype: ArchetypeName) -> Self;
 
-    /// Sets [`Self::archetype`] to the given one iff it's not already set.
+    /// Sets [`ComponentDescriptor::archetype`] to the given one iff it's not already set.
     ///
     /// Following the viewer's conventions, this also changes the archetype
     /// part of [`ComponentDescriptor::component`].
@@ -318,7 +316,7 @@ pub trait ComponentDescriptorExt {
 
 /// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
 ///
-/// Mainly used as a convenience function to create [`ComponentDescriptors`] for
+/// Mainly used as a convenience function to create [`ComponentDescriptor`]s for
 /// Rerun-builtin types. In general, the [`ArchetypeName`] does not place any restrictions
 /// on the contents of [`ComponentIdentifier`].
 #[inline]

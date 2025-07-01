@@ -4,7 +4,7 @@ use crate::{ArchetypeName, ComponentIdentifier, ComponentType};
 
 /// A [`ComponentDescriptor`] fully describes the semantics of a column of data.
 ///
-/// Every component at a given [`EntityPath`] is uniquely identified by the
+/// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
