@@ -205,7 +205,12 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
             let mut field = arrow::datatypes::Field::clone(field.as_ref());
 
             // Rename `RecordingProperties` to `RecordingInfo`:
-            for key in ["rerun:archetype", "rerun:component_type", "rerun:component"] {
+            for key in [
+                "rerun:archetype",
+                "rerun:component_type",
+                "rerun:component",
+                "rerun:entity_path",
+            ] {
                 if let Some(archetype) = field.metadata_mut().get_mut(key) {
                     *archetype = archetype.replace("RecordingProperties", "RecordingInfo");
                 }
