@@ -1127,11 +1127,11 @@ class DatasetEntry(Entry):
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
 
-    def set_default_blueprint_partition_id(self, partition_id: str) -> None:
+    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
         """
         Set the default blueprint partition ID for this dataset.
 
-        This fails if the change cannot be made to the remote server.
+        Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
         """
 
     def partition_ids(self) -> list[str]:
