@@ -200,7 +200,8 @@ impl VideoPlayer {
             // (otherwise we wouldn't have received a frame from the decoder)
             self.last_error = None;
         } else {
-            // If there was no on the sample decoder, the last decoded frame is what we previously reported (if any).
+            // If the sample decoder didn't report a frame we naturally still use the last video texture.
+            // This texture may or may not be up to date, update the delay state accordingly!
             let current_frame_info = self.video_texture.frame_info.as_ref();
             self.decoder_delay_state = if let Some(last_decoded_pts) =
                 current_frame_info.map(|info| info.presentation_timestamp)
@@ -491,6 +492,7 @@ impl VideoPlayer {
 }
 
 /// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
+#[must_use]
 fn update_decoder_delay_state(
     previous_decoder_delay_state: DecoderDelayState,
     video_description: &re_video::VideoDataDescription,
@@ -505,7 +507,7 @@ fn update_decoder_delay_state(
             if up_to_date {
                 DecoderDelayState::UpToDate
             } else {
-                if is_decoder_catching_up(
+                if is_significantly_behind(
                     video_description,
                     requested_sample,
                     last_decoded_frame_pts,
@@ -529,13 +531,14 @@ fn update_decoder_delay_state(
 }
 
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
-fn is_decoder_catching_up(
+fn is_significantly_behind(
     video_description: &re_video::VideoDataDescription,
     requested_sample: Option<&re_video::SampleMetadata>,
     decoded_frame_pts: Time,
 ) -> bool {
     let Some(requested_pts) = requested_sample.map(|s| s.presentation_timestamp) else {
-        // Desired sample doesn't exist. We're technically not catching up, but we may as well behave as if we are.
+        // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
+        // We're technically not catching up, but we may as well behave as if we are.
         return true;
     };
 
@@ -563,7 +566,8 @@ fn is_decoder_catching_up(
     let mut sample = requested_sample;
     loop {
         let Some(current_sample) = sample else {
-            // Sample doesn't exist anymore. We're technically not catching up, but we may as well behave as if we are.
+            // Sample doesn't exist anymore. This should only happen if the video is being GC'ed from the back.
+            // We're technically not catching up, but we may as well behave as if we are.
             return true;
         };
         if current_sample.presentation_timestamp == decoded_frame_pts {
@@ -578,10 +582,6 @@ fn is_decoder_catching_up(
         }
 
         // Check the sample prior to this one.
-        sample = video_description
-            .latest_sample_index_at_presentation_timestamp(
-                current_sample.presentation_timestamp - Time::new(1),
-            )
-            .and_then(|sidx| video_description.samples.get(sidx));
+        sample = video_description.previous_presented_sample(current_sample);
     }
 }
