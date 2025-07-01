@@ -135,9 +135,8 @@ fn load_and_stream(
                 let recording_info = re_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
-                debug_assert!(TimePoint::default().is_static());
                 let Ok(initial) = Chunk::builder(EntityPath::properties())
-                    .with_archetype(RowId::new(), TimePoint::default(), &recording_info)
+                    .with_archetype(RowId::new(), TimePoint::STATIC, &recording_info)
                     .build()
                 else {
                     re_log::error!(
