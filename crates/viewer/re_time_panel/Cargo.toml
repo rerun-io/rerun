@@ -48,7 +48,6 @@ vec1.workspace = true
 
 [dev-dependencies]
 re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
 criterion.workspace = true
