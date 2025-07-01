@@ -29,41 +29,33 @@ issues: list[int] = []
 repo_owner = "rerun-io"
 repo_name = "rerun"
 issue_state = "closed"
-per_page = 100
-
-
-async def fetch_issue_page(session: aiohttp.ClientSession, page: int) -> list[int]:
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/issues?state={issue_state}&per_page={per_page}&page={page}"
-    async with session.get(url, headers=headers) as response:
-        if response.status != 200:
-            print(f"Error: Failed to fetch issues from page {page}. Status code: {response.status}")
-            return []
-        data = await response.json()
-        return [issue["number"] for issue in data]
-
-
-async def fetch_total_number_of_issue_pages(session: aiohttp.ClientSession) -> int | None:
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/issues?state={issue_state}&per_page={per_page}"
-    async with session.get(url, headers=headers) as response:
-        if response.status != 200:
-            print(f"Error: Failed to fetch total pages. Status code: {response.status}")
-            return None
-        link_header = response.headers.get("Link")
-        if link_header:
-            match = re.search(r'page=(\d+)>; rel="last"', link_header)
-            if match:
-                return int(match.group(1))
-        return None
+per_page = 200
 
 
 async def fetch_issues() -> None:
     async with aiohttp.ClientSession() as session:
-        total_pages = await fetch_total_number_of_issue_pages(session)
-        if total_pages is None:
-            print("Failed to determine the number of pages.")
-            return
+        tasks: list[asyncio.Task[list[int]]] = []
+        url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/issues?state={issue_state}&per_page={per_page}"
+        async with session.get(url, headers=headers) as response:
+            if response.status != 200:
+                print(f"Error: Failed to fetch first issue page. Status code: {response.status}")
+                return None
 
-        tasks = [fetch_issue_page(session, page) for page in range(1, total_pages + 1)]
+            data = await response.json()
+            issues.extend([issue["number"] for issue in data])
+            links = response.links
+
+            while "next" in links:
+                async with session.get(links["next"]["url"], headers=headers) as response:
+                    if response.status != 200:
+                        print(f"Error: Failed to fetch next issue page. Status code: {response.status}")
+                        return None
+                    data = await response.json()
+                    issues.extend([issue["number"] for issue in data])
+                    links = response.links
+                    print("fetched", len(issues), "issues")
+
+        print("done fetching issues")
         issue_lists = await asyncio.gather(*tasks)
         issues.extend(issue for issue_list in issue_lists for issue in issue_list)
 
