@@ -1,4 +1,6 @@
 //! Stupid logging of many individual scalars
+//!
+//! Similar to `plot_dashboard_stress`
 
 use rand::prelude::*;
 use rerun::EntityPath;

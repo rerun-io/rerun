@@ -1,5 +1,7 @@
 //! Plot dashboard stress test.
 //!
+//! Similar to `tests/rust/log_benchmark/src/scalars.rs`.
+//!
 //! Usage:
 //! ```text
 //! pixi run rs-plot-dashboard --help
