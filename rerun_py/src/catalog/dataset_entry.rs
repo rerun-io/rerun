@@ -106,7 +106,7 @@ impl PyDatasetEntry {
 
     /// Set the default blueprint partition ID for this dataset.
     ///
-    /// This fails if the change cannot be made to the remote server.
+    /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
     #[pyo3(signature = (partition_id))]
     fn set_default_blueprint_partition_id(
         mut self_: PyRefMut<'_, Self>,
