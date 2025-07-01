@@ -202,7 +202,10 @@ fn port_recording_info(batch: &mut ArrowRecordBatch) {
 
     fn migrate_column_name(name: &str) -> String {
         name.replace("RecordingProperties", "RecordingInfo")
-            .replace("property:recording:", "property:RecordingInfo:")
+            .replace(
+                "property:recording:RecordingInfo:",
+                "property:RecordingInfo:",
+            )
     }
 
     let modified_fields: arrow::datatypes::Fields = batch
