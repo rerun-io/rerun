@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
-use re_types::{archetypes::RecordingProperties, components::Timestamp};
+use re_types::{archetypes::RecordingInfo, components::Timestamp};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
@@ -43,7 +43,7 @@ impl crate::DataUi for ApplicationId {
             .filter(|db| db.app_id() == Some(self))
             .sorted_by_key(|entity_db| {
                 entity_db
-                    .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time())
+                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             })
             .collect();
 

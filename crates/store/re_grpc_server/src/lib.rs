@@ -885,7 +885,7 @@ mod tests {
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
+                re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(
@@ -934,7 +934,7 @@ mod tests {
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
+                re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(

@@ -170,24 +170,22 @@ pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String
 
 #[test]
 fn test_default_column_display_name() {
-    use re_log_types::EntityPathPart;
-
     // Built-in recording property:
     assert_eq!(
         default_display_name_for_column(&ColumnDescriptorRef::Component(
             &re_sorbet::ComponentColumnDescriptor {
                 store_datatype: arrow::datatypes::DataType::Binary, // ignored
-                entity_path: EntityPath::recording_properties(),
-                component: "RecordingProperties:start_time".into(),
+                entity_path: EntityPath::properties(),
+                component: "RecordingInfo:start_time".into(),
                 component_type: Some("rerun.components.Timestamp".into()),
-                archetype: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
                 is_static: false,
                 is_indicator: false,
                 is_tombstone: false,
                 is_semantically_empty: false
             },
         )),
-        "property:RecordingProperties:start_time"
+        "property:RecordingInfo:start_time"
     );
 
     // User-defined recoding property:
@@ -196,7 +194,7 @@ fn test_default_column_display_name() {
             &re_sorbet::ComponentColumnDescriptor {
                 store_datatype: arrow::datatypes::DataType::Binary, // ignored
                 component_type: None,
-                entity_path: EntityPath::properties() / EntityPathPart::from("episode"),
+                entity_path: EntityPath::properties() / "episode",
                 archetype: None,
                 component: "building".into(),
                 is_static: false,

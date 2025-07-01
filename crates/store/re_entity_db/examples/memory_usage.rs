@@ -117,7 +117,7 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let chunk = Chunk::builder("points".into())
+        let chunk = Chunk::builder("points")
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],
@@ -145,7 +145,7 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let chunk = Chunk::builder("points".into())
+        let chunk = Chunk::builder("points")
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],

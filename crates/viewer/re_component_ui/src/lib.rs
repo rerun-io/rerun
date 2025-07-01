@@ -58,6 +58,8 @@ pub const REDAP_URI_BUTTON_VARIANT: &str = "redap_uri";
 
 pub const REDAP_ENTRY_KIND_VARIANT: &str = "redap_entry_kind";
 
+pub const REDAP_THUMBNAIL_VARIANT: &str = "redap_thumbnail";
+
 // ----
 
 /// Crates a component ui registry and registers all editors of this crate to it.
@@ -205,6 +207,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
     registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
+    registry.add_variant_ui(REDAP_THUMBNAIL_VARIANT, variant_uis::redap_thumbnail);
 
     registry
 }

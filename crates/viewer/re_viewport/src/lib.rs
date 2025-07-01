@@ -9,6 +9,9 @@ mod system_execution;
 mod view_highlights;
 mod viewport_ui;
 
+#[cfg(feature = "testing")]
+pub mod test_context_ext;
+
 pub use self::viewport_ui::ViewportUi;
 
 pub mod external {

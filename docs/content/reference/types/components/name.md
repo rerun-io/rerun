@@ -22,6 +22,6 @@ utf8
 
 ## Used by
 
-* [`RecordingProperties`](../archetypes/recording_properties.md)
+* [`RecordingInfo`](../archetypes/recording_info.md?speculative-link)
 * [`SeriesLines`](../archetypes/series_lines.md)
 * [`SeriesPoints`](../archetypes/series_points.md)

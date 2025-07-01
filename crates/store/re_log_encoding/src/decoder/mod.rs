@@ -363,7 +363,7 @@ mod tests {
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
 
-        let arrow_msg = re_chunk::Chunk::builder("test_entity".into())
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
             .with_archetype(
                 re_chunk::RowId::new(),
                 re_log_types::TimePoint::default().with(

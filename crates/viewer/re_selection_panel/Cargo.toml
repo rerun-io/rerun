@@ -18,6 +18,12 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+
+[features]
+## Enable for testing utilities.
+testing = ["re_viewer_context/testing"]
+
+
 [dependencies]
 re_case.workspace = true
 re_chunk_store.workspace = true
@@ -44,3 +50,6 @@ nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
 static_assertions.workspace = true
+
+[dev-dependencies]
+re_component_ui.workspace = true

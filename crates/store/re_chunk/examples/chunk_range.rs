@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn create_chunk() -> anyhow::Result<Chunk> {
-    let mut chunk = Chunk::builder("my/entity".into())
+    let mut chunk = Chunk::builder("my/entity")
         .with_component_batches(
             RowId::new(),
             [

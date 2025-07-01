@@ -316,8 +316,8 @@ build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
-# Update the results of `insta` snapshot regression tests
-rs-update-insta-tests = "INSTA_FORCE_UPDATE=1 cargo nextest run --all-targets --all-features --cargo-quiet"
+# Update the results of `insta` and `kittest` snapshot regression tests
+rs-update-snapshot-tests = "INSTA_FORCE_UPDATE=1 UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet"
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
@@ -352,6 +352,20 @@ js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on =
 ] }
 js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = [
   "js-install",
+] }
+
+# Build individual package JS docs in their own directories
+js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depends-on = [
+  "js-install",
+] }
+
+# Combine the output of individual package docs into a single directory
+js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = [
+  "js-build-package-docs",
+] }
+
+js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = [
+  "js-docs",
 ] }
 
 [feature.wheel-build.tasks]

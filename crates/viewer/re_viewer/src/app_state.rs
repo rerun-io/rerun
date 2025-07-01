@@ -223,7 +223,7 @@ impl AppState {
                     .update(ui.ctx(), store_context.blueprint);
 
                 let viewport_blueprint =
-                    ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+                    ViewportBlueprint::from_db(store_context.blueprint, &blueprint_query);
                 let viewport_ui = ViewportUi::new(viewport_blueprint);
 
                 // If the blueprint is invalid, reset it.
@@ -313,6 +313,8 @@ impl AppState {
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
+                        is_test: false,
+
                         app_options,
                         reflection,
 
@@ -392,6 +394,8 @@ impl AppState {
                 // it's just a bunch of refs so not really that big of a deal in practice.
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
+                        is_test: false,
+
                         app_options,
                         reflection,
 

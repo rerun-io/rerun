@@ -132,12 +132,11 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties = re_types::archetypes::RecordingProperties::new()
+                let recording_info = re_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
-                debug_assert!(TimePoint::default().is_static());
-                let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
-                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                let Ok(initial) = Chunk::builder(EntityPath::properties())
+                    .with_archetype(RowId::new(), TimePoint::STATIC, &recording_info)
                     .build()
                 else {
                     re_log::error!(
@@ -293,7 +292,7 @@ fn log_episode_task(
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
         .with_context(|| "Failed to get task_index field from dataset!")?;
 
-    let mut chunk = Chunk::builder("task".into());
+    let mut chunk = Chunk::builder("task");
     let mut row_id = RowId::new();
     let mut time_int = TimeInt::ZERO;
 
@@ -330,7 +329,7 @@ fn load_episode_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -359,7 +358,7 @@ fn load_episode_depth_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -429,7 +428,7 @@ fn load_episode_video(
     };
 
     // Put video asset into its own (static) chunk since it can be fairly large.
-    let video_asset_chunk = Chunk::builder(entity_path.into())
+    let video_asset_chunk = Chunk::builder(entity_path)
         .with_archetype(RowId::new(), TimePoint::default(), &video_asset)
         .build()?;
 

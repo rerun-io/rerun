@@ -70,6 +70,9 @@ pub trait LogSink: Send + Sync + 'static {
             }
         }
     }
+
+    /// As [`std::any::Any`] for dynamic downcasting.
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 // ----------------------------------------------------------------------------
@@ -115,6 +118,10 @@ impl LogSink for MultiSink {
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
         Vec::new()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -215,6 +222,10 @@ impl LogSink for BufferedSink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl fmt::Debug for BufferedSink {
@@ -267,6 +278,10 @@ impl LogSink for MemorySink {
         // a flush of the batcher. Queueing a second flush here seems to lead to a deadlock
         // at shutdown.
         std::mem::take(&mut (self.0.write()))
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -426,6 +441,10 @@ impl LogSink for CallbackSink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -434,6 +453,12 @@ impl LogSink for CallbackSink {
 pub struct GrpcSink {
     client: MessageProxyClient,
 }
+
+/// The connection state of the underlying gRPC connection of a [`GrpcSink`].
+pub type GrpcSinkConnectionState = re_grpc_client::message_proxy::write::ClientConnectionState;
+
+/// The reason why a [`GrpcSink`] was disconnected.
+pub type GrpcSinkConnectionFailure = re_grpc_client::message_proxy::write::ClientConnectionFailure;
 
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.
@@ -457,6 +482,15 @@ impl GrpcSink {
             client: MessageProxyClient::new(uri, options),
         }
     }
+
+    /// The connection state of underlying Grpc connection of this sink.
+    ///
+    /// # Experimental
+    ///
+    /// This API is experimental and may change in future releases.
+    pub fn status(&self) -> GrpcSinkConnectionState {
+        self.client.status()
+    }
 }
 
 impl Default for GrpcSink {
@@ -476,5 +510,9 @@ impl LogSink for GrpcSink {
 
     fn flush_blocking(&self) {
         self.client.flush();
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

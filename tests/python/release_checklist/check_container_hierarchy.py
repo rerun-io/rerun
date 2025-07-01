@@ -11,6 +11,10 @@ README = """\
 
 This checks that the container hierarchy behaves as expected.
 
+Known issue:
+
+- [TODO(#10453)](https://github.com/rerun-io/rerun/issues/10453): Move to container is broken
+
 ### Prepare a hierarchy
 
 TODO(ab): setup the container hierarchy with the blueprint API when available.

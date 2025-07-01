@@ -66,8 +66,7 @@ web-time.workspace = true
 [dev-dependencies]
 re_component_ui.workspace = true
 re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport.workspace = true
-re_viewport_blueprint = { workspace = true, features = ["testing"] }
+re_viewport = { workspace = true, features = ["testing"] }
 
 insta.workspace = true
 ndarray.workspace = true

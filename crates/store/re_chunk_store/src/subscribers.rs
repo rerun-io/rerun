@@ -379,7 +379,7 @@ mod tests {
         let timeline_other = Timeline::new_duration("other");
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
-        let chunk = Chunk::builder("entity_a".into())
+        let chunk = Chunk::builder("entity_a")
             .with_component_batch(
                 RowId::new(),
                 TimePoint::from_iter([
@@ -399,7 +399,7 @@ mod tests {
                 .map(|i| MyPoint::new(0.0, i as f32))
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
-            Chunk::builder("entity_b".into())
+            Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
                     TimePoint::from_iter([
@@ -419,7 +419,7 @@ mod tests {
         let chunk = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
-            Chunk::builder("entity_b".into())
+            Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
                     TimePoint::default(),

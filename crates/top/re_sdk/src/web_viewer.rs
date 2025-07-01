@@ -108,6 +108,10 @@ impl crate::sink::LogSink for WebViewerSink {
             re_log::error_once!("Failed to flush: {err}");
         }
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Drop for WebViewerSink {

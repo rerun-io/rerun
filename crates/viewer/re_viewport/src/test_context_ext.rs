@@ -1,8 +1,12 @@
 use ahash::HashMap;
 
-use re_viewer_context::{Contents, ViewerContext, VisitorControlFlow, test_context::TestContext};
+use re_viewer_context::{
+    Contents, ViewId, ViewerContext, VisitorControlFlow, test_context::TestContext,
+};
 
-use crate::{ViewportBlueprint, view_contents::DataQueryPropertyResolver};
+use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
+
+use crate::execute_systems_for_view;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
@@ -11,6 +15,12 @@ pub trait TestContextExt {
         &mut self,
         setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) -> R,
     ) -> R;
+
+    /// Displays the UI for a single given view.
+    fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId);
+
+    /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
+    fn run_with_single_view(&mut self, ctx: &egui::Context, view_id: ViewId);
 }
 
 impl TestContextExt for TestContext {
@@ -45,10 +55,8 @@ impl TestContextExt for TestContext {
             // us to a `FnMut` closure.
             if let Some(setup_blueprint) = setup_blueprint.take() {
                 self.run(egui_ctx, |ctx| {
-                    let mut viewport_blueprint = ViewportBlueprint::try_from_db(
-                        &self.blueprint_store,
-                        &self.blueprint_query,
-                    );
+                    let mut viewport_blueprint =
+                        ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
                     result = Some(setup_blueprint(ctx, &mut viewport_blueprint));
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
@@ -57,7 +65,7 @@ impl TestContextExt for TestContext {
 
                 // Reload the blueprint store and execute all view queries.
                 let viewport_blueprint =
-                    ViewportBlueprint::try_from_db(&self.blueprint_store, &self.blueprint_query);
+                    ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
 
                 let mut query_results = HashMap::default();
 
@@ -121,5 +129,41 @@ impl TestContextExt for TestContext {
         });
 
         result.expect("The `setup_closure` is expected to be called at least once")
+    }
+
+    /// Displays the UI for a single given view.
+    fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
+        let view_blueprint =
+            ViewBlueprint::try_from_db(view_id, ctx.store_context.blueprint, ctx.blueprint_query)
+                .expect("expected the view id to be known to the blueprint store");
+
+        let view_class = ctx
+            .view_class_registry()
+            .get_class_or_log_error(view_blueprint.class_identifier());
+
+        let mut view_states = self.view_states.lock();
+        let view_state = view_states.get_mut_or_create(view_id, view_class);
+
+        let (view_query, system_execution_output) =
+            execute_systems_for_view(ctx, &view_blueprint, view_state);
+
+        view_class
+            .ui(ctx, ui, view_state, &view_query, system_execution_output)
+            .expect("failed to run view ui");
+    }
+
+    /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
+    fn run_with_single_view(&mut self, ctx: &egui::Context, view_id: ViewId) {
+        // This is also called by `TestContext::run`,  but since it may change offsets in the central panel,
+        // we have to call it before creating any ui.
+        re_ui::apply_style_and_install_loaders(ctx);
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.run(ctx, |ctx| {
+                self.ui_for_single_view(ui, ctx, view_id);
+            });
+
+            self.handle_system_commands();
+        });
     }
 }

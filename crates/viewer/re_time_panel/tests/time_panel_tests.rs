@@ -20,7 +20,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
             for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
@@ -57,7 +57,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
         rng_seed.wrapping_mul(0x2545_f491_4f6c_dd1d)
     };
 
-    test_context.log_entity("/entity".into(), |mut builder| {
+    test_context.log_entity("/entity", |mut builder| {
         for frame in 0..1_000 {
             if rng() & 0b1 == 0 {
                 continue;
@@ -106,7 +106,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
@@ -118,7 +118,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     }
 
     for i in 0..2 {
-        test_context.log_entity(format!("/path/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/path/{i}"), |mut builder| {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
@@ -288,7 +288,7 @@ fn run_time_panel_and_save_snapshot(
                     );
                 }
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );

@@ -5,8 +5,8 @@ use re_viewer_context::{
     RecommendedView, ViewClass as _, ViewId,
     test_context::{HarnessExt as _, TestContext},
 };
+use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 // This test is very similar to the transform_hierarchy snippet!
 // We're testing different origins and see if we get the expected results.
@@ -15,7 +15,7 @@ pub fn test_transform_tree_origins() {
     let mut test_context = get_test_context();
 
     {
-        test_context.log_entity("/".into(), |builder| {
+        test_context.log_entity("/", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -24,7 +24,7 @@ pub fn test_transform_tree_origins() {
         });
 
         // Setup points, all are in the center of their own space:
-        test_context.log_entity("sun".into(), |builder| {
+        test_context.log_entity("sun", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -34,7 +34,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet".into(), |builder| {
+        test_context.log_entity("sun/planet", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -45,7 +45,7 @@ pub fn test_transform_tree_origins() {
         });
 
         // Add a bunch of small cubes around the planet, to test that poses are handled correctly.
-        test_context.log_entity("sun/planet/cuberoids".into(), |builder| {
+        test_context.log_entity("sun/planet/cuberoids", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -65,7 +65,7 @@ pub fn test_transform_tree_origins() {
                 )
         });
 
-        test_context.log_entity("sun/planet/moon".into(), |builder| {
+        test_context.log_entity("sun/planet/moon", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -81,7 +81,7 @@ pub fn test_transform_tree_origins() {
         let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);
         let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();
 
-        test_context.log_entity("sun/planet_path".into(), |builder| {
+        test_context.log_entity("sun/planet_path", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -95,7 +95,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet/moon_path".into(), |builder| {
+        test_context.log_entity("sun/planet/moon_path", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -111,7 +111,7 @@ pub fn test_transform_tree_origins() {
         let r_moon = 5.0_f32;
         let r_planet = 2.0_f32;
 
-        test_context.log_entity("sun/planet".into(), |builder| {
+        test_context.log_entity("sun/planet", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -125,7 +125,7 @@ pub fn test_transform_tree_origins() {
             )
         });
 
-        test_context.log_entity("sun/planet/moon".into(), |builder| {
+        test_context.log_entity("sun/planet/moon", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -172,16 +172,13 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view = ViewBlueprint::new(
+        blueprint.add_view_at_root(ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: origin.into(),
                 query_filter: "+ /**".parse().expect("valid query filter"),
             },
-        );
-        let id = view.id;
-        blueprint.add_views(std::iter::once(view), None, None);
-        id
+        ))
     })
 }
 
@@ -201,35 +198,23 @@ fn run_view_ui_and_save_snapshot(
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(SpatialView3D::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
                     // Show axis at the origin to help with orientation.
                     // TODO(#10028): this should be a blueprint property, not a state.
-                    view_state
-                        .as_any_mut()
-                        .downcast_mut::<SpatialViewState>()
-                        .expect("view state is not of correct type")
-                        .state_3d
-                        .show_axes = true;
+                    {
+                        let view_class = ctx
+                            .view_class_registry()
+                            .get_class_or_log_error(SpatialView3D::identifier());
+                        let mut view_states = test_context.view_states.lock();
+                        let view_state = view_states.get_mut_or_create(view_id, view_class);
+                        view_state
+                            .as_any_mut()
+                            .downcast_mut::<SpatialViewState>()
+                            .expect("view state is not of correct type")
+                            .state_3d
+                            .show_axes = true;
+                    }
 
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run view ui");
+                    test_context.ui_for_single_view(ui, ctx, view_id);
                 });
 
                 test_context.handle_system_commands();

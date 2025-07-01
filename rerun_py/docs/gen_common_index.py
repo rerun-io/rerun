@@ -162,7 +162,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.Clear",
             "blueprint.archetypes.EntityBehavior",
-            "archetypes.RecordingProperties",
+            "archetypes.RecordingInfo",
         ],
         gen_page=False,
     ),

@@ -78,7 +78,7 @@ fn hash_and_log(
         .with_media_type(rerun::MediaType::TEXT);
 
     let entity_path = EntityPath::from_file_path(filepath);
-    let entity_path = format!("{entity_path}/hashed").into();
+    let entity_path = format!("{entity_path}/hashed");
     let chunk = Chunk::builder(entity_path)
         .with_archetype(RowId::new(), TimePoint::default(), &doc)
         .build()?;

@@ -241,7 +241,7 @@ jobs:
       CONCURRENCY: ${{ github.ref_name }}
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
       CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      JS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
       RELEASE_VERSION: ${{ needs.version.outputs.final }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}

@@ -6,9 +6,9 @@ use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_null_timeline() {
@@ -17,11 +17,11 @@ pub fn test_null_timeline() {
     let timeline_a = Timeline::new_sequence("timeline_a");
     let timeline_b = Timeline::new_sequence("timeline_b");
 
-    test_context.log_entity("first".into(), |builder| {
+    test_context.log_entity("first", |builder| {
         builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalars::single(10.0))
     });
 
-    test_context.log_entity("second".into(), |builder| {
+    test_context.log_entity("second", |builder| {
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 1), (timeline_b, 10)],
@@ -44,7 +44,7 @@ pub fn test_unknown_timeline() {
 
     let timeline = Timeline::new_sequence("existing_timeline");
 
-    test_context.log_entity("some_entity".into(), |builder| {
+    test_context.log_entity("some_entity", |builder| {
         builder
             .with_archetype(RowId::new(), [(timeline, 0)], &Scalars::single(10.0))
             .with_archetype(RowId::new(), [(timeline, 1)], &Scalars::single(20.0))
@@ -84,13 +84,9 @@ fn get_test_context() -> TestContext {
 
 fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_dataframe::DataframeView::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        ));
 
         // the dataframe view to the desired timeline
         let query = re_view_dataframe::Query::from_blueprint(ctx, view_id);
@@ -110,34 +106,7 @@ fn run_view_ui_and_save_snapshot(
         .setup_kittest_for_rendering()
         .with_size(size)
         .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(DataframeView::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+            test_context.run_with_single_view(ctx, view_id);
         });
 
     harness.run();

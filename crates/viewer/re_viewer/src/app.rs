@@ -1195,8 +1195,8 @@ impl App {
             let messages = store.to_messages(None).collect_vec();
 
             let file_name = if let Some(rec_name) = store
-                .recording_property::<re_types::components::Name>(
-                    &re_types::archetypes::RecordingProperties::descriptor_name(),
+                .recording_info_property::<re_types::components::Name>(
+                    &re_types::archetypes::RecordingInfo::descriptor_name(),
                 ) {
                 rec_name.to_string()
             } else {
@@ -1502,13 +1502,20 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.state.redap_servers.on_frame_start(
-                            &self.connection_registry,
-                            &self.async_runtime,
-                            &self.egui_ctx,
-                        );
+                        render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
 
-                        render_ctx.begin_frame();
+                        // In some (rare) circumstances we run two egui passes in a single frame.
+                        // This happens on call to `egui::Context::request_discard`.
+                        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+
+                        if is_start_of_new_frame {
+                            self.state.redap_servers.on_frame_start(
+                                &self.connection_registry,
+                                &self.async_runtime,
+                                &self.egui_ctx,
+                            );
+                        }
+
                         self.state.show(
                             app_blueprint,
                             ui,
@@ -2313,21 +2320,13 @@ impl eframe::App for App {
 
         self.purge_memory_if_needed(&mut store_hub);
 
-        {
-            let egui_renderer = frame
-                .wgpu_render_state()
-                .expect("Failed to get frame render state")
-                .renderer
-                .read();
-
-            let render_ctx = egui_renderer
-                .callback_resources
-                .get::<re_renderer::RenderContext>()
-                .expect("Failed to get render context");
-
-            // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
-            let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
-            store_hub.begin_frame(renderer_active_frame_idx);
+        // In some (rare) circumstances we run two egui passes in a single frame.
+        // This happens on call to `egui::Context::request_discard`.
+        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+        if is_start_of_new_frame {
+            // IMPORTANT: only call this once per FRAME even if we run multiple passes.
+            // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
+            store_hub.begin_frame_caches();
         }
 
         self.receive_messages(&mut store_hub, egui_ctx);
@@ -2639,8 +2638,8 @@ fn save_recording(
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     let file_name = if let Some(recording_name) = entity_db
-        .recording_property::<re_types::components::Name>(
-            &re_types::archetypes::RecordingProperties::descriptor_name(),
+        .recording_info_property::<re_types::components::Name>(
+            &re_types::archetypes::RecordingInfo::descriptor_name(),
         ) {
         format!("{}.rrd", santitize_file_name(&recording_name))
     } else {

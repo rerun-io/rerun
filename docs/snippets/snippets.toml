@@ -155,6 +155,11 @@ features = [
   "cpp",
   "rust",
 ]
+"howto/check_connection_status" = [
+  "py",   # TODO(#2353): Doesn't exist
+  "cpp",  # TODO(#2353): Doesn't exist
+  "rust", # Runs indefinitely.
+]
 "howto/send_table" = [
   "py",   # Requires a server to connect to
   "cpp",  # Doesn't exist

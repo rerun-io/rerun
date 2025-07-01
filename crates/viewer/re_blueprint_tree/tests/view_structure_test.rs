@@ -16,7 +16,7 @@ use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";
@@ -114,16 +114,16 @@ fn test_context(test_case: &TestCase) -> TestContext {
     match test_case.recording_kind {
         RecordingKind::Empty => {}
         RecordingKind::Regular => {
-            test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/the/void", add_point_to_chunk_builder);
+            test_context.log_entity("/path/onto/their/coils", add_point_to_chunk_builder);
+            test_context.log_entity("/center/way", add_point_to_chunk_builder);
         }
     }
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view = ViewBlueprint::new_with_id(
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: test_case.origin.clone(),
@@ -133,9 +133,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
                     .expect("invalid entity filter"),
             },
             ViewId::hashed_from_str(VIEW_ID),
-        );
-
-        blueprint.add_views(std::iter::once(view), None, None);
+        ));
     });
 
     test_context
@@ -177,7 +175,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
         let blueprint =
-            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
+            ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -201,7 +199,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                     true,
                 );
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     viewer_ctx.blueprint_query,
                 );
@@ -233,7 +231,7 @@ fn test_all_insta_test_cases() {
 
             let blueprint_tree_data =
                 test_context.run_once_in_egui_central_panel(|viewer_ctx, _| {
-                    let blueprint = ViewportBlueprint::try_from_db(
+                    let blueprint = ViewportBlueprint::from_db(
                         viewer_ctx.store_context.blueprint,
                         viewer_ctx.blueprint_query,
                     );

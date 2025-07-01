@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer-react",
-  "version": "0.24.0-alpha.1+dev",
+  "version": "0.24.0-alpha.5",
   "description": "Embed the Rerun web viewer in your React app",
   "licenses": [
     {
@@ -13,7 +13,8 @@
   "scripts": {
     "build:types": "tsc --noEmit && dts-buddy",
     "build": "npm run build:types",
-    "pack": "yarn pack --filename web-viewer-react.tar.gz"
+    "pack": "yarn pack --filename web-viewer-react.tar.gz",
+    "docs": "typedoc"
   },
   "repository": {
     "type": "git",
@@ -40,12 +41,14 @@
     "tsconfig.json"
   ],
   "dependencies": {
-    "@rerun-io/web-viewer": "0.24.0-alpha.1",
+    "@rerun-io/web-viewer": "0.24.0-alpha.5",
     "@types/react": "^18.2.33",
     "react": "^18.2.0"
   },
   "devDependencies": {
     "dts-buddy": "^0.3.0",
+    "typedoc": "^0.28.6",
+    "typedoc-github-theme": "^0.3.0",
     "typescript": "^5.2.2"
   }
 }

@@ -323,7 +323,7 @@ pub fn show_decoded_frame_info(
     ) {
         Ok(VideoFrameTexture {
             texture,
-            is_pending,
+            decoder_delay_state,
             show_spinner,
             frame_info,
             source_pixel_format,
@@ -369,7 +369,7 @@ pub fn show_decoded_frame_info(
                 )
             };
 
-            if is_pending {
+            if decoder_delay_state.should_rerequest_frame() {
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
             }
 

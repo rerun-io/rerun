@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
@@ -18,15 +18,25 @@ use crate::{
 
 #[derive(Default)]
 struct DecoderOutput {
-    frames: Vec<Frame>,
+    /// Frames sorted by PTS.
+    ///
+    /// *Almost* all decoders are outputting frames in presentation timestamp order.
+    /// However, WebCodec decoders on Firefox & Safari have been observed to output frames in decode order.
+    /// (i.e. the order in which they were submitted)
+    /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
+    /// reset decoder.
+    /// See also <https://github.com/rerun-io/rerun/issues/7961>
+    frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
     error: Option<TimedDecodingError>,
 }
 
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
-// TODO(andreas): Meld this into `super::player::VideoPlayer`.
+///
+/// Expected to be reset upon backwards seeking.
 pub struct VideoSampleDecoder {
+    debug_name: String,
     decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
@@ -43,6 +53,7 @@ impl VideoSampleDecoder {
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
         let on_output = {
+            let debug_name = debug_name.clone();
             let decoder_output = decoder_output.clone();
             move |frame: re_video::DecodeResult<Frame>| match frame {
                 Ok(frame) => {
@@ -51,7 +62,10 @@ impl VideoSampleDecoder {
                         frame.info.presentation_timestamp
                     );
                     let mut output = decoder_output.lock();
-                    output.frames.push(frame);
+
+                    output
+                        .frames_by_pts
+                        .insert(frame.info.presentation_timestamp, frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
                 }
                 Err(err) => {
@@ -73,9 +87,14 @@ impl VideoSampleDecoder {
         let decoder = make_decoder(Box::new(on_output))?;
 
         Ok(Self {
+            debug_name,
             decoder,
             decoder_output,
         })
+    }
+
+    pub fn debug_name(&self) -> &str {
+        &self.debug_name
     }
 
     /// Start decoding the given chunk.
@@ -104,71 +123,30 @@ impl VideoSampleDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drops all earlier frames to save memory.
-    ///
-    /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
-    /// which it is just after startup or after a call to [`Self::reset`].
-    pub fn update_video_texture(
+    /// Returns the latest decoded frame at the given PTS and drops all earlier frames.
+    pub fn latest_decoded_frame_at_and_drop_earlier_frames(
         &self,
-        render_ctx: &RenderContext,
-        video_texture: &mut VideoTexture,
-        presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
+        pts: Time,
+    ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
-        let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = latest_at_idx(
-            frames,
-            |frame| frame.info.presentation_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyBuffer);
-        };
+        // Keep everything at or after the given PTS.
+        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&pts);
 
-        // drain up-to (but not including) the frame idx, clearing out any frames
-        // before it. this lets the video decoder output more frames.
-        drop(frames.drain(0..frame_idx));
-
-        // after draining all old frames, the next frame will be at index 0
-        let frame_idx = 0;
-        let frame = &frames[frame_idx];
-
-        let frame_presentation_timestamp = frame.info.presentation_timestamp;
-
-        let gpu_texture = video_texture.texture.get_or_insert_with(|| {
-            alloc_video_frame_texture(
-                &render_ctx.device,
-                &render_ctx.gpu_resources.textures,
-                frame.content.width(),
-                frame.content.height(),
-            )
-        });
-
-        let is_up_to_date = video_texture
-            .frame_info
-            .as_ref()
-            // We assume that every frame is uniquely identified by its presentation timestamp.
-            .is_some_and(|info| info.presentation_timestamp == frame_presentation_timestamp);
-
-        if !is_up_to_date {
-            #[cfg(target_arch = "wasm32")]
-            {
-                video_texture.source_pixel_format =
-                    copy_web_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                video_texture.source_pixel_format =
-                    copy_native_video_frame_to_texture(render_ctx, &frame.content, gpu_texture)?;
-            }
-
-            video_texture.frame_info = Some(frame.info.clone());
+        if !decoder_output.frames_by_pts.is_empty() {
+            Some(parking_lot::MutexGuard::map(
+                decoder_output,
+                |decoder_output| {
+                    decoder_output
+                        .frames_by_pts
+                        .first_entry()
+                        .expect("We just checked that the map is not empty")
+                        .into_mut()
+                },
+            ))
+        } else {
+            None
         }
-
-        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
@@ -177,7 +155,7 @@ impl VideoSampleDecoder {
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;
-        decoder_output.frames.clear();
+        decoder_output.frames_by_pts.clear();
 
         Ok(())
     }
@@ -186,6 +164,34 @@ impl VideoSampleDecoder {
     pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
+}
+
+pub fn update_video_texture_with_frame(
+    render_ctx: &RenderContext,
+    target_video_texture: &mut VideoTexture,
+    source_frame: &Frame,
+) -> Result<(), VideoPlayerError> {
+    let Frame {
+        content: source_content,
+        info: source_info,
+    } = source_frame;
+
+    // Ensure that we have a texture to copy to.
+    let gpu_texture = target_video_texture.texture.get_or_insert_with(|| {
+        alloc_video_frame_texture(
+            &render_ctx.device,
+            &render_ctx.gpu_resources.textures,
+            source_content.width(),
+            source_content.height(),
+        )
+    });
+
+    let format = copy_frame_to_texture(render_ctx, source_content, gpu_texture)?;
+
+    target_video_texture.source_pixel_format = format;
+    target_video_texture.frame_info = Some(source_info.clone());
+
+    Ok(())
 }
 
 fn alloc_video_frame_texture(
@@ -220,6 +226,21 @@ fn alloc_video_frame_texture(
     };
 
     texture
+}
+
+pub fn copy_frame_to_texture(
+    ctx: &RenderContext,
+    frame: &FrameContent,
+    target_texture: &GpuTexture,
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        copy_web_video_frame_to_texture(ctx, frame, target_texture)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        copy_native_video_frame_to_texture(ctx, frame, target_texture)
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -334,50 +355,4 @@ fn copy_native_video_frame_to_texture(
     )?;
 
     Ok(format)
-}
-
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-///
-/// Like `re_video::latest_at_idx`, but works with regular slices.
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::latest_at_idx;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 }

@@ -80,7 +80,6 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
-// TODO(#9134): Unify with `re_data_source::DataSource`.
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///

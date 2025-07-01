@@ -208,7 +208,7 @@ mod tests {
         // 2x: single chunk with two events for both t0 and t1.
         for i in 1..=2 {
             store.insert_chunk(&Arc::new(
-                Chunk::builder("/".into())
+                Chunk::builder("/")
                     .with_component_batches(
                         RowId::new(),
                         [(t0, i), (t1, i)],
@@ -226,12 +226,12 @@ mod tests {
         // Events at a child path.
         // One chunk with one event at t0, one chunk with two events at t1
         store.insert_chunk(&Arc::new(
-            Chunk::builder("/parent/child".into())
+            Chunk::builder("/parent/child")
                 .with_component_batches(RowId::new(), [(t0, 0)], [component_batch.clone()])
                 .build()?,
         ))?;
         store.insert_chunk(&Arc::new(
-            Chunk::builder("/parent/child".into())
+            Chunk::builder("/parent/child")
                 .with_component_batches(RowId::new(), [(t1, 1)], [component_batch.clone()])
                 .with_component_batches(RowId::new(), [(t1, 3)], [component_batch])
                 .build()?,

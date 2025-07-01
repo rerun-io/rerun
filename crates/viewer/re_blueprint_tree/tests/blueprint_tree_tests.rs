@@ -10,9 +10,8 @@ use re_types::archetypes::Points3D;
 use re_viewer_context::{
     CollapseScope, RecommendedView, ViewClass as _, ViewId, test_context::TestContext,
 };
-use re_viewport_blueprint::{
-    ViewBlueprint, ViewportBlueprint, test_context_ext::TestContextExt as _,
-};
+use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn basic_blueprint_panel_should_match_snapshot() {
@@ -20,19 +19,14 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    test_context.log_entity("/entity0".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity1".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity2".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/entity0", add_point_to_chunk_builder);
+    test_context.log_entity("/entity1", add_point_to_chunk_builder);
+    test_context.log_entity("/entity2", add_point_to_chunk_builder);
 
-    test_context.setup_viewport_blueprint(|_, blueprint| {
-        blueprint.add_views(
-            std::iter::once(ViewBlueprint::new(
-                re_view_spatial::SpatialView3D::identifier(),
-                RecommendedView::root(),
-            )),
-            None,
-            None,
-        );
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView3D::identifier(),
+        ))
     });
 
     let blueprint_tree = BlueprintTree::default();
@@ -51,20 +45,18 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
 
         test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-        test_context.log_entity("/path/to/entity0".into(), add_point_to_chunk_builder);
-        test_context.log_entity("/path/to/entity1".into(), add_point_to_chunk_builder);
-        test_context.log_entity("/another/way/to/entity2".into(), add_point_to_chunk_builder);
+        test_context.log_entity("/path/to/entity0", add_point_to_chunk_builder);
+        test_context.log_entity("/path/to/entity1", add_point_to_chunk_builder);
+        test_context.log_entity("/another/way/to/entity2", add_point_to_chunk_builder);
 
         let view_id = ViewId::hashed_from_str("some-view-id-hash");
 
         test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            let view = ViewBlueprint::new_with_id(
+            blueprint.add_view_at_root(ViewBlueprint::new_with_id(
                 re_view_spatial::SpatialView3D::identifier(),
                 RecommendedView::root(),
                 view_id,
-            );
-
-            blueprint.add_views(std::iter::once(view), None, None);
+            ))
 
             // TODO(ab): add containers in the hierarchy (requires work on the container API,
             // currently very cumbersome to use for testing purposes).
@@ -87,7 +79,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         *should_expand,
                     );
 
-                    let blueprint = ViewportBlueprint::try_from_db(
+                    let blueprint = ViewportBlueprint::from_db(
                         viewer_ctx.store_context.blueprint,
                         viewer_ctx.blueprint_query,
                     );
@@ -142,9 +134,9 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     let mut test_context = TestContext::default();
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/path/is/outside".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
+    test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
+    test_context.log_entity("/path/is/outside", add_point_to_chunk_builder);
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
         blueprint.add_views(
@@ -167,7 +159,7 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
         let blueprint =
-            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
+            ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -202,7 +194,7 @@ fn run_blueprint_panel_and_save_snapshot(
         .with_size(Vec2::new(400.0, 800.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     viewer_ctx.blueprint_query,
                 );

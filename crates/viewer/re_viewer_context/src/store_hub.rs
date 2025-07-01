@@ -407,8 +407,8 @@ impl StoreHub {
 
         // Find any matching recording and activate it
         for rec in self.store_bundle.recordings().sorted_by_key(|entity_db| {
-            entity_db.recording_property::<Timestamp>(
-                &archetypes::RecordingProperties::descriptor_start_time(),
+            entity_db.recording_info_property::<Timestamp>(
+                &archetypes::RecordingInfo::descriptor_start_time(),
             )
         }) {
             if rec.app_id() == Some(&app_id) {
@@ -809,11 +809,11 @@ impl StoreHub {
         }
     }
 
-    /// See `re_viewer_context::Cache::begin_frame`.
-    pub fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+    /// See [`crate::Caches::begin_frame`].
+    pub fn begin_frame_caches(&mut self) {
         if let Some(store_id) = self.active_recording_id().cloned() {
             if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-                caches.begin_frame(renderer_active_frame_idx);
+                caches.begin_frame();
             }
         }
     }

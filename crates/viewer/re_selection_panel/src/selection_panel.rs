@@ -10,7 +10,7 @@ use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
 use re_ui::{
-    ContextExt as _, UiExt as _, icons,
+    ContextExt as _, SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
@@ -502,29 +502,38 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    let filtered = db
+    let mut property_entities = db
         .entity_paths()
         .into_iter()
-        .filter(|entity_path| {
-            // Only check for properties, but skip the recording properties,
-            // because we display them already elsewhere in the UI.
-            entity_path.is_descendant_of(&EntityPath::properties())
-        })
+        .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
+    property_entities.sort();
 
-    if filtered.is_empty() {
+    if property_entities.is_empty() {
         ui.label("No properties found for this recording.");
     } else {
-        for entity_path in filtered {
-            // We strip the property part
-            let name = entity_path
-                .to_string()
-                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                .map(re_case::to_human_case)
-                .unwrap_or("<unknown>".to_owned());
-            ui.label(name);
-            entity_path.data_ui(ctx, ui, ui_layout, query, db);
-        }
+        list_item::list_item_scope(ui, "recording_properties", |ui| {
+            for suffix_path in property_entities {
+                let entity_path = EntityPath::properties() / suffix_path.clone();
+                if suffix_path.is_root() {
+                    // No header - this is likely `RecordingInfo`.
+                } else if suffix_path.len() == 1 {
+                    // Single nested - this is what we expect in the normal case.
+                    ui.add_space(8.0);
+                    ui.label(re_case::to_human_case(suffix_path[0].unescaped_str()))
+                        .on_hover_ui(|ui| {
+                            ui.label(entity_path.syntax_highlighted(ui.style()));
+                        });
+                } else {
+                    // Deeply nested - show the full path.
+                    ui.add_space(8.0);
+                    ui.label(suffix_path.to_string()).on_hover_ui(|ui| {
+                        ui.label(entity_path.syntax_highlighted(ui.style()));
+                    });
+                }
+                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+            }
+        });
     }
 }
 
@@ -1077,5 +1086,51 @@ fn visible_interactive_toggle_ui(
         if interactive_before != interactive {
             data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
         }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "testing")]
+mod tests {
+    use re_chunk::LatestAtQuery;
+    use re_viewer_context::{blueprint_timeline, test_context::TestContext};
+
+    use super::*;
+
+    /// Snapshot test for the selection panel when a recording is selected.
+    #[test]
+    fn selection_panel_recording_snapshot() {
+        let mut test_context = TestContext::default();
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+
+        // Select recording:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(test_context.recording_store.store_id()));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            &test_context.blueprint_store,
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_recording");
     }
 }

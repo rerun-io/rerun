@@ -16,12 +16,12 @@ README = """\
 
 * "Expand all" on the Vertical containers.
 * Right-click on the `boxes3d` entity and select "Add to new view" -> "3D". Check a new view is created _and selected_ with the boxes3d entity and origin set to root.
-* In each view, right-click on the leaf entity, and check that "Add to new view" recommends at least views of the same kind.
-* Select both the `boxes3d` entity and the `text_logs` entity. Check no view is recommended (except Dataframe if enabled).
+* In each view, right-click on the leaf entity, and check that "Add to new view" recommends the view of the same kind and the Dataframe view.
+* Select both the `boxes3d` entity and the `text_logs` entity. Check that only the Dataframe view is recommended.
 
 #### Streams tree
 
-* Right-click on the `bars` entity and check that a Bar Plot view can successfully be created.
+* Right-click on the `bars` entity and check that a Bar chart view can successfully be created.
 """
 
 
