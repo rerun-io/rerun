@@ -564,6 +564,20 @@ impl VideoDataDescription {
         )
     }
 
+    /// Returns the sample presenteed directly prior to the given sample.
+    ///
+    /// Remember that samples are ordered in decode timestamp order,
+    /// and that sample presented immediately prior to the given sample may have a higher decode timestamp.
+    /// Therefore, this may be a jump on sample index.
+    pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
+        Self::latest_sample_index_at_presentation_timestamp_internal(
+            &self.samples,
+            &self.samples_statistics,
+            sample.presentation_timestamp - Time::new(1),
+        )
+        .and_then(|idx| self.samples.get(idx))
+    }
+
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
         self.gops.latest_at_idx(

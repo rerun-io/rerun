@@ -51,13 +51,42 @@ pub enum VideoPlayerError {
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
+/// Describes whether a decoder is lagging behind or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecoderDelayState {
+    /// The decoder is caught up with the most recent requested frame.
+    UpToDate,
+
+    /// The decoder is caught up within a certain tolerance.
+    ///
+    /// I.e. the video texture is not the most recently requested frame, but it's quite close.
+    UpToDateWithinTolerance,
+
+    /// The decoder is catching up after a long seek.
+    ///
+    /// The video texture is no longer updated until the decoder has caught up.
+    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
+    Behind,
+}
+
+impl DecoderDelayState {
+    /// Whether a user of a video player should keep requesting a more up to date video frame even
+    /// if the requested time has not changed.
+    pub fn should_rerequest_frame(&self) -> bool {
+        match self {
+            Self::UpToDate => false,
+            Self::UpToDateWithinTolerance | Self::Behind => true,
+        }
+    }
+}
+
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: Option<GpuTexture2D>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
-    pub is_pending: bool,
+    pub decoder_delay_state: DecoderDelayState,
 
     /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
     pub show_spinner: bool,
