@@ -10,9 +10,8 @@ use re_types::archetypes::Points3D;
 use re_viewer_context::{
     CollapseScope, RecommendedView, ViewClass as _, ViewId, test_context::TestContext,
 };
-use re_viewport_blueprint::{
-    ViewBlueprint, ViewportBlueprint, test_context_ext::TestContextExt as _,
-};
+use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn basic_blueprint_panel_should_match_snapshot() {

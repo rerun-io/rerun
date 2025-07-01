@@ -18,10 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[features]
-## Enable for testing utilities.
-testing = ["re_viewer_context/testing"]
-
 [dependencies]
 re_chunk.workspace = true
 re_chunk_store.workspace = true
