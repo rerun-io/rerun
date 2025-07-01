@@ -77,7 +77,6 @@ parking_lot = { workspace = true, features = ["serde"] }
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
-tap.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
 
