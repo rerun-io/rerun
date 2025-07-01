@@ -51,13 +51,42 @@ pub enum VideoPlayerError {
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
+/// Describes whether a decoder is lagging behind or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecoderDelayState {
+    /// The decoder is caught up with the most recent requested frame.
+    UpToDate,
+
+    /// The decoder is caught up within a certain tolerance.
+    ///
+    /// I.e. the video texture is not the most recently requested frame, but it's quite close.
+    UpToDateWithinTolerance,
+
+    /// The decoder is catching up after a long seek.
+    ///
+    /// The video texture is no longer updated until the decoder has caught up.
+    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
+    Behind,
+}
+
+impl DecoderDelayState {
+    /// Whether a user of a video player should keep requesting a more up to date video frame even
+    /// if the requested time has not changed.
+    pub fn should_rerequest_frame(&self) -> bool {
+        match self {
+            Self::UpToDate => false,
+            Self::UpToDateWithinTolerance | Self::Behind => true,
+        }
+    }
+}
+
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: Option<GpuTexture2D>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
-    pub is_pending: bool,
+    pub decoder_delay_state: DecoderDelayState,
 
     /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
     pub show_spinner: bool,
@@ -82,9 +111,9 @@ pub struct VideoPlayerStreamId(pub u64);
 struct PlayerEntry {
     player: player::VideoPlayer,
 
-    /// The global `re_renderer` frame index at which the player was last used.
-    /// (this is NOT a video frame index of any kind)
-    last_global_frame_idx: u64,
+    /// Was this used last frame?
+    /// This is reset every frame, and used to determine whether to purge the player.
+    used_last_frame: bool,
 }
 
 /// Video data + decoder(s).
@@ -95,6 +124,12 @@ pub struct Video {
     video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_settings: DecodeSettings,
+}
+
+impl Drop for Video {
+    fn drop(&mut self) {
+        re_log::debug!("Dropping Video {:?}", self.debug_name);
+    }
 }
 
 impl Video {
@@ -172,8 +207,6 @@ impl Video {
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
-        let global_frame_idx = render_context.active_frame_idx();
-
         // We could protect this hashmap by a RwLock and the individual decoders by a Mutex.
         // However, dealing with the RwLock efficiently is complicated:
         // Upgradable-reads exclude other upgradable-reads which means that if an element is not found,
@@ -190,12 +223,12 @@ impl Video {
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
-                    last_global_frame_idx: global_frame_idx,
+                    used_last_frame: true,
                 })
             }
         };
 
-        decoder_entry.last_global_frame_idx = render_context.active_frame_idx();
+        decoder_entry.used_last_frame = true;
         decoder_entry.player.frame_at(
             render_context,
             video_time,
@@ -207,12 +240,15 @@ impl Video {
     /// Removes all decoders that have been unused in the last frame.
     ///
     /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer needed.
-    pub fn purge_unused_decoders(&self, active_frame_idx: u64) {
-        if active_frame_idx == 0 {
-            return;
-        }
+    pub fn begin_frame(&self) {
+        re_tracing::profile_function!();
 
         let mut players = self.players.lock();
-        players.retain(|_, decoder| decoder.last_global_frame_idx >= active_frame_idx - 1);
+        players.retain(|_id, entry| entry.used_last_frame);
+
+        // Reset for the next frame:
+        for entry in players.values_mut() {
+            entry.used_last_frame = false;
+        }
     }
 }

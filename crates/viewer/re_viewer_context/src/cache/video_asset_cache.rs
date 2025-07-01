@@ -87,7 +87,9 @@ impl VideoAssetCache {
 }
 
 impl Cache for VideoAssetCache {
-    fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+    fn begin_frame(&mut self) {
+        re_tracing::profile_function!();
+
         // Clean up unused video data.
         self.0.retain(|_row_id, per_key| {
             per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
@@ -99,7 +101,7 @@ impl Cache for VideoAssetCache {
             for v in per_key.values() {
                 v.used_this_frame.store(false, Ordering::Release);
                 if let Ok(video) = v.video.as_ref() {
-                    video.purge_unused_decoders(renderer_active_frame_idx);
+                    video.begin_frame();
                 }
             }
         }

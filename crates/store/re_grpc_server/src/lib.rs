@@ -298,8 +298,16 @@ pub fn spawn_with_recv(
                 }
             };
             match msg {
-                Ok(msg) => {
-                    if channel_log_tx.send(msg).is_err() {
+                Ok(mut log_msg) => {
+                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
+                    // Note that this function is only called by the viewer
+                    // (that's what the message-receiver is connected to).
+                    log_msg.insert_arrow_record_batch_metadata(
+                        re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
+                        re_sorbet::timestamp_metadata::now_timestamp(),
+                    );
+
+                    if channel_log_tx.send(log_msg).is_err() {
                         re_log::debug!(
                             "message proxy smart channel receiver closed, closing sender"
                         );

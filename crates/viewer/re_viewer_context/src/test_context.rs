@@ -414,6 +414,7 @@ impl TestContext {
             },
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
+            connected_receivers: &Default::default(),
             store_context: &store_context,
             storage_context: &StorageContext {
                 hub: &Default::default(),

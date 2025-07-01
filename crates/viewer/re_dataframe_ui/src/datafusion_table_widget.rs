@@ -12,10 +12,11 @@ use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
-use re_ui::{ContextExt as _, UiExt as _, icons};
+use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
+use crate::display_record_batch::DisplayColumn;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
@@ -327,6 +328,23 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut new_blueprint = table_state.blueprint().clone();
 
+        let mut row_height = viewer_ctx.tokens().table_line_height();
+
+        // If the first column is a blob, we treat it as a thumbnail and increase the row height.
+        // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
+        let first_column = columns
+            .index_from_id(table_config.visible_column_ids().next())
+            .and_then(|index| {
+                display_record_batches
+                    .first()
+                    .and_then(|batch| batch.columns().get(index))
+            });
+        if let Some(DisplayColumn::Component(component)) = first_column {
+            if component.is_image() {
+                row_height *= 3.0;
+            }
+        }
+
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             fields,
@@ -335,6 +353,7 @@ impl<'a> DataFusionTableWidget<'a> {
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
+            row_height,
         };
 
         let visible_columns = table_delegate.table_config.visible_columns().count();
@@ -482,6 +501,7 @@ struct DataFusionTableDelegate<'a> {
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
+    row_height: f32,
 }
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
@@ -596,7 +616,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height()
+        self.row_height
     }
 }
 
@@ -633,12 +653,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 is_semantically_empty,
             } = desc;
 
-            header_property_ui(ui, "Type", "component");
-            header_property_ui(
-                ui,
-                "Component type",
-                component_type.map(|a| a.as_str()).unwrap_or("-"),
-            );
+            header_property_ui(ui, "Column type", "Component");
             header_property_ui(ui, "Entity path", entity_path.to_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
@@ -646,10 +661,11 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 "Archetype",
                 archetype.map(|a| a.full_name()).unwrap_or("-"),
             );
+            header_property_ui(ui, "Component", component);
             header_property_ui(
                 ui,
-                "Archetype field",
-                desc.component_descriptor().archetype_field_name(),
+                "Component type",
+                component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
 
             if false {
@@ -658,12 +674,6 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
                 header_property_ui(ui, "Indicator", is_indicator.to_string());
                 header_property_ui(ui, "Tombstone", is_tombstone.to_string());
                 header_property_ui(ui, "Empty", is_semantically_empty.to_string());
-            }
-
-            if cfg!(debug_assertions) {
-                ui.add_space(8.0);
-                ui.label(ui.ctx().warning_text("Only in debug builds:"));
-                header_property_ui(ui, "component", component);
             }
         }
     }
