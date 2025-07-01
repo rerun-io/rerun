@@ -87,7 +87,9 @@ def check_file(path: str) -> bool:
                         if args.markdown:
                             # Convert path to relative path for clean display
                             display_path = path.lstrip("./")
-                            github_url = f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i+1}"
+                            github_url = (
+                                f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i + 1}"
+                            )
                             print(f"* [ ] `{line.strip()}`")
                             print(f"   * #{issue_num} (Issue author: @{author})")
                             print(f"   * [`{display_path}#L{i}`]({github_url})")
@@ -95,6 +97,7 @@ def check_file(path: str) -> bool:
                             print(f"{path}:{i}: {line.strip()}")
                         ok &= False
     return ok
+
 
 # ---
 
