@@ -102,7 +102,7 @@ glam.workspace = true
 itertools.workspace = true
 mint.workspace = true
 similar-asserts.workspace = true
-rand = {workspace = true, features = ["std", "std_rng"]}
+rand = { workspace = true, features = ["std", "std_rng"] }
 
 [build-dependencies]
 
