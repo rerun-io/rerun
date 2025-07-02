@@ -16,20 +16,20 @@ use re_dataframe::ChunkStoreHandle;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::DatasetDetails;
-use re_protos::common::v1alpha1::ext::{PartitionId, ScanParameters};
-use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
-use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use re_protos::{
     catalog::v1alpha1::{
         EntryFilter, ReadTableEntryRequest,
-        ext::{DatasetEntry, EntryDetails, TableEntry},
+        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
-    common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    frontend::v1alpha1::{
-        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, RegisterWithDatasetRequest,
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, ScanParameters},
     },
-    manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
+    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
+    manifest_registry::v1alpha1::ext::{
+        DataSource, Query, QueryLatestAt, QueryRange, RegisterWithDatasetTaskDescriptor,
+    },
+    redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
 use crate::catalog::to_py_err;
@@ -177,94 +177,29 @@ impl ConnectionHandle {
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
-    /// corresponding task IDs.
+    /// corresponding task descriptors.
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
-    ) -> PyResult<Vec<(TaskId, PartitionId)>> {
+    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let data_sources = recording_uris
+            .iter()
+            .map(DataSource::new_rrd)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
+
         wait_for_future(py, async {
-            let data_sources = recording_uris
-                .iter()
-                .map(|uri| DataSource::new_rrd(uri).map(Into::into))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(to_py_err)?;
-
-            let response = self
-                .client()
+            self.client()
                 .await?
-                .inner()
-                .register_with_dataset(RegisterWithDatasetRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    data_sources,
-                    //TODO(ab): expose this to as a method argument
-                    on_duplicate: IfDuplicateBehavior::Error as i32,
-                })
+                //TODO(ab): expose `on_duplicate` as a method argument
+                .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
                 .await
-                .map_err(to_py_err)?
-                .into_inner()
-                .data
-                .ok_or_else(|| PyValueError::new_err("missing data from response"))?
-                .decode()
-                .map_err(to_py_err)?;
-
-            // TODO(andrea): why is the schema completely off?
-            #[expect(clippy::overly_complex_bool_expr)]
-            if false
-                && !response
-                    .schema()
-                    .contains(&RegisterWithDatasetResponse::schema())
-            {
-                return Err(PyValueError::new_err(
-                    "invalid schema for RegisterWithDatasetResponse",
-                ));
-            }
-
-            let task_id_column = response
-                .column_by_name(RegisterWithDatasetResponse::TASK_ID)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                })
-                .ok_or_else(|| {
-                    PyValueError::new_err("missing task_id column in response schema")
-                })?;
-
-            let partition_id_column = response
-                .column_by_name(RegisterWithDatasetResponse::PARTITION_ID)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                })
-                .ok_or_else(|| {
-                    PyValueError::new_err("missing partition_id column in response schema")
-                })?;
-
-            task_id_column
-                .iter()
-                .zip(partition_id_column.iter())
-                .map(|(task_id, partition_id)| {
-                    let task_id = task_id.ok_or_else(|| {
-                        PyValueError::new_err("missing task_id in response schema")
-                    })?;
-                    let partition_id = partition_id.ok_or_else(|| {
-                        PyValueError::new_err("missing partition_id in response schema")
-                    })?;
-                    Ok((
-                        TaskId {
-                            id: task_id.to_owned(),
-                        },
-                        PartitionId::new(partition_id.to_owned()),
-                    ))
-                })
-                .collect::<Result<Vec<_>, _>>()
+                .map_err(to_py_err)
         })
     }
 

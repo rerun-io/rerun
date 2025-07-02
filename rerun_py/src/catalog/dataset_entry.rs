@@ -212,15 +212,15 @@ impl PyDatasetEntry {
         let mut results =
             connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
 
-        let Some((task_id, partition_id)) = results.pop() else {
+        let Some(task_descriptor) = results.pop() else {
             return Err(PyRuntimeError::new_err(
-                "Failed to register recording, no task ID returned.",
+                "Failed to register recording, no task returned.",
             ));
         };
 
-        connection.wait_for_tasks(self_.py(), vec![task_id], register_timeout)?;
+        connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
 
-        Ok(partition_id.id)
+        Ok(task_descriptor.partition_id.id)
     }
 
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
@@ -233,6 +233,7 @@ impl PyDatasetEntry {
     /// recording_uris: list[str]
     ///     The URIs of the RRDs to register
     #[allow(rustdoc::broken_intra_doc_links)]
+    // TODO(ab): it might be useful to return partition ids directly since we have them
     fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -242,7 +243,7 @@ impl PyDatasetEntry {
 
         Ok(PyTasks::new(
             super_.client.clone_ref(self_.py()),
-            results.into_iter().map(|(task_id, _)| task_id),
+            results.into_iter().map(|desc| desc.task_id),
         ))
     }
 
