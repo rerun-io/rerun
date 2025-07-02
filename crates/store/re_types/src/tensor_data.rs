@@ -411,15 +411,21 @@ impl TensorElement {
 
     /// Formats the element as a string, padded to the width of the largest possible value.
     pub fn format_padded(&self) -> String {
-        let min_val_len = self.min_value().format().len();
-        let max_val_len = self.max_value().format().len();
+        let max_len = match self {
+            TensorElement::U8(_)
+            | TensorElement::U16(_)
+            | TensorElement::U32(_)
+            | TensorElement::U64(_) => self.max_value().format().chars().count(),
+            TensorElement::I8(_)
+            | TensorElement::I16(_)
+            | TensorElement::I32(_)
+            | TensorElement::I64(_) => self.min_value().format().chars().count(),
+            // These were determined by checking the length of random formatted values
+            TensorElement::F16(_) | TensorElement::F32(_) => 12,
+            TensorElement::F64(_) => 22,
+        };
         let value_str = self.format();
-        if value_str.len() < min_val_len || value_str.len() < max_val_len {
-            let max_len = usize::max(min_val_len, max_val_len);
-            format!("{value_str:>max_len$}")
-        } else {
-            value_str
-        }
+        format!("{value_str:>max_len$}")
     }
 }
 
@@ -438,5 +444,53 @@ impl std::fmt::Display for TensorElement {
             Self::F32(elem) => std::fmt::Display::fmt(elem, f),
             Self::F64(elem) => std::fmt::Display::fmt(elem, f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tensor_element_format() {
+        let elem = TensorElement::U8(42);
+        assert_eq!(elem.format(), "42");
+
+        let elem = TensorElement::F32(3.14);
+        assert_eq!(elem.format(), "3.14");
+
+        let elem = TensorElement::I64(-123456789);
+        assert_eq!(elem.format(), "−123\u{2009}456\u{2009}789");
+    }
+
+    #[test]
+    fn test_tensor_element_format_padded() {
+        macro_rules! test_padded_format {
+            ($type:ident, $random:expr) => {
+                let type_name = stringify!($type);
+                let left_padded = TensorElement::$type($random).format_padded();
+                for _ in 0..100 {
+                    let elem = TensorElement::$type($random);
+                    let right_padded = elem.format_padded();
+                    assert_eq!(
+                        left_padded.chars().count(),
+                        right_padded.chars().count(),
+                        "Padded format length mismatch for type {type_name} with value '{left_padded}' and value '{right_padded}'",
+                    );
+                }
+            };
+        }
+        test_padded_format!(U8, rand::random());
+        test_padded_format!(U16, rand::random());
+        test_padded_format!(U32, rand::random());
+        test_padded_format!(U64, rand::random());
+        test_padded_format!(I8, rand::random());
+        test_padded_format!(I16, rand::random());
+        test_padded_format!(I32, rand::random());
+        test_padded_format!(I64, rand::random());
+
+        test_padded_format!(F16, f16::from_bits(rand::random()));
+        test_padded_format!(F32, f32::from_bits(rand::random()));
+        test_padded_format!(F64, f64::from_bits(rand::random()));
     }
 }
