@@ -454,8 +454,8 @@ mod tests {
         let elem = TensorElement::U8(42);
         assert_eq!(elem.format(), "42");
 
-        let elem = TensorElement::F32(3.14);
-        assert_eq!(elem.format(), "3.14");
+        let elem = TensorElement::F32(3.17);
+        assert_eq!(elem.format(), "3.17");
 
         let elem = TensorElement::I64(-123456789);
         assert_eq!(elem.format(), "−123\u{2009}456\u{2009}789");
