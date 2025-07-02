@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum Eye3DKind {
     /// First person eye
-    #[default]
     FirstPerson = 1,
 
     /// Orbital eye
+    #[default]
     Orbital = 2,
 }
 

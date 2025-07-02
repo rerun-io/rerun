@@ -9,10 +9,10 @@ enum Eye3DKind: ubyte (
     Invalid = 0,
 
     /// First person eye
-    FirstPerson (default),
+    FirstPerson,
 
     /// Orbital eye
-    Orbital,
+    Orbital (default),
 
 }
 
