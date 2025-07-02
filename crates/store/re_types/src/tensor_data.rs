@@ -1,10 +1,11 @@
 //! Internal helpers; not part of the public API.
 #![allow(missing_docs)]
 
-use half::f16;
-
 #[allow(unused_imports)] // Used for docstring links
 use crate::datatypes::TensorData;
+use glam::usize;
+use half::f16;
+use re_format::{format_f32, format_f64, format_int, format_uint};
 
 // ----------------------------------------------------------------------------
 
@@ -351,6 +352,72 @@ impl TensorElement {
             Self::F16(value) => u16_from_f64(value.to_f32() as f64),
             Self::F32(value) => u16_from_f64(*value as f64),
             Self::F64(value) => u16_from_f64(*value),
+        }
+    }
+
+    /// Format the value with re_format
+    pub fn format(&self) -> String {
+        match self {
+            TensorElement::U8(val) => format_uint(*val),
+            TensorElement::U16(val) => format_uint(*val),
+            TensorElement::U32(val) => format_uint(*val),
+            TensorElement::U64(val) => format_uint(*val),
+            TensorElement::I8(val) => format_int(*val),
+            TensorElement::I16(val) => format_int(*val),
+            TensorElement::I32(val) => format_int(*val),
+            TensorElement::I64(val) => format_int(*val),
+            TensorElement::F16(val) => format_f32(val.to_f32()),
+            TensorElement::F32(val) => format_f32(*val),
+            TensorElement::F64(val) => format_f64(*val),
+        }
+    }
+
+    fn min_value(&self) -> Self {
+        match self {
+            TensorElement::U8(_) => TensorElement::U8(u8::MIN),
+            TensorElement::U16(_) => TensorElement::U16(u16::MIN),
+            TensorElement::U32(_) => TensorElement::U32(u32::MIN),
+            TensorElement::U64(_) => TensorElement::U64(u64::MIN),
+
+            TensorElement::I8(_) => TensorElement::I8(i8::MIN),
+            TensorElement::I16(_) => TensorElement::I16(i16::MIN),
+            TensorElement::I32(_) => TensorElement::I32(i32::MIN),
+            TensorElement::I64(_) => TensorElement::I64(i64::MIN),
+
+            TensorElement::F16(_) => TensorElement::F16(f16::MIN),
+            TensorElement::F32(_) => TensorElement::F32(f32::MIN),
+            TensorElement::F64(_) => TensorElement::F64(f64::MIN),
+        }
+    }
+
+    fn max_value(&self) -> Self {
+        match self {
+            TensorElement::U8(_) => TensorElement::U8(u8::MAX),
+            TensorElement::U16(_) => TensorElement::U16(u16::MAX),
+            TensorElement::U32(_) => TensorElement::U32(u32::MAX),
+            TensorElement::U64(_) => TensorElement::U64(u64::MAX),
+
+            TensorElement::I8(_) => TensorElement::I8(i8::MAX),
+            TensorElement::I16(_) => TensorElement::I16(i16::MAX),
+            TensorElement::I32(_) => TensorElement::I32(i32::MAX),
+            TensorElement::I64(_) => TensorElement::I64(i64::MAX),
+
+            TensorElement::F16(_) => TensorElement::F16(f16::MAX),
+            TensorElement::F32(_) => TensorElement::F32(f32::MAX),
+            TensorElement::F64(_) => TensorElement::F64(f64::MAX),
+        }
+    }
+
+    /// Formats the element as a string, padded to the width of the largest possible value.
+    pub fn format_padded(&self) -> String {
+        let min_val_len = self.min_value().format().len();
+        let max_val_len = self.max_value().format().len();
+        let value_str = self.format();
+        if value_str.len() < min_val_len || value_str.len() < max_val_len {
+            let max_len = usize::max(min_val_len, max_val_len);
+            format!("{value_str:>max_len$}")
+        } else {
+            value_str
         }
     }
 }

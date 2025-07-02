@@ -1,3 +1,4 @@
+use egui::{FontSelection, RichText, TextWrapMode, Vec2, WidgetText};
 use re_data_ui::item_ui;
 use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_managers::GpuTexture2D};
 use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
@@ -372,11 +373,7 @@ fn pixel_value_ui(
         }
     };
 
-    if let Some(text) = text {
-        ui.label(text);
-    } else {
-        ui.label("No Value");
-    }
+    ui.monospace(text.unwrap_or_else(|| "No value".to_owned()));
 }
 
 fn format_pixel_value(
@@ -385,7 +382,9 @@ fn format_pixel_value(
     elements: &[TensorElement],
 ) -> Option<String> {
     match image_kind {
-        ImageKind::Segmentation | ImageKind::Depth => elements.first().map(|v| format!("Val: {v}")),
+        ImageKind::Segmentation | ImageKind::Depth => elements
+            .first()
+            .map(|v| format!("Val: {}", v.format_padded())),
 
         ImageKind::Color => match color_model {
             ColorModel::L => elements.first().map(|v| format!("L: {v}")),
@@ -393,10 +392,15 @@ fn format_pixel_value(
             ColorModel::RGB => {
                 if let [r, g, b] = elements {
                     match (r, g, b) {
-                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
-                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
-                        }
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
+                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => Some(
+                            format!("R: {r: >3}, G: {g: >3}, B: {b: >3}, #{r:02X}{g:02X}{b:02X}"),
+                        ),
+                        _ => Some(format!(
+                            "R: {}, G: {}, B: {}",
+                            r.format_padded(),
+                            g.format_padded(),
+                            b.format_padded()
+                        )),
                     }
                 } else {
                     None
@@ -412,9 +416,15 @@ fn format_pixel_value(
                             TensorElement::U8(b),
                             TensorElement::U8(a),
                         ) => Some(format!(
-                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                            "R: {r: >3}, G: {g: >3}, B: {b: >3}, A: {a: >3}, #{r:02X}{g:02X}{b:02X}{a:02X}"
                         )),
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                        _ => Some(format!(
+                            "R: {}, G: {}, B: {}, A: {}",
+                            r.format_padded(),
+                            g.format_padded(),
+                            b.format_padded(),
+                            a.format_padded()
+                        )),
                     }
                 } else {
                     None
@@ -424,10 +434,15 @@ fn format_pixel_value(
             ColorModel::BGR => {
                 if let [b, g, r] = elements {
                     match (b, g, r) {
-                        (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => {
-                            Some(format!("B: {b}, G: {g}, R: {r}, #{b:02X}{g:02X}{r:02X}"))
-                        }
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}")),
+                        (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => Some(
+                            format!("B: {b: >3}, G: {g: >3}, R: {r: >3}, #{r:02X}{g:02X}{b:02X}"),
+                        ),
+                        _ => Some(format!(
+                            "B: {}, G: {}, R: {}",
+                            b.format_padded(),
+                            g.format_padded(),
+                            r.format_padded()
+                        )),
                     }
                 } else {
                     None
@@ -443,9 +458,15 @@ fn format_pixel_value(
                             TensorElement::U8(r),
                             TensorElement::U8(a),
                         ) => Some(format!(
-                            "B: {b}, G: {g}, R: {r}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                            "B: {b: >3}, G: {g: >3}, R: {r: >3}, A: {a: >3}, #{r:02X}{g:02X}{b:02X}{a:02X}"
                         )),
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}, A: {a}")),
+                        _ => Some(format!(
+                            "B: {}, G: {}, R: {}, A: {}",
+                            b.format_padded(),
+                            g.format_padded(),
+                            r.format_padded(),
+                            a.format_padded()
+                        )),
                     }
                 } else {
                     None
