@@ -542,7 +542,7 @@ impl FrameBuffer {
             let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
             if is_caught_up {
                 // There must be an element here, otherwise we wouldn't be here.
-                #[allow(clippy::unwrap_used)]
+                #[expect(clippy::unwrap_used)]
                 break self.pending.pop_first().unwrap().1;
             } else {
                 // We're behind:
@@ -615,43 +615,39 @@ fn read_ffmpeg_output(
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match event {
-            FfmpegEvent::Log(LogLevel::Info, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::trace!("{debug_name} decoder: {msg}");
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Warning, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Error, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Fatal, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Unknown, msg) => {
+            FfmpegEvent::Log(level, msg) => {
                 if msg.contains("system signals, hard exiting") {
                     // That was probably us, killing the process.
                     re_log::debug!("FFmpeg process for {debug_name} was killed");
                     return None;
                 }
-                if !should_ignore_log_msg(&msg) {
-                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
+
+                let ignore = match level {
+                    LogLevel::Info | LogLevel::Unknown | LogLevel::Warning => {
+                        should_ignore_log_msg(&msg)
+                    }
+                    LogLevel::Error | LogLevel::Fatal => false,
+                };
+
+                if !ignore {
+                    let msg = sanitize_ffmpeg_log_message(&msg);
+                    match level {
+                        LogLevel::Info => {
+                            re_log::trace!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Warning | LogLevel::Unknown => {
+                            // Older ffmpeg versions don't flag their warnings as such and end up as `LogLevel::Unknown`.
+                            re_log::warn_once!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Error => {
+                            (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
+                        }
+                        LogLevel::Fatal => {
+                            (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
+                        }
+                    }
                 }
             }
 
@@ -975,14 +971,14 @@ fn write_avc_chunk_to_nalu_stream(
             1 => chunk.data[buffer_offset] as usize,
 
             2 => u16::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 2)]
                     .try_into()
                     .unwrap(),
             ) as usize,
 
             4 => u32::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 4)]
                     .try_into()
                     .unwrap(),
@@ -1084,16 +1080,16 @@ fn should_ignore_log_msg(msg: &str) -> bool {
 
 /// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
 fn sanitize_ffmpeg_log_message(msg: &str) -> String {
-    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+    // Make warn_once work on `[FOO @ 0x148db8000]` style warnings even if the address is different every time.
     // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
     let mut msg = msg.to_owned();
-    while let Some(start_pos) = msg.find("[swscaler @ 0x") {
+    while let Some(start_pos) = msg.find(" @ 0x") {
         if let Some(end_offset) = msg[start_pos..].find(']') {
             if start_pos + end_offset + 1 > msg.len() {
                 break;
             }
 
-            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("[swscaler]");
+            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("]");
         } else {
             // Huh, strange. Ignore it :shrug:
             break;
@@ -1112,6 +1108,11 @@ mod tests {
         assert_eq!(
             sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000]"),
             "[swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[foo#0:0/h264 @ 0x148db8000]"),
+            "[foo#0:0/h264]"
         );
 
         assert_eq!(
@@ -1143,12 +1144,12 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000 something is wrong here"),
-            "[swscaler @ 0x148db8000 something is wrong here"
+            sanitize_ffmpeg_log_message("[h264 @ 0x148db8000 something is wrong here"),
+            "[h264 @ 0x148db8000 something is wrong here"
         );
         assert_eq!(
-            sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
-            "swscaler @ 0x148db8000] something is wrong here"
+            sanitize_ffmpeg_log_message("h264 @ 0x148db8000] something is wrong here"),
+            "h264] something is wrong here"
         );
     }
 }

@@ -400,6 +400,20 @@ impl ConnectionHandle {
         // Therefore, we are never trying to use a server-side wildcard.
         let select_all_entity_paths = false;
 
+        let fuzzy_descriptors: Vec<String> = query_expression
+            .view_contents
+            .as_ref()
+            .map_or(BTreeSet::new(), |contents| {
+                contents
+                    .values()
+                    .filter_map(|opt_set| opt_set.as_ref())
+                    .flat_map(|set| set.iter().copied())
+                    .collect::<BTreeSet<_>>()
+            })
+            .into_iter()
+            .map(|ident| ident.to_string())
+            .collect();
+
         // NOTE: Do not ever run complex futures chain directly on top of `block_on`, make sure to
         // always spawn new tasks instead.
         //
@@ -423,6 +437,7 @@ impl ConnectionHandle {
                             chunk_ids: vec![],
                             entity_paths,
                             select_all_entity_paths,
+                            fuzzy_descriptors,
                             exclude_static_data: false,
                             exclude_temporal_data: false,
                             query: Some(query.into()),
@@ -604,6 +619,20 @@ impl ConnectionHandle {
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
 
+        let fuzzy_descriptors: Vec<String> = query_expression
+            .view_contents
+            .as_ref()
+            .map_or(BTreeSet::new(), |contents| {
+                contents
+                    .values()
+                    .filter_map(|opt_set| opt_set.as_ref())
+                    .flat_map(|set| set.iter().copied())
+                    .collect::<BTreeSet<_>>()
+            })
+            .into_iter()
+            .map(|ident| ident.to_string())
+            .collect();
+
         let query = query_from_query_expression(query_expression);
 
         wait_for_future(py, async {
@@ -623,6 +652,7 @@ impl ConnectionHandle {
                         .map(|p| (*p).clone().into())
                         .collect(),
                     select_all_entity_paths,
+                    fuzzy_descriptors,
                     exclude_static_data: false,
                     exclude_temporal_data: false,
                     query: Some(query.into()),
@@ -668,20 +698,6 @@ impl ConnectionHandle {
 }
 
 fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
-    let queried_components: Vec<String> = query_expression
-        .view_contents
-        .as_ref()
-        .map_or(BTreeSet::new(), |contents| {
-            contents
-                .values()
-                .filter_map(|opt_set| opt_set.as_ref())
-                .flat_map(|set| set.iter().cloned())
-                .collect::<BTreeSet<_>>()
-        })
-        .into_iter()
-        .map(|ident| ident.to_string())
-        .collect();
-
     let latest_at = if query_expression.is_static() {
         Some(QueryLatestAt::new_static())
     } else {
@@ -690,7 +706,6 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
             .map(|latest_at| QueryLatestAt {
                 index: Some(latest_at.timeline().to_string()),
                 at: latest_at.at(),
-                fuzzy_descriptors: queried_components.clone(),
             })
     };
 
@@ -699,7 +714,6 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
         range: query_expression.max_range().map(|range| QueryRange {
             index: range.timeline().to_string(),
             index_range: range.range,
-            fuzzy_descriptors: queried_components,
         }),
         columns_always_include_everything: false,
         columns_always_include_chunk_ids: false,

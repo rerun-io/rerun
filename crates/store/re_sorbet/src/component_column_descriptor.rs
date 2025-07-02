@@ -262,7 +262,7 @@ impl ComponentColumnDescriptor {
         self.component.as_str()
     }
 
-    fn column_name_impl(&self, batch_type: BatchType, short_archetype: bool) -> String {
+    pub fn column_name(&self, batch_type: BatchType) -> String {
         self.sanity_check();
 
         match batch_type {
@@ -285,31 +285,9 @@ impl ComponentColumnDescriptor {
                     self.entity_path.to_string()
                 };
 
-                // Each column can be of a different entity
-                match self.archetype {
-                    Some(archetype_name) => format!(
-                        "{prefix}:{}:{}",
-                        if short_archetype {
-                            archetype_name.short_name()
-                        } else {
-                            archetype_name.full_name()
-                        },
-                        self.component_descriptor().archetype_field_name()
-                    ),
-                    None => format!("{prefix}:{}", self.component),
-                }
+                format!("{prefix}:{}", self.component)
             }
         }
-    }
-
-    /// Uses short [`ArchetypeName`]s, if present.
-    pub fn column_name(&self, batch_type: BatchType) -> String {
-        self.column_name_impl(batch_type, true)
-    }
-
-    /// Uses fully-qualified [`ArchetypeName`]s, if present.
-    pub fn column_name_qualified(&self, batch_type: BatchType) -> String {
-        self.column_name_impl(batch_type, false)
     }
 
     #[inline]
