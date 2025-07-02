@@ -154,20 +154,3 @@ So far, we discussed how visualizers determine values for the components they ar
 
 
 In the previous examples, because [`Boxes2D`](../reference/types/archetypes/boxes2d.md) archetypes were used for logging then entities, `Boxes2D` visualizers were automatically selected. A key factor driving this behavior is the `Boxes2DIndicator` component, which is a data-less marker automatically inserted by the corresponding `Boxes2D` archetype. This is, however, not the only visualizer capable of displaying these entities. The `Point2D` visualizer can also be used, since it only requires [`Position2D`](../reference/types/components/position2d.md) components.
-
-Here is how to force a `Points2D` visualizer for `/boxes/1`, instead of the default `Boxes2D` visualizer:
-
-snippet: concepts/viscomp-visualizer-override
-
-The view now displays a point instead of the box. Here is how the visualizer is displayed in the user interface (note the visualizer of type `Points2D`):
-
-<picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/480w.png">
-</picture>
-
-It is also possible to have _multiple_ visualizers for the same view entity by using an array:
-
-snippet: concepts/viscomp-visualizer-override-multiple
-
-In this case, both a box and a point will be displayed. Adding and removing visualizers is also possible from the user interface.
