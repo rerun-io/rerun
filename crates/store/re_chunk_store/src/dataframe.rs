@@ -314,7 +314,7 @@ impl QueryExpression {
             return Some(RangeQuery::new(index, *filtered_index_range));
         }
 
-        Some(RangeQuery::everything(index))
+        None
     }
 }
 
