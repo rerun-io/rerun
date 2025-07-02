@@ -750,6 +750,56 @@ def set_thread_local_blueprint_recording(
     """
 
 #
+# component descriptor
+#
+
+class ComponentDescriptor:
+    """
+    A `ComponentDescriptor` fully describes the semantics of a column of data.
+
+    Every component at a given entity path is uniquely identified by the
+    `component` field of the descriptor. The `archetype` and `component_type`
+    fields provide additional information about the semantics of the data.
+    """
+
+    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
+        """Creates a component descriptor."""
+
+    @property
+    def archetype(self) -> str | None:
+        """
+        Optional name of the `Archetype` associated with this data.
+
+        `None` if the data wasn't logged through an archetype.
+
+        Example: `rerun.archetypes.Points3D`.
+        """
+
+    @property
+    def component(self) -> str:
+        """
+        Uniquely identifies of the component associated with this data.
+
+        Example: `Points3D:positions`.
+        """
+
+    @property
+    def component_type(self) -> str | None:
+        """
+        Optional type information for this component.
+
+        Can be used to inform applications on how to interpret the data.
+
+        Example: `rerun.components.Position3D`.
+        """
+
+    def with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Unconditionally sets `archetype` and `component_type` to the given ones (if specified)."""
+
+    def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Sets `archetype` and `component_type` to the given one iff it's not already set."""
+
+#
 # sinks
 #
 

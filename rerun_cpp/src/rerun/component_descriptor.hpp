@@ -10,7 +10,9 @@ namespace rerun {
 
     /// A `ComponentDescriptor` fully describes the semantics of a column of data.
     ///
-    /// Every component is uniquely identified by its `ComponentDescriptor`.
+    /// Every component at a given entity path is uniquely identified by the
+    /// `component` field of the descriptor. The `archetype` and `component_type`
+    /// fields provide additional information about the semantics of the data.
     struct ComponentDescriptor {
         /// Optional name of the `Archetype` associated with this data.
         ///
@@ -19,16 +21,14 @@ namespace rerun {
         /// Example: `rerun.archetypes.Points3D`.
         std::optional<std::string_view> archetype;
 
-        /// Name of the field within `Archetype` associated with this data.
+        /// Uniquely identifies of the component associated with this data.
         ///
-        /// Example: `positions`.
+        /// Example: `Points3D:positions`.
         std::string_view component;
 
-        /// Optional semantic name associated with this data.
+        /// Optional type information for this component.
         ///
-        /// This is fully implied by the `component`, but included for semantic convenience.
-        //
-        /// `None` if the data wasn't logged through an archetype.
+        /// Can be used to inform applications on how to interpret the data.
         ///
         /// Example: `rerun.components.Position3D`.
         std::optional<std::string_view> component_type;
@@ -105,7 +105,7 @@ namespace rerun {
             return descriptor;
         }
 
-        /// Sets `component` to the given one iff it's not already set.
+        /// Sets `component_type` to the given one iff it's not already set.
         ComponentDescriptor or_with_component_type(std::optional<std::string_view> component_type_
         ) const {
             if (this->component_type.has_value()) {

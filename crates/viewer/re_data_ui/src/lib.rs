@@ -3,6 +3,7 @@
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
 use re_log_types::EntityPath;
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{UiLayout, ViewerContext};
 

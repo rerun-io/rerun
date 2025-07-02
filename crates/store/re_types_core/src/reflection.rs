@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef};
 
-use crate::{ArchetypeName, ComponentDescriptor, ComponentType};
+use crate::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -283,5 +283,98 @@ impl ArchetypeFieldReflection {
             component: format!("{}:{}", archetype_name.short_name(), self.name).into(),
             archetype: Some(archetype_name),
         }
+    }
+}
+
+/// An extension of [`ComponentDescriptor`] that helps handling components that are
+/// built into Rerun.
+///
+/// Note that in general, [`ComponentDescriptor::archetype`] does not place any
+/// constraints on the [`ComponentDescriptor::component`] field, which can be arbitrary.
+///
+/// Components that are built into the Rerun viewer follow the convention that
+/// the `component` field starts with the short name of its archetype.
+pub trait ComponentDescriptorExt {
+    /// Returns the field name of a Rerun-builtin type.
+    ///
+    /// This is the result of stripping the Rerun-builtin [`ArchetypeName`]
+    /// from [`ComponentDescriptor::component`].
+    fn archetype_field_name(&self) -> &str;
+
+    /// Unconditionally sets [`ComponentDescriptor::archetype`] to the given one.
+    ///
+    /// Following the viewer's conventions, this also changes the archetype
+    /// part of [`ComponentDescriptor::component`].
+    fn with_builtin_archetype(self, archetype: ArchetypeName) -> Self;
+
+    /// Sets [`ComponentDescriptor::archetype`] to the given one iff it's not already set.
+    ///
+    /// Following the viewer's conventions, this also changes the archetype
+    /// part of [`ComponentDescriptor::component`].
+    fn or_with_builtin_archetype(self, archetype: impl Fn() -> ArchetypeName) -> Self;
+}
+
+/// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
+///
+/// Mainly used as a convenience function to create [`ComponentDescriptor`]s for
+/// Rerun-builtin types. In general, the [`ArchetypeName`] does not place any restrictions
+/// on the contents of [`ComponentIdentifier`].
+#[inline]
+fn with_field(archetype: ArchetypeName, field_name: impl AsRef<str>) -> ComponentIdentifier {
+    format!("{}:{}", archetype.short_name(), field_name.as_ref()).into()
+}
+
+impl ComponentDescriptorExt for ComponentDescriptor {
+    fn archetype_field_name(&self) -> &str {
+        self.archetype
+            .and_then(|archetype| {
+                self.component
+                    .strip_prefix(&format!("{}:", archetype.short_name()))
+            })
+            .unwrap_or_else(|| self.component.as_str())
+    }
+
+    #[inline]
+    fn with_builtin_archetype(mut self, archetype: ArchetypeName) -> Self {
+        {
+            let field_name = self.archetype_field_name();
+            self.component = with_field(archetype, field_name);
+        }
+        self.archetype = Some(archetype);
+        self
+    }
+
+    #[inline]
+    fn or_with_builtin_archetype(mut self, archetype: impl Fn() -> ArchetypeName) -> Self {
+        if self.archetype.is_none() {
+            let archetype = archetype();
+            self.component = with_field(archetype, self.component);
+            self.archetype = Some(archetype);
+        }
+        self
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::ArchetypeName;
+
+    use super::{with_field, ComponentDescriptor, ComponentDescriptorExt as _};
+
+    #[test]
+    fn component_descriptor_manipulation() {
+        let archetype_name: ArchetypeName = "rerun.archetypes.MyExample".into();
+        let descr = ComponentDescriptor {
+            archetype: Some(archetype_name),
+            component: with_field(archetype_name, "test"),
+            component_type: Some("user.Whatever".into()),
+        };
+        assert_eq!(descr.archetype_field_name(), "test");
+        assert_eq!(descr.display_name(), "MyExample:test");
+
+        let archetype_name: ArchetypeName = "rerun.archetypes.MyOtherExample".into();
+        let descr = descr.with_builtin_archetype(archetype_name);
+        assert_eq!(descr.archetype_field_name(), "test");
+        assert_eq!(descr.display_name(), "MyOtherExample:test");
     }
 }
