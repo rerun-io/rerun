@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
@@ -668,6 +668,20 @@ impl ConnectionHandle {
 }
 
 fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
+    let queried_components: Vec<String> = query_expression
+        .view_contents
+        .as_ref()
+        .map_or(BTreeSet::new(), |contents| {
+            contents
+                .values()
+                .filter_map(|opt_set| opt_set.as_ref())
+                .flat_map(|set| set.iter().cloned())
+                .collect::<BTreeSet<_>>()
+        })
+        .into_iter()
+        .map(|ident| ident.to_string())
+        .collect();
+
     let latest_at = if query_expression.is_static() {
         Some(QueryLatestAt::new_static())
     } else {
@@ -676,18 +690,16 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
             .map(|latest_at| QueryLatestAt {
                 index: Some(latest_at.timeline().to_string()),
                 at: latest_at.at(),
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
+                fuzzy_descriptors: queried_components.clone(),
             })
     };
 
     Query {
         latest_at,
-        range: query_expression.max_range().map(|range| {
-            QueryRange {
-                index: range.timeline().to_string(),
-                index_range: range.range,
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
-            }
+        range: query_expression.max_range().map(|range| QueryRange {
+            index: range.timeline().to_string(),
+            index_range: range.range,
+            fuzzy_descriptors: queried_components,
         }),
         columns_always_include_everything: false,
         columns_always_include_chunk_ids: false,
