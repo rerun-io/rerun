@@ -463,6 +463,9 @@ rerun-from-path = "rerun"
 # Dedicated alias for building the python bindings for the `examples` environment.
 py-build-examples = "pixi run -e examples py-build-common"
 
+# Dedicated alias for building the python bindings for the `examples` environment, in release.
+py-build-release-examples = "pixi run -e examples py-build-common-release"
+
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
   "py-build-examples",
