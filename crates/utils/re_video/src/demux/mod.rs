@@ -466,7 +466,7 @@ impl VideoDataDescription {
     /// The number of samples in the video.
     ///
     /// Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
-    /// a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
+    /// a frame is always a single chunk of data is always a single sample, see [`crate::decode::Chunk`].
     /// So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     #[inline]
     pub fn num_samples(&self) -> usize {
