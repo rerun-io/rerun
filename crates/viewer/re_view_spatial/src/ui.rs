@@ -152,33 +152,6 @@ impl SpatialViewState {
                 self.state_3d.set_spin(spin);
             }
         }
-
-        if let Some(eye) = &mut self.state_3d.view_eye {
-            ui.selectable_toggle(|ui| {
-                let mut mode = eye.mode();
-                ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
-                ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
-                eye.set_mode(mode);
-            });
-
-            ui.horizontal(|ui| {
-                let previous_speed = eye.speed(&self.bounding_boxes);
-                let mut speed = eye.speed(&self.bounding_boxes);
-                ui.label("Translation speed");
-                if ui
-                    .add(DragValue::new(&mut speed).range(0.001..=f32::MAX))
-                    .double_clicked()
-                {
-                    eye.set_speed(None);
-                } else if previous_speed != speed {
-                    // Make sure the camera is marked as interacted with.
-                    // Otherwise, it will continuously be reset to the default camera.
-                    // (once the speed property is part of the blueprint this concern will go away since all "non-fallback" state then lives in the blueprint store)
-                    self.state_3d.last_eye_interaction = Some(Instant::now());
-                    eye.set_speed(Some(speed));
-                }
-            });
-        }
     }
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
