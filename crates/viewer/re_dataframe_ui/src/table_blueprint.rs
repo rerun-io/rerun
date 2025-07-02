@@ -42,7 +42,7 @@ impl SortDirection {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SortBy {
-    pub column: String,
+    pub column_physical_name: String,
     pub direction: SortDirection,
 }
 

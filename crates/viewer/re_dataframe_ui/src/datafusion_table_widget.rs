@@ -1,7 +1,7 @@
 use std::iter;
 use std::sync::Arc;
 
-use arrow::datatypes::Fields;
+use arrow::datatypes::{Field, Fields};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
@@ -236,7 +236,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
-        let sorbet_batches = match (
+        let (sorbet_batches, fields) = match (
             requested_sorbet_batches.try_as_ref(),
             &table_state.last_sorbet_batches,
         ) {
@@ -273,13 +273,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let (fields, sorbet_schema) = {
+        let sorbet_schema = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            (sorbet_batch.fields(), sorbet_batch.sorbet_schema())
+            sorbet_batch.sorbet_schema()
         };
 
         let num_rows = sorbet_batches
@@ -549,11 +549,13 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let id = self.table_config.visible_column_ids().nth(column_index);
 
             if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-                let column_dataframe_name = self.fields[index].name();
+                let column_field = &self.fields[index];
+                let column_physical_name = column_field.name();
                 let column_display_name = column.display_name();
 
                 let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
-                    (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
+                    (sort_by.column_physical_name.as_str() == column_physical_name)
+                        .then_some(&sort_by.direction)
                 });
 
                 header_ui(ui, true, |ui| {
@@ -599,7 +601,8 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                             .clicked()
                                         {
                                             self.new_blueprint.sort_by = Some(SortBy {
-                                                column: column_dataframe_name.to_owned(),
+                                                column_physical_name: column_physical_name
+                                                    .to_owned(),
                                                 direction: sort_direction,
                                             });
                                             ui.close();
@@ -612,7 +615,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 })
                 .inner
                 .on_hover_ui(|ui| {
-                    column_descriptor_ui(ui, &column.desc);
+                    column_descriptor_ui(ui, &column.desc, column_field.as_ref());
                 });
             }
         }
@@ -667,7 +670,9 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 }
 
-fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, column_field: &Field) {
+    header_property_ui(ui, "Physical name", column_field.name());
+
     match *column {
         ColumnDescriptorRef::RowId(desc) => {
             let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
