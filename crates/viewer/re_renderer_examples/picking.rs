@@ -101,8 +101,8 @@ impl framework::Example for Picking {
         _time: &framework::Time,
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
-        while let Some(picking_result) =
-            PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
+        if let Some(picking_result) =
+            PickingLayerProcessor::readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);

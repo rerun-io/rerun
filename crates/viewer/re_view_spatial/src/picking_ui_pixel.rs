@@ -526,7 +526,8 @@ fn pixel_value_string_from_gpu_texture(
 
     // First check if we have a result ready to read.
     // Keep in mind that copy operation may have required row-padding, use `buffer_info` to get the right values.
-    let readback_result_rgb = readback_belt.readback_next_available(
+    // Readbacks from GPU might come in bursts for all sort of reasons. So make sure we only look at the latest result.
+    let readback_result_rgb = readback_belt.readback_newest_available(
         readback_id,
         |data, userdata: Box<TextureReadbackUserdata>| {
             debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);

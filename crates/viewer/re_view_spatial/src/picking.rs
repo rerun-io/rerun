@@ -193,13 +193,8 @@ fn picking_gpu(
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 
-    // Only look at newest available result, discard everything else.
-    let mut gpu_picking_result = None;
-    while let Some(picking_result) =
-        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
-    {
-        gpu_picking_result = Some(picking_result);
-    }
+    let gpu_picking_result =
+        PickingLayerProcessor::readback_result::<()>(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // First, figure out where on the rect the cursor is by now.
