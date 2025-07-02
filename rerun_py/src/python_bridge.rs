@@ -14,6 +14,7 @@ use pyo3::{
     prelude::*,
     types::{PyBytes, PyDict},
 };
+use re_sdk::ComponentDescriptor;
 
 use super::utils;
 use re_log::ResultExt as _;
@@ -120,6 +121,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBinarySinkStorage>()?;
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
+    m.add_class::<PyComponentDescriptor>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -1323,6 +1325,105 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
         }
         flush_garbage_queue();
     });
+}
+
+// --- Components ---
+
+/// A `ComponentDescriptor` fully describes the semantics of a column of data.
+///
+/// Every component at a given entity path is uniquely identified by the
+/// `component` field of the descriptor. The `archetype` and `component_type`
+/// fields provide additional information about the semantics of the data.
+#[pyclass(name = "ComponentDescriptor")]
+#[derive(Clone)]
+struct PyComponentDescriptor(pub ComponentDescriptor);
+
+#[pymethods]
+impl PyComponentDescriptor {
+    /// Creates a component descriptor.
+    #[new]
+    #[pyo3(signature = (component, archetype=None, component_type=None))]
+    #[pyo3(text_signature = "(self, component, archetype=None, component_type=None)")]
+    fn new(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+        let descr = ComponentDescriptor {
+            archetype: archetype.map(Into::into),
+            component: component.into(),
+            component_type: component_type.map(Into::into),
+        };
+
+        Self(descr)
+    }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash as _, Hasher as _};
+
+        let mut hasher = DefaultHasher::new();
+        self.0.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    fn __str__(&self) -> String {
+        self.0.display_name().to_owned()
+    }
+
+    /// Optional name of the `Archetype` associated with this data.
+    ///
+    /// `None` if the data wasn't logged through an archetype.
+    ///
+    /// Example: `rerun.archetypes.Points3D`.
+    #[getter]
+    fn archetype(&self) -> Option<String> {
+        self.0.archetype.map(|a| a.to_string())
+    }
+
+    /// Uniquely identifies of the component associated with this data.
+    ///
+    /// Example: `Points3D:positions`.
+    #[getter]
+    fn component(&self) -> String {
+        self.0.component.to_string()
+    }
+
+    /// Optional type information for this component.
+    ///
+    /// Can be used to inform applications on how to interpret the data.
+    ///
+    /// Example: `rerun.components.Position3D`.
+    #[getter]
+    fn component_type(&self) -> Option<String> {
+        self.0.component_type.map(|a| a.to_string())
+    }
+
+    /// Unconditionally sets `archetype` and `component_type` to the given ones (if specified).
+    #[pyo3(signature = (archetype=None, component_type=None))]
+    fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+        let mut cloned = self.0.clone();
+        if let Some(archetype) = archetype {
+            cloned = cloned.with_archetype(archetype.into());
+        }
+        if let Some(component_type) = component_type {
+            cloned = cloned.with_component_type(component_type.into());
+        }
+        Self(cloned)
+    }
+
+    /// Sets `archetype` and `component_type` to the given one iff it's not already set.
+    #[pyo3(signature = (archetype=None, component_type=None))]
+    fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+        let mut cloned = self.0.clone();
+        if let Some(archetype) = archetype {
+            cloned = cloned.or_with_archetype(|| archetype.into());
+        }
+        if let Some(component_type) = component_type {
+            cloned = cloned.or_with_component_type(|| component_type.into());
+        }
+        Self(cloned)
+    }
 }
 
 // --- Time ---
