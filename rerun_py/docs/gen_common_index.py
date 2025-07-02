@@ -152,6 +152,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "AnyValues",
             "AnyBatchValue",
+            "ComponentDescriptor",
         ],
     ),
     ################################################################################
