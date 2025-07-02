@@ -423,6 +423,7 @@ impl ConnectionHandle {
                             chunk_ids: vec![],
                             entity_paths,
                             select_all_entity_paths,
+                            fuzzy_descriptors: vec![],
                             exclude_static_data: false,
                             exclude_temporal_data: false,
                             query: Some(query.into()),
@@ -623,6 +624,7 @@ impl ConnectionHandle {
                         .map(|p| (*p).clone().into())
                         .collect(),
                     select_all_entity_paths,
+                    fuzzy_descriptors: vec![],
                     exclude_static_data: false,
                     exclude_temporal_data: false,
                     query: Some(query.into()),
@@ -676,18 +678,14 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
             .map(|latest_at| QueryLatestAt {
                 index: Some(latest_at.timeline().to_string()),
                 at: latest_at.at(),
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
             })
     };
 
     Query {
         latest_at,
-        range: query_expression.max_range().map(|range| {
-            QueryRange {
-                index: range.timeline().to_string(),
-                index_range: range.range,
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
-            }
+        range: query_expression.max_range().map(|range| QueryRange {
+            index: range.timeline().to_string(),
+            index_range: range.range,
         }),
         columns_always_include_everything: false,
         columns_always_include_chunk_ids: false,

@@ -605,6 +605,53 @@ fn pixel_value_string_from_gpu_texture(
         ]);
     });
 
+    // Unfortunately, it can happen that GPU readbacks come in bursts one frame and we get thing in the next.
+    // Therefore, we have to keep around the previous result and use that until we get a new one.
+    let readback_result_rgb = {
+        let frame_nr = ui_ctx.cumulative_frame_nr();
+
+        #[derive(Clone)]
+        struct PreviousReadbackResult {
+            frame_nr: u64,
+            interaction_id: re_renderer::GpuReadbackIdentifier,
+            readback_result_rgb: [u8; 3],
+        }
+
+        // Only use the interaction *index* to identify the memory itself so we don't accumulate data indefinitely.
+        // To detect whether the retrieved data belongs to the same interaction we add the full interaction *id* to the cached data.
+        let memory_id = egui::Id::new(interaction_id.interaction_idx);
+        let interaction_id = interaction_id.gpu_readback_id();
+
+        if let Some(readback_result_rgb) = readback_result_rgb {
+            ui_ctx.memory_mut(|m| {
+                m.data.insert_temp(
+                    memory_id,
+                    PreviousReadbackResult {
+                        frame_nr,
+                        interaction_id,
+                        readback_result_rgb,
+                    },
+                );
+            });
+
+            Some(readback_result_rgb)
+        } else {
+            const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
+
+            ui_ctx.memory(|m| m.data.get_temp(memory_id)).and_then(
+                |cached: PreviousReadbackResult| {
+                    if cached.interaction_id == interaction_id
+                        && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
+                    {
+                        Some(cached.readback_result_rgb)
+                    } else {
+                        None
+                    }
+                },
+            )
+        }
+    };
+
     // Then enqueue a new readback.
     //
     // It's quite hard to figure out when we no longer have to do this. The criteria would be roughly:
