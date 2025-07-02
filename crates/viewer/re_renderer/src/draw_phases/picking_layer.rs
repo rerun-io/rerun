@@ -400,10 +400,9 @@ impl PickingLayerProcessor {
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
     ) -> Option<PickingResult<T>> {
-        let mut result = None;
-        ctx.gpu_readback_belt
-            .lock()
-            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
+        ctx.gpu_readback_belt.lock().readback_next_available(
+            identifier,
+            |data, metadata: Box<ReadbackBeltMetadata<T>>| {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
                     Self::PICKING_LAYER_DEPTH_FORMAT
@@ -446,15 +445,15 @@ impl PickingLayerProcessor {
                     picking_depth_data = picking_depth_data.into_iter().step_by(4).collect();
                 }
 
-                result = Some(PickingResult {
+                PickingResult {
                     picking_id_data,
                     picking_depth_data,
                     user_data: metadata.user_data,
                     rect: metadata.picking_rect,
                     world_from_cropped_projection: metadata.world_from_cropped_projection,
-                });
-            });
-        result
+                }
+            },
+        )
     }
 }
 

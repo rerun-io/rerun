@@ -360,17 +360,17 @@ impl GpuReadbackBelt {
 
     /// Try to receive a pending data readback with the given identifier and the given user data type.
     ///
-    /// Returns the oldest received data with the given identifier & type.
-    /// This is *almost certainly* also the oldest scheduled readback. But there is no *strict* guarantee for this.
+    /// Reports the oldest received data with the given identifier & type.
+    /// *Most likely* subsequent calls will return data from newer submissions. But there is no *strict* guarantee for this.
     /// It could in theory happen that a readback is scheduled after a previous one, but finishes before it!
     ///
     /// ATTENTION: Do NOT assume any alignment on the slice passed to `on_data_received`.
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).
-    pub fn readback_data<UserDataType: 'static>(
+    pub fn readback_next_available<UserDataType: 'static, Ret>(
         &mut self,
         identifier: GpuReadbackIdentifier,
-        callback: impl FnOnce(&[u8], Box<UserDataType>),
-    ) {
+        callback: impl FnOnce(&[u8], Box<UserDataType>) -> Ret,
+    ) -> Option<Ret> {
         re_tracing::profile_function!();
 
         self.receive_chunks();
@@ -385,21 +385,23 @@ impl GpuReadbackBelt {
                     continue;
                 }
 
-                {
+                let result = {
                     let range = chunk.ranges_in_use.swap_remove(range_index);
                     let slice = chunk.buffer.slice(range.buffer_range.clone());
                     let data = slice.get_mapped_range();
-                    callback(&data, range.user_data.downcast::<UserDataType>().unwrap());
-                }
+                    callback(&data, range.user_data.downcast::<UserDataType>().unwrap())
+                };
 
                 // If this was the last range from this chunk, the chunk is ready for re-use!
                 if chunk.ranges_in_use.is_empty() {
                     let chunk = self.received_chunks.swap_remove(chunk_index);
                     self.reuse_chunk(chunk);
                 }
-                return;
+                return Some(result);
             }
         }
+
+        None
     }
 
     /// Check if any new chunks are ready to be read.
