@@ -15,6 +15,7 @@ use arrow::{
 };
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
+use itertools::Itertools as _;
 use numpy::PyArrayMethods as _;
 use pyo3::{
     IntoPyObjectExt as _,
@@ -162,7 +163,18 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     fn __repr__(&self) -> String {
-        self.0.column_name(re_sorbet::BatchType::Dataframe)
+        format!(
+            "Column name: {col}\n\
+             \tEntity path: {path}\n\
+             \tArchetype: {arch}\n\
+             \tComponent type: {ctype}\n\
+             \tComponent: {comp}",
+            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
+            path = self.entity_path(),
+            arch = self.archetype().unwrap_or("None"),
+            ctype = self.component_type().unwrap_or(""),
+            comp = self.component(),
+        )
     }
 
     fn __eq__(&self, other: &Self) -> bool {
@@ -207,6 +219,14 @@ impl PyComponentColumnDescriptor {
     #[getter]
     fn is_static(&self) -> bool {
         self.0.is_static
+    }
+
+    /// Whether the column is an indicator column.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn is_indicator(&self) -> bool {
+        self.0.component_descriptor().is_indicator_component()
     }
 }
 
@@ -469,6 +489,13 @@ pub struct PySchema {
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
+    fn __repr__(&self) -> String {
+        self.component_columns()
+            .iter()
+            .map(|col| col.__repr__())
+            .join("\n")
+    }
+
     /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
         let py = slf.py();
