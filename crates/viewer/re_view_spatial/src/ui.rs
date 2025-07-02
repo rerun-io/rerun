@@ -1,5 +1,4 @@
-use egui::{DragValue, NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
-use web_time::Instant;
+use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
 use macaw::BoundingBox;
 use re_format::format_f32;
@@ -11,7 +10,6 @@ use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighl
 
 use crate::{
     Pinhole,
-    eye::EyeMode,
     pickable_textured_rect::PickableRectSourceData,
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
