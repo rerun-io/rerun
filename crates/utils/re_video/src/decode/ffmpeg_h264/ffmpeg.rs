@@ -617,41 +617,37 @@ fn read_ffmpeg_output(
     for event in ffmpeg_iterator {
         #[expect(clippy::match_same_arms)]
         match event {
-            FfmpegEvent::Log(LogLevel::Info, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::trace!("{debug_name} decoder: {msg}");
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Warning, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Error, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Fatal, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Unknown, msg) => {
+            FfmpegEvent::Log(level, msg) => {
                 if msg.contains("system signals, hard exiting") {
                     // That was probably us, killing the process.
                     re_log::debug!("FFmpeg process for {debug_name} was killed");
                     return None;
                 }
-                if !should_ignore_log_msg(&msg) {
-                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
+
+                let ignore = match level {
+                    LogLevel::Info | LogLevel::Unknown | LogLevel::Warning => {
+                        should_ignore_log_msg(&msg)
+                    }
+                    LogLevel::Error | LogLevel::Fatal => false,
+                };
+
+                if !ignore {
+                    let msg = sanitize_ffmpeg_log_message(&msg);
+                    match level {
+                        LogLevel::Info => {
+                            re_log::trace!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Warning | LogLevel::Unknown => {
+                            // Older ffmpeg versions don't flag their warnings as such and end up as `LogLevel::Unknown`.
+                            re_log::warn_once!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Error => {
+                            (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
+                        }
+                        LogLevel::Fatal => {
+                            (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
+                        }
+                    }
                 }
             }
 
