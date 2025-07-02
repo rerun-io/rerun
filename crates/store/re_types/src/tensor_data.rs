@@ -1,11 +1,10 @@
 //! Internal helpers; not part of the public API.
 #![allow(missing_docs)]
 
+use half::f16;
+
 #[allow(unused_imports)] // Used for docstring links
 use crate::datatypes::TensorData;
-use glam::usize;
-use half::f16;
-use re_format::{format_f32, format_f64, format_int, format_uint};
 
 // ----------------------------------------------------------------------------
 
@@ -358,17 +357,17 @@ impl TensorElement {
     /// Format the value with re_format
     pub fn format(&self) -> String {
         match self {
-            TensorElement::U8(val) => format_uint(*val),
-            TensorElement::U16(val) => format_uint(*val),
-            TensorElement::U32(val) => format_uint(*val),
-            TensorElement::U64(val) => format_uint(*val),
-            TensorElement::I8(val) => format_int(*val),
-            TensorElement::I16(val) => format_int(*val),
-            TensorElement::I32(val) => format_int(*val),
-            TensorElement::I64(val) => format_int(*val),
-            TensorElement::F16(val) => format_f32(val.to_f32()),
-            TensorElement::F32(val) => format_f32(*val),
-            TensorElement::F64(val) => format_f64(*val),
+            TensorElement::U8(val) => re_format::format_uint(*val),
+            TensorElement::U16(val) => re_format::format_uint(*val),
+            TensorElement::U32(val) => re_format::format_uint(*val),
+            TensorElement::U64(val) => re_format::format_uint(*val),
+            TensorElement::I8(val) => re_format::format_int(*val),
+            TensorElement::I16(val) => re_format::format_int(*val),
+            TensorElement::I32(val) => re_format::format_int(*val),
+            TensorElement::I64(val) => re_format::format_int(*val),
+            TensorElement::F16(val) => re_format::format_f32(val.to_f32()),
+            TensorElement::F32(val) => re_format::format_f32(*val),
+            TensorElement::F64(val) => re_format::format_f64(*val),
         }
     }
 
