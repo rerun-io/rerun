@@ -141,8 +141,9 @@ As an illustration, all four values are available for the `/boxes/1` entity of t
 
 So far, we discussed how visualizers determine values for the components they are interested in and how this can be customized. This section instead discusses the process of how visualizers themselves are determined and how to override this process.
 
-⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases
-(relevant [issue](https://github.com/rerun-io/rerun/issues/6626)).
+⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases.
+Also, in Rerun versions prior to `v0.24`, it was possible to use visualizer overrides for arbitrary visualizers.
+Starting with `v0.24`, it is only possible to provide visualizer overrides for the time series view.
 
 <picture>
   <img src="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/full.png" alt="">
@@ -154,9 +155,6 @@ So far, we discussed how visualizers determine values for the components they ar
 
 Internally, each view keeps track of the archetypes that it can visualize and how to interpret their respective fields.
 Sometimes it makes sense to override an entire visualizer, to change the way entities are visualized.
-
-⚠️NOTE: In Rerun versions prior to `v0.24`, it was possible to use visualizer overrides for arbitrary visualizers.
-Starting with `v0.24`, it is only possible to provide visualizer overrides for the time series view.
 
 Here is how to force a `SeriesPoints` visualizer for `/trig/sin`, instead of the default `SeriesLines` visualizer:
 
