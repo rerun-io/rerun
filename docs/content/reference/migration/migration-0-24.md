@@ -94,12 +94,13 @@ These changes are reflected in various parts of the Rerun viewer:
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
 
-### Limitations
+### Limitations & breaking changes
 
 * In some cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI_.
 * Currently, only Rerun-builtin components are picked up by the visualizers and therefore shown in the views (except for the dataframe view which shows all components).
 * In `v0.23`, the LeRobot dataloader logged incomplete `ComponentDescriptors` for robot observations and actions. To fix this, load the dataset in `v0.24` and resave your episodes to `.rrd` (`v0.24` now supports saving all selected recordings).
 * Overriding visualizers to reinterpret data (e.g. show a point-cloud for mesh vertices) is no longer possible, since visualizers now match for <archetype>:<field> instead of component type name. This will be addressed in the future with blueprint-driven overrides that will allow to remap data to arbitrary archetypes.
+* `VisualizerOverrides` are now limited to time series views, and _stop to be supported for general views_, such as the spatial views.
 
 ## Dataframe API: `View.select_static` is deprecated
 
