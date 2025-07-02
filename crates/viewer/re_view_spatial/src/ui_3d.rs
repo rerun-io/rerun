@@ -119,28 +119,13 @@ impl View3DState {
         view_ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
     ) -> ViewEye {
-        // FIXME: test on self.last_eye_interaction.is_none() is disabled for now,
-        // as it does not workproperly - need to fix this properly
-        //
-        // If the user has not interacted with the eye-camera yet, continue to
-        // interpolate to the new default eye. This gives much better robustness
-        // with scenes that change over time.
-        // if self.last_eye_interaction.is_none() {
-        //     self.interpolate_to_view_eye(default_eye(
-        //         &bounding_boxes.current,
-        //         scene_view_coordinates,
-        //     ));
-        // }
-        //
-        // FIXME: can we use this for time comparison?
-        // let at = eye_property.query_results.compound_index;
-        // if at.0.is_static() {
-        //     self.interpolate_to_view_eye(default_eye(
-        //         &bounding_boxes.current,
-        //         scene_view_coordinates,
-        //     ));
-        // }
-        // dbg!(at);
+        // Has the user interact with the eye?
+        if eye_property.query_results.compound_index.0.is_static() {
+            self.interpolate_to_view_eye(default_eye(
+                &bounding_boxes.current,
+                scene_view_coordinates,
+            ));
+        }
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
         if scene_view_coordinates != self.scene_view_coordinates {
