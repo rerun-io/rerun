@@ -155,16 +155,6 @@ impl Eye {
 }
 
 // ----------------------------------------------------------------------------
-
-/// The mode of an [`ViewEye`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum EyeMode {
-    FirstPerson,
-
-    #[default]
-    Orbital,
-}
-
 /// The speed of a [`ViewEye`] can be computed automatically or set manually.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 enum CameraTranslationSpeed {
@@ -178,20 +168,20 @@ enum CameraTranslationSpeed {
 /// An eye (camera) in 3D space, controlled by the user.
 ///
 /// This is either a first person camera or an orbital camera,
-/// controlled by [`EyeMode`].
+/// controlled by [`Eye3DKind`].
 /// We combine these two modes in one struct because they share a lot of state and logic.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewEye {
     /// First person or orbital?
-    mode: EyeMode,
+    kind: Eye3DKind,
 
-    /// Center of orbit, or camera position in first person mode.
+    /// Center of orbit, or camera position in first person kind.
     center: Vec3,
 
-    /// Ignored for [`EyeMode::FirstPerson`],
-    /// but kept for if/when the user switches to orbital mode.
+    /// Ignored for [`Eye3DKind::FirstPerson`],
+    /// but kept for if/when the user switches to orbital kind.
     orbit_radius: f32,
 
     /// Rotate to world-space from view-space (RUB).
@@ -227,7 +217,7 @@ impl ViewEye {
         eye_up: Vec3,
     ) -> Self {
         Self {
-            mode: EyeMode::Orbital,
+            kind: Eye3DKind::Orbital,
             center: orbit_center,
             orbit_radius,
             world_from_view_rot,
@@ -238,37 +228,37 @@ impl ViewEye {
         }
     }
 
-    pub fn mode(&self) -> EyeMode {
-        self.mode
+    pub fn kind(&self) -> Eye3DKind {
+        self.kind
     }
 
-    pub fn set_mode(&mut self, new_mode: EyeMode) {
-        if self.mode != new_mode {
+    pub fn set_kind(&mut self, new_kind: Eye3DKind) {
+        if self.kind != new_kind {
             // Keep the same position:
-            match new_mode {
-                EyeMode::FirstPerson => self.center = self.position(),
-                EyeMode::Orbital => {
+            match new_kind {
+                Eye3DKind::FirstPerson => self.center = self.position(),
+                Eye3DKind::Orbital => {
                     self.center = self.position() + self.orbit_radius * self.fwd();
                 }
             }
 
-            self.mode = new_mode;
+            self.kind = new_kind;
         }
     }
 
     /// If in orbit mode, what are we orbiting around?
     pub fn orbit_center(&self) -> Option<Vec3> {
-        match self.mode {
-            EyeMode::FirstPerson => None,
-            EyeMode::Orbital => Some(self.center),
+        match self.kind {
+            Eye3DKind::FirstPerson => None,
+            Eye3DKind::Orbital => Some(self.center),
         }
     }
 
     /// If in orbit mode, how far from the orbit center are we?
     pub fn orbit_radius(&self) -> Option<f32> {
-        match self.mode {
-            EyeMode::FirstPerson => None,
-            EyeMode::Orbital => Some(self.orbit_radius),
+        match self.kind {
+            Eye3DKind::FirstPerson => None,
+            Eye3DKind::Orbital => Some(self.orbit_radius),
         }
     }
 
@@ -279,26 +269,26 @@ impl ViewEye {
         // Temporarily switch to orbital, set the values, and then switch back.
         // This ensures the camera position will be set correctly, even if we
         // were in first-person mode:
-        let old_mode = self.mode();
-        self.set_mode(EyeMode::Orbital);
+        let old_mode = self.kind();
+        self.set_kind(Eye3DKind::Orbital);
         self.center = orbit_center;
         self.orbit_radius = orbit_radius;
-        self.set_mode(old_mode);
+        self.set_kind(old_mode);
     }
 
     /// The world-space position of the eye.
     pub fn position(&self) -> Vec3 {
-        match self.mode {
-            EyeMode::FirstPerson => self.center,
-            EyeMode::Orbital => self.center - self.orbit_radius * self.fwd(),
+        match self.kind {
+            Eye3DKind::FirstPerson => self.center,
+            Eye3DKind::Orbital => self.center - self.orbit_radius * self.fwd(),
         }
     }
 
-    /// Compute the actual speed depending on the [`EyeMode`].
+    /// Compute the actual speed depending on the [`Eye3DKind`].
     fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
-        match self.mode {
-            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
-            EyeMode::Orbital => self.orbit_radius,
+        match self.kind {
+            Eye3DKind::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
+            Eye3DKind::Orbital => self.orbit_radius,
         }
     }
 
@@ -337,12 +327,12 @@ impl ViewEye {
 
     /// Create an [`ViewEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
-        match self.mode {
-            EyeMode::FirstPerson => {
+        match self.kind {
+            Eye3DKind::FirstPerson => {
                 self.center = eye.pos_in_world();
             }
 
-            EyeMode::Orbital => {
+            Eye3DKind::Orbital => {
                 // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
                 let distance = eye
                     .forward_in_world()
@@ -366,7 +356,7 @@ impl ViewEye {
             *other // avoid rounding errors
         } else {
             Self {
-                mode: other.mode,
+                kind: other.kind,
                 center: self.center.lerp(other.center, t),
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
@@ -425,8 +415,8 @@ impl ViewEye {
             &Eye3D::descriptor_kind(),
         );
         match kind {
-            Ok(Eye3DKind::FirstPerson) => self.set_mode(EyeMode::FirstPerson),
-            Ok(Eye3DKind::Orbital) => self.set_mode(EyeMode::Orbital),
+            Ok(Eye3DKind::FirstPerson) => self.set_kind(Eye3DKind::FirstPerson),
+            Ok(Eye3DKind::Orbital) => self.set_kind(Eye3DKind::Orbital),
             Err(err) => {
                 re_log::error!("error while getting eye 3d kind: {}", err);
             }
@@ -462,7 +452,7 @@ impl ViewEye {
             did_interact |= self.keyboard_navigation(&response.ctx, speed);
         }
 
-        if self.mode == EyeMode::Orbital {
+        if self.kind == Eye3DKind::Orbital {
             let (zoom_delta, scroll_delta) = if response.hovered() {
                 response
                     .ctx
