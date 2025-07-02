@@ -138,7 +138,7 @@ impl DataFusionQuery {
         // collect
         let record_batches = dataframe.collect().await?;
 
-        // IMPORTANT: fields must be copied here *before* converting to `SorbetBatch`, because that
+        // TODO(#10421) IMPORTANT: fields must be copied here *before* converting to `SorbetBatch`, because that
         // conversion modifies the field names. As a result, the schema contained in a `SorbetBatch`
         // cannot be used to derive the physical column names as seen by DataFusion.
         let fields = record_batches
