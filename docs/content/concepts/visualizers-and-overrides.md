@@ -152,5 +152,20 @@ So far, we discussed how visualizers determine values for the components they ar
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/1200w.png">
 </picture>
 
+Internally, each view keeps track of the archetypes that it can visualize and how to interpret their respective fields.
+Sometimes it makes sense to override an entire visualizer, to change the way entities are visualized.
 
-In the previous examples, because [`Boxes2D`](../reference/types/archetypes/boxes2d.md) archetypes were used for logging then entities, `Boxes2D` visualizers were automatically selected. A key factor driving this behavior is the `Boxes2DIndicator` component, which is a data-less marker automatically inserted by the corresponding `Boxes2D` archetype. This is, however, not the only visualizer capable of displaying these entities. The `Point2D` visualizer can also be used, since it only requires [`Position2D`](../reference/types/components/position2d.md) components.
+⚠️NOTE: In Rerun versions prior to `v0.24`, it was possible to use visualizer overrides for arbitrary visualizers.
+Starting with `v0.24`, it is only possible to provide visualizer overrides for the time series view.
+
+Here is how to force a `SeriesPoints` visualizer for `/trig/sin`, instead of the default `SeriesLines` visualizer:
+
+snippet: tutorials/visualizer-overrides.py
+
+The view now displays a series of points instead of connecting the values with lines.
+Here is how the visualizer is displayed in the user interface (note the visualizer of type `SeriesPoints`):
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/series_points_visualizer/d3c1b3ec9f48b3bf4ba266ef3700f0192c6ae7ce/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_points_visualizer/d3c1b3ec9f48b3bf4ba266ef3700f0192c6ae7ce/480w.png">
+</picture>
