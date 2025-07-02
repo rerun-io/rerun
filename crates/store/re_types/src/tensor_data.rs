@@ -412,17 +412,15 @@ impl TensorElement {
     /// Formats the element as a string, padded to the width of the largest possible value.
     pub fn format_padded(&self) -> String {
         let max_len = match self {
-            TensorElement::U8(_)
-            | TensorElement::U16(_)
-            | TensorElement::U32(_)
-            | TensorElement::U64(_) => self.max_value().format().chars().count(),
-            TensorElement::I8(_)
-            | TensorElement::I16(_)
-            | TensorElement::I32(_)
-            | TensorElement::I64(_) => self.min_value().format().chars().count(),
+            Self::U8(_) | Self::U16(_) | Self::U32(_) | Self::U64(_) => {
+                self.max_value().format().chars().count()
+            }
+            Self::I8(_) | Self::I16(_) | Self::I32(_) | Self::I64(_) => {
+                self.min_value().format().chars().count()
+            }
             // These were determined by checking the length of random formatted values
-            TensorElement::F16(_) | TensorElement::F32(_) => 12,
-            TensorElement::F64(_) => 22,
+            Self::F16(_) | Self::F32(_) => 12,
+            Self::F64(_) => 22,
         };
         let value_str = self.format();
         format!("{value_str:>max_len$}")
