@@ -354,56 +354,58 @@ impl TensorElement {
         }
     }
 
-    /// Format the value with re_format
+    /// Format the value with `re_format`
     pub fn format(&self) -> String {
         match self {
-            TensorElement::U8(val) => re_format::format_uint(*val),
-            TensorElement::U16(val) => re_format::format_uint(*val),
-            TensorElement::U32(val) => re_format::format_uint(*val),
-            TensorElement::U64(val) => re_format::format_uint(*val),
-            TensorElement::I8(val) => re_format::format_int(*val),
-            TensorElement::I16(val) => re_format::format_int(*val),
-            TensorElement::I32(val) => re_format::format_int(*val),
-            TensorElement::I64(val) => re_format::format_int(*val),
-            TensorElement::F16(val) => re_format::format_f32(val.to_f32()),
-            TensorElement::F32(val) => re_format::format_f32(*val),
-            TensorElement::F64(val) => re_format::format_f64(*val),
+            Self::U8(val) => re_format::format_uint(*val),
+            Self::U16(val) => re_format::format_uint(*val),
+            Self::U32(val) => re_format::format_uint(*val),
+            Self::U64(val) => re_format::format_uint(*val),
+            Self::I8(val) => re_format::format_int(*val),
+            Self::I16(val) => re_format::format_int(*val),
+            Self::I32(val) => re_format::format_int(*val),
+            Self::I64(val) => re_format::format_int(*val),
+            Self::F16(val) => re_format::format_f32(val.to_f32()),
+            Self::F32(val) => re_format::format_f32(*val),
+            Self::F64(val) => re_format::format_f64(*val),
         }
     }
 
+    /// Get the minimum value representable by this element's type.
     fn min_value(&self) -> Self {
         match self {
-            TensorElement::U8(_) => TensorElement::U8(u8::MIN),
-            TensorElement::U16(_) => TensorElement::U16(u16::MIN),
-            TensorElement::U32(_) => TensorElement::U32(u32::MIN),
-            TensorElement::U64(_) => TensorElement::U64(u64::MIN),
+            Self::U8(_) => Self::U8(u8::MIN),
+            Self::U16(_) => Self::U16(u16::MIN),
+            Self::U32(_) => Self::U32(u32::MIN),
+            Self::U64(_) => Self::U64(u64::MIN),
 
-            TensorElement::I8(_) => TensorElement::I8(i8::MIN),
-            TensorElement::I16(_) => TensorElement::I16(i16::MIN),
-            TensorElement::I32(_) => TensorElement::I32(i32::MIN),
-            TensorElement::I64(_) => TensorElement::I64(i64::MIN),
+            Self::I8(_) => Self::I8(i8::MIN),
+            Self::I16(_) => Self::I16(i16::MIN),
+            Self::I32(_) => Self::I32(i32::MIN),
+            Self::I64(_) => Self::I64(i64::MIN),
 
-            TensorElement::F16(_) => TensorElement::F16(f16::MIN),
-            TensorElement::F32(_) => TensorElement::F32(f32::MIN),
-            TensorElement::F64(_) => TensorElement::F64(f64::MIN),
+            Self::F16(_) => Self::F16(f16::MIN),
+            Self::F32(_) => Self::F32(f32::MIN),
+            Self::F64(_) => Self::F64(f64::MIN),
         }
     }
 
+    /// Get the maximum value representable by this element's type.
     fn max_value(&self) -> Self {
         match self {
-            TensorElement::U8(_) => TensorElement::U8(u8::MAX),
-            TensorElement::U16(_) => TensorElement::U16(u16::MAX),
-            TensorElement::U32(_) => TensorElement::U32(u32::MAX),
-            TensorElement::U64(_) => TensorElement::U64(u64::MAX),
+            Self::U8(_) => Self::U8(u8::MAX),
+            Self::U16(_) => Self::U16(u16::MAX),
+            Self::U32(_) => Self::U32(u32::MAX),
+            Self::U64(_) => Self::U64(u64::MAX),
 
-            TensorElement::I8(_) => TensorElement::I8(i8::MAX),
-            TensorElement::I16(_) => TensorElement::I16(i16::MAX),
-            TensorElement::I32(_) => TensorElement::I32(i32::MAX),
-            TensorElement::I64(_) => TensorElement::I64(i64::MAX),
+            Self::I8(_) => Self::I8(i8::MAX),
+            Self::I16(_) => Self::I16(i16::MAX),
+            Self::I32(_) => Self::I32(i32::MAX),
+            Self::I64(_) => Self::I64(i64::MAX),
 
-            TensorElement::F16(_) => TensorElement::F16(f16::MAX),
-            TensorElement::F32(_) => TensorElement::F32(f32::MAX),
-            TensorElement::F64(_) => TensorElement::F64(f64::MAX),
+            Self::F16(_) => Self::F16(f16::MAX),
+            Self::F32(_) => Self::F32(f32::MAX),
+            Self::F64(_) => Self::F64(f64::MAX),
         }
     }
 

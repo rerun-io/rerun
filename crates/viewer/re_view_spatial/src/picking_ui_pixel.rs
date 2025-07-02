@@ -1,4 +1,3 @@
-use egui::{FontSelection, RichText, TextWrapMode, Vec2, WidgetText};
 use re_data_ui::item_ui;
 use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_managers::GpuTexture2D};
 use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
