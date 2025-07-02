@@ -1084,16 +1084,16 @@ fn should_ignore_log_msg(msg: &str) -> bool {
 
 /// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
 fn sanitize_ffmpeg_log_message(msg: &str) -> String {
-    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+    // Make warn_once work on `[FOO @ 0x148db8000]` style warnings even if the address is different every time.
     // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
     let mut msg = msg.to_owned();
-    while let Some(start_pos) = msg.find("[swscaler @ 0x") {
+    while let Some(start_pos) = msg.find(" @ 0x") {
         if let Some(end_offset) = msg[start_pos..].find(']') {
             if start_pos + end_offset + 1 > msg.len() {
                 break;
             }
 
-            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("[swscaler]");
+            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("]");
         } else {
             // Huh, strange. Ignore it :shrug:
             break;
@@ -1112,6 +1112,11 @@ mod tests {
         assert_eq!(
             sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000]"),
             "[swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[foo#0:0/h264 @ 0x148db8000]"),
+            "[foo#0:0/h264]"
         );
 
         assert_eq!(
@@ -1143,12 +1148,12 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000 something is wrong here"),
-            "[swscaler @ 0x148db8000 something is wrong here"
+            sanitize_ffmpeg_log_message("[h264 @ 0x148db8000 something is wrong here"),
+            "[h264 @ 0x148db8000 something is wrong here"
         );
         assert_eq!(
-            sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
-            "swscaler @ 0x148db8000] something is wrong here"
+            sanitize_ffmpeg_log_message("h264 @ 0x148db8000] something is wrong here"),
+            "h264] something is wrong here"
         );
     }
 }
