@@ -6,7 +6,7 @@ use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
-const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 200.0);
+const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);
 
 #[test]
 pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
@@ -87,7 +87,6 @@ fn setup_blueprint(
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(SpatialView2D::identifier());
 
-        // Set the bounds such that the points are fully visible, that way we get more pixels contributing to the output.
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
@@ -96,8 +95,8 @@ fn setup_blueprint(
         ctx.save_blueprint_archetype(
             property_path.clone(),
             &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [-5.5, 5.5].into(),
-                y_range: [-3.0, 3.0].into(),
+                x_range: [-4.0, 4.0].into(),
+                y_range: [-1.1, 2.6].into(),
             }),
         );
 
