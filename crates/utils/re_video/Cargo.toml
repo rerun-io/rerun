@@ -94,6 +94,7 @@ web-sys = { workspace = true, features = [
 # For the `frames` example:
 indicatif.workspace = true
 criterion.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 
 # For build.rs:
 [build-dependencies]
