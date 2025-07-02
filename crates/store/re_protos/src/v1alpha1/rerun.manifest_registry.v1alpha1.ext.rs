@@ -11,13 +11,13 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::common::v1alpha1::{ComponentDescriptor, DataframePart};
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
     RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
+use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
 use crate::{TypeConversionError, invalid_field, missing_field};
-
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -414,6 +414,15 @@ impl RegisterWithDatasetResponse {
     }
 }
 
+//TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
+#[derive(Debug)]
+pub struct RegisterWithDatasetTaskDescriptor {
+    pub partition_id: PartitionId,
+    pub partition_type: PartitionType,
+    pub storage_url: url::Url,
+    pub task_id: TaskId,
+}
+
 // --- ScanPartitionTableResponse --
 
 impl ScanPartitionTableResponse {
@@ -566,6 +575,24 @@ impl PartitionType {
                 ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
             )),
         }
+    }
+
+    pub fn many_from_arrow(array: &dyn Array) -> Result<Vec<Self>, TypeConversionError> {
+        let string_array = array.try_downcast_array_ref::<StringArray>()?;
+
+        (0..string_array.len())
+            .map(|i| {
+                let resource_type = string_array.value(i);
+                match resource_type {
+                    "rrd" => Ok(Self::Rrd),
+                    _ => Err(TypeConversionError::ArrowError(
+                        ArrowError::InvalidArgumentError(format!(
+                            "unknown resource type {resource_type}"
+                        )),
+                    )),
+                }
+            })
+            .collect()
     }
 }
 

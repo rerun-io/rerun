@@ -91,6 +91,9 @@ pub enum StreamError {
     #[error("Column '{0}' is missing from the dataframe")]
     MissingDataframeColumn(String),
 
+    #[error("{0}")]
+    MissingData(String),
+
     #[error("arrow error: {0}")]
     ArrowError(#[from] arrow::error::ArrowError),
 }

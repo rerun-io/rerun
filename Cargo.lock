@@ -7281,6 +7281,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "async-stream",
+ "itertools 0.14.0",
  "re_arrow_util",
  "re_auth",
  "re_chunk",
