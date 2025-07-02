@@ -101,8 +101,8 @@ serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 glam.workspace = true
 itertools.workspace = true
 mint.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
-
 
 [build-dependencies]
 

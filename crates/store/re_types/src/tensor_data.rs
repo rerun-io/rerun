@@ -353,6 +353,78 @@ impl TensorElement {
             Self::F64(value) => u16_from_f64(*value),
         }
     }
+
+    /// Format the value with `re_format`
+    pub fn format(&self) -> String {
+        match self {
+            Self::U8(val) => re_format::format_uint(*val),
+            Self::U16(val) => re_format::format_uint(*val),
+            Self::U32(val) => re_format::format_uint(*val),
+            Self::U64(val) => re_format::format_uint(*val),
+            Self::I8(val) => re_format::format_int(*val),
+            Self::I16(val) => re_format::format_int(*val),
+            Self::I32(val) => re_format::format_int(*val),
+            Self::I64(val) => re_format::format_int(*val),
+            Self::F16(val) => re_format::format_f32(val.to_f32()),
+            Self::F32(val) => re_format::format_f32(*val),
+            Self::F64(val) => re_format::format_f64(*val),
+        }
+    }
+
+    /// Get the minimum value representable by this element's type.
+    fn min_value(&self) -> Self {
+        match self {
+            Self::U8(_) => Self::U8(u8::MIN),
+            Self::U16(_) => Self::U16(u16::MIN),
+            Self::U32(_) => Self::U32(u32::MIN),
+            Self::U64(_) => Self::U64(u64::MIN),
+
+            Self::I8(_) => Self::I8(i8::MIN),
+            Self::I16(_) => Self::I16(i16::MIN),
+            Self::I32(_) => Self::I32(i32::MIN),
+            Self::I64(_) => Self::I64(i64::MIN),
+
+            Self::F16(_) => Self::F16(f16::MIN),
+            Self::F32(_) => Self::F32(f32::MIN),
+            Self::F64(_) => Self::F64(f64::MIN),
+        }
+    }
+
+    /// Get the maximum value representable by this element's type.
+    fn max_value(&self) -> Self {
+        match self {
+            Self::U8(_) => Self::U8(u8::MAX),
+            Self::U16(_) => Self::U16(u16::MAX),
+            Self::U32(_) => Self::U32(u32::MAX),
+            Self::U64(_) => Self::U64(u64::MAX),
+
+            Self::I8(_) => Self::I8(i8::MAX),
+            Self::I16(_) => Self::I16(i16::MAX),
+            Self::I32(_) => Self::I32(i32::MAX),
+            Self::I64(_) => Self::I64(i64::MAX),
+
+            Self::F16(_) => Self::F16(f16::MAX),
+            Self::F32(_) => Self::F32(f32::MAX),
+            Self::F64(_) => Self::F64(f64::MAX),
+        }
+    }
+
+    /// Formats the element as a string, padded to the width of the largest possible value.
+    pub fn format_padded(&self) -> String {
+        let max_len = match self {
+            Self::U8(_) | Self::U16(_) | Self::U32(_) | Self::U64(_) => {
+                self.max_value().format().chars().count()
+            }
+            Self::I8(_) | Self::I16(_) | Self::I32(_) | Self::I64(_) => {
+                self.min_value().format().chars().count()
+            }
+            // These were determined by checking the length of random formatted values
+            Self::F16(_) | Self::F32(_) => 12,
+            Self::F64(_) => 22,
+        };
+        let value_str = self.format();
+        format!("{value_str:>max_len$}")
+    }
 }
 
 impl std::fmt::Display for TensorElement {
@@ -370,5 +442,53 @@ impl std::fmt::Display for TensorElement {
             Self::F32(elem) => std::fmt::Display::fmt(elem, f),
             Self::F64(elem) => std::fmt::Display::fmt(elem, f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tensor_element_format() {
+        let elem = TensorElement::U8(42);
+        assert_eq!(elem.format(), "42");
+
+        let elem = TensorElement::F32(3.17);
+        assert_eq!(elem.format(), "3.17");
+
+        let elem = TensorElement::I64(-123456789);
+        assert_eq!(elem.format(), "−123\u{2009}456\u{2009}789");
+    }
+
+    #[test]
+    fn test_tensor_element_format_padded() {
+        macro_rules! test_padded_format {
+            ($type:ident, $random:expr) => {
+                let type_name = stringify!($type);
+                let left_padded = TensorElement::$type($random).format_padded();
+                for _ in 0..100 {
+                    let elem = TensorElement::$type($random);
+                    let right_padded = elem.format_padded();
+                    assert_eq!(
+                        left_padded.chars().count(),
+                        right_padded.chars().count(),
+                        "Padded format length mismatch for type {type_name} with value '{left_padded}' and value '{right_padded}'",
+                    );
+                }
+            };
+        }
+        test_padded_format!(U8, rand::random());
+        test_padded_format!(U16, rand::random());
+        test_padded_format!(U32, rand::random());
+        test_padded_format!(U64, rand::random());
+        test_padded_format!(I8, rand::random());
+        test_padded_format!(I16, rand::random());
+        test_padded_format!(I32, rand::random());
+        test_padded_format!(I64, rand::random());
+
+        test_padded_format!(F16, f16::from_bits(rand::random()));
+        test_padded_format!(F32, f32::from_bits(rand::random()));
+        test_padded_format!(F64, f64::from_bits(rand::random()));
     }
 }

@@ -363,40 +363,61 @@ fn pixel_value_ui(
                 }
             }
         }
-    });
 
-    let text = match pixel_value_source {
-        PixelValueSource::Image(image) => pixel_value_string_from_image(image, x, y),
-        PixelValueSource::GpuTexture(texture) => {
-            pixel_value_string_from_gpu_texture(ui.ctx(), render_ctx, texture, interaction_id, x, y)
+        let text = match pixel_value_source {
+            PixelValueSource::Image(image) => pixel_value_string_from_image(image, x, y),
+            PixelValueSource::GpuTexture(texture) => pixel_value_string_from_gpu_texture(
+                ui.ctx(),
+                render_ctx,
+                texture,
+                interaction_id,
+                x,
+                y,
+            ),
+        };
+
+        if let Some((label, value)) = text {
+            ui.label(label);
+            ui.monospace(value);
+        } else {
+            ui.label("No value");
         }
-    };
-
-    if let Some(text) = text {
-        ui.label(text);
-    } else {
-        ui.label("No Value");
-    }
+    });
 }
 
 fn format_pixel_value(
     image_kind: ImageKind,
     color_model: ColorModel,
     elements: &[TensorElement],
-) -> Option<String> {
+) -> Option<(String, String)> {
     match image_kind {
-        ImageKind::Segmentation | ImageKind::Depth => elements.first().map(|v| format!("Val: {v}")),
+        ImageKind::Segmentation | ImageKind::Depth => elements
+            .first()
+            .map(|v| ("Val:".to_owned(), v.format_padded())),
 
         ImageKind::Color => match color_model {
-            ColorModel::L => elements.first().map(|v| format!("L: {v}")),
+            ColorModel::L => elements
+                .first()
+                .map(|v| ("L:".to_owned(), v.format_padded())),
 
             ColorModel::RGB => {
                 if let [r, g, b] = elements {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
-                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                            Some((
+                                "RGB:".to_owned(),
+                                format!("{r: >3}, {g: >3}, {b: >3}, #{r:02X}{g:02X}{b:02X}"),
+                            ))
                         }
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
+                        _ => Some((
+                            "RGB:".to_owned(),
+                            format!(
+                                "{}, {}, {}",
+                                r.format_padded(),
+                                g.format_padded(),
+                                b.format_padded()
+                            ),
+                        )),
                     }
                 } else {
                     None
@@ -411,10 +432,22 @@ fn format_pixel_value(
                             TensorElement::U8(g),
                             TensorElement::U8(b),
                             TensorElement::U8(a),
-                        ) => Some(format!(
-                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                        ) => Some((
+                            "RGBA:".to_owned(),
+                            format!(
+                                "{r: >3}, {g: >3}, {b: >3}, {a: >3}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                            ),
                         )),
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                        _ => Some((
+                            "RGBA:".to_owned(),
+                            format!(
+                                "{}, {}, {}, {}",
+                                r.format_padded(),
+                                g.format_padded(),
+                                b.format_padded(),
+                                a.format_padded()
+                            ),
+                        )),
                     }
                 } else {
                     None
@@ -425,9 +458,20 @@ fn format_pixel_value(
                 if let [b, g, r] = elements {
                     match (b, g, r) {
                         (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => {
-                            Some(format!("B: {b}, G: {g}, R: {r}, #{b:02X}{g:02X}{r:02X}"))
+                            Some((
+                                "BGR:".to_owned(),
+                                format!("{b: >3}, {g: >3}, {r: >3}, #{b:02X}{g:02X}{r:02X}"),
+                            ))
                         }
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}")),
+                        _ => Some((
+                            "BGR:".to_owned(),
+                            format!(
+                                "{}, {}, {}",
+                                b.format_padded(),
+                                g.format_padded(),
+                                r.format_padded()
+                            ),
+                        )),
                     }
                 } else {
                     None
@@ -442,10 +486,22 @@ fn format_pixel_value(
                             TensorElement::U8(g),
                             TensorElement::U8(r),
                             TensorElement::U8(a),
-                        ) => Some(format!(
-                            "B: {b}, G: {g}, R: {r}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                        ) => Some((
+                            "BGRA:".to_owned(),
+                            format!(
+                                "{b: >3}, {g: >3}, {r: >3}, {a: >3}, #{b:02X}{g:02X}{r:02X}{a:02X}"
+                            ),
                         )),
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}, A: {a}")),
+                        _ => Some((
+                            "BGRA:".to_owned(),
+                            format!(
+                                "{}, {}, {}, {}",
+                                b.format_padded(),
+                                g.format_padded(),
+                                r.format_padded(),
+                                a.format_padded()
+                            ),
+                        )),
                     }
                 } else {
                     None
@@ -455,7 +511,7 @@ fn format_pixel_value(
     }
 }
 
-fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<String> {
+fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<(String, String)> {
     match image.kind {
         ImageKind::Segmentation | ImageKind::Depth => format_pixel_value(
             image.kind,
@@ -509,7 +565,7 @@ fn pixel_value_string_from_gpu_texture(
     interaction_id: &TextureInteractionId<'_>,
     x: u32,
     y: u32,
-) -> Option<String> {
+) -> Option<(String, String)> {
     // TODO(andreas): Should parts of this be a utility in re_renderer?
     // Note that before this was implemented the readback belt was private to `re_renderer` because it is fairly advanced in its usage.
 
