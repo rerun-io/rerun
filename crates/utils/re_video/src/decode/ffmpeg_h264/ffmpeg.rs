@@ -542,7 +542,7 @@ impl FrameBuffer {
             let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
             if is_caught_up {
                 // There must be an element here, otherwise we wouldn't be here.
-                #[allow(clippy::unwrap_used)]
+                #[expect(clippy::unwrap_used)]
                 break self.pending.pop_first().unwrap().1;
             } else {
                 // We're behind:
@@ -615,7 +615,7 @@ fn read_ffmpeg_output(
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match event {
             FfmpegEvent::Log(LogLevel::Info, msg) => {
                 if !should_ignore_log_msg(&msg) {
@@ -975,14 +975,14 @@ fn write_avc_chunk_to_nalu_stream(
             1 => chunk.data[buffer_offset] as usize,
 
             2 => u16::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 2)]
                     .try_into()
                     .unwrap(),
             ) as usize,
 
             4 => u32::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 4)]
                     .try_into()
                     .unwrap(),
