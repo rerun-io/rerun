@@ -434,6 +434,8 @@ impl VideoDataDescription {
 
     /// Length of the video if known.
     ///
+    /// NOTE: This includes the duration of the final frame too!
+    ///
     /// For video streams (as opposed to video files) this is generally unknown.
     #[inline]
     pub fn duration(&self) -> Option<std::time::Duration> {
@@ -462,9 +464,27 @@ impl VideoDataDescription {
     }
 
     /// The number of samples in the video.
+    ///
+    /// Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
+    /// a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
+    /// So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     #[inline]
     pub fn num_samples(&self) -> usize {
         self.samples.num_elements()
+    }
+
+    /// `num_frames / duration`.
+    ///
+    /// Note that the video could have a variable framerate!
+    #[inline]
+    pub fn average_fps(&self) -> Option<f32> {
+        self.duration().map(|duration| {
+            let num_frames = self.num_samples();
+
+            // NOTE: the video duration includes the duration of the final frame too,
+            // so we don't have a fence-post problem here!
+            num_frames as f32 / duration.as_secs_f32()
+        })
     }
 
     /// Determines the video timestamps of all frames inside a video, returning raw time values.

@@ -136,14 +136,18 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
         );
     }
 
-    // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
-    // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
-    // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
-    // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     ui.list_item_flat_noninteractive(
         PropertyContent::new("Frame count")
             .value_text(re_format::format_uint(video_descr.num_samples())),
     );
+
+    if let Some(fps) = video_descr.average_fps() {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Average FPS").value_text(format!("{fps:.2}")),
+        )
+        .on_hover_text("Average frames per second (FPS) of the video");
+    }
+
     ui.list_item_flat_noninteractive(
         PropertyContent::new("Codec").value_text(video_descr.human_readable_codec_string()),
     );
