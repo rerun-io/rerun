@@ -103,7 +103,11 @@ impl ListVisuals {
         let design_tokens = design_tokens_of(self.theme);
 
         if self.selected {
-            design_tokens.list_item_selected_text
+            if self.hovered {
+                design_tokens.text_color_on_primary_hovered
+            } else {
+                design_tokens.text_color_on_primary
+            }
         } else if self.active {
             design_tokens.list_item_active_text
         } else if !self.interactive {
@@ -121,7 +125,7 @@ impl ListVisuals {
         let design_tokens = design_tokens_of(self.theme);
 
         if self.selected {
-            design_tokens.list_item_selected_icon
+            design_tokens.icon_color_on_primary
         } else if self.active {
             design_tokens.list_item_active_icon
         } else if self.hovered {
@@ -133,8 +137,12 @@ impl ListVisuals {
 
     pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
-        if self.selected && icon_hovered {
-            design_tokens.list_item_selected_text
+        if self.selected {
+            if icon_hovered {
+                design_tokens.icon_color_on_primary_hovered
+            } else {
+                design_tokens.icon_color_on_primary
+            }
         } else if icon_hovered {
             design_tokens.list_item_hovered_text
         } else {

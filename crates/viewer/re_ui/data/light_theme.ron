@@ -232,9 +232,6 @@
       "color": "{Gray.300}"
     },
 
-    "list_item_selected_text": {
-      "color": "{Blue.100}"
-    },
     "list_item_active_text": {
       "color": "{Gray.0}"
     },
@@ -249,9 +246,6 @@
     },
     "list_item_strong_text": {
       "color": "{Gray.300}"
-    },
-    "list_item_selected_icon": {
-      "color": "{Blue.250}"
     },
     "list_item_active_icon": {
       "color": "{Gray.300}"
