@@ -3,6 +3,10 @@
 #![allow(deprecated)] // False positive due to macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
+mod component_columns;
+mod index_columns;
+mod schema;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     str::FromStr as _,
@@ -15,10 +19,8 @@ use arrow::{
 };
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
-use itertools::Itertools as _;
 use numpy::PyArrayMethods as _;
 use pyo3::{
-    IntoPyObjectExt as _,
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyCapsule, PyDict, PyTuple},
@@ -27,19 +29,20 @@ use pyo3::{
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
-    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, StaticColumnSelection,
-    ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, QueryExpression,
+    SparseFillStrategy, StaticColumnSelection, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_sdk::{EntityPath, StoreId, StoreKind};
-use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
-};
+use re_sdk::{StoreId, StoreKind};
+use re_sorbet::{ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
 
+pub use self::{
+    component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector},
+    index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector},
+    schema::PySchema,
+};
 use super::utils::py_rerun_warn_cstr;
-use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
@@ -59,235 +62,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
 
     Ok(())
-}
-
-/// The descriptor of an index column.
-///
-/// Index columns contain the index values for when the data was updated. They
-/// generally correspond to Rerun timelines.
-///
-/// Column descriptors are used to describe the columns in a
-/// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
-/// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
-#[pyclass(frozen, name = "IndexColumnDescriptor")]
-#[derive(Clone)]
-struct PyIndexColumnDescriptor(IndexColumnDescriptor);
-
-#[pymethods]
-impl PyIndexColumnDescriptor {
-    fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.column_name())
-    }
-
-    /// The name of the index.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn name(&self) -> &str {
-        self.0.column_name()
-    }
-
-    /// Part of generic ColumnDescriptor interface: always False for Index.
-    #[expect(clippy::unused_self)]
-    #[getter]
-    fn is_static(&self) -> bool {
-        false
-    }
-}
-
-impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
-    fn from(desc: IndexColumnDescriptor) -> Self {
-        Self(desc)
-    }
-}
-
-/// A selector for an index column.
-///
-/// Index columns contain the index values for when the data was updated. They
-/// generally correspond to Rerun timelines.
-///
-/// Parameters
-/// ----------
-/// index : str
-///     The name of the index to select. Usually the name of a timeline.
-#[pyclass(frozen, name = "IndexColumnSelector")]
-#[derive(Clone)]
-pub struct PyIndexColumnSelector(TimeColumnSelector);
-
-#[pymethods]
-impl PyIndexColumnSelector {
-    /// Create a new `IndexColumnSelector`.
-    // Note: the `Parameters` section goes into the class docstring.
-    #[new]
-    #[pyo3(text_signature = "(self, index)")]
-    fn new(index: &str) -> Self {
-        Self(TimeColumnSelector::from(index))
-    }
-
-    fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.timeline)
-    }
-
-    /// The name of the index.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn name(&self) -> &str {
-        &self.0.timeline
-    }
-}
-
-impl From<PyIndexColumnSelector> for TimeColumnSelector {
-    fn from(selector: PyIndexColumnSelector) -> Self {
-        selector.0
-    }
-}
-
-/// The descriptor of a component column.
-///
-/// Component columns contain the data for a specific component of an entity.
-///
-/// Column descriptors are used to describe the columns in a
-/// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
-/// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
-#[derive(Clone)]
-pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
-
-impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
-    fn from(desc: ComponentColumnDescriptor) -> Self {
-        Self(desc)
-    }
-}
-
-#[pymethods]
-impl PyComponentColumnDescriptor {
-    fn __repr__(&self) -> String {
-        format!(
-            "Column name: {col}\n\
-             \tEntity path: {path}\n\
-             \tArchetype: {arch}\n\
-             \tComponent type: {ctype}\n\
-             \tComponent: {comp}",
-            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
-            path = self.entity_path(),
-            arch = self.archetype().unwrap_or("None"),
-            ctype = self.component_type().unwrap_or(""),
-            comp = self.component(),
-        )
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-
-    /// The entity path.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn entity_path(&self) -> String {
-        self.0.entity_path.to_string()
-    }
-
-    /// The component.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn component(&self) -> &str {
-        &self.0.component
-    }
-
-    /// The component type, if any.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn component_type(&self) -> Option<&str> {
-        self.0.component_type.map(|c| c.as_str())
-    }
-
-    /// The archetype name, if any.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn archetype(&self) -> Option<&str> {
-        self.0.archetype.map(|c| c.as_str())
-    }
-
-    /// Whether the column is static.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn is_static(&self) -> bool {
-        self.0.is_static
-    }
-
-    /// Whether the column is an indicator column.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn is_indicator(&self) -> bool {
-        self.0.component_descriptor().is_indicator_component()
-    }
-}
-
-impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
-    fn from(desc: PyComponentColumnDescriptor) -> Self {
-        desc.0
-    }
-}
-
-/// A selector for a component column.
-///
-/// Component columns contain the data for a specific component of an entity.
-///
-/// Parameters
-/// ----------
-/// entity_path : str
-///     The entity path to select.
-/// component : str
-///     The component to select
-#[pyclass(frozen, name = "ComponentColumnSelector")]
-#[derive(Clone)]
-pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
-
-#[pymethods]
-impl PyComponentColumnSelector {
-    /// Create a new `ComponentColumnSelector`.
-    // Note: the `Parameters` section goes into the class docstring.
-    #[new]
-    #[pyo3(text_signature = "(self, entity_path: str, component: str)")]
-    fn new(entity_path: &str, component: &str) -> Self {
-        Self(ComponentColumnSelector {
-            entity_path: entity_path.into(),
-            component: component.to_owned(),
-        })
-    }
-
-    fn __repr__(&self) -> String {
-        format!("{}", self.0)
-    }
-
-    /// The entity path.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn entity_path(&self) -> String {
-        self.0.entity_path.to_string()
-    }
-
-    /// The component.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn component(&self) -> &str {
-        &self.0.component
-    }
-}
-
-impl From<PyComponentColumnSelector> for ComponentColumnSelector {
-    fn from(selector: PyComponentColumnSelector) -> Self {
-        selector.0
-    }
 }
 
 /// A type alias for any component-column-like object.
@@ -457,164 +231,6 @@ impl IndexValuesLike<'_> {
                 }
             }
         }
-    }
-}
-
-#[pyclass]
-pub struct SchemaIterator {
-    iter: std::vec::IntoIter<PyObject>,
-}
-
-#[pymethods]
-impl SchemaIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-        slf.iter.next()
-    }
-}
-
-#[pyclass(frozen, name = "Schema")]
-#[derive(Clone)]
-//TODO(#9457): improve this object and use it for `Dataset.schema()`.
-pub struct PySchema {
-    pub schema: SorbetColumnDescriptors,
-}
-
-/// The schema representing a set of available columns.
-///
-/// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-/// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-#[pymethods]
-impl PySchema {
-    fn __repr__(&self) -> String {
-        self.component_columns()
-            .iter()
-            .map(|col| col.__repr__())
-            .join("\n")
-    }
-
-    /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
-        let py = slf.py();
-        let iter = SchemaIterator {
-            iter: slf
-                .schema
-                .iter()
-                .filter_map(|col| match col.clone() {
-                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
-                    ColumnDescriptor::Time(col) => {
-                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
-                    }
-                    ColumnDescriptor::Component(col) => {
-                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
-                    }
-                })
-                .collect::<PyResult<Vec<_>>>()?
-                .into_iter(),
-        };
-        Py::new(slf.py(), iter)
-    }
-
-    /// Return a list of all the index columns in the schema.
-    fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
-        self.schema
-            .index_columns()
-            .map(|c| c.clone().into())
-            .collect()
-    }
-
-    /// Return a list of all the component columns in the schema.
-    fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
-        self.schema
-            .component_columns()
-            .map(|c| c.clone().into())
-            .collect()
-    }
-
-    /// Look up the column descriptor for a specific entity path and component.
-    ///
-    /// Parameters
-    /// ----------
-    /// entity_path : str
-    ///     The entity path to look up.
-    /// component : str
-    ///     The component to look up. Example: `Points3D:positions`.
-    ///
-    /// Returns
-    /// -------
-    /// Optional[ComponentColumnDescriptor]
-    ///     The column descriptor, if it exists.
-    fn column_for(
-        &self,
-        entity_path: &str,
-        component: &str,
-    ) -> Option<PyComponentColumnDescriptor> {
-        let entity_path: EntityPath = entity_path.into();
-
-        let selector = ComponentColumnSelector {
-            entity_path,
-            component: component.to_owned(),
-        };
-
-        self.schema.component_columns().find_map(|col| {
-            if col.matches(&selector) {
-                Some(col.clone().into())
-            } else {
-                None
-            }
-        })
-    }
-
-    #[expect(rustdoc::private_doc_tests)]
-    #[allow(rustdoc::invalid_rust_codeblocks)]
-    /// Look up the column descriptor for a specific selector.
-    ///
-    /// Parameters
-    /// ----------
-    /// selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-    ///     The selector to look up.
-    ///
-    ///     String arguments are expected to follow the following format:
-    ///     `"<entity_path>:<component_type>"`
-    ///
-    /// Returns
-    /// -------
-    /// ComponentColumnDescriptor
-    ///     The column descriptor, if it exists. Raise an exception otherwise.
-    pub fn column_for_selector(
-        &self,
-        selector: AnyComponentColumn,
-    ) -> PyResult<PyComponentColumnDescriptor> {
-        match selector {
-            AnyComponentColumn::Name(name) => self.resolve_component_column_selector(
-                &ComponentColumnSelector::from_str(&name).map_err(to_py_err)?,
-            ),
-
-            AnyComponentColumn::ComponentDescriptor(desc) => Ok(desc),
-
-            AnyComponentColumn::ComponentSelector(selector) => {
-                self.resolve_component_column_selector(&selector.0)
-            }
-        }
-    }
-}
-
-impl PySchema {
-    pub fn resolve_component_column_selector(
-        &self,
-        column_selector: &ComponentColumnSelector,
-    ) -> PyResult<PyComponentColumnDescriptor> {
-        let desc = self
-            .schema
-            .resolve_component_column_selector(column_selector)
-            .ok_or(PyValueError::new_err(format!(
-                "Could not find column for selector {column_selector}"
-            )))?;
-
-        Ok(PyComponentColumnDescriptor(desc.clone()))
     }
 }
 
