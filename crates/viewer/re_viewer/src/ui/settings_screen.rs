@@ -73,8 +73,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     });
 
     ui.re_checkbox(
-        &mut app_options.include_welcome_screen_button_in_recordings_panel,
-        "Show 'Welcome screen' button",
+        &mut app_options.include_rerun_examples_button_in_recordings_panel,
+        "Show 'Rerun examples' button",
     );
 
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
