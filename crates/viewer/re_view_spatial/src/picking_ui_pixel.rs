@@ -582,28 +582,31 @@ fn pixel_value_string_from_gpu_texture(
 
     // First check if we have a result ready to read.
     // Keep in mind that copy operation may have required row-padding, use `buffer_info` to get the right values.
-    let mut readback_result_rgb = None;
-    readback_belt.readback_data::<TextureReadbackUserdata>(readback_id, |data, userdata| {
-        debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
+    // Readbacks from GPU might come in bursts for all sort of reasons. So make sure we only look at the latest result.
+    let readback_result_rgb = readback_belt.readback_newest_available(
+        readback_id,
+        |data, userdata: Box<TextureReadbackUserdata>| {
+            debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
 
-        // Try to find the pixel at the mouse position.
-        // If our position isn't available, just clamp to the edge of the area.
-        let data_pos = (pixel_pos - userdata.readback_rect.min())
-            .clamp(
-                glam::IVec2::ZERO,
-                // Exclusive the size of the area we're reading back.
-                userdata.readback_rect.extent.as_ivec2() - glam::IVec2::ONE,
-            )
-            .as_uvec2();
-        let start_index =
-            (data_pos.x * 4 + userdata.buffer_info.bytes_per_row_padded * data_pos.y) as usize;
+            // Try to find the pixel at the mouse position.
+            // If our position isn't available, just clamp to the edge of the area.
+            let data_pos = (pixel_pos - userdata.readback_rect.min())
+                .clamp(
+                    glam::IVec2::ZERO,
+                    // Exclusive the size of the area we're reading back.
+                    userdata.readback_rect.extent.as_ivec2() - glam::IVec2::ONE,
+                )
+                .as_uvec2();
+            let start_index =
+                (data_pos.x * 4 + userdata.buffer_info.bytes_per_row_padded * data_pos.y) as usize;
 
-        readback_result_rgb = Some([
-            data[start_index],
-            data[start_index + 1],
-            data[start_index + 2],
-        ]);
-    });
+            [
+                data[start_index],
+                data[start_index + 1],
+                data[start_index + 2],
+            ]
+        },
+    );
 
     // Unfortunately, it can happen that GPU readbacks come in bursts one frame and we get thing in the next.
     // Therefore, we have to keep around the previous result and use that until we get a new one.

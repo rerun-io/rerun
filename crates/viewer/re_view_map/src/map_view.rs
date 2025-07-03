@@ -577,14 +577,10 @@ fn picking_gpu(
 ) -> Option<InstancePathHash> {
     re_tracing::profile_function!();
 
-    // Only look at newest available result, discard everything else.
-    let mut gpu_picking_result = None;
-    while let Some(picking_result) = re_renderer::PickingLayerProcessor::next_readback_result::<()>(
+    let gpu_picking_result = re_renderer::PickingLayerProcessor::readback_result::<()>(
         render_ctx,
         gpu_readback_identifier,
-    ) {
-        gpu_picking_result = Some(picking_result);
-    }
+    );
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)

@@ -388,22 +388,18 @@ impl PickingLayerProcessor {
         Ok(())
     }
 
-    /// Returns the oldest received picking results for a given identifier and user data type.
-    ///
-    /// It is recommended to call this method repeatedly until it returns `None` to ensure that all
-    /// pending data is flushed.
+    /// Returns the latest available picking result for a given identifier and user data type.
     ///
     /// Ready data that hasn't been retrieved for more than a frame will be discarded.
     ///
     /// See also [`crate::view_builder::ViewBuilder::schedule_picking_rect`]
-    pub fn next_readback_result<T: 'static + Send + Sync>(
+    pub fn readback_result<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
     ) -> Option<PickingResult<T>> {
-        let mut result = None;
-        ctx.gpu_readback_belt
-            .lock()
-            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
+        ctx.gpu_readback_belt.lock().readback_newest_available(
+            identifier,
+            |data, metadata: Box<ReadbackBeltMetadata<T>>| {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
                     Self::PICKING_LAYER_DEPTH_FORMAT
@@ -446,15 +442,15 @@ impl PickingLayerProcessor {
                     picking_depth_data = picking_depth_data.into_iter().step_by(4).collect();
                 }
 
-                result = Some(PickingResult {
+                PickingResult {
                     picking_id_data,
                     picking_depth_data,
                     user_data: metadata.user_data,
                     rect: metadata.picking_rect,
                     world_from_cropped_projection: metadata.world_from_cropped_projection,
-                });
-            });
-        result
+                }
+            },
+        )
     }
 }
 
