@@ -82,7 +82,7 @@
     "surface_on_primary_hovered": {"color": "{Gray.1000}", "alpha": 25},
     "text_color_on_primary": {"color": "{Blue.900}"},
     "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
-    "icon_color_on_primary": {"color": "{Blue.700}"},
+    "icon_color_on_primary": {"color": "{Blue.750}"},
     "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
 
     "panel_bg_color": {
