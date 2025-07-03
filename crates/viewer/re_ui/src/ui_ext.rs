@@ -754,8 +754,16 @@ pub trait UiExt {
             );
 
             // TODO(emilk, andreas): change color and size on hover
-            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, image_rect);
+            let icon_tint = if selected {
+                if response.hovered() {
+                    ui.tokens().icon_color_on_primary_hovered
+                } else {
+                    ui.tokens().icon_color_on_primary
+                }
+            } else {
+                visuals.fg_stroke.color
+            };
+            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
 
             // Draw text next to the icon.
             let mut text_rect = rect;
