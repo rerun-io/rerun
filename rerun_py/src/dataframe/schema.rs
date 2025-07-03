@@ -87,7 +87,7 @@ impl PySchema {
             .collect()
     }
 
-    #[expect(rustdoc::broken_intra_doc_links)]
+    #[allow(rustdoc::broken_intra_doc_links)]
     /// Look up the column descriptor for a specific entity path and component.
     ///
     /// Parameters
