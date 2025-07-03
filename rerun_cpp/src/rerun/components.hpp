@@ -32,6 +32,7 @@
 #include "components/length.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"
+#include "components/linear_speed.hpp"
 #include "components/magnification_filter.hpp"
 #include "components/marker_shape.hpp"
 #include "components/marker_size.hpp"

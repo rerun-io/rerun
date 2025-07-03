@@ -11,6 +11,7 @@ component_column_selector.rs linguist-generated=true
 container_kind.rs linguist-generated=true
 corner2d.rs linguist-generated=true
 enabled.rs linguist-generated=true
+eye3d_kind.rs linguist-generated=true
 filter_by_range.rs linguist-generated=true
 filter_is_not_null.rs linguist-generated=true
 force_distance.rs linguist-generated=true

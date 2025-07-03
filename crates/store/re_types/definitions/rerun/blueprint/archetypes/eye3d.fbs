@@ -1,0 +1,14 @@
+namespace rerun.blueprint.archetypes;
+
+/// 3D Eye in a spatial 3D view
+table Eye3D (
+  "attr.rerun.scope": "blueprint"
+) {
+
+  /// Eye kind
+  kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// Translation speed of the eye in the view.
+  translation_speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
+
+}

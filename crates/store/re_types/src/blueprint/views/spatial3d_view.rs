@@ -30,6 +30,9 @@ pub struct Spatial3DView {
     /// Configuration for the 3D line grid.
     pub line_grid: crate::blueprint::archetypes::LineGrid3D,
 
+    /// Configuration for the 3D eye
+    pub eye_3d: crate::blueprint::archetypes::Eye3D,
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the latest state of each component.
@@ -49,6 +52,7 @@ impl ::re_byte_size::SizeBytes for Spatial3DView {
     fn heap_size_bytes(&self) -> u64 {
         self.background.heap_size_bytes()
             + self.line_grid.heap_size_bytes()
+            + self.eye_3d.heap_size_bytes()
             + self.time_ranges.heap_size_bytes()
     }
 
@@ -56,6 +60,7 @@ impl ::re_byte_size::SizeBytes for Spatial3DView {
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
             && <crate::blueprint::archetypes::LineGrid3D>::is_pod()
+            && <crate::blueprint::archetypes::Eye3D>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }
 }

@@ -31,6 +31,7 @@ from .api import (
 from .archetypes import (
     Background as Background,
     EntityBehavior as EntityBehavior,
+    Eye3D as Eye3D,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,

@@ -6,6 +6,7 @@ from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
 from .entity_behavior import EntityBehavior
+from .eye3d import Eye3D
 from .force_center import ForceCenter
 from .force_collision_radius import ForceCollisionRadius
 from .force_link import ForceLink
@@ -34,6 +35,7 @@ __all__ = [
     "ContainerBlueprint",
     "DataframeQuery",
     "EntityBehavior",
+    "Eye3D",
     "ForceCenter",
     "ForceCollisionRadius",
     "ForceLink",

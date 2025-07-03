@@ -10,6 +10,7 @@ include "./components/component_column_selector.fbs";
 include "./components/container_kind.fbs";
 include "./components/corner_2d.fbs";
 include "./components/enabled.fbs";
+include "./components/eye_3d_kind.fbs";
 include "./components/filter_by_range.fbs";
 include "./components/filter_is_not_null.fbs";
 include "./components/force_distance.fbs";
