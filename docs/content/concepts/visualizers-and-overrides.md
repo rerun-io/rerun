@@ -141,7 +141,7 @@ As an illustration, all four values are available for the `/boxes/1` entity of t
 
 So far, we discussed how visualizers determine values for the components they are interested in and how this can be customized. This section instead discusses the process of how visualizers themselves are determined and how to override this process.
 
-⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases.
+⚠️ NOTE: the feature covered by this section, including its API, is very likely to change in future releases.
 Also, in Rerun versions prior to `v0.24`, it was possible to use visualizer overrides for arbitrary visualizers.
 Starting with `v0.24`, it is only possible to provide visualizer overrides for the time series view.
 
