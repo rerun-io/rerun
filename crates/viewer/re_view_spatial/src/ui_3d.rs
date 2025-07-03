@@ -120,7 +120,7 @@ impl View3DState {
         eye_property: &ViewProperty,
     ) -> ViewEye {
         // Has the user interact with the eye?
-        if eye_property.query_results.compound_index.0.is_static() {
+        if self.last_eye_interaction.is_none() {
             self.interpolate_to_view_eye(default_eye(
                 &bounding_boxes.current,
                 scene_view_coordinates,
