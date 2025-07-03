@@ -1,6 +1,7 @@
-use pyo3::{Python, prelude::*};
 use std::ffi::CString;
 use std::{future::Future, sync::OnceLock};
+
+use pyo3::{Python, prelude::*};
 use tokio::runtime::Runtime;
 
 /// Utility to get the Tokio Runtime from Python

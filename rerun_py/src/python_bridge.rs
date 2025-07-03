@@ -107,13 +107,51 @@ fn global_web_viewer_server()
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
+/// Initialize the performance telemetry stack in a static so it can keep running for the entire
+/// lifetime of the SDK.
+///
+/// It will be dropped and flushed down in [`shutdown`].
+#[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::Telemetry> {
+    static TELEMETRY: OnceCell<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceCell::new();
+    TELEMETRY
+        .get_or_init(|| {
+            // Safety: anything touching the env is unsafe, tis what it is.
+            #[expect(unsafe_code)]
+            unsafe {
+                std::env::set_var("OTEL_SERVICE_NAME", "rerun-py");
+            }
+
+            // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
+            use re_perf_telemetry::external::clap::Parser as _;
+            let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
+
+            let runtime = crate::utils::get_tokio_runtime(); // telemetry must be init in a Tokio context
+            runtime.block_on(async {
+                let telemetry = re_perf_telemetry::Telemetry::init(
+                    args,
+                    // NOTE: It's a static in this case, so it's never dropped anyhow.
+                    re_perf_telemetry::TelemetryDropBehavior::Shutdown,
+                )
+                // Perf telemetry is a developer tool, it's not compiled into final user builds.
+                .expect("could not start perf telemetry");
+                parking_lot::Mutex::new(telemetry)
+            })
+        })
+        .lock()
+}
+
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
+    #[cfg(not(feature = "perf_telemetry"))]
     re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+
+    #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+    let _telemetry = init_perf_telemetry();
 
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;
@@ -365,6 +403,9 @@ fn shutdown(py: Python<'_>) {
 
         flush_garbage_queue();
     });
+
+    #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+    init_perf_telemetry().shutdown();
 }
 
 // --- Recordings ---
