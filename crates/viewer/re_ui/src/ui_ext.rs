@@ -175,16 +175,16 @@ pub trait UiExt {
 
     fn re_checkbox(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(selected, text, false)
+        self.checkbox_indeterminate(checked, text, false)
     }
 
     #[allow(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
         indeterminate: bool,
     ) -> egui::Response {
@@ -194,7 +194,7 @@ pub trait UiExt {
                 ui.visuals_mut().widgets.active.expansion = 0.0;
                 ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                egui::Checkbox::new(selected, text)
+                egui::Checkbox::new(checked, text)
                     .indeterminate(indeterminate)
                     .ui(ui)
             })
@@ -754,8 +754,16 @@ pub trait UiExt {
             );
 
             // TODO(emilk, andreas): change color and size on hover
-            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, image_rect);
+            let icon_tint = if selected {
+                if response.hovered() {
+                    ui.tokens().icon_color_on_primary_hovered
+                } else {
+                    ui.tokens().icon_color_on_primary
+                }
+            } else {
+                visuals.fg_stroke.color
+            };
+            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
 
             // Draw text next to the icon.
             let mut text_rect = rect;

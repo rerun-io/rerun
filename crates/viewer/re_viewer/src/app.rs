@@ -43,6 +43,11 @@ enum TimeControlCommand {
 
 // ----------------------------------------------------------------------------
 
+/// Storage key used to store the last run Rerun version.
+///
+/// This is then used to detect if the user has recently upgraded Rerun.
+const RERUN_VERSION_KEY: &str = "rerun.version";
+
 const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -215,6 +220,34 @@ impl App {
         } else {
             AppState::default()
         };
+
+        if startup_options.persist_state {
+            // Check if the user has recently upgraded Rerun.
+            if let Some(storage) = creation_context.storage {
+                let current_version = build_info.version;
+                let previous_version: Option<CrateVersion> =
+                    storage.get_string(RERUN_VERSION_KEY).and_then(|version| {
+                        // `CrateVersion::try_parse` is `const` (for good reasons), and needs a `&'static str`.
+                        // In order to accomplish this, we need to leak the string here.
+                        let version = Box::leak(version.into_boxed_str());
+                        CrateVersion::try_parse(version).ok()
+                    });
+
+                if previous_version
+                    .is_none_or(|previous_version| previous_version < CrateVersion::new(0, 24, 0))
+                {
+                    re_log::debug!(
+                        "Upgrading from {} to {}.",
+                        previous_version.map_or_else(|| "<unknown>".to_owned(), |v| v.to_string()),
+                        current_version
+                    );
+                    // We used to have Dark as the hard-coded theme preference. Let's change that!
+                    creation_context
+                        .egui_ctx
+                        .options_mut(|o| o.theme_preference = egui::ThemePreference::System);
+                }
+            }
+        }
 
         if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
@@ -2195,6 +2228,8 @@ impl eframe::App for App {
         }
 
         re_tracing::profile_function!();
+
+        storage.set_string(RERUN_VERSION_KEY, self.build_info.version.to_string());
 
         // Save the app state
         eframe::set_value(storage, eframe::APP_KEY, &self.state);

@@ -695,7 +695,7 @@ impl TabWidget {
         tiles: &'a egui_tiles::Tiles<ViewId>,
         tile_id: egui_tiles::TileId,
         tab_state: &egui_tiles::TabState,
-        gamma: f32,
+        alpha: f32,
     ) -> Self {
         let tokens = ui.tokens();
 
@@ -764,7 +764,7 @@ impl TabWidget {
                     // not have a matching ContainerBlueprint.
                     if container.kind() == egui_tiles::ContainerKind::Tabs {
                         if let Some(tile_id) = container.only_child() {
-                            return Self::new(tab_viewer, ui, tiles, tile_id, tab_state, gamma);
+                            return Self::new(tab_viewer, ui, tiles, tile_id, tab_state, alpha);
                         }
                     }
 
@@ -812,11 +812,10 @@ impl TabWidget {
         let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
-        let text = if !tab_desc.user_named {
-            //TODO(ab): use design tokens
-            tab_desc.label.italics()
-        } else {
+        let text = if tab_desc.user_named {
             tab_desc.label
+        } else {
+            tab_desc.label.italics() // TODO(ab): use design tokens
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
@@ -840,13 +839,24 @@ impl TabWidget {
             ui.visuals().selection.bg_fill
         } else if hovered {
             ui.visuals().widgets.hovered.bg_fill
+        } else if tab_state.active {
+            ui.visuals().panel_fill
         } else {
             tab_viewer.tab_bar_color(ui.visuals())
         };
-        let bg_color = bg_color.gamma_multiply(gamma);
-        let text_color = tab_viewer
-            .tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
-            .gamma_multiply(gamma);
+
+        let text_color = if selected {
+            if hovered {
+                ui.tokens().text_color_on_primary_hovered
+            } else {
+                ui.tokens().text_color_on_primary
+            }
+        } else {
+            tab_viewer.tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
+        };
+
+        let bg_color = bg_color.gamma_multiply(alpha);
+        let text_color = text_color.gamma_multiply(alpha);
 
         Self {
             galley,

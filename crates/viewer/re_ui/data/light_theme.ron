@@ -78,11 +78,17 @@
       "width": 1
     },
 
-    "breadcrumb_text_color": {
-      "color": "{Blue.300}"
+    // Breadcrumb colors, among other things ("primary" means "selected" in this case):
+    "surface_on_primary_hovered": {"color": "{Gray.1000}", "alpha": 25},
+    "text_color_on_primary": {"color": "{Blue.900}"}, // TODO(emilk): unify with selection_stroke_color ?
+    "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "icon_color_on_primary": {"color": "{Blue.750}"},
+    "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "selection_bg_fill": {
+      "color": "{Blue.550}"
     },
-    "breadcrumb_separator_color": {
-      "color": "{Blue.400}"
+    "selection_stroke_color": {
+      "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
     },
 
     "panel_bg_color": {
@@ -181,12 +187,6 @@
     "widget_open_weak_bg_fill": {
       "color": "{Gray.650}"
     },
-    "selection_bg_fill": {
-      "color": "{Blue.550}"
-    },
-    "selection_stroke_color": {
-      "color": "{Blue.800}"
-    },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
     },
@@ -232,9 +232,6 @@
       "color": "{Gray.300}"
     },
 
-    "list_item_selected_text": {
-      "color": "{Blue.100}"
-    },
     "list_item_active_text": {
       "color": "{Gray.0}"
     },
@@ -249,9 +246,6 @@
     },
     "list_item_strong_text": {
       "color": "{Gray.300}"
-    },
-    "list_item_selected_icon": {
-      "color": "{Blue.250}"
     },
     "list_item_active_icon": {
       "color": "{Gray.300}"

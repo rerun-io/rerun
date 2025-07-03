@@ -242,6 +242,22 @@ impl ListItemContent for LabelContent<'_> {
                         .max_rect(text_rect)
                         .layout(egui::Layout::right_to_left(egui::Align::Center)),
                 );
+
+                if context.list_item.selected {
+                    // Icons and text get different colors when they are on a selected background:
+                    let visuals = ui.visuals_mut();
+
+                    visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
+                    visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
+
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                }
+
                 Some(buttons(&mut ui))
             } else {
                 None
