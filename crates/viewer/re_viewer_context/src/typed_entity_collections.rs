@@ -24,6 +24,7 @@ impl std::ops::Deref for MaybeVisualizableEntities {
     }
 }
 
+// TODO(#8129): Rename to `RelevantEntities`?
 /// List of entities that match the indicator components of a visualizer.
 ///
 /// In order to be a match the entity must have at some point in time on any timeline had any of
