@@ -560,6 +560,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                 header_ui(ui, true, |ui| {
                     egui::Sides::new()
+                        .shrink_left()
                         .show(
                             ui,
                             |ui| {
