@@ -4,6 +4,7 @@ mod catalog_client;
 mod connection_handle;
 mod dataframe_query;
 mod dataframe_rendering;
+mod datafusion_table;
 mod dataset_entry;
 mod entry;
 mod errors;
@@ -20,14 +21,17 @@ use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
 
-pub(crate) use catalog_client::PyCatalogClientInternal;
-pub(crate) use connection_handle::ConnectionHandle;
-pub(crate) use dataframe_rendering::PyRerunHtmlTable;
-pub(crate) use dataset_entry::PyDatasetEntry;
-pub(crate) use entry::{PyEntry, PyEntryId, PyEntryKind};
-pub(crate) use errors::to_py_err;
-pub(crate) use table_entry::PyTableEntry;
-pub(crate) use task::{PyTask, PyTasks};
+pub use self::{
+    catalog_client::PyCatalogClientInternal,
+    connection_handle::ConnectionHandle,
+    dataframe_rendering::PyRerunHtmlTable,
+    datafusion_table::PyDataFusionTable,
+    dataset_entry::PyDatasetEntry,
+    entry::{PyEntry, PyEntryId, PyEntryKind},
+    errors::to_py_err,
+    table_entry::PyTableEntry,
+    task::{PyTask, PyTasks},
+};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -40,6 +44,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTableEntry>()?;
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;
+    m.add_class::<PyDataFusionTable>()?;
 
     m.add_class::<PyDataframeQueryView>()?;
 

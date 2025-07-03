@@ -7,30 +7,23 @@ mod component_columns;
 mod index_columns;
 mod recording;
 mod recording_view;
+mod rrd;
 mod schema;
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    str::FromStr as _,
-    sync::Arc,
-};
+use std::{collections::BTreeSet, str::FromStr as _};
 
 use arrow::{
     array::{ArrayData, Int64Array, make_array},
     pyarrow::PyArrowType,
 };
-use datafusion::catalog::TableProvider;
-use datafusion_ffi::table_provider::FFI_TableProvider;
 use numpy::PyArrayMethods as _;
 use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError, PyValueError},
+    exceptions::{PyTypeError, PyValueError},
     prelude::*, //TODO remove this
-    types::PyCapsule,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor};
-use re_sdk::{StoreId, StoreKind};
+use re_chunk_store::ColumnDescriptor;
 use re_sorbet::{ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
 
 pub use self::{
@@ -38,9 +31,9 @@ pub use self::{
     index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector},
     recording::{PyRecording, PyRecordingHandle},
     recording_view::PyRecordingView,
+    rrd::{PyRRDArchive, load_archive, load_recording},
     schema::PySchema,
 };
-use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -53,7 +46,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
     m.add_class::<PyRecordingView>()?;
-    m.add_class::<PyDataFusionTable>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -228,153 +220,5 @@ impl IndexValuesLike<'_> {
                 }
             }
         }
-    }
-}
-
-/// An archive loaded from an RRD.
-///
-/// RRD archives may include 1 or more recordings or blueprints.
-#[pyclass(frozen, name = "RRDArchive")]
-#[derive(Clone)]
-pub struct PyRRDArchive {
-    pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
-}
-
-#[pymethods]
-impl PyRRDArchive {
-    /// The number of recordings in the archive.
-    fn num_recordings(&self) -> usize {
-        self.datasets
-            .iter()
-            .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
-            .count()
-    }
-
-    /// All the recordings in the archive.
-    // TODO(jleibs): This should return an iterator
-    fn all_recordings(&self) -> Vec<PyRecording> {
-        self.datasets
-            .iter()
-            .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
-            .map(|(_, store)| {
-                let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
-                    store.clone(),
-                ));
-                PyRecording {
-                    store: store.clone(),
-                    cache,
-                }
-            })
-            .collect()
-    }
-}
-
-/// Load a single recording from an RRD file.
-///
-/// Will raise a `ValueError` if the file does not contain exactly one recording.
-///
-/// Parameters
-/// ----------
-/// path_to_rrd : str | os.PathLike[str]
-///     The path to the file to load.
-///
-/// Returns
-/// -------
-/// Recording
-///     The loaded recording.
-#[pyfunction]
-pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
-    let archive = load_archive(path_to_rrd)?;
-
-    let num_recordings = archive.num_recordings();
-
-    if num_recordings != 1 {
-        return Err(PyValueError::new_err(format!(
-            "Expected exactly one recording in the archive, but found {num_recordings}",
-        )));
-    }
-
-    if let Some(recording) = archive.all_recordings().into_iter().next() {
-        Ok(recording)
-    } else {
-        Err(PyValueError::new_err(
-            "Expected exactly one recording in the archive, but found none.",
-        ))
-    }
-}
-
-/// Load a rerun archive from an RRD file.
-///
-/// Parameters
-/// ----------
-/// path_to_rrd : str | os.PathLike[str]
-///     The path to the file to load.
-///
-/// Returns
-/// -------
-/// RRDArchive
-///     The loaded archive.
-#[pyfunction]
-pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
-    let stores = ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-        .into_iter()
-        .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-        .collect();
-
-    let archive = PyRRDArchive { datasets: stores };
-
-    Ok(archive)
-}
-
-#[pyclass(frozen, name = "DataFusionTable")]
-pub struct PyDataFusionTable {
-    pub provider: Arc<dyn TableProvider + Send>,
-    pub name: String,
-    pub client: Py<PyCatalogClientInternal>,
-}
-
-#[pymethods]
-impl PyDataFusionTable {
-    /// Returns a DataFusion table provider capsule.
-    fn __datafusion_table_provider__<'py>(
-        &self,
-        py: Python<'py>,
-    ) -> PyResult<Bound<'py, PyCapsule>> {
-        let capsule_name = cr"datafusion_table_provider".into();
-
-        let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_TableProvider::new(Arc::clone(&self.provider), false, Some(runtime));
-
-        PyCapsule::new(py, provider, Some(capsule_name))
-    }
-
-    /// Register this view to the global DataFusion context and return a DataFrame.
-    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
-        let py = self_.py();
-
-        let client = self_.client.borrow(py);
-
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py);
-
-        drop(client);
-
-        let name = self_.name.clone();
-
-        // We're fine with this failing.
-        ctx.call_method1("deregister_table", (name.clone(),))?;
-
-        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
-
-        let df = ctx.call_method1("table", (name.clone(),))?;
-
-        Ok(df)
-    }
-
-    /// Name of this table.
-    #[getter]
-    fn name(&self) -> String {
-        self.name.clone()
     }
 }
