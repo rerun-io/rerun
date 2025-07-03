@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// of the visualizer system. It is not intended to be a long-term solution, but provides
 /// enough utility to be useful in the short term.
 ///
-/// ⚠️ NOTE: Rerun `v0.24` changed the behavior of [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides], so that currently they only
+/// ⚠️NOTE: Rerun `v0.24` changed the behavior of [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides], so that currently they only
 /// work with time series views. We plan to bring this feature for all views in future versions.
 ///
 /// This can only be used as part of blueprints. It will have no effect if used
