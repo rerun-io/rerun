@@ -83,7 +83,7 @@
     "text_color_on_primary": {"color": "{Blue.900}"},
     "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
     "icon_color_on_primary": {"color": "{Blue.700}"},
-    "icon_color_on_primary_hovered": {"color": "{Blue.900}"},
+    "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
 
     "panel_bg_color": {
       "color": "{Gray.1000}"
@@ -185,7 +185,7 @@
       "color": "{Blue.550}"
     },
     "selection_stroke_color": {
-      "color": "{Blue.800}"
+      "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
     },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
