@@ -67,10 +67,10 @@ skip = [
 ]
 skip-tree = [
   { name = "re_perf_telemetry" }, # All the telemetry stack (tracing, otel, etc) carry a lot of old dependencies, it's all feature flagged though.
-  { name = "quick-xml" }, # Old version via rfd
-  { name = "walkers" },   # TODO(#7876): suppress that when `walkers` is updated
-  { name = "windows" },   # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
-  { name = "zbus" },      # Old version via rfd
+  { name = "quick-xml" },         # Old version via rfd
+  { name = "walkers" },           # TODO(#7876): suppress that when `walkers` is updated
+  { name = "windows" },           # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
+  { name = "zbus" },              # Old version via rfd
 ]
 
 [licenses]
