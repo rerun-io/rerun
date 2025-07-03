@@ -481,6 +481,7 @@ impl PyDataframeQueryView {
     }
 
     /// Get the relevant chunk_ids for this view.
+    #[instrument(skip_all)]
     fn get_chunk_ids<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
