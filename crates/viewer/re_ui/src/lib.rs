@@ -114,12 +114,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     egui_ctx.options_mut(|o| {
-        if cfg!(debug_assertions) {
-            // Keep whatever the developer has previously set
-        } else {
-            o.theme_preference = egui::ThemePreference::Dark; // TODO(#3058): switch this to system (by removing it)
-        }
-        o.fallback_theme = egui::Theme::Dark;
+        o.fallback_theme = egui::Theme::Dark; // If we don't know the system theme, use this as fallback
     });
 
     set_themes(egui_ctx);
