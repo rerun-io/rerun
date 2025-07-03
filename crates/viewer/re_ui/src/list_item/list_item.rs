@@ -520,6 +520,20 @@ impl ListItem {
                 egui::Sense::click(),
             );
 
+            if triangle_response.hovered() {
+                // Draw a background:
+                let bg_color = if selected {
+                    tokens.surface_on_primary_hovered
+                } else {
+                    ui.visuals().widgets.hovered.bg_fill
+                };
+                ui.painter().rect_filled(
+                    triangle_response.rect,
+                    ui.visuals().widgets.hovered.corner_radius,
+                    bg_color,
+                );
+            }
+
             let color = visuals.collapse_button_color(triangle_response.hovered());
 
             ui.paint_collapsing_triangle(openness, triangle_rect.center(), color);
