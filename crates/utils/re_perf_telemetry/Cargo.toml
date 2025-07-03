@@ -1,0 +1,78 @@
+[package]
+name = "re_perf_telemetry"
+authors.workspace = true
+description = "In and out of process performance profiling utilities for Rerun & Redap"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[features]
+
+default = []
+
+## If set, `TELEMETRY_ENABLED` will be `true` by default.
+enabled = []
+
+## If set, `OTEL_SDK_ENABLED` will be `true` by default.
+otel_enabled = []
+
+## If set, `TRACY_ENABLED` will be `true` by default.
+tracy_enabled = []
+
+## Tracy integration
+## =================
+##
+## * Use `TRACY_ENABLED=true` in combination with `tracy` feature flag.
+## * The Tracy Viewer version must match the client's: we use 0.12 for both (latest as of this writing).
+##
+## See <https://github.com/wolfpld/tracy>.
+##
+## ⚠️Tracy will start monitoring OS performance as soon as the client library is loaded in!
+## This is very cheap, but make sure to disable the `tracy` feature flag if that turns out to be a
+## problem for whatever reason (`TRACY_ENABLED=false`) won't cut it.
+##
+## ⚠️Keep in mind that the `Counts` that are displayed in Tracy account for every yields!
+## E.g. an async function that yields 50 times will be counted as 51 (the first call + 50 yields).
+tracy = ["dep:tracing-tracy"]
+
+
+[dependencies]
+
+# External
+ahash.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+http.workspace = true
+opentelemetry = { workspace = true, features = ["metrics"] }
+opentelemetry-appender-tracing = { workspace = true, features = [
+  "experimental_use_tracing_span_context",
+] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tonic.workspace = true
+tower-http = { workspace = true, features = ["propagate-header", "trace"] }
+tower.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber = { workspace = true, features = [
+  "fmt",
+  "env-filter",
+  "json",
+] }
+
+# External (optional)
+tracing-tracy = { workspace = true, optional = true }
+
+[lints]
+workspace = true
