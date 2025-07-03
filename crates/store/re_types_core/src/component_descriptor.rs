@@ -91,19 +91,6 @@ impl ComponentDescriptor {
     pub fn is_indicator_component(&self) -> bool {
         self.component.ends_with("Indicator")
     }
-
-    /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:positions#rerun.components.Position3D`.
-    ///
-    /// The result explicitly contains the [`ComponentType`], so in most cases [`ComponentDescriptor::display_name`] should be used instead.
-    #[inline]
-    pub fn full_name(&self) -> String {
-        match self.component_type {
-            Some(component_type) => {
-                format!("{}#{component_type}", self.display_name())
-            }
-            None => self.display_name().to_owned(),
-        }
-    }
 }
 
 impl re_byte_size::SizeBytes for ComponentDescriptor {
