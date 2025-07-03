@@ -5,7 +5,7 @@ snapshot_kind: text
 ---
 root_container:
   name:
-    Placeholder: Grid
+    Placeholder: Grid container
   kind: Grid
   visible: true
   default_open: true
