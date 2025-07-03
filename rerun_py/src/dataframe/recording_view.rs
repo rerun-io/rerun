@@ -1,3 +1,5 @@
+#![expect(deprecated)] // False positive due to macro
+
 use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;

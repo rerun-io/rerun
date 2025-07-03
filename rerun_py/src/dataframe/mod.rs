@@ -1,7 +1,4 @@
-#![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
-#![allow(deprecated)] // False positive due to macro
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
+#![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 mod component_columns;
 mod index_columns;
