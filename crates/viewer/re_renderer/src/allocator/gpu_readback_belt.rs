@@ -375,7 +375,7 @@ impl GpuReadbackBelt {
     ///
     /// Note that [`Self::begin_frame`] will discard stale data automatically, preventing leaks for any
     /// scheduled reads that are never queried.
-    // TODO(andreas): Can above mentioned recording _actually_ happen? How contrived does a setup have to be for this?
+    // TODO(andreas): Can above mentioned reordering _actually_ happen? How contrived does a setup have to be for this?
     pub fn readback_next_available<UserDataType: 'static, Ret>(
         &mut self,
         identifier: GpuReadbackIdentifier,
@@ -385,7 +385,7 @@ impl GpuReadbackBelt {
 
         self.receive_chunks();
         self.readback_next_available_internal(identifier, callback)
-            .map(|(result, _)| result)
+            .map(|(_, result)| result)
     }
 
     /// Try to receive a pending data readback with the given identifier and user data type,
@@ -407,7 +407,7 @@ impl GpuReadbackBelt {
     /// to the same mapped GPU buffer. This is possible, but inevitably leads to more `unsafe` & more complex code
     /// for something that is expected to be a very rare occurrence.
     //
-    // TODO(andreas): Can above mentioned recording _actually_ happen? How contrived does a setup have to be for this?
+    // TODO(andreas): Can above mentioned reordering _actually_ happen? How contrived does a setup have to be for this?
     pub fn readback_newest_available<UserDataType: 'static, Ret>(
         &mut self,
         identifier: GpuReadbackIdentifier,
@@ -420,7 +420,7 @@ impl GpuReadbackBelt {
         let mut last_result = None;
         let mut last_scheduled_frame_index = 0;
 
-        while let Some((result, scheduled_frame_index)) =
+        while let Some((scheduled_frame_index, result)) =
             self.readback_next_available_internal::<UserDataType, Ret>(identifier, &callback)
         {
             // There could be several results from the same frame. Use the most recently received one in that case.
@@ -438,7 +438,7 @@ impl GpuReadbackBelt {
         &mut self,
         identifier: GpuReadbackIdentifier,
         callback: impl FnOnce(&[u8], Box<UserDataType>) -> Ret,
-    ) -> Option<(Ret, u64)> {
+    ) -> Option<(u64, Ret)> {
         // Search for the user data in the readback chunks.
         // A linear search is suited best since we expect both the number of pending chunks (typically just one or two!)
         // as well as the number of readbacks per chunk to be small!
@@ -464,7 +464,7 @@ impl GpuReadbackBelt {
                     let chunk = self.received_chunks.swap_remove(chunk_index);
                     self.reuse_chunk(chunk);
                 }
-                return Some((result, scheduled_frame_index));
+                return Some((scheduled_frame_index, result));
             }
         }
 
