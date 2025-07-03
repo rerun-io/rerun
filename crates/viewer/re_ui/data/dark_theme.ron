@@ -79,12 +79,12 @@
       "width": 1
     },
 
-    "breadcrumb_text_color": {
-      "color": "#6A8CD0"
-    },
-    "breadcrumb_separator_color": {
-      "color": "{Blue.500}"
-    },
+    // Breadcrumb colors, among other things ("primary" means "selected" in this case):
+    "surface_on_primary_hovered": {"color": "{Gray.1000}", "alpha": 25},
+    "text_color_on_primary": {"color": "{Blue.900}"},
+    "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "icon_color_on_primary": {"color": "{Blue.700}"},
+    "icon_color_on_primary_hovered": {"color": "{Blue.900}"},
 
     "panel_bg_color": {
       "color": "{Gray.100}"

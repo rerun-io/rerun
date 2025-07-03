@@ -90,12 +90,15 @@ pub struct DesignTokens {
     pub example_tag_bg_fill: Color32,
     pub example_tag_stroke: Stroke,
 
-    /// Color for breadcrumb text
-    pub breadcrumb_text_color: Color32,
+    // ------
+    // Colors for things with a blue selection-background ("primary"), e.g. the breadcrumb:
+    pub surface_on_primary_hovered: Color32,
+    pub text_color_on_primary: Color32,
+    pub text_color_on_primary_hovered: Color32,
+    pub icon_color_on_primary: Color32,
+    pub icon_color_on_primary_hovered: Color32,
 
-    /// Color for breadcrumb separators
-    pub breadcrumb_separator_color: Color32,
-
+    // ------
     pub panel_bg_color: Color32,
 
     /// Color for blueprint time panel background
@@ -250,8 +253,12 @@ impl DesignTokens {
             example_tag_bg_fill: get_color("example_tag_bg_fill"),
             example_tag_stroke: get_stroke("example_tag_stroke"),
 
-            breadcrumb_text_color: get_color("breadcrumb_text_color"),
-            breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
+            surface_on_primary_hovered: get_color("surface_on_primary_hovered"),
+            text_color_on_primary: get_color("text_color_on_primary"),
+            text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
+            icon_color_on_primary: get_color("icon_color_on_primary"),
+            icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
+
             panel_bg_color: get_color("panel_bg_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
