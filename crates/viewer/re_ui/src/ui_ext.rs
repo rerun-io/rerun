@@ -175,16 +175,16 @@ pub trait UiExt {
 
     fn re_checkbox(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(selected, text, false)
+        self.checkbox_indeterminate(checked, text, false)
     }
 
     #[allow(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
         indeterminate: bool,
     ) -> egui::Response {
@@ -194,7 +194,7 @@ pub trait UiExt {
                 ui.visuals_mut().widgets.active.expansion = 0.0;
                 ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                egui::Checkbox::new(selected, text)
+                egui::Checkbox::new(checked, text)
                     .indeterminate(indeterminate)
                     .ui(ui)
             })
