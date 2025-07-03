@@ -160,6 +160,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn init(&self) -> &QueryHandleState {
         self.engine
             .with(|store, cache| self.state.get_or_init(|| self.init_(store, cache)))
@@ -377,6 +378,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     #[allow(clippy::unused_self)]
     fn compute_user_selection(
         &self,
@@ -705,6 +707,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "trace", skip_all)]
     #[inline]
     pub fn seek_to_row(&self, row_idx: usize) {
         let state = self.init();
@@ -734,6 +737,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn seek_to_index_value(&self, index_value: IndexValue) {
         re_tracing::profile_function!();
 
@@ -867,6 +871,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         re_tracing::profile_function!();
 

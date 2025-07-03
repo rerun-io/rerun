@@ -4,7 +4,7 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
@@ -33,7 +33,7 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 /// using Arrow IPC format.
 ///
 /// Returns only the first record batch in the stream.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
@@ -59,7 +59,7 @@ pub(crate) struct Payload {
 }
 
 #[cfg(feature = "encoder")]
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
@@ -89,7 +89,7 @@ pub(crate) fn encode_arrow(
 // storage for the final RecordBatch?
 // See e.g. https://github.com/apache/arrow-rs/blob/b8b2f21f6a8254224d37a1e2d231b6b1e1767648/arrow/examples/zero_copy_ipc.rs
 #[cfg(feature = "decoder")]
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
