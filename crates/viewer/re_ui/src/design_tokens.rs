@@ -97,6 +97,8 @@ pub struct DesignTokens {
     pub text_color_on_primary_hovered: Color32,
     pub icon_color_on_primary: Color32,
     pub icon_color_on_primary_hovered: Color32,
+    pub selection_stroke_color: Color32,
+    pub selection_bg_fill: Color32,
 
     // ------
     pub panel_bg_color: Color32,
@@ -150,7 +152,6 @@ pub struct DesignTokens {
     pub faint_bg_color: Color32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
-    pub selection_stroke_color: Color32,
     pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
     pub widget_hovered_weak_bg_fill: Color32,
@@ -160,7 +161,6 @@ pub struct DesignTokens {
     pub widget_open_weak_bg_fill: Color32,
     pub widget_noninteractive_weak_bg_fill: Color32,
     pub widget_noninteractive_bg_fill: Color32,
-    pub selection_bg_fill: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
     pub text_subdued: Color32,
     pub text_default: Color32,
@@ -256,6 +256,8 @@ impl DesignTokens {
             text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
             icon_color_on_primary: get_color("icon_color_on_primary"),
             icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
+            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_stroke_color: get_color("selection_stroke_color"),
 
             panel_bg_color: get_color("panel_bg_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
@@ -291,8 +293,6 @@ impl DesignTokens {
             widget_open_weak_bg_fill: get_color("widget_open_weak_bg_fill"),
             widget_noninteractive_weak_bg_fill: get_color("widget_noninteractive_weak_bg_fill"),
             widget_noninteractive_bg_fill: get_color("widget_noninteractive_bg_fill"),
-            selection_bg_fill: get_color("selection_bg_fill"),
-            selection_stroke_color: get_color("selection_stroke_color"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_subdued: get_color("text_subdued"),
             text_default: get_color("text_default"),

@@ -80,10 +80,16 @@
 
     // Breadcrumb colors, among other things ("primary" means "selected" in this case):
     "surface_on_primary_hovered": {"color": "{Gray.1000}", "alpha": 25},
-    "text_color_on_primary": {"color": "{Blue.900}"},
+    "text_color_on_primary": {"color": "{Blue.900}"}, // TODO(emilk): unify with selection_stroke_color ?
     "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
     "icon_color_on_primary": {"color": "{Blue.750}"},
     "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "selection_bg_fill": {
+      "color": "{Blue.550}"
+    },
+    "selection_stroke_color": {
+      "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
+    },
 
     "panel_bg_color": {
       "color": "{Gray.1000}"
@@ -180,12 +186,6 @@
     },
     "widget_open_weak_bg_fill": {
       "color": "{Gray.650}"
-    },
-    "selection_bg_fill": {
-      "color": "{Blue.550}"
-    },
-    "selection_stroke_color": {
-      "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
     },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
