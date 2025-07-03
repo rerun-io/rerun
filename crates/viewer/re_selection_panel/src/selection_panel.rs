@@ -863,7 +863,7 @@ fn container_top_level_properties(
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Kind").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Container kind").value_fn(|ui, _| {
         let mut container_kind = container.container_kind;
         container_kind_selection_ui(ui, &mut container_kind);
         viewport.set_container_kind(*container_id, container_kind);
