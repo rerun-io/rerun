@@ -420,10 +420,10 @@ impl ListItem {
             height -= y_offset;
         }
 
-        let collapsing_triangle_area = tokens.collapsing_triangle_area();
+        let collapsing_triangle_size = tokens.collapsing_triangle_size();
 
         let collapse_extra = if collapse_openness.is_some() {
-            collapsing_triangle_area.x + tokens.text_to_icon_padding()
+            collapsing_triangle_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -510,10 +510,10 @@ impl ListItem {
         if let Some(openness) = collapse_openness {
             let triangle_pos = egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * collapsing_triangle_area.y,
+                rect.center().y - 0.5 * collapsing_triangle_size.y,
             )
             .round_to_pixels(ui.pixels_per_point());
-            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_area);
+            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),

@@ -696,7 +696,7 @@ impl DesignTokens {
     /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
     /// allocated for it. It's set to the same size as the small icon size so that everything is
     /// properly aligned in [`crate::list_item::ListItem`].
-    pub fn collapsing_triangle_area(&self) -> Vec2 {
+    pub fn collapsing_triangle_size(&self) -> Vec2 {
         self.small_icon_size
     }
 }
