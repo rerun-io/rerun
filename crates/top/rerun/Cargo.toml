@@ -75,6 +75,10 @@ ecolor = ["re_types?/ecolor"]
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
 log = ["dep:env_filter", "dep:log"]
 
+## Support the map view.
+## This adds a lot of extra dependencies.
+map_view = ["re_viewer?/map_view"]
+
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
@@ -83,9 +87,14 @@ nasm = ["re_video/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer", "dep:re_crash_handler"]
 
-## Support the map view.
-## This adds a lot of extra dependencies.
-map_view = ["re_viewer?/map_view"]
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = [
+  "dep:re_perf_telemetry",
+  "re_grpc_client/perf_telemetry",
+  "re_viewer?/perf_telemetry",
+]
 
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
@@ -171,6 +180,7 @@ puffin.workspace = true
 rayon.workspace = true
 
 # Native, optional:
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 clap = { workspace = true, optional = true, features = ["derive"] }
 unindent = { workspace = true, optional = true }
 

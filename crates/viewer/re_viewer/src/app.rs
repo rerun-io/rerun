@@ -2220,6 +2220,9 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+        re_perf_telemetry::external::tracing_tracy::client::frame_mark();
+
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history
                 .add(egui_ctx.input(|i| i.time), seconds);
