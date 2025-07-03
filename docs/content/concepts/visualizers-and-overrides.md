@@ -141,8 +141,9 @@ As an illustration, all four values are available for the `/boxes/1` entity of t
 
 So far, we discussed how visualizers determine values for the components they are interested in and how this can be customized. This section instead discusses the process of how visualizers themselves are determined and how to override this process.
 
-⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases
-(relevant [issue](https://github.com/rerun-io/rerun/issues/6626)).
+⚠️ NOTE: the feature covered by this section, including its API, is very likely to change in future releases.
+Also, in Rerun versions prior to `v0.24`, it was possible to use visualizer overrides for arbitrary visualizers.
+Starting with `v0.24`, it is only possible to provide visualizer overrides for the time series view.
 
 <picture>
   <img src="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/full.png" alt="">
@@ -152,22 +153,17 @@ So far, we discussed how visualizers determine values for the components they ar
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/1200w.png">
 </picture>
 
+Internally, each view keeps track of the archetypes that it can visualize and how to interpret their respective fields.
+Sometimes it makes sense to override an entire visualizer, to change the way entities are visualized.
 
-In the previous examples, because [`Boxes2D`](../reference/types/archetypes/boxes2d.md) archetypes were used for logging then entities, `Boxes2D` visualizers were automatically selected. A key factor driving this behavior is the `Boxes2DIndicator` component, which is a data-less marker automatically inserted by the corresponding `Boxes2D` archetype. This is, however, not the only visualizer capable of displaying these entities. The `Point2D` visualizer can also be used, since it only requires [`Position2D`](../reference/types/components/position2d.md) components.
+Here is how to force a `SeriesPoints` visualizer for `/trig/sin`, instead of the default `SeriesLines` visualizer:
 
-Here is how to force a `Points2D` visualizer for `/boxes/1`, instead of the default `Boxes2D` visualizer:
+snippet: tutorials/visualizer-overrides.py
 
-snippet: concepts/viscomp-visualizer-override
-
-The view now displays a point instead of the box. Here is how the visualizer is displayed in the user interface (note the visualizer of type `Points2D`):
+The view now displays a series of points instead of connecting the values with lines.
+Here is how the visualizer is displayed in the user interface (note the visualizer of type `SeriesPoints`):
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/480w.png">
+  <img src="https://static.rerun.io/series_points_visualizer/d3c1b3ec9f48b3bf4ba266ef3700f0192c6ae7ce/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_points_visualizer/d3c1b3ec9f48b3bf4ba266ef3700f0192c6ae7ce/480w.png">
 </picture>
-
-It is also possible to have _multiple_ visualizers for the same view entity by using an array:
-
-snippet: concepts/viscomp-visualizer-override-multiple
-
-In this case, both a box and a point will be displayed. Adding and removing visualizers is also possible from the user interface.

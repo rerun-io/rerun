@@ -142,14 +142,6 @@ features = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/viscomp-visualizer-override-multiple" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
-"concepts/viscomp-visualizer-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
 "concepts/app-model" = [ # Uses a non-standard logging workflow
   "py",
   "cpp",
