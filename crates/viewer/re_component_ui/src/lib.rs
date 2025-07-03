@@ -17,7 +17,6 @@ mod plane3d;
 mod radius;
 mod resolution;
 mod response_utils;
-mod timeline;
 mod transforms;
 mod variant_uis;
 mod video_timestamp;
@@ -165,8 +164,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // `Colormap` _is_ an enum, but its custom editor is far better.
     registry.add_singleline_edit_or_view(colormap_edit_or_view_ui);
-
-    registry.add_singleline_edit_or_view(timeline::edit_timeline_name);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

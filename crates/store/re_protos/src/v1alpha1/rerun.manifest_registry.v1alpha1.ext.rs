@@ -11,13 +11,13 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::common::v1alpha1::{ComponentDescriptor, DataframePart};
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
     RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
 };
+use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
 use crate::{TypeConversionError, invalid_field, missing_field};
-
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -27,6 +27,7 @@ pub struct QueryDatasetRequest {
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
     pub exclude_static_data: bool,
     pub exclude_temporal_data: bool,
     pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
@@ -72,6 +73,8 @@ impl TryFrom<crate::manifest_registry::v1alpha1::QueryDatasetRequest> for QueryD
 
             select_all_entity_paths: value.select_all_entity_paths,
 
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
             exclude_static_data: value.exclude_static_data,
             exclude_temporal_data: value.exclude_temporal_data,
 
@@ -113,16 +116,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         .at
                         .map(|at| TimeInt::new_temporal(at))
                         .unwrap_or_else(|| TimeInt::STATIC),
-                    fuzzy_descriptors: latest_at
-                        // TODO(cmc): I shall bring that back into a more structured form later.
-                        // .into_iter()
-                        // .map(|desc| FuzzyComponentDescriptor {
-                        //     archetype_name: desc.archetype_name.map(Into::into),
-                        //     component: desc.component.map(Into::into),
-                        //     component_type: desc.component_type.map(Into::into),
-                        // })
-                        // .collect(),
-                        .fuzzy_descriptors,
                 })
             })
             .transpose()?;
@@ -145,16 +138,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         .ok_or_else(|| {
                             tonic::Status::invalid_argument("index is required for range query")
                         })?,
-                    fuzzy_descriptors: range
-                        // TODO(cmc): I shall bring that back into a more structured form later.
-                        // .into_iter()
-                        // .map(|desc| FuzzyComponentDescriptor {
-                        //     archetype_name: desc.archetype_name.map(Into::into),
-                        //     component: desc.component.map(Into::into),
-                        //     component_type: desc.component_type.map(Into::into),
-                        // })
-                        // .collect(),
-                        .fuzzy_descriptors,
                 })
             })
             .transpose()?;
@@ -186,7 +169,6 @@ impl From<Query> for crate::manifest_registry::v1alpha1::Query {
                         timeline.into()
                     }),
                     index_range: Some(range.index_range.into()),
-                    fuzzy_descriptors: range.fuzzy_descriptors,
                 }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
             columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
@@ -207,6 +189,7 @@ pub struct GetChunksRequest {
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
     pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
     pub exclude_static_data: bool,
     pub exclude_temporal_data: bool,
     pub query: Option<Query>,
@@ -251,22 +234,14 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
 
             select_all_entity_paths: value.select_all_entity_paths,
 
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
             exclude_static_data: value.exclude_static_data,
             exclude_temporal_data: value.exclude_temporal_data,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
         })
     }
-}
-
-/// A `ComponentDescriptor` meant for querying: all fields are optional.
-///
-/// This acts as a pattern matcher.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FuzzyComponentDescriptor {
-    pub archetype_name: Option<re_chunk::ArchetypeName>,
-    pub component: Option<re_chunk::ComponentIdentifier>,
-    pub component_type: Option<re_chunk::ComponentType>,
 }
 
 #[derive(Debug, Clone)]
@@ -280,10 +255,6 @@ pub struct QueryLatestAt {
     ///
     /// Use `TimeInt::STATIC` to query for static only data.
     pub at: TimeInt,
-
-    pub fuzzy_descriptors: Vec<String>,
-    // TODO(cmc): I shall bring that back into a more structured form later.
-    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
 }
 
 impl QueryLatestAt {
@@ -291,7 +262,6 @@ impl QueryLatestAt {
         Self {
             index: None,
             at: TimeInt::STATIC,
-            fuzzy_descriptors: Vec::new(),
         }
     }
 
@@ -308,7 +278,6 @@ impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
                 timeline.into()
             }),
             at: Some(value.at.as_i64()),
-            fuzzy_descriptors: value.fuzzy_descriptors,
         }
     }
 }
@@ -317,9 +286,6 @@ impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
 pub struct QueryRange {
     pub index: String,
     pub index_range: re_log_types::ResolvedTimeRange,
-    pub fuzzy_descriptors: Vec<String>,
-    // TODO(cmc): I shall bring that back into a more structured form later.
-    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
 }
 
 // --- CreatePartitionManifestsResponse ---
@@ -446,6 +412,15 @@ impl RegisterWithDatasetResponse {
 
         RecordBatch::try_new(schema, columns)
     }
+}
+
+//TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
+#[derive(Debug)]
+pub struct RegisterWithDatasetTaskDescriptor {
+    pub partition_id: PartitionId,
+    pub partition_type: PartitionType,
+    pub storage_url: url::Url,
+    pub task_id: TaskId,
 }
 
 // --- ScanPartitionTableResponse --
@@ -600,6 +575,24 @@ impl PartitionType {
                 ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
             )),
         }
+    }
+
+    pub fn many_from_arrow(array: &dyn Array) -> Result<Vec<Self>, TypeConversionError> {
+        let string_array = array.try_downcast_array_ref::<StringArray>()?;
+
+        (0..string_array.len())
+            .map(|i| {
+                let resource_type = string_array.value(i);
+                match resource_type {
+                    "rrd" => Ok(Self::Rrd),
+                    _ => Err(TypeConversionError::ArrowError(
+                        ArrowError::InvalidArgumentError(format!(
+                            "unknown resource type {resource_type}"
+                        )),
+                    )),
+                }
+            })
+            .collect()
     }
 }
 
