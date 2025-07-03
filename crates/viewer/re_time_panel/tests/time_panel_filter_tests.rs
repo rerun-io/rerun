@@ -90,7 +90,7 @@ pub fn test_various_filter_insta_snapshot() {
 }
 
 fn prepare_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
     test_context.log_entity("/path/to/right", add_point_to_chunk_builder);

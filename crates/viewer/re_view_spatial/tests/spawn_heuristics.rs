@@ -39,11 +39,7 @@ enum EntityKind {
 }
 
 fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
-    let mut test_context = TestContext::default();
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
     let timeline_step = Timeline::new_sequence("step");
     let time = [(timeline_step, 1)];

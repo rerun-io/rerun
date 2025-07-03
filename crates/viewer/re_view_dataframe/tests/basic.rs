@@ -69,12 +69,7 @@ pub fn test_unknown_timeline() {
 }
 
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_dataframe::DataframeView>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_dataframe::DataframeView>();
 
     // Make sure we can draw stuff in the table.
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();

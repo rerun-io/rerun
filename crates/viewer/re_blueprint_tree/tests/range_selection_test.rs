@@ -13,9 +13,7 @@ use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn test_range_selection_in_blueprint_tree() {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     for i in 0..=10 {
         test_context.log_entity(format!("/entity{i}"), add_point_to_chunk_builder);

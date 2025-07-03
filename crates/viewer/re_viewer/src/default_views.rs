@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn test_view_selection_ui() {
         let view_id = ViewId::random();
-        let mut test_context = TestContext::default();
+        let mut test_context = TestContext::new();
         test_context
             .query_results
             .insert(view_id, Default::default());
