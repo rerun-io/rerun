@@ -39,6 +39,24 @@ impl AssetVideo {
         }
     }
 
+    /// Returns the bytes of the video blob.
+    pub fn video_blob_bytes(&self) -> Option<&[u8]> {
+        let blob_list_array = self
+            .blob
+            .as_ref()?
+            .array
+            .as_any()
+            .downcast_ref::<arrow::array::ListArray>()
+            .expect("Video blob data is not a ListArray");
+        let blob_data = blob_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
+            .expect("Video blob data is not a PrimitiveArray<UInt8>");
+
+        Some(blob_data.values().inner().as_slice())
+    }
+
     /// Determines the presentation timestamps of all frames inside the video.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
@@ -50,18 +68,9 @@ impl AssetVideo {
 
         re_tracing::profile_function!();
 
-        let Some(blob) = self.blob.as_ref() else {
+        let Some(blob_bytes) = self.video_blob_bytes() else {
             return Ok(Vec::new());
         };
-
-        // Grab blob data without a copy.
-        let blob_list_array = blob
-            .array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Video blob data is not a ListArray");
-        let blob_data = blob_list_array.values().to_data();
-        let blob_bytes = blob_data.buffer(0);
 
         let Some(media_type) = self
             .media_type
