@@ -94,7 +94,7 @@ impl ViewClass for SpatialView3D {
         re_viewer_context::ViewClassLayoutPriority::High
     }
 
-    fn recommended_root_for_entities(
+    fn recommended_origin_for_entities(
         &self,
         entities: &IntSet<EntityPath>,
         entity_db: &EntityDb,

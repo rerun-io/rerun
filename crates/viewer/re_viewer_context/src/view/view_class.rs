@@ -109,7 +109,7 @@ pub trait ViewClass: Send + Sync {
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
     /// of the entities (for this, use [`Self::visualizable_filter_context`]).
-    fn recommended_root_for_entities(
+    fn recommended_origin_for_entities(
         &self,
         entities: &IntSet<EntityPath>,
         _entity_db: &re_entity_db::EntityDb,
