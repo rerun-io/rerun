@@ -857,9 +857,7 @@ mod tests {
     use re_chunk::RowId;
     use re_log_encoding::Compression;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
-    use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,
         message_proxy_service_server::MessageProxyServiceServer,
@@ -906,7 +904,6 @@ mod tests {
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
                 store_source: StoreSource::RustSdk {
@@ -955,7 +952,6 @@ mod tests {
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
                 store_source: StoreSource::RustSdk {

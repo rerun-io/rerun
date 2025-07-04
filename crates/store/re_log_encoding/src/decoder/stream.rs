@@ -236,8 +236,7 @@ mod tests {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,
             info: StoreInfo {
-                application_id: ApplicationId::unknown(),
-                store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
+                store_id: StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
                 cloned_from: None,
                 store_source: StoreSource::Unknown,
                 store_version: Some(CrateVersion::LOCAL),

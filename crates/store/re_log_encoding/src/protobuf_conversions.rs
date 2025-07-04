@@ -39,7 +39,7 @@ pub fn log_msg_from_proto(
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
-                .into();
+                .try_into()?;
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
         }

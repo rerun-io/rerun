@@ -83,7 +83,7 @@ impl DataLoader for LeRobotDatasetLoader {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(ApplicationId(filepath.display().to_string()));
+            .unwrap_or(filepath.display().to_string().into());
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -180,24 +180,17 @@ fn prepare_episode_chunks(
     for episode in &dataset.metadata.episodes {
         let episode = episode.index;
 
-        let store_id = StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            format!("episode_{}", episode.0),
-        );
+        let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
         let set_store_info = LoadedData::LogMsg(
             LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
-            prepare_store_info(
-                application_id.clone(),
-                &store_id,
-                re_log_types::FileSource::Sdk,
-            ),
+            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
         );
 
         if tx.send(set_store_info).is_err() {
             break;
         }
 
-        store_ids.push((episode, store_id.clone()));
+        store_ids.push((episode, store_id));
     }
 
     store_ids

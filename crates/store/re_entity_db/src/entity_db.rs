@@ -11,8 +11,8 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingId, ResolvedTimeRange,
+    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -55,6 +55,10 @@ pub enum EntityDbClass<'a> {
 /// NOTE: all mutation is to be done via public functions!
 #[derive(Clone)] // Useful for tests
 pub struct EntityDb {
+    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
+    /// store id.
+    store_id: StoreId,
+
     /// Set by whomever created this [`EntityDb`].
     ///
     /// Clones of an [`EntityDb`] gets a `None` source.
@@ -110,7 +114,7 @@ impl EntityDb {
     }
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
-        let store = ChunkStoreHandle::new(ChunkStore::new(store_id, store_config));
+        let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
         let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
 
         // Safety: these handles are never going to be leaked outside of the `EntityDb`.
@@ -118,6 +122,7 @@ impl EntityDb {
         let storage_engine = unsafe { StorageEngine::new(store, cache) };
 
         Self {
+            store_id,
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
@@ -171,16 +176,34 @@ impl EntityDb {
         self.storage_engine.read_arc()
     }
 
+    #[inline]
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()
     }
 
+    #[inline]
     pub fn store_info(&self) -> Option<&StoreInfo> {
         self.store_info_msg().map(|msg| &msg.info)
     }
 
-    pub fn app_id(&self) -> Option<&ApplicationId> {
-        self.store_info().map(|ri| &ri.application_id)
+    #[inline]
+    pub fn application_id(&self) -> &ApplicationId {
+        self.store_id().application_id()
+    }
+
+    #[inline]
+    pub fn recording_id(&self) -> &RecordingId {
+        self.store_id().recording_id()
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_id().kind
+    }
+
+    #[inline]
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
     }
 
     /// Returns the [`EntityDbClass`] of this entity db.
@@ -361,16 +384,6 @@ impl EntityDb {
         None
     }
 
-    #[inline]
-    pub fn store_kind(&self) -> StoreKind {
-        self.store_id().kind
-    }
-
-    #[inline]
-    pub fn store_id(&self) -> StoreId {
-        self.storage_engine.read().store().id()
-    }
-
     /// If this entity db is the result of a clone, which store was it cloned from?
     ///
     /// A cloned store always gets a new unique ID.
@@ -473,7 +486,7 @@ impl EntityDb {
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
         re_tracing::profile_function!();
 
-        debug_assert_eq!(*msg.store_id(), self.store_id());
+        debug_assert_eq!(msg.store_id(), self.store_id());
 
         let store_events = match &msg {
             LogMsg::SetStoreInfo(msg) => {

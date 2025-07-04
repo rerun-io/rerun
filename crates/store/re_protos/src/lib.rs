@@ -160,6 +160,9 @@ pub enum TypeConversionError {
 
     #[error("could not parse url: {0}")]
     UrlParseError(#[from] url::ParseError),
+
+    #[error("internal error: {0}")]
+    InternalError(String),
 }
 
 impl TypeConversionError {
@@ -266,14 +269,12 @@ mod sizes {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self {
-                application_id,
                 store_id,
                 store_source,
                 store_version,
             } = self;
 
-            application_id.heap_size_bytes()
-                + store_id.heap_size_bytes()
+            store_id.heap_size_bytes()
                 + store_source.heap_size_bytes()
                 + store_version.heap_size_bytes()
         }
@@ -291,9 +292,13 @@ mod sizes {
     impl SizeBytes for crate::common::v1alpha1::StoreId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
-            let Self { kind, id } = self;
+            let Self {
+                kind,
+                id,
+                application_id,
+            } = self;
 
-            kind.heap_size_bytes() + id.heap_size_bytes()
+            kind.heap_size_bytes() + id.heap_size_bytes() + application_id.heap_size_bytes()
         }
     }
 

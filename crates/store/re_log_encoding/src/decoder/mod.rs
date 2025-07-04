@@ -391,7 +391,7 @@ mod tests {
     use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_types::{SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
@@ -417,7 +417,6 @@ mod tests {
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
-                    application_id: ApplicationId("test".to_owned()),
                     store_id: store_id.clone(),
                     cloned_from: None,
                     store_source: StoreSource::RustSdk {

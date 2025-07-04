@@ -687,11 +687,10 @@ mod tests {
             });
 
         let ctx = StoreContext {
-            app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Caches::new(recording.store_id()),
+            caches: &Caches::new(recording.store_id().clone()),
             should_enable_heuristics: false,
         };
 

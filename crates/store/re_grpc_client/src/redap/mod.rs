@@ -3,8 +3,8 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
-    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    StoreSource,
+    ApplicationId, BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo,
+    StoreKind, StoreSource,
 };
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
@@ -335,6 +335,8 @@ pub async fn stream_blueprint_and_partition_from_server(
         .into_inner()
         .try_into()?;
 
+    let app_id = ApplicationId::from(uri.dataset_id.to_string());
+
     if let Some((blueprint_dataset, blueprint_partition)) =
         response.dataset_entry.dataset_details.default_bluprint()
     {
@@ -345,10 +347,10 @@ pub async fn stream_blueprint_and_partition_from_server(
         // ids are only unique within a given dataset.
         // This is a hack be cause
         // TODO(#7950)
-        let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
+
+        let blueprint_store_id = StoreId::random_with_app_id(StoreKind::Blueprint, app_id.clone());
 
         let blueprint_store_info = StoreInfo {
-            application_id: uri.dataset_id.to_string().into(),
             store_id: blueprint_store_id.clone(),
             cloned_from: None,
             store_source: StoreSource::Unknown,
@@ -385,9 +387,8 @@ pub async fn stream_blueprint_and_partition_from_server(
     }
 
     let store_info = StoreInfo {
-        application_id: uri.dataset_id.to_string().into(),
         // See note above about `StoreId::random`.
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id: StoreId::random_with_app_id(StoreKind::Recording, app_id),
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,

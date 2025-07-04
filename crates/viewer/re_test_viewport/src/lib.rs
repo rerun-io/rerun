@@ -93,7 +93,7 @@ impl TestContextExt for TestContext {
 
                             let indicated_entities_per_visualizer = ctx
                                 .view_class_registry()
-                                .indicated_entities_per_visualizer(&ctx.recording().store_id());
+                                .indicated_entities_per_visualizer(ctx.recording().store_id());
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,

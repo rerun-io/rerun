@@ -184,10 +184,7 @@ fn load_chunks(
     let engine = store.storage_engine();
 
     Ok((
-        store
-            .app_id()
-            .cloned()
-            .unwrap_or_else(re_log_types::ApplicationId::unknown),
+        store.application_id().clone(),
         engine
             .store()
             .iter_chunks()

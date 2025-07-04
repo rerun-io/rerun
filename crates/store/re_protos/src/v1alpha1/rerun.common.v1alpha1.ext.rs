@@ -1,5 +1,4 @@
 use std::hash::Hasher;
-use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
@@ -335,14 +334,16 @@ impl From<re_log_types::TimelineName> for crate::common::v1alpha1::IndexColumnSe
 impl From<crate::common::v1alpha1::ApplicationId> for re_log_types::ApplicationId {
     #[inline]
     fn from(value: crate::common::v1alpha1::ApplicationId) -> Self {
-        Self(value.id)
+        Self::from(value.id)
     }
 }
 
 impl From<re_log_types::ApplicationId> for crate::common::v1alpha1::ApplicationId {
     #[inline]
     fn from(value: re_log_types::ApplicationId) -> Self {
-        Self { id: value.0 }
+        Self {
+            id: value.to_string(),
+        }
     }
 }
 
@@ -367,13 +368,20 @@ impl From<re_log_types::StoreKind> for crate::common::v1alpha1::StoreKind {
     }
 }
 
-impl From<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
+/// Convert a store id
+impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
+    type Error = TypeConversionError;
+
     #[inline]
-    fn from(value: crate::common::v1alpha1::StoreId) -> Self {
-        Self {
-            kind: value.kind().into(),
-            id: Arc::new(value.id),
-        }
+    fn try_from(value: crate::common::v1alpha1::StoreId) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            value.kind().into(),
+            value.application_id.ok_or(missing_field!(
+                crate::common::v1alpha1::StoreId,
+                "application_id"
+            ))?,
+            value.id,
+        ))
     }
 }
 
@@ -383,7 +391,8 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
         let kind: crate::common::v1alpha1::StoreKind = value.kind.into();
         Self {
             kind: kind as i32,
-            id: String::clone(&*value.id),
+            id: value.recording_id().as_str().to_owned(),
+            application_id: Some(value.application_id().clone().into()),
         }
     }
 }
@@ -747,7 +756,7 @@ mod tests {
 
     #[test]
     fn application_id_conversion() {
-        let application_id = re_log_types::ApplicationId("test".to_owned());
+        let application_id = re_log_types::ApplicationId::from("test");
         let proto_application_id: crate::common::v1alpha1::ApplicationId =
             application_id.clone().into();
         let application_id2: re_log_types::ApplicationId = proto_application_id.into();
@@ -764,12 +773,13 @@ mod tests {
 
     #[test]
     fn store_id_conversion() {
-        let store_id = re_log_types::StoreId::from_string(
+        let store_id = re_log_types::StoreId::new(
             re_log_types::StoreKind::Recording,
-            "test_recording".to_owned(),
+            "test_app_id",
+            "test_recording",
         );
         let proto_store_id: crate::common::v1alpha1::StoreId = store_id.clone().into();
-        let store_id2: re_log_types::StoreId = proto_store_id.into();
+        let store_id2: re_log_types::StoreId = proto_store_id.try_into().unwrap();
         assert_eq!(store_id, store_id2);
     }
 

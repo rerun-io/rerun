@@ -85,12 +85,12 @@ message BlueprintActivationCommand {
 
 // Information about a recording or blueprint.
 message StoreInfo {
-  // User-chosen name of the application doing the logging.
-  rerun.common.v1alpha1.ApplicationId application_id = 1;
-
   // Unique ID of the recording.
   rerun.common.v1alpha1.StoreId store_id = 2;
 
+  reserved 1;
+  reserved "application_id";
+  
   reserved 3;
   reserved "is_official_example";
 

@@ -303,7 +303,7 @@ impl DatasetKind {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseRecordingOrTable(
                             RecordingOrTable::Recording {
-                                store_id: db.store_id(),
+                                store_id: db.store_id().clone(),
                             },
                         ));
                 }

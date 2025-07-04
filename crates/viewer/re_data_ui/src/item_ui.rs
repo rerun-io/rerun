@@ -685,9 +685,7 @@ pub fn entity_db_button_ui(
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {
-        entity_db
-            .app_id()
-            .map_or(String::default(), |app_id| format!("{app_id} - "))
+        format!("{} - ", entity_db.application_id())
     } else {
         String::default()
     };

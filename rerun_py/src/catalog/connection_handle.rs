@@ -563,8 +563,13 @@ impl ConnectionHandle {
                                 let store =
                                     stores.entry(partition_id.clone()).or_insert_with(|| {
                                         let store_info = StoreInfo {
-                                            application_id: ApplicationId::from(partition_id),
-                                            store_id: StoreId::random(StoreKind::Recording),
+                                            // Note: normally we use dataset name as application id,
+                                            // but we don't have it here, and it doesn't really
+                                            // matter since this is just a temporary store.
+                                            store_id: StoreId::random(StoreKind::Recording)
+                                                .with_application_id(ApplicationId::from(
+                                                    dataset_id.to_string(),
+                                                )),
                                             cloned_from: None,
                                             store_source: StoreSource::Unknown,
                                             store_version: None,

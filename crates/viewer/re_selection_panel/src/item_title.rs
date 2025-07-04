@@ -87,20 +87,17 @@ impl ItemTitle {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
-            match (
-                entity_db.app_id(),
-                entity_db
-                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
-            ) {
-                (Some(application_id), Some(started)) => {
-                    let time = re_log_types::Timestamp::from(started.0)
-                        .to_jiff_zoned(ctx.app_options().timestamp_format)
-                        .strftime("%H:%M:%S")
-                        .to_string();
-                    format!("{application_id} - {time}")
-                }
-                (Some(application_id), None) => application_id.to_string(),
-                _ => id_str.clone(),
+            let application_id = entity_db.application_id().to_string();
+            if let Some(started) = entity_db
+                .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+            {
+                let time = re_log_types::Timestamp::from(started.0)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string();
+                format!("{application_id} - {time}")
+            } else {
+                application_id
             }
         } else {
             id_str.clone()

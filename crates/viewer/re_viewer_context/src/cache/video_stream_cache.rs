@@ -1007,7 +1007,7 @@ mod tests {
         let storage_engine = store.storage_engine();
         let chunk_store = storage_engine.store();
         cache.on_store_events(&[&ChunkStoreEvent {
-            store_id: store.store_id(),
+            store_id: store.store_id().clone(),
             store_generation: store.generation(),
             event_id: 0, // Wrong but don't care.
             diff: ChunkStoreDiff::deletion(chunk_store.iter_chunks().next().unwrap().clone()),

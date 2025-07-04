@@ -204,9 +204,9 @@ impl TimePanel {
         let tokens = ui.tokens();
 
         // Invalidate the filter widget if the store id has changed.
-        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+        if self.filter_state_app_id.as_ref() != Some(ctx.store_context.application_id()) {
             self.filter_state = Default::default();
-            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+            self.filter_state_app_id = Some(ctx.store_context.application_id().clone());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());

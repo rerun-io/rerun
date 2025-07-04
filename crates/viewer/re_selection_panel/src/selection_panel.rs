@@ -1112,7 +1112,7 @@ mod tests {
         let mut test_context = get_test_context();
 
         // Select recording:
-        let recording_id = test_context.active_recording_id();
+        let recording_id = test_context.active_store_id();
         test_context
             .selection_state
             .lock()

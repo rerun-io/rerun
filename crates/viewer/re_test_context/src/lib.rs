@@ -15,8 +15,8 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_global_context::{AppOptions, DisplayMode};
 use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
-    external::re_tuid::Tuid,
+    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource, Timeline, external::re_tuid::Tuid,
 };
 use re_types::{
     Component as _, ComponentDescriptor, archetypes::RecordingInfo, external::uuid::Uuid,
@@ -92,14 +92,15 @@ impl TestContext {
     pub fn new() -> Self {
         re_log::setup_logging();
 
-        let recording_id = StoreId::from_uuid(StoreKind::Recording, Uuid::nil());
-        let mut recording_store = EntityDb::new(recording_id.clone());
+        let application_id = ApplicationId::from("test_app");
+        let recording_store_id =
+            StoreId::from_uuid(StoreKind::Recording, application_id.clone(), Uuid::nil());
+        let mut recording_store = EntityDb::new(recording_store_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
             info: StoreInfo {
-                application_id: "test_app".into(),
-                store_id: recording_store.store_id(),
+                store_id: recording_store.store_id().clone(),
                 cloned_from: None,
                 store_source: StoreSource::Other("test".into()),
                 store_version: None,
@@ -153,14 +154,14 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id = StoreId::random(StoreKind::Blueprint);
+        let blueprint_id =
+            StoreId::random(StoreKind::Blueprint).with_application_id(application_id.clone());
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();
-        let application_id = recording_store.store_info().unwrap().application_id.clone();
         store_hub.insert_entity_db(recording_store);
         store_hub.insert_entity_db(blueprint_store);
-        store_hub.set_active_recording_id(recording_id);
+        store_hub.set_active_recording_id(recording_store_id);
         store_hub
             .set_cloned_blueprint_active_for_app(&application_id, &blueprint_id)
             .expect("Failed to set blueprint as active");
@@ -339,12 +340,13 @@ impl TestContext {
         store_hub.entity_db_mut(&blueprint_id)
     }
 
-    pub fn active_recording_id(&self) -> StoreId {
+    pub fn active_store_id(&self) -> StoreId {
         self.store_hub
             .lock()
             .active_recording()
             .expect("expected an active recording")
             .store_id()
+            .clone()
     }
 
     pub fn set_active_timeline(&self, timeline: Timeline) {
@@ -403,12 +405,10 @@ impl TestContext {
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
-            .indicated_entities_per_visualizer(&store_context.recording.store_id());
+            .indicated_entities_per_visualizer(store_context.recording.store_id());
         let maybe_visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(
-                &store_context.recording.store_id(),
-            );
+            .maybe_visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -576,12 +576,12 @@ impl TestContext {
                 }
 
                 SystemCommand::SetActiveTime {
-                    rec_id,
+                    store_id: rec_id,
                     timeline,
                     time,
                 } => {
                     assert_eq!(
-                        rec_id,
+                        &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
                     let mut time_ctrl = self.recording_config.time_ctrl.write();

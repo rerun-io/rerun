@@ -77,8 +77,8 @@ impl<'a> ViewContext<'a> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> re_log_types::StoreId {
-        self.viewer_ctx.recording_id()
+    pub fn store_id(&self) -> &re_log_types::StoreId {
+        self.viewer_ctx.store_id()
     }
 
     /// Returns the current selection.

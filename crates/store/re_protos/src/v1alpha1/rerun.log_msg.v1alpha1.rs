@@ -111,9 +111,6 @@ impl ::prost::Name for BlueprintActivationCommand {
 /// Information about a recording or blueprint.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreInfo {
-    /// User-chosen name of the application doing the logging.
-    #[prost(message, optional, tag = "1")]
-    pub application_id: ::core::option::Option<super::super::common::v1alpha1::ApplicationId>,
     /// Unique ID of the recording.
     #[prost(message, optional, tag = "2")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,

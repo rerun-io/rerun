@@ -396,10 +396,8 @@ impl WebHandle {
         let Some(hub) = app.store_hub.as_mut() else {
             return;
         };
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         if !hub.store_bundle().contains(&store_id) {
             return;
         };
@@ -421,10 +419,8 @@ impl WebHandle {
             return None;
         };
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
@@ -451,10 +447,8 @@ impl WebHandle {
             return;
         };
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
@@ -474,10 +468,8 @@ impl WebHandle {
     pub fn get_time_for_timeline(&self, store_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         let rec_cfg = app.state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -501,10 +493,8 @@ impl WebHandle {
             return;
         };
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
@@ -534,10 +524,8 @@ impl WebHandle {
             return JsValue::null();
         };
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return JsValue::null();
         };
@@ -568,10 +556,8 @@ impl WebHandle {
             return None;
         };
 
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
@@ -596,10 +582,8 @@ impl WebHandle {
         let Some(hub) = store_hub.as_ref() else {
             return;
         };
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            store_id.to_owned(),
-        );
+        let store_id =
+            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };

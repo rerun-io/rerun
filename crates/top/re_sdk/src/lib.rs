@@ -215,9 +215,10 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 pub fn new_store_info(
     application_id: impl Into<re_log_types::ApplicationId>,
 ) -> re_log_types::StoreInfo {
+    let store_id = StoreId::random(StoreKind::Recording).with_application_id(application_id.into());
+
     re_log_types::StoreInfo {
-        application_id: application_id.into(),
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id,
         cloned_from: None,
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),

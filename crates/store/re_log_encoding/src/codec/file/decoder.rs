@@ -133,7 +133,7 @@ pub fn decode_transport_to_app(
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
-                .into();
+                .try_into()?;
 
             // TODO(grtlr): In the future, we should be able to rely on the `chunk_id` to be present in the
             // protobuf definitions. For now we have to extract it from the `batch`.

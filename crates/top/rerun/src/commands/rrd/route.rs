@@ -3,7 +3,7 @@ use std::{fs::File, io::BufWriter};
 use crossbeam::channel::Receiver;
 use re_log_encoding::encoder::DroppableEncoder;
 use re_protos::{
-    common::v1alpha1::{ApplicationId, StoreId, StoreKind},
+    common::v1alpha1::ApplicationId,
     log_msg::v1alpha1::{ArrowMsg, LogMsg, SetStoreInfo, StoreInfo, log_msg::Msg},
 };
 
@@ -37,7 +37,7 @@ pub struct RouteCommand {
 
 struct Rewrites {
     application_id: Option<ApplicationId>,
-    store_id: Option<StoreId>,
+    recording_id: Option<String>,
 }
 
 impl RouteCommand {
@@ -54,10 +54,7 @@ impl RouteCommand {
             application_id: application_id
                 .as_ref()
                 .map(|id| ApplicationId { id: id.clone() }),
-            store_id: recording_id.as_ref().map(|id| StoreId {
-                id: id.clone(),
-                kind: StoreKind::Recording.into(),
-            }),
+            recording_id: recording_id.clone(),
         };
 
         let (rx, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
@@ -66,7 +63,7 @@ impl RouteCommand {
         // and instead we want viewer heuristics to take over. Therefore, we drop blueprint activation
         // commands when overwriting the recording id.
         let drop_blueprint_activation_cmds =
-            path_to_input_rrds.len() > 1 && rewrites.store_id.is_some();
+            path_to_input_rrds.len() > 1 && rewrites.recording_id.is_some();
 
         if let Some(path) = path_to_output_rrd {
             let writer = BufWriter::new(File::create(path)?);
@@ -127,20 +124,19 @@ fn process_messages<W: std::io::Write>(
 
                 match &mut msg {
                     Msg::SetStoreInfo(SetStoreInfo {
-                        info:
-                            Some(StoreInfo {
-                                application_id,
-                                store_id,
-                                ..
-                            }),
+                        info: Some(StoreInfo { store_id, .. }),
                         ..
-                    }) => {
-                        apply_store_id_rewrite(store_id, &rewrites.store_id);
-                        apply_application_id_rewrite(application_id, &rewrites.application_id);
-                    }
+                    })
+                    | Msg::ArrowMsg(ArrowMsg { store_id, .. }) => {
+                        if let Some(target_store_id) = store_id {
+                            if let Some(recording_id) = &rewrites.recording_id {
+                                target_store_id.id = recording_id.clone();
+                            }
 
-                    Msg::ArrowMsg(ArrowMsg { store_id, .. }) => {
-                        apply_store_id_rewrite(store_id, &rewrites.store_id);
+                            if let Some(application_id) = &rewrites.application_id {
+                                target_store_id.application_id = Some(application_id.clone());
+                            }
+                        }
                     }
 
                     _ => {
@@ -172,19 +168,4 @@ fn process_messages<W: std::io::Write>(
         "Processed {num_total_msgs} messages, dropped {num_blueprint_activations} blueprint activations, and encountered {num_unexpected_msgs} unexpected messages."
     );
     Ok(())
-}
-
-fn apply_store_id_rewrite(store_id: &mut Option<StoreId>, target: &Option<StoreId>) {
-    if let (Some(store_id), Some(target)) = (store_id, target) {
-        *store_id = target.clone();
-    }
-}
-
-fn apply_application_id_rewrite(
-    app_id: &mut Option<ApplicationId>,
-    target: &Option<ApplicationId>,
-) {
-    if let (Some(app_id), Some(target)) = (app_id, target) {
-        *app_id = target.clone();
-    }
 }

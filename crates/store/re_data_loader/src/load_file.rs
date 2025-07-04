@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{ApplicationId, FileSource, LogMsg};
+use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
@@ -84,7 +84,6 @@ pub fn load_from_file_contents(
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
-    application_id: re_log_types::ApplicationId,
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
 ) -> LogMsg {
@@ -97,7 +96,6 @@ pub(crate) fn prepare_store_info(
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
         info: re_log_types::StoreInfo {
-            application_id,
             store_id: store_id.clone(),
             cloned_from: None,
             store_source,
@@ -335,11 +333,7 @@ pub(crate) fn send(
                     || (!tracked.already_has_store_info && !is_a_preexisting_recording);
 
                 if should_send_new_store_info {
-                    let app_id = settings
-                        .opened_application_id
-                        .clone()
-                        .unwrap_or_else(ApplicationId::random);
-                    let store_info = prepare_store_info(app_id, &store_id, file_source.clone());
+                    let store_info = prepare_store_info(&store_id, file_source.clone());
                     tx.send(store_info).ok();
                 }
             }
