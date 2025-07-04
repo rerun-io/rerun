@@ -1337,6 +1337,7 @@ mod tests {
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
     use re_format_arrow::format_record_batch;
+    use re_format_arrow::test::DisplayRB;
     use re_log_types::{
         EntityPath, Timeline, build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
@@ -1348,17 +1349,6 @@ mod tests {
     use crate::{QueryCache, QueryEngine};
 
     use super::*;
-
-    /// Implement `Display` for `ArrowRecordBatch`
-    struct DisplayRB(ArrowRecordBatch);
-
-    impl std::fmt::Display for DisplayRB {
-        #[inline]
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let width = 200;
-            re_format_arrow::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
-        }
-    }
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
     // e.g. `cargo t -p re_dataframe -- --show-output barebones`.

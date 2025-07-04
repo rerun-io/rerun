@@ -439,3 +439,18 @@ fn format_cell(string: String) -> Cell {
         Cell::new(string)
     }
 }
+
+pub mod test {
+    use arrow::record_batch::RecordBatch;
+
+    /// Implement `Display` for `RecordBatch`
+    pub struct DisplayRB(pub RecordBatch);
+
+    impl std::fmt::Display for DisplayRB {
+        #[inline]
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let width = 200;
+            super::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
+        }
+    }
+}
