@@ -95,6 +95,9 @@
     "panel_bg_color": {
       "color": "{Gray.100}"
     },
+    "text_edit_bg_color": {
+      "color": "{Gray.0}"
+    },
 
     "blueprint_time_panel_bg_fill": {
       "color": "#141326"
