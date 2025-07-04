@@ -588,6 +588,20 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             }
         }
 
+        if 1 < num_views {
+            // Show button to hide this view:
+            let mut visible = true;
+            ui.visibility_toggle_button(&mut visible)
+                .on_hover_text("Hide this view");
+            if !visible {
+                self.viewport_blueprint.set_content_visibility(
+                    self.ctx,
+                    &Contents::View(view_id),
+                    visible,
+                );
+            }
+        }
+
         let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
