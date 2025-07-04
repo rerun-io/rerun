@@ -132,7 +132,7 @@ class Clear(ClearExt, Archetype):
                 is_recursive=is_recursive,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -164,8 +164,7 @@ class Clear(ClearExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     is_recursive: components.ClearIsRecursiveBatch | None = field(
         metadata={"component": True},

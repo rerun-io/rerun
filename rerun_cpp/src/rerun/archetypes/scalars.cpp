@@ -15,14 +15,10 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Scalars::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(1);
         if (scalars.has_value()) {
             columns.push_back(scalars.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Scalars>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -41,15 +37,10 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(1);
 
         if (archetype.scalars.has_value()) {
             cells.push_back(archetype.scalars.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Scalars>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -186,7 +186,7 @@ class TextLog(Archetype):
                 color=color,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -218,8 +218,7 @@ class TextLog(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     text: components.TextBatch | None = field(
         metadata={"component": True},

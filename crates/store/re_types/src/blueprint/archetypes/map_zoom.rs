@@ -133,10 +133,7 @@ impl ::re_types_core::AsComponents for MapZoom {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.zoom.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [self.zoom.clone()].into_iter().flatten().collect()
     }
 }
 

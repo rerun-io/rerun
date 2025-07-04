@@ -220,7 +220,7 @@ class AffixFuzzer3(Archetype):
                 fuzz2018=fuzz2018,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -271,8 +271,7 @@ class AffixFuzzer3(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": True},

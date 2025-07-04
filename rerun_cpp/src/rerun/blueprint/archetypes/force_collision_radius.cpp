@@ -24,7 +24,7 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> ForceCollisionRadius::columns(const Collection<uint32_t>& lengths_
     ) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(3);
         if (enabled.has_value()) {
             columns.push_back(enabled.value().partitioned(lengths_).value_or_throw());
         }
@@ -34,10 +34,6 @@ namespace rerun::blueprint::archetypes {
         if (iterations.has_value()) {
             columns.push_back(iterations.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<ForceCollisionRadius>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -63,7 +59,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
         if (archetype.enabled.has_value()) {
             cells.push_back(archetype.enabled.value());
@@ -73,11 +69,6 @@ namespace rerun {
         }
         if (archetype.iterations.has_value()) {
             cells.push_back(archetype.iterations.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<ForceCollisionRadius>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

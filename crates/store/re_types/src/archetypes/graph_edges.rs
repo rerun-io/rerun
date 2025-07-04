@@ -194,14 +194,10 @@ impl ::re_types_core::AsComponents for GraphEdges {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.edges.clone(),
-            self.graph_type.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.edges.clone(), self.graph_type.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

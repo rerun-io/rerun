@@ -538,7 +538,6 @@ impl ::re_types_core::AsComponents for AffixFuzzer1 {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.fuzz1001.clone(),
             self.fuzz1002.clone(),
             self.fuzz1003.clone(),

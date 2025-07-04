@@ -44,7 +44,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Capsules3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(12);
+        columns.reserve(11);
         if (lengths.has_value()) {
             columns.push_back(lengths.value().partitioned(lengths_).value_or_throw());
         }
@@ -78,10 +78,6 @@ namespace rerun::archetypes {
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Capsules3D>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -130,7 +126,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(12);
+        cells.reserve(11);
 
         if (archetype.lengths.has_value()) {
             cells.push_back(archetype.lengths.value());
@@ -164,11 +160,6 @@ namespace rerun {
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Capsules3D>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

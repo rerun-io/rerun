@@ -255,7 +255,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -298,8 +298,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": True},

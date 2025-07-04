@@ -238,7 +238,6 @@ impl ::re_types_core::AsComponents for GeoPoints {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.positions.clone(),
             self.radii.clone(),
             self.colors.clone(),

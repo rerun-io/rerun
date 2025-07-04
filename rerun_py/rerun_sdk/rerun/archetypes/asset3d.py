@@ -182,7 +182,7 @@ class Asset3D(Asset3DExt, Archetype):
                 albedo_factor=albedo_factor,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -214,8 +214,7 @@ class Asset3D(Asset3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     blob: components.BlobBatch | None = field(
         metadata={"component": True},

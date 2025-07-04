@@ -33,7 +33,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Boxes2D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(8);
         if (half_sizes.has_value()) {
             columns.push_back(half_sizes.value().partitioned(lengths_).value_or_throw());
         }
@@ -58,10 +58,6 @@ namespace rerun::archetypes {
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Boxes2D>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -101,7 +97,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(8);
 
         if (archetype.half_sizes.has_value()) {
             cells.push_back(archetype.half_sizes.value());
@@ -126,11 +122,6 @@ namespace rerun {
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Boxes2D>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -1200,13 +1200,10 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         .collect::<Vec<_>>();
 
     let all_component_batches = {
-        std::iter::once(quote! {
-            Some(Self::indicator())
-        })
-        .chain(obj.fields.iter().map(|obj_field| {
+        obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
             quote!(self.#field_name.clone())
-        }))
+        })
     };
 
     let as_components_impl = quote! {

@@ -20,7 +20,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> VideoStream::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(3);
         if (codec.has_value()) {
             columns.push_back(codec.value().partitioned(lengths_).value_or_throw());
         }
@@ -30,10 +30,6 @@ namespace rerun::archetypes {
         if (draw_order.has_value()) {
             columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<VideoStream>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -58,7 +54,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
         if (archetype.codec.has_value()) {
             cells.push_back(archetype.codec.value());
@@ -68,11 +64,6 @@ namespace rerun {
         }
         if (archetype.draw_order.has_value()) {
             cells.push_back(archetype.draw_order.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<VideoStream>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));
