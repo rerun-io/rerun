@@ -24,11 +24,10 @@ impl std::ops::Deref for MaybeVisualizableEntities {
     }
 }
 
-// TODO(#8129): Rename to `RelevantEntities`?
-/// List of entities that match the indicator components of a visualizer.
+/// List of entities that contain archetypes that are relevant for a visualizer.
 ///
-/// In order to be a match the entity must have at some point in time on any timeline had any of
-/// the indicator components specified by the respective visualizer system.
+/// In order to be a match the entity must have at some point in time on any timeline had any
+/// component that had an associated archetype as specified by the respective visualizer system.
 #[derive(Default, Clone, Debug)]
 pub struct IndicatedEntities(pub IntSet<EntityPath>);
 
