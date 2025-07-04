@@ -15,6 +15,7 @@ import * as rerun from "@rerun-io/web-viewer";
  * @typedef {(
  *   Omit<import("@rerun-io/web-viewer").WebViewerOptions, "allow_fullscreen" | "enable_history">
  *   & BaseProps
+ *   & import("./types.d.ts").ViewerEvents
  * )} Props
  */
 
@@ -43,7 +44,7 @@ export default class WebViewer extends React.Component {
     startViewer(
       this.#handle,
       /** @type {HTMLDivElement} */ (this.#parent.current),
-      this.props,
+      () => this.props,
     );
   }
 
@@ -65,7 +66,7 @@ export default class WebViewer extends React.Component {
       startViewer(
         this.#handle,
         /** @type {HTMLDivElement} */ (this.#parent.current),
-        this.props,
+        () => this.props,
       );
     } else {
       // We only need to diff the recordings.
@@ -92,12 +93,33 @@ export default class WebViewer extends React.Component {
   }
 }
 
+/** @param {string} str */
+function pascalToSnake(str) {
+  let out = "";
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+
+    // A–Z ?
+    if (code >= 65 && code <= 90) {
+      // if not first char, prepend underscore
+      if (i > 0) out += "_";
+      // convert to lowercase by adding 32
+      out += String.fromCharCode(code + 32);
+    } else {
+      // everything else (a–z, 0–9, etc.) goes straight through
+      out += String.fromCharCode(code);
+    }
+  }
+  return out;
+}
+
 /**
  * @param {rerun.WebViewer} handle
  * @param {HTMLElement} parent
- * @param {Props} props
+ * @param {() => Props} getProps
  */
-function startViewer(handle, parent, props) {
+function startViewer(handle, parent, getProps) {
+  const props = getProps();
   handle.start(toArray(props.rrd), parent, {
     manifest_url: props.manifest_url,
     render_backend: props.render_backend,
@@ -108,6 +130,17 @@ function startViewer(handle, parent, props) {
     width: "100%",
     height: "100%",
   });
+
+  for (const key of Object.keys(props)) {
+    if (key.startsWith("on")) {
+      /** @type {any} */
+      const event = pascalToSnake(key.slice(2));
+      console.log(key, event);
+      /** @type {any} */
+      const callback = /** @type {any} */ (getProps())[key];
+      handle.on(event, callback);
+    }
+  }
 }
 
 /**
