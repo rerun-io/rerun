@@ -9,18 +9,30 @@ use re_types::{
     components::{self, MediaType, VideoTimestamp},
 };
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::{ViewClass as _, test_context::TestContext};
+use re_viewer_context::{
+    ViewClass as _, external::egui_kittest::SnapshotOptions, test_context::TestContext,
+};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
-fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
-    let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+fn workspace_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())
         .and_then(|p| p.parent())
         .unwrap()
-        .to_path_buf();
+        .to_path_buf()
+}
 
+fn pixi_ffmpeg_path() -> std::path::PathBuf {
+    workspace_dir().join(if cfg!(target_os = "windows") {
+        ".pixi/envs/default/Library/bin/ffmpeg.exe"
+    } else {
+        ".pixi/envs/default/Library/bin/ffmpeg"
+    })
+}
+
+fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
     let codec_str = match codec {
         VideoCodec::H264 => "h264",
         VideoCodec::H265 => "h265",
@@ -31,15 +43,15 @@ fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path
 
     if need_dts_equal_pts && (codec == VideoCodec::H264 || codec == VideoCodec::H265) {
         // Only H264 and H265 have DTS != PTS when b-frames are present.
-        workspace_dir.join(format!(
+        workspace_dir().join(format!(
             "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}_nobframes.mp4",
         ))
     } else if codec == VideoCodec::AV1 && cfg!(debug_assertions) {
         // AV1 decodes so insanely slow on debug, we have to use a minimal video to ensure that
         // decoding past the end of the video won't get stuck for long
-        workspace_dir.join("tests/assets/video/Big_Buck_Bunny_1080_6frames_av1.mp4")
+        workspace_dir().join("tests/assets/video/Big_Buck_Bunny_1080_6frames_av1.mp4")
     } else {
-        workspace_dir.join(format!(
+        workspace_dir().join(format!(
             "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}.mp4",
         ))
     }
@@ -160,6 +172,20 @@ fn convert_avcc_sample_to_annexb(
 fn test_video(video_type: VideoType, codec: VideoCodec) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
+    // Use pixi ffmpeg install if available.
+    if cfg!(target_os = "windows") {
+        let pixi_ffmpeg_path = pixi_ffmpeg_path();
+        if pixi_ffmpeg_path.exists() {
+            test_context.app_options.video_decoder_ffmpeg_path =
+                pixi_ffmpeg_path.to_str().unwrap().to_owned();
+
+            re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
+        } else {
+            // End up using system install. Fine usually, no need to force a pixi environment here.
+            re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
+        }
+    }
+
     let need_dts_equal_pts = video_type == VideoType::VideoStream; // TODO(#10090): Video stream doesn't support bframes
     let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
 
@@ -245,7 +271,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
     // Decoding videos can take quite a while!
     let step_dt_seconds = 1.0 / 4.0; // This is also the default, but let's be explicit since we use `try_run_realtime`.
-    let max_total_time_seconds = 10.0;
+    let max_total_time_seconds = 60.0 * if codec == VideoCodec::AV1 { 2.0 } else { 1.0 }; // On CI AV1 can be extra slow! Locally it's usually not *that* bad.
 
     // Using a single harness for all frames - we want to make sure that we use the same decoder,
     // not tearing down the video player!
@@ -278,10 +304,14 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         // Video decoding happens in a different thread, so it's important that we give it time
         // and don't busy loop.
         harness.try_run_realtime().unwrap();
-        harness.snapshot(&format!(
-            "video_{video_type}_{codec:?}_{}",
-            seek_location.get_label()
-        ));
+        harness.snapshot_options(
+            &format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
+            // ffmpeg, even when version pinned, has widly different outputs across platforms.
+            // (these thresholds are very high! Make sure the test is still failable e.g. when swapping images)
+            &SnapshotOptions::new()
+                .threshold(2.2)
+                .failed_pixel_count_threshold(200),
+        );
     }
 }
 
@@ -300,6 +330,7 @@ fn test_video_asset_codec_vp9() {
     test_video(VideoType::AssetVideo, VideoCodec::VP9);
 }
 
+#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms, otherwise we error.
 #[test]
 fn test_video_asset_codec_av1() {
     test_video(VideoType::AssetVideo, VideoCodec::AV1);

@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_global_context::DisplayMode;
+use re_global_context::{AppOptions, DisplayMode};
 use re_log_types::{
     EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
     external::re_tuid::Tuid,
@@ -152,6 +152,8 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// // re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 /// ```
 pub struct TestContext {
+    pub app_options: AppOptions,
+
     /// Store hub prepopulated with a single active recording & a blueprint recording.
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
@@ -280,6 +282,8 @@ impl TestContext {
             .set_timeline(Timeline::log_tick());
 
         Self {
+            app_options: Default::default(),
+
             view_class_registry: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -524,7 +528,7 @@ impl TestContext {
             global_context: GlobalContext {
                 is_test: true,
 
-                app_options: &Default::default(),
+                app_options: &self.app_options,
                 reflection: &self.reflection,
 
                 egui_ctx,
