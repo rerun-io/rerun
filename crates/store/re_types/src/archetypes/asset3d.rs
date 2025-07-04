@@ -233,7 +233,6 @@ impl ::re_types_core::AsComponents for Asset3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.blob.clone(),
             self.media_type.clone(),
             self.albedo_factor.clone(),

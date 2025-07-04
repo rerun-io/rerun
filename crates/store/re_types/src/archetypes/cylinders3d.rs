@@ -439,7 +439,6 @@ impl ::re_types_core::AsComponents for Cylinders3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.lengths.clone(),
             self.radii.clone(),
             self.centers.clone(),

@@ -40,7 +40,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> ContainerBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(8);
         if (container_kind.has_value()) {
             columns.push_back(container_kind.value().partitioned(lengths_).value_or_throw());
         }
@@ -65,10 +65,6 @@ namespace rerun::blueprint::archetypes {
         if (grid_columns.has_value()) {
             columns.push_back(grid_columns.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<ContainerBlueprint>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -109,7 +105,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(8);
 
         if (archetype.container_kind.has_value()) {
             cells.push_back(archetype.container_kind.value());
@@ -134,11 +130,6 @@ namespace rerun {
         }
         if (archetype.grid_columns.has_value()) {
             cells.push_back(archetype.grid_columns.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<ContainerBlueprint>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

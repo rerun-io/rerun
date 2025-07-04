@@ -590,7 +590,6 @@ impl ::re_types_core::AsComponents for Transform3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.translation.clone(),
             self.rotation_axis_angle.clone(),
             self.quaternion.clone(),

@@ -324,7 +324,6 @@ impl ::re_types_core::AsComponents for Pinhole {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.image_from_camera.clone(),
             self.resolution.clone(),
             self.camera_xyz.clone(),

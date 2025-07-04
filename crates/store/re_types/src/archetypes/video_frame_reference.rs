@@ -311,7 +311,6 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.timestamp.clone(),
             self.video_reference.clone(),
             self.draw_order.clone(),

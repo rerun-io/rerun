@@ -218,7 +218,6 @@ impl ::re_types_core::AsComponents for VideoStream {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.codec.clone(),
             self.sample.clone(),
             self.draw_order.clone(),

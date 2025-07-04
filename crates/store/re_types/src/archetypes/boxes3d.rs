@@ -405,7 +405,6 @@ impl ::re_types_core::AsComponents for Boxes3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.half_sizes.clone(),
             self.centers.clone(),
             self.rotation_axis_angles.clone(),

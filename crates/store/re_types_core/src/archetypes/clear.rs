@@ -189,10 +189,7 @@ impl crate::AsComponents for Clear {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use crate::Archetype as _;
-        [Some(Self::indicator()), self.is_recursive.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [self.is_recursive.clone()].into_iter().flatten().collect()
     }
 }
 
