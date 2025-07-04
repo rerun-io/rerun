@@ -440,6 +440,7 @@ fn format_cell(string: String) -> Cell {
     }
 }
 
+/// Provides utilities for formatting arrow data in test contexts.
 pub mod test {
     use arrow::record_batch::RecordBatch;
 
