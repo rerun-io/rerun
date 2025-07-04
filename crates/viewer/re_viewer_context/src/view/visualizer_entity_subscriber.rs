@@ -1,10 +1,11 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
+use re_chunk::ArchetypeName;
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::{ComponentDescriptor, ComponentDescriptorSet};
+use re_types::ComponentDescriptor;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -29,8 +30,8 @@ pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
 
-    /// See [`crate::VisualizerQueryInfo::indicators`]
-    indicator_components: ComponentDescriptorSet,
+    /// See [`crate::VisualizerQueryInfo::relevant_archetypes`]
+    relevant_archetypes: IntSet<ArchetypeName>,
 
     /// Assigns each required component an index.
     required_components_indices: IntMap<ComponentDescriptor, usize>,
@@ -99,7 +100,7 @@ impl VisualizerEntitySubscriber {
 
         Self {
             visualizer: T::identifier(),
-            indicator_components: visualizer_query_info.indicators,
+            relevant_archetypes: visualizer_query_info.relevant_archetypes,
             required_components_indices: visualizer_query_info
                 .required
                 .into_iter()
@@ -172,13 +173,13 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             let entity_path = event.diff.chunk.entity_path();
 
             // Update indicator component tracking:
-            if self.indicator_components.is_empty()
-                || self.indicator_components.iter().any(|component_descr| {
+            if self.relevant_archetypes.is_empty()
+                || self.relevant_archetypes.iter().any(|archetype| {
                     event
                         .diff
                         .chunk
                         .components()
-                        .contains_component(component_descr)
+                        .has_component_with_archetype(*archetype)
                 })
             {
                 store_mapping

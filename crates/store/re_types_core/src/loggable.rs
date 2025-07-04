@@ -95,6 +95,7 @@ pub trait Component: Loggable {
 
 pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
 
+// TODO(#10460): Can we replace this with `BTreeSet<ComponentIdentifier>` here?
 pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
 
 re_string_interner::declare_new_type!(

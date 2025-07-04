@@ -26,6 +26,15 @@ pub fn test_clear_series_points_and_line() {
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    // TODO(#10512): Potentially fix up this after we have "markers".
+    // There are some intricacies involved with this test. `SeriesLines` and
+    // `SeriesPoints` can both be logged without any associated data (all
+    // fields are optional). Now that indicators are gone, no data is logged
+    // at all when no fields are specified.
+    //
+    // The reason why `SeriesLines` still shows up is because it is the fallback
+    // visualizer for scalar values. We force `SeriesPoints` to have data, by
+    // explicitly setting the marker shape to circle.
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype(
             RowId::new(),
@@ -37,7 +46,8 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesPoints::new(),
+            &re_types::archetypes::SeriesPoints::new()
+                .with_markers([re_types::components::MarkerShape::Circle]),
         )
     });
 
