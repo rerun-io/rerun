@@ -88,6 +88,7 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
 similar-asserts.workspace = true
 
 

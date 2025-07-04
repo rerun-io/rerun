@@ -247,12 +247,7 @@ impl Clear {
             .is_recursive
             .map(|is_recursive| is_recursive.partitioned(_lengths.clone()))
             .transpose()?];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([crate::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

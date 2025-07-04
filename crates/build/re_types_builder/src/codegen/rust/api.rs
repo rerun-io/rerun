@@ -1679,8 +1679,6 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
         });
 
-        let indicator_column = quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?);
-
         quote! {
             #columns_doc
             #[inline]
@@ -1692,7 +1690,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                Ok(columns.into_iter().flatten().chain([#indicator_column]))
+                Ok(columns.into_iter().flatten())
             }
 
             #columns_unary_doc
