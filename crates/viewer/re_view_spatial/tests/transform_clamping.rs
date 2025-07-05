@@ -1,5 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_viewer_context::external::egui_kittest::SnapshotOptions;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport::test_context_ext::TestContextExt as _;
@@ -212,13 +213,12 @@ fn run_view_ui_and_save_snapshot(
             });
             harness.run_steps(10);
             let broken_pixels_fraction = 0.0045;
-            let num_pixels = (size.x * size.y).ceil() as u64;
 
-            use re_viewer_context::test_context::HarnessExt as _;
-            harness.snapshot_with_broken_pixels_threshold(
+            harness.snapshot_options(
                 &name,
-                num_pixels,
-                broken_pixels_fraction,
+                &SnapshotOptions::new().failed_pixel_count_threshold(
+                    (size.x * size.y * broken_pixels_fraction).round() as usize,
+                ),
             );
         }
     }

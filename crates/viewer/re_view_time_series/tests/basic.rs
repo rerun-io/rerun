@@ -2,8 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
-    ViewClass as _, ViewId,
-    test_context::{HarnessExt as _, TestContext},
+    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
 };
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -100,11 +99,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity {
-            0.00006
-        } else {
-            0.00002
-        },
+        if two_series_per_entity { 5 } else { 2 },
     );
 }
 
@@ -200,7 +195,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        if multiple_scalars { 0.00006 } else { 0.0 },
+        if multiple_scalars { 5 } else { 0 },
     );
 }
 
@@ -236,7 +231,7 @@ fn test_per_series_visibility() {
             view_id,
             name,
             egui::vec2(300.0, 300.0),
-            0.0,
+            0,
         );
     }
 }
@@ -333,7 +328,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        0.00006, // Allow 5 broken pixels
+        5, // Allow 5 broken pixels
     );
 }
 
@@ -350,7 +345,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
-    broken_pixels_fraction: f64,
+    num_allowed_broken_pixels: usize,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
@@ -359,10 +354,8 @@ fn run_view_ui_and_save_snapshot(
             test_context.run_with_single_view(ctx, view_id);
         });
 
-    harness.run();
-    harness.snapshot_with_broken_pixels_threshold(
+    harness.snapshot_options(
         name,
-        (size.x * size.y) as u64,
-        broken_pixels_fraction,
+        &SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
     );
 }

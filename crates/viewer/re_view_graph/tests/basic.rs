@@ -6,8 +6,9 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_types::archetypes;
 use re_view_graph::GraphView;
-use re_viewer_context::test_context::HarnessExt as _;
-use re_viewer_context::{ViewClass as _, test_context::TestContext};
+use re_viewer_context::{
+    ViewClass as _, external::egui_kittest::SnapshotOptions, test_context::TestContext,
+};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -149,5 +150,8 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         });
 
     harness.run();
-    harness.snapshot_with_broken_pixels(name, 4);
+    harness.snapshot_options(
+        name,
+        &SnapshotOptions::new().failed_pixel_count_threshold(4),
+    );
 }
