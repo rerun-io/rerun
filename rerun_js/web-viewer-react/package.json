@@ -37,6 +37,7 @@
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
+    "types.d.ts",
     "package.json",
     "tsconfig.json"
   ],
