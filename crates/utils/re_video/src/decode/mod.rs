@@ -104,10 +104,6 @@ pub enum DecodeError {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Native AV1 video decoding not supported in debug builds.")]
-    NoNativeAv1Debug,
-
     #[cfg(with_dav1d)]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
@@ -212,10 +208,6 @@ pub fn new_decoder(
 
             #[cfg(with_dav1d)]
             {
-                if cfg!(debug_assertions) {
-                    return Err(DecodeError::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
-                }
-
                 re_log::trace!("Decoding AV1…");
                 return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
                     debug_name.to_owned(),

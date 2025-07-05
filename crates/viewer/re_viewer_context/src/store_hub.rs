@@ -472,6 +472,15 @@ impl StoreHub {
         }
     }
 
+    /// Directly access the [`EntityDb`] for the active recording.
+    #[inline]
+    pub fn active_recording_mut(&mut self) -> Option<&mut EntityDb> {
+        match self.active_recording_or_table.as_mut() {
+            Some(RecordingOrTable::Recording { store_id }) => self.store_bundle.get_mut(store_id),
+            _ => None,
+        }
+    }
+
     /// Currently active recording or table, if any.
     pub fn active_recording_or_table(&self) -> Option<&RecordingOrTable> {
         self.active_recording_or_table.as_ref()

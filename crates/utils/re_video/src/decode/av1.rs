@@ -43,8 +43,8 @@ impl SyncDav1dDecoder {
             // The `nasm` feature makes AV1 decoding much faster.
             // On Linux the difference is huge (~25x).
             // On Windows, the difference was also pretty big (unsure how big).
-            // On an M3 Mac the difference is smalelr (2-3x),
-            // and ever without `nasm` emilk can play an 8k video at 2x speed.
+            // On an M3 Mac the difference is smaller (2-3x),
+            // and even without `nasm` emilk can play an 8k video at 2x speed.
 
             if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
                 re_log::warn_once!(

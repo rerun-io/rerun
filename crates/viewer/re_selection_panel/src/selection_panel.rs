@@ -1105,13 +1105,14 @@ mod tests {
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
         // Select recording:
+        let recording_id = test_context.active_recording_id();
         test_context
             .selection_state
             .lock()
-            .set_selection(Item::StoreId(test_context.recording_store.store_id()));
+            .set_selection(Item::StoreId(recording_id));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
-            &test_context.blueprint_store,
+            test_context.active_blueprint(),
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
