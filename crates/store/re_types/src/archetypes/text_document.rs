@@ -229,14 +229,10 @@ impl ::re_types_core::AsComponents for TextDocument {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.text.clone(),
-            self.media_type.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.text.clone(), self.media_type.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -300,12 +296,7 @@ impl TextDocument {
                 .map(|media_type| media_type.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

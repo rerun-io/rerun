@@ -34,7 +34,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> DataframeQuery::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(6);
+        columns.reserve(5);
         if (timeline.has_value()) {
             columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
         }
@@ -50,10 +50,6 @@ namespace rerun::blueprint::archetypes {
         if (select.has_value()) {
             columns.push_back(select.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<DataframeQuery>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -85,7 +81,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(5);
 
         if (archetype.timeline.has_value()) {
             cells.push_back(archetype.timeline.value());
@@ -101,11 +97,6 @@ namespace rerun {
         }
         if (archetype.select.has_value()) {
             cells.push_back(archetype.select.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<DataframeQuery>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

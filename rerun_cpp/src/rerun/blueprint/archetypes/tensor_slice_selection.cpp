@@ -29,7 +29,7 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> TensorSliceSelection::columns(const Collection<uint32_t>& lengths_
     ) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(4);
         if (width.has_value()) {
             columns.push_back(width.value().partitioned(lengths_).value_or_throw());
         }
@@ -42,10 +42,6 @@ namespace rerun::blueprint::archetypes {
         if (slider.has_value()) {
             columns.push_back(slider.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<TensorSliceSelection>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -74,7 +70,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(4);
 
         if (archetype.width.has_value()) {
             cells.push_back(archetype.width.value());
@@ -87,11 +83,6 @@ namespace rerun {
         }
         if (archetype.slider.has_value()) {
             cells.push_back(archetype.slider.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<TensorSliceSelection>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

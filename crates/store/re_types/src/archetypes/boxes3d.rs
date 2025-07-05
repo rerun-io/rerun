@@ -405,7 +405,6 @@ impl ::re_types_core::AsComponents for Boxes3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.half_sizes.clone(),
             self.centers.clone(),
             self.rotation_axis_angles.clone(),
@@ -549,12 +548,7 @@ impl Boxes3D {
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

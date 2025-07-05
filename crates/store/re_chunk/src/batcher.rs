@@ -580,13 +580,18 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
 
+            // TODO(#8129): Remove the indicator logic completely.
             let split_indicators = chunk.split_indicators();
             if !chunk.components.is_empty() {
                 // make sure the chunk didn't contain *only* indicators!
                 tx_chunk.send(chunk).ok();
+            } else {
+                re_log::warn_once!("Dropping chunk without components:\n{chunk}");
             }
             if let Some(split_indicators) = split_indicators {
-                tx_chunk.send(split_indicators).ok();
+                re_log::warn_once!(
+                    "Dropping unexpected chunk with indicators:\n{split_indicators}"
+                );
             }
         }
 
@@ -620,13 +625,16 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
 
+                        // TODO(#8129): Remove the indicator logic completely.
                         let split_indicators = chunk.split_indicators();
                         if !chunk.components.is_empty() {
                             // make sure the chunk didn't contain *only* indicators!
                             tx_chunk.send(chunk).ok();
+                        } else {
+                            re_log::warn_once!("Dropping chunk without components:\n{chunk}");
                         }
                         if let Some(split_indicators) = split_indicators {
-                            tx_chunk.send(split_indicators).ok();
+                            re_log::warn_once!("Dropping unexpected chunk with indicators:\n{split_indicators}");
                         }
                     },
                     Command::AppendRow(entity_path, row) => {

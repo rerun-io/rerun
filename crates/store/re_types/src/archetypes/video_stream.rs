@@ -218,7 +218,6 @@ impl ::re_types_core::AsComponents for VideoStream {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.codec.clone(),
             self.sample.clone(),
             self.draw_order.clone(),
@@ -297,12 +296,7 @@ impl VideoStream {
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

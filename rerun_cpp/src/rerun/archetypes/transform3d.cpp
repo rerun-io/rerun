@@ -34,7 +34,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Transform3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(8);
+        columns.reserve(7);
         if (translation.has_value()) {
             columns.push_back(translation.value().partitioned(lengths_).value_or_throw());
         }
@@ -56,10 +56,6 @@ namespace rerun::archetypes {
         if (axis_length.has_value()) {
             columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Transform3D>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -96,7 +92,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(8);
+        cells.reserve(7);
 
         if (archetype.translation.has_value()) {
             cells.push_back(archetype.translation.value());
@@ -118,11 +114,6 @@ namespace rerun {
         }
         if (archetype.axis_length.has_value()) {
             cells.push_back(archetype.axis_length.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Transform3D>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

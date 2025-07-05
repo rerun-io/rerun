@@ -324,7 +324,6 @@ impl ::re_types_core::AsComponents for Pinhole {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.image_from_camera.clone(),
             self.resolution.clone(),
             self.camera_xyz.clone(),
@@ -415,12 +414,7 @@ impl Pinhole {
                 .map(|image_plane_distance| image_plane_distance.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

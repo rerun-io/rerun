@@ -28,7 +28,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Pinhole::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(4);
         if (image_from_camera.has_value()) {
             columns.push_back(image_from_camera.value().partitioned(lengths_).value_or_throw());
         }
@@ -41,10 +41,6 @@ namespace rerun::archetypes {
         if (image_plane_distance.has_value()) {
             columns.push_back(image_plane_distance.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Pinhole>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -72,7 +68,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(4);
 
         if (archetype.image_from_camera.has_value()) {
             cells.push_back(archetype.image_from_camera.value());
@@ -85,11 +81,6 @@ namespace rerun {
         }
         if (archetype.image_plane_distance.has_value()) {
             cells.push_back(archetype.image_plane_distance.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Pinhole>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

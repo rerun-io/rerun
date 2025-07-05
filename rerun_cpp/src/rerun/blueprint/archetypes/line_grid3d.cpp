@@ -25,7 +25,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> LineGrid3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(6);
+        columns.reserve(5);
         if (visible.has_value()) {
             columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
         }
@@ -41,10 +41,6 @@ namespace rerun::blueprint::archetypes {
         if (color.has_value()) {
             columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<LineGrid3D>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -75,7 +71,7 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(5);
 
         if (archetype.visible.has_value()) {
             cells.push_back(archetype.visible.value());
@@ -91,11 +87,6 @@ namespace rerun {
         }
         if (archetype.color.has_value()) {
             cells.push_back(archetype.color.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<LineGrid3D>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

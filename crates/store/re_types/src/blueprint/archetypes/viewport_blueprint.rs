@@ -252,7 +252,6 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.root_container.clone(),
             self.maximized.clone(),
             self.auto_layout.clone(),
