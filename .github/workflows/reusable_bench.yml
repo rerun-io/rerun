@@ -18,6 +18,10 @@ on:
         required: false
         type: string
         default: ""
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-bench
@@ -64,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # we need full history
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -85,7 +89,7 @@ jobs:
             wheel-test-min
 
       - name: Add SHORT_SHA env property with commit short sha
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+        run: echo "SHORT_SHA =`echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
