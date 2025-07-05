@@ -66,91 +66,126 @@ impl ConnectionHandle {
 }
 
 impl ConnectionHandle {
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .find_entries(filter)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .find_entries(filter)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn delete_entry(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .delete_entry(entry_id)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .delete_entry(entry_id)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .create_dataset_entry(name)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .create_dataset_entry(name)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn read_dataset(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .read_dataset_entry(entry_id)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .read_dataset_entry(entry_id)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn update_dataset(
         &self,
         py: Python<'_>,
         entry_id: EntryId,
         dataset_details: DatasetDetails,
     ) -> PyResult<DatasetEntry> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .update_dataset_entry(entry_id, dataset_details)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .update_dataset_entry(entry_id, dataset_details)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_partition_ids(
         &self,
         py: Python<'_>,
         entry_id: EntryId,
     ) -> PyResult<Vec<String>> {
-        wait_for_future(py, async {
-            Ok(self
-                .client()
-                .await?
-                .get_dataset_partition_ids(entry_id)
-                .await
-                .map_err(to_py_err)?
-                .iter()
-                .map(|id| id.id.clone())
-                .collect::<Vec<_>>())
-        })
+        wait_for_future(
+            py,
+            async {
+                Ok(self
+                    .client()
+                    .await?
+                    .get_dataset_partition_ids(entry_id)
+                    .await
+                    .map_err(to_py_err)?
+                    .iter()
+                    .map(|id| id.id.clone())
+                    .collect::<Vec<_>>())
+            }
+            .in_current_span(),
+        )
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
-        let response = wait_for_future(py, async {
-            self.client()
-                .await?
-                .inner()
-                .read_table_entry(ReadTableEntryRequest {
-                    id: Some(entry_id.into()),
-                })
-                .await
-                .map_err(to_py_err)
-        })?;
+        let response = wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .inner()
+                    .read_table_entry(ReadTableEntryRequest {
+                        id: Some(entry_id.into()),
+                    })
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )?;
 
         Ok(response
             .into_inner()
@@ -160,20 +195,25 @@ impl ConnectionHandle {
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .inner()
-                .get_dataset_schema(GetDatasetSchemaRequest {
-                    dataset_id: Some(entry_id.into()),
-                })
-                .await
-                .map_err(to_py_err)?
-                .into_inner()
-                .schema()
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .inner()
+                    .get_dataset_schema(GetDatasetSchemaRequest {
+                        dataset_id: Some(entry_id.into()),
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner()
+                    .schema()
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
@@ -181,6 +221,7 @@ impl ConnectionHandle {
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
@@ -193,42 +234,52 @@ impl ConnectionHandle {
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
 
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                //TODO(ab): expose `on_duplicate` as a method argument
-                .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
-                .await
-                .map_err(to_py_err)
-        })
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    //TODO(ab): expose `on_duplicate` as a method argument
+                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn query_tasks(&self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
-        wait_for_future(py, async {
-            let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
-                ids: task_ids.to_vec(),
-            };
+        wait_for_future(
+            py,
+            async {
+                let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                    ids: task_ids.to_vec(),
+                };
 
-            let status_table = self
-                .client()
-                .await?
-                .inner()
-                .query_tasks(request)
-                .await
-                .map_err(to_py_err)?
-                .into_inner()
-                .dataframe_part()
-                .map_err(to_py_err)?
-                .decode()
-                .map_err(to_py_err)?;
+                let status_table = self
+                    .client()
+                    .await?
+                    .inner()
+                    .query_tasks(request)
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner()
+                    .dataframe_part()
+                    .map_err(to_py_err)?
+                    .decode()
+                    .map_err(to_py_err)?;
 
-            Ok(status_table)
-        })
+                Ok(status_table)
+            }
+            .in_current_span(),
+        )
     }
 
     /// Wait for the provided tasks to finish.
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn wait_for_tasks(
         &self,
         py: Python<'_>,
@@ -237,98 +288,101 @@ impl ConnectionHandle {
     ) -> PyResult<()> {
         use futures::StreamExt as _;
 
-        wait_for_future(py, async {
-            let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
-                PyValueError::new_err(format!(
-                    "failed to convert timeout to serialized duration: {err}"
-                ))
-            })?;
-            let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
-                ids: task_ids,
-                timeout: Some(timeout),
-            };
-            let mut response_stream = self
-                .client()
-                .await?
-                .inner()
-                .query_tasks_on_completion(request)
-                .await
-                .map_err(to_py_err)?
-                .into_inner();
-
-            let mut errors: Vec<String> = Vec::new();
-
-            // loop until all the tasks are done or the timeout is reached: both cases
-            // will complete the stream
-            while let Some(response) = response_stream.next().await {
-                let item = response
-                    .map_err(to_py_err)?
-                    .data
-                    .ok_or_else(|| PyValueError::new_err("received response without data"))?
-                    .decode()
-                    .map_err(to_py_err)?;
-
-                // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
-                // than a nicely typed object should be revisited.
-
-                let schema = item.schema();
-                if !schema.contains(&QueryTasksResponse::schema()) {
-                    return Err(PyValueError::new_err(
-                        "invalid schema for QueryTasksResponse",
-                    ));
-                }
-
-                let col_indices = [
-                    QueryTasksResponse::TASK_ID,
-                    QueryTasksResponse::EXEC_STATUS,
-                    QueryTasksResponse::MSGS,
-                ]
-                .iter()
-                .map(|name| schema.index_of(name))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
-
-                let projected = item.project(&col_indices).map_err(to_py_err)?;
-
-                let (task_ids, statuses, msgs) = {
-                    (
-                        projected
-                            .column(0)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(1)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                        projected
-                            .column(2)
-                            .try_downcast_array_ref::<arrow::array::StringArray>()
-                            .map_err(to_py_err)?,
-                    )
+        wait_for_future(
+            py,
+            async {
+                let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
+                    PyValueError::new_err(format!(
+                        "failed to convert timeout to serialized duration: {err}"
+                    ))
+                })?;
+                let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                    ids: task_ids,
+                    timeout: Some(timeout),
                 };
-                for i in 0..projected.num_rows() {
-                    if statuses.value(i) != "success" {
-                        let err = format!("task {}: {}", task_ids.value(i), msgs.value(i));
-                        errors.push(err);
+                let mut response_stream = self
+                    .client()
+                    .await?
+                    .inner()
+                    .query_tasks_on_completion(request)
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner();
+
+                let mut errors: Vec<String> = Vec::new();
+
+                // loop until all the tasks are done or the timeout is reached: both cases
+                // will complete the stream
+                while let Some(response) = response_stream.next().await {
+                    let item = response
+                        .map_err(to_py_err)?
+                        .data
+                        .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                        .decode()
+                        .map_err(to_py_err)?;
+
+                    // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
+                    // than a nicely typed object should be revisited.
+
+                    let schema = item.schema();
+                    if !schema.contains(&QueryTasksResponse::schema()) {
+                        return Err(PyValueError::new_err(
+                            "invalid schema for QueryTasksResponse",
+                        ));
+                    }
+
+                    let col_indices = [
+                        QueryTasksResponse::TASK_ID,
+                        QueryTasksResponse::EXEC_STATUS,
+                        QueryTasksResponse::MSGS,
+                    ]
+                    .iter()
+                    .map(|name| schema.index_of(name))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
+
+                    let projected = item.project(&col_indices).map_err(to_py_err)?;
+
+                    let (task_ids, statuses, msgs) = {
+                        (
+                            projected
+                                .column(0)
+                                .try_downcast_array_ref::<arrow::array::StringArray>()
+                                .map_err(to_py_err)?,
+                            projected
+                                .column(1)
+                                .try_downcast_array_ref::<arrow::array::StringArray>()
+                                .map_err(to_py_err)?,
+                            projected
+                                .column(2)
+                                .try_downcast_array_ref::<arrow::array::StringArray>()
+                                .map_err(to_py_err)?,
+                        )
+                    };
+                    for i in 0..projected.num_rows() {
+                        if statuses.value(i) != "success" {
+                            let err = format!("task {}: {}", task_ids.value(i), msgs.value(i));
+                            errors.push(err);
+                        }
                     }
                 }
-            }
 
-            if !errors.is_empty() {
-                let msg = format!(
-                    "all tasks completed, but the following errors occurred:\n{}",
-                    errors.join("\n")
-                );
-                Err(PyValueError::new_err(msg))
-            } else {
-                Ok(())
+                if !errors.is_empty() {
+                    let msg = format!(
+                        "all tasks completed, but the following errors occurred:\n{}",
+                        errors.join("\n")
+                    );
+                    Err(PyValueError::new_err(msg))
+                } else {
+                    Ok(())
+                }
             }
-        })
+            .in_current_span(),
+        )
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
-    #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn get_chunks_for_dataframe_query(
         &self,
         py: Python<'_>,
@@ -560,6 +614,7 @@ impl ConnectionHandle {
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn get_chunk_ids_for_dataframe_query(
         &self,
         py: Python<'_>,
@@ -597,65 +652,72 @@ impl ConnectionHandle {
 
         let query = query_from_query_expression(query_expression);
 
-        wait_for_future(py, async {
-            let response_stream = self
-                .client()
-                .await?
-                .inner()
-                .query_dataset(QueryDatasetRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    partition_ids: partition_ids
-                        .iter()
-                        .map(|id| id.as_ref().to_owned().into())
-                        .collect(),
-                    chunk_ids: vec![],
-                    entity_paths: entity_paths
-                        .into_iter()
-                        .map(|p| (*p).clone().into())
-                        .collect(),
-                    select_all_entity_paths,
-                    fuzzy_descriptors,
-                    exclude_static_data: false,
-                    exclude_temporal_data: false,
-                    query: Some(query.into()),
-                    scan_parameters: Some(
-                        ScanParameters {
-                            columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
-                            ..Default::default()
-                        }
-                        .into(),
-                    ),
-                })
-                .await
-                .map_err(to_py_err)?
-                .into_inner();
+        wait_for_future(
+            py,
+            async {
+                let response_stream = self
+                    .client()
+                    .await?
+                    .inner()
+                    .query_dataset(QueryDatasetRequest {
+                        dataset_id: Some(dataset_id.into()),
+                        partition_ids: partition_ids
+                            .iter()
+                            .map(|id| id.as_ref().to_owned().into())
+                            .collect(),
+                        chunk_ids: vec![],
+                        entity_paths: entity_paths
+                            .into_iter()
+                            .map(|p| (*p).clone().into())
+                            .collect(),
+                        select_all_entity_paths,
+                        fuzzy_descriptors,
+                        exclude_static_data: false,
+                        exclude_temporal_data: false,
+                        query: Some(query.into()),
+                        scan_parameters: Some(
+                            ScanParameters {
+                                columns: vec![
+                                    "chunk_partition_id".to_owned(),
+                                    "chunk_id".to_owned(),
+                                ],
+                                ..Default::default()
+                            }
+                            .into(),
+                        ),
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner();
 
-            // TODO(jleibs): Make this streaming
-            let record_batches: Result<Vec<RecordBatch>, PyErr> = response_stream
-                .collect::<Result<Vec<_>, _>>()
-                .await
-                .map_err(to_py_err)?
-                .into_iter()
-                .filter_map(|response| response.data)
-                .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
-                .collect();
+                // TODO(jleibs): Make this streaming
+                let record_batches: Result<Vec<RecordBatch>, PyErr> = response_stream
+                    .collect::<Result<Vec<_>, _>>()
+                    .await
+                    .map_err(to_py_err)?
+                    .into_iter()
+                    .filter_map(|response| response.data)
+                    .map(|dataframe_part| dataframe_part.decode().map_err(to_py_err))
+                    .collect();
 
-            let record_batches = record_batches?;
+                let record_batches = record_batches?;
 
-            // TODO(jleibs): Still need a better pattern for getting these schemas
-            let first = record_batches
-                .first()
-                .ok_or_else(|| PyValueError::new_err("No chunks returned from query"))?;
+                // TODO(jleibs): Still need a better pattern for getting these schemas
+                let first = record_batches
+                    .first()
+                    .ok_or_else(|| PyValueError::new_err("No chunks returned from query"))?;
 
-            let schema = first.schema();
+                let schema = first.schema();
 
-            let reader: Box<dyn RecordBatchReader + Send> = Box::new(RecordBatchIterator::new(
-                record_batches.into_iter().map(Ok),
-                schema,
-            ));
+                let reader: Box<dyn RecordBatchReader + Send> = Box::new(RecordBatchIterator::new(
+                    record_batches.into_iter().map(Ok),
+                    schema,
+                ));
 
-            Ok(PyArrowType(reader))
-        })
+                Ok(PyArrowType(reader))
+            }
+            .in_current_span(),
+        )
     }
 }
 

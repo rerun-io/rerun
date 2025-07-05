@@ -19,7 +19,7 @@ use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, Sca
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TableEntryTableProvider {
     //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
@@ -27,6 +27,15 @@ pub struct TableEntryTableProvider {
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
+}
+
+impl std::fmt::Debug for TableEntryTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TableEntryTableProvider")
+            .field("table", &self.table)
+            .field("table_id", &self.table_id)
+            .finish()
+    }
 }
 
 impl TableEntryTableProvider {

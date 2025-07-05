@@ -30,7 +30,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
 /// * [`decode_transport_to_app`]
 ///
 /// `Ok(None)` returned from this function marks the end of the file stream.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_bytes_to_app(
     message_kind: MessageKind,
     buf: &[u8],
@@ -46,7 +46,7 @@ pub fn decode_bytes_to_app(
 /// decoded, but Arrow data is never touched).
 ///
 /// `Ok(None)` returned from this function marks the end of the file stream.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_bytes_to_transport(
     message_kind: MessageKind,
     buf: &[u8],
@@ -82,7 +82,7 @@ pub fn decode_bytes_to_transport(
 ///
 /// This decodes a message from the transport layer (Protobuf) all the way to app layer, i.e. this
 /// is where all Arrow data will be decoded.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_transport_to_app(
     msg: re_protos::log_msg::v1alpha1::log_msg::Msg,
 ) -> Result<LogMsg, DecodeError> {

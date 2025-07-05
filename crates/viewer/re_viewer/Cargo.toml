@@ -42,6 +42,11 @@ analytics = ["dep:re_analytics"]
 ## Enable the map view
 map_view = ["dep:re_view_map"]
 
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
+
 
 [dependencies]
 # Internal:
@@ -128,6 +133,10 @@ tap.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -167,9 +167,6 @@ pub(crate) async fn client(
 
     let middlewares = tower::ServiceBuilder::new()
         .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
-        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-        // .layer(redap_telemetry::new_grpc_tracing_layer())
-        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
         .into_inner();
 
     let svc = tower::ServiceBuilder::new()
@@ -179,18 +176,31 @@ pub(crate) async fn client(
     Ok(FrontendServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
 pub type RedapClientInner =
-    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>;
+    re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+        re_perf_telemetry::external::tower_http::propagate_header::PropagateHeader<
+            re_perf_telemetry::external::tower_http::trace::Trace<
+                tonic::service::interceptor::InterceptedService<
+                    tonic::service::interceptor::InterceptedService<
+                        tonic::transport::Channel,
+                        re_auth::client::AuthDecorator,
+                    >,
+                    re_perf_telemetry::TracingInjectorInterceptor,
+                >,
+                re_perf_telemetry::external::tower_http::classify::SharedClassifier<
+                    re_perf_telemetry::external::tower_http::classify::GrpcErrorsAsFailures,
+                >,
+                re_perf_telemetry::GrpcMakeSpan,
+            >,
+        >,
+    >;
 
-// TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClientInner = tower_http::trace::Trace<
-//     tonic::service::interceptor::InterceptedService<
-//         tonic::transport::Channel,
-//         redap_telemetry::TracingInjectorInterceptor,
-//     >,
-//     tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
-// >;
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
+pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
+    tonic::transport::Channel,
+    re_auth::client::AuthDecorator,
+>;
 
 pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
@@ -203,11 +213,13 @@ pub(crate) async fn client(
 
     let auth = AuthDecorator::new(token);
 
-    let middlewares = tower::ServiceBuilder::new()
+    let middlewares = tower::ServiceBuilder::new();
+
+    #[cfg(feature = "perf_telemetry")]
+    let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
+
+    let middlewares = middlewares
         .layer(tonic::service::interceptor::InterceptorLayer::new(auth))
-        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-        // .layer(redap_telemetry::new_grpc_tracing_layer())
-        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
         .into_inner();
 
     let svc = tower::ServiceBuilder::new()

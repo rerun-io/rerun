@@ -60,6 +60,11 @@ default = ["native_viewer", "web_viewer", "map_view"]
 ## This may enable features that require extra build tools that not everyone has.
 release = ["default", "nasm"]
 
+
+## Support the map view.
+## This adds a lot of extra dependencies.
+map_view = ["rerun/map_view"]
+
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["rerun/nasm"]
@@ -68,9 +73,10 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
-## Support the map view.
-## This adds a lot of extra dependencies.
-map_view = ["rerun/map_view"]
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["rerun/perf_telemetry"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -80,6 +86,7 @@ map_view = ["rerun/map_view"]
 #
 # TODO(#4295): web_viewer shouldn't require rerun/sdk
 web_viewer = ["rerun/web_viewer", "rerun/sdk"]
+
 
 [dependencies]
 re_build_info.workspace = true
