@@ -103,6 +103,8 @@ pub struct DesignTokens {
     // ------
     pub panel_bg_color: Color32,
 
+    pub text_edit_bg_color: Color32,
+
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
 
@@ -260,6 +262,7 @@ impl DesignTokens {
             selection_stroke_color: get_color("selection_stroke_color"),
 
             panel_bg_color: get_color("panel_bg_color"),
+            text_edit_bg_color: get_color("text_edit_bg_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -459,13 +462,13 @@ impl DesignTokens {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
-        // Used as the background of text edits, scroll bars and others things
-        // that needs to look different from other interactive stuff.
-        // We need this very dark, since the theme overall is very, very dark.
+        // Used as the background of scroll bars and others things
+        // that needs to look different from other interactive stuff..
         egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;
+        egui_style.visuals.text_edit_bg_color = Some(self.text_edit_bg_color);
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
