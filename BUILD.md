@@ -140,11 +140,28 @@ This is automatically done by this shortcut which builds & runs the web viewer:
 pixi run rerun-web
 ```
 
+### Windows
+
 If you're on Windows you have to make sure that your git client creates symlinks,
 otherwise you may get errors during the build.
 Run `git config --show-scope --show-origin core.symlinks` to check if symlinks are enabled.
 You may need to turn on Windows developer mode in order to give the `mklink` command sufficient permissions.
 See also this [Stack Overflow reply](https://stackoverflow.com/questions/5917249/git-symbolic-links-in-windows/59761201#59761201) on the issue.
+
+On Windows, use LLVM's archiver to build the web viewer:
+- Install `ar`:
+```sh
+cargo install -f cargo-binutils
+rustup component add llvm-tools-preview
+```
+
+`config.toml`:
+```toml
+[target.wasm32-unknown-unknown]
+ar = "llvm-ar"
+```
+
+Or alternatively, you can use MinGW's `ar` by installing `mingw-w64-binutils` and making sure its `ar.exe` is on your `PATH`.
 
 
 ## Improving compile times
@@ -207,7 +224,7 @@ On Windows, use LLVM's `lld` linker and keep debuginfo in a single separate file
 
 Pre-requisites:
 - Install `lld`:
-```
+```sh
 cargo install -f cargo-binutils
 rustup component add llvm-tools-preview
 ```
