@@ -439,11 +439,10 @@ impl PyDataframeQueryView {
             })
             .collect();
 
-        let provider: Arc<dyn TableProvider> =
+        let provider: Arc<dyn TableProvider> = Arc::new(
             DataframeQueryTableProvider::new(query_engines, &self_.query_expression)
-                .map_err(to_py_err)?
-                .try_into()
-                .map_err(to_py_err)?;
+                .map_err(to_py_err)?,
+        );
 
         let capsule_name = cr"datafusion_table_provider".into();
 
