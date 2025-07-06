@@ -169,6 +169,38 @@ fn convert_avcc_sample_to_annexb(
     sample_bytes
 }
 
+/// The maximum time we'll wait for a decoder to produce a result.
+fn max_seconds_wait_for_decode_result(codec: VideoCodec) -> f32 {
+    // On CI decoding times after seek can get absurdly long sometimes.
+    match codec {
+        VideoCodec::AV1 => 120.0, // On CI AV1 can be extra slow! Locally it's usually not *that* bad.
+        _ => 60.0,
+    }
+}
+
+fn image_diff_threshold(codec: VideoCodec) -> f32 {
+    match codec {
+        // Despite version pinning, ffmpeg's results are quite different depending on the platform
+        // and seemingly even between runs!
+        VideoCodec::H264 => 2.2,
+        // AV1 has this problem as well but to a lesser extent.
+        VideoCodec::AV1 => 1.2,
+
+        _ => SnapshotOptions::default().threshold,
+    }
+}
+
+fn image_failed_pixel_count_threshold(codec: VideoCodec) -> usize {
+    match codec {
+        // Despite version pinning, ffmpeg's results are quite different depending on the platform
+        // and seemingly even between runs!
+        VideoCodec::H264 => 300,
+        // AV1 has this problem as well but to a lesser extent.
+        VideoCodec::AV1 => 100,
+        _ => SnapshotOptions::default().failed_pixel_count_threshold,
+    }
+}
+
 fn test_video(video_type: VideoType, codec: VideoCodec) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
@@ -271,7 +303,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
     // Decoding videos can take quite a while!
     let step_dt_seconds = 1.0 / 4.0; // This is also the default, but let's be explicit since we use `try_run_realtime`.
-    let max_total_time_seconds = 60.0 * if codec == VideoCodec::AV1 { 2.0 } else { 1.0 }; // On CI AV1 can be extra slow! Locally it's usually not *that* bad.
+    let max_total_time_seconds = max_seconds_wait_for_decode_result(codec);
 
     // Using a single harness for all frames - we want to make sure that we use the same decoder,
     // not tearing down the video player!
@@ -306,11 +338,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         harness.try_run_realtime().unwrap();
         harness.snapshot_options(
             &format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
-            // ffmpeg, even when version pinned, has widly different outputs across platforms.
-            // (these thresholds are very high! Make sure the test is still failable e.g. when swapping images)
             &SnapshotOptions::new()
-                .threshold(2.2)
-                .failed_pixel_count_threshold(200),
+                .threshold(image_diff_threshold(codec))
+                .failed_pixel_count_threshold(image_failed_pixel_count_threshold(codec)),
         );
     }
 }
