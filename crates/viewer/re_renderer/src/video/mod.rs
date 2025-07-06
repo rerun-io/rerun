@@ -49,6 +49,14 @@ pub enum VideoPlayerError {
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
+impl VideoPlayerError {
+    pub fn should_rerequest_frame(&self) -> bool {
+        // Decoders often (not always!) recover from errors and will succeed eventually.
+        // Gotta keep trying!
+        matches!(self, Self::DecodeChunk(_))
+    }
+}
+
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
 /// Describes whether a decoder is lagging behind or not.

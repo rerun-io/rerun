@@ -155,6 +155,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
+                    if err.should_rerequest_frame() {
+                        ctx.egui_ctx().request_repaint();
+                    }
                     show_video_error(
                         ctx,
                         &mut self.data,
