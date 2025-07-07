@@ -26,7 +26,7 @@ What you can or cannot do with that depends on which project you're working on (
 
 ### Redap
 
-See [this section](https://github.com/rerun-io/dataplatform/blob/main/README.md#telemetry?speculative-link) of the Redap documentation.
+If you have source access to the Rerun dataplatform check the Readme there.
 
 
 ### Rerun SDK
