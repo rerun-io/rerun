@@ -2,8 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::{SpatialView3D, SpatialViewState};
 use re_viewer_context::{
-    RecommendedView, ViewClass as _, ViewId,
-    test_context::{HarnessExt as _, TestContext},
+    RecommendedView, ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions,
+    test_context::TestContext,
 };
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -216,5 +216,8 @@ fn run_view_ui_and_save_snapshot(
             });
         });
 
-    harness.snapshot_with_broken_pixels(name, num_pixels_allowed_to_deviate);
+    harness.snapshot_options(
+        name,
+        &SnapshotOptions::new().failed_pixel_count_threshold(num_pixels_allowed_to_deviate),
+    );
 }

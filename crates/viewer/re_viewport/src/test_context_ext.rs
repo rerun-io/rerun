@@ -56,7 +56,7 @@ impl TestContextExt for TestContext {
             if let Some(setup_blueprint) = setup_blueprint.take() {
                 self.run(egui_ctx, |ctx| {
                     let mut viewport_blueprint =
-                        ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
+                        ViewportBlueprint::from_db(ctx.blueprint_db(), &self.blueprint_query);
                     result = Some(setup_blueprint(ctx, &mut viewport_blueprint));
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
@@ -64,8 +64,9 @@ impl TestContextExt for TestContext {
                 self.handle_system_commands();
 
                 // Reload the blueprint store and execute all view queries.
+                let blueprint_query = self.blueprint_query.clone();
                 let viewport_blueprint =
-                    ViewportBlueprint::from_db(&self.blueprint_store, &self.blueprint_query);
+                    ViewportBlueprint::from_db(self.active_blueprint(), &blueprint_query);
 
                 let mut query_results = HashMap::default();
 
