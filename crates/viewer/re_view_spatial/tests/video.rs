@@ -7,6 +7,7 @@ use re_log_types::{NonMinI64, TimeInt, TimePoint};
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference, VideoStream},
     components::{self, MediaType, VideoTimestamp},
+    datatypes,
 };
 use re_video::{VideoCodec, VideoDataDescription};
 use re_viewer_context::{
@@ -232,7 +233,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
         VideoType::VideoStream => {
             // Pretend the file is a video stream.
-            let blob_bytes = video_asset.video_blob_bytes().unwrap();
+            let blob_bytes =
+                datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
+                    .unwrap();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,
                 MediaType::mp4().as_str(),

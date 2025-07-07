@@ -39,24 +39,6 @@ impl AssetVideo {
         }
     }
 
-    /// Returns the bytes of the video blob.
-    pub fn video_blob_bytes(&self) -> Option<&[u8]> {
-        let blob_list_array = self
-            .blob
-            .as_ref()?
-            .array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Video blob data is not a ListArray");
-        let blob_data = blob_list_array
-            .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()
-            .expect("Video blob data is not a PrimitiveArray<UInt8>");
-
-        Some(blob_data.values().inner().as_slice())
-    }
-
     /// Determines the presentation timestamps of all frames inside the video.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
@@ -64,11 +46,12 @@ impl AssetVideo {
     /// Panics if the serialized blob data doesn't have the right datatype.
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_nanos(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
+        use crate::datatypes::Blob;
         use re_types_core::Loggable as _;
 
         re_tracing::profile_function!();
 
-        let Some(blob_bytes) = self.video_blob_bytes() else {
+        let Some(blob_bytes) = self.blob.as_ref().and_then(Blob::serialized_blob_as_slice) else {
             return Ok(Vec::new());
         };
 
