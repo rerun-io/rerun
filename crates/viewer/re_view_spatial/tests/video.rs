@@ -46,10 +46,6 @@ fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path
         workspace_dir().join(format!(
             "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}_nobframes.mp4",
         ))
-    } else if codec == VideoCodec::AV1 && cfg!(debug_assertions) {
-        // AV1 decodes so insanely slow on debug, we have to use a minimal video to ensure that
-        // decoding past the end of the video won't get stuck for long
-        workspace_dir().join("tests/assets/video/Big_Buck_Bunny_1080_6frames_av1.mp4")
     } else {
         workspace_dir().join(format!(
             "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}.mp4",
@@ -167,15 +163,6 @@ fn convert_avcc_sample_to_annexb(
     }
 
     sample_bytes
-}
-
-/// The maximum time we'll wait for a decoder to produce a result.
-fn max_seconds_wait_for_decode_result(codec: VideoCodec) -> f32 {
-    // On CI decoding times after seek can get absurdly long sometimes.
-    match codec {
-        VideoCodec::AV1 => 120.0, // On CI AV1 can be extra slow! Locally it's usually not *that* bad.
-        _ => 60.0,
-    }
 }
 
 fn image_diff_threshold(codec: VideoCodec) -> f32 {
@@ -303,7 +290,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
     // Decoding videos can take quite a while!
     let step_dt_seconds = 1.0 / 4.0; // This is also the default, but let's be explicit since we use `try_run_realtime`.
-    let max_total_time_seconds = max_seconds_wait_for_decode_result(codec);
+    let max_total_time_seconds = 60.0;
 
     // Using a single harness for all frames - we want to make sure that we use the same decoder,
     // not tearing down the video player!
