@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeMap;
 
 use arrow::datatypes::Field;
 
@@ -76,32 +76,33 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, col
 }
 
 fn column_arrow_metadata_ui(ui: &mut egui::Ui, column_field: &Field, show_extras: bool) {
-    let metadata = column_field.metadata();
-    let sorbet_metadata = metadata
-        .keys()
-        .filter(|key| key.starts_with("rerun:"))
-        .collect::<HashSet<_>>();
+    let user_metadata = column_field
+        .metadata()
+        .iter()
+        .filter(|&(key, _)| !key.starts_with("rerun:"))
+        .collect::<BTreeMap<_, _>>();
+
+    let sorbet_metadata = column_field
+        .metadata()
+        .iter()
+        .filter(|&(key, _)| key.starts_with("rerun:"))
+        .collect::<BTreeMap<_, _>>();
 
     // user metadata
-    if metadata.len() > sorbet_metadata.len() {
+    if !user_metadata.is_empty() {
         ui.separator();
         ui.weak("Arrow metadata");
-        metadata
-            .iter()
-            .filter(|(key, _)| !sorbet_metadata.contains(key))
-            .for_each(|(key, value)| {
-                header_property_ui(ui, key, value);
-            });
+        for (key, value) in user_metadata {
+            header_property_ui(ui, key, value);
+        }
     }
 
     // sorbet metadata
     if !sorbet_metadata.is_empty() && show_extras {
         ui.separator();
         ui.weak("Sorbet metadata");
-        for key in sorbet_metadata {
-            if let Some(value) = metadata.get(key) {
-                header_property_ui(ui, key, value);
-            }
+        for (key, value) in sorbet_metadata {
+            header_property_ui(ui, key, value);
         }
     }
 }
