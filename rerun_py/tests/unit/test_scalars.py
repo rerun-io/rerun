@@ -34,4 +34,4 @@ CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 def test_scalars_columns() -> None:
     for input, expected in CASES:
         data = [*Scalars.columns(scalars=input)]
-        assert data[1].as_arrow_array().to_pylist() == expected
+        assert data[0].as_arrow_array().to_pylist() == expected

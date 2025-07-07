@@ -7860,6 +7860,7 @@ dependencies = [
  "const_format",
  "crossbeam",
  "document-features",
+ "insta",
  "itertools 0.14.0",
  "libc",
  "nohash-hasher",

@@ -241,6 +241,7 @@ impl Chunk {
         self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_datatypes(rhs)
     }
 
+    // TODO(#8129): This will not be needed anymore.
     /// Moves all indicator components from `self` into a new, dedicated chunk.
     ///
     /// The new chunk contains only the first index from each index column, and all the indicators,

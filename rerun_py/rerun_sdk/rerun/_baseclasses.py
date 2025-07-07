@@ -128,28 +128,13 @@ class Archetype(AsComponents):
     def archetype_short_name(cls) -> str:
         return cls.archetype().rsplit(".", 1)[-1]
 
-    @classmethod
-    def indicator(cls) -> DescribedComponentBatch:
-        """
-        Creates a `DescribedComponentBatch` out of the associated indicator component.
-
-        This allows for associating arbitrary indicator components with arbitrary data.
-        """
-        from ._log import IndicatorComponentBatch
-
-        indicator = IndicatorComponentBatch(cls.archetype())
-        return DescribedComponentBatch(indicator, indicator.component_descriptor())
-
-    def as_component_batches(self, *, include_indicators: bool = True) -> list[DescribedComponentBatch]:
+    def as_component_batches(self) -> list[DescribedComponentBatch]:
         """
         Return all the component batches that make up the archetype.
 
         Part of the `AsComponents` logging interface.
         """
-        if include_indicators:
-            batches = [self.indicator()]
-        else:
-            batches = []
+        batches = []
 
         for fld in fields(type(self)):
             if "component" in fld.metadata:

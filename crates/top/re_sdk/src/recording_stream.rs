@@ -2575,9 +2575,25 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
+    use insta::assert_debug_snapshot;
     use re_log_types::example_components::{MyLabel, MyPoints};
 
     use super::*;
+
+    struct DisplayDescrs(Chunk);
+
+    impl std::fmt::Debug for DisplayDescrs {
+        #[inline]
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_list()
+                .entries(
+                    self.0
+                        .component_descriptors()
+                        .map(|d| d.display_name().to_owned()),
+                )
+                .finish()
+        }
+    }
 
     #[test]
     fn impl_send_sync() {
@@ -2631,7 +2647,7 @@ mod tests {
         // The following flushes were sent as a result of the implicit flush when swapping the
         // underlying sink from buffered to in-memory.
 
-        // Chunk that contains the `RecordProperties`.
+        // Chunk that contains the `RecordingInfo`.
         match msgs.pop().unwrap() {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
@@ -2639,18 +2655,8 @@ mod tests {
                 let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
-            }
-            _ => panic!("expected ArrowMsg"),
-        }
 
-        // Another chunk that contains `RecordProperties`.
-        match msgs.pop().unwrap() {
-            LogMsg::ArrowMsg(rid, msg) => {
-                assert_eq!(store_info.store_id, rid);
-
-                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
-
-                chunk.sanity_check().unwrap();
+                assert_debug_snapshot!(DisplayDescrs(chunk));
             }
             _ => panic!("expected ArrowMsg"),
         }
@@ -2663,6 +2669,8 @@ mod tests {
                 let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
+
+                assert_debug_snapshot!(DisplayDescrs(chunk));
             }
             _ => panic!("expected ArrowMsg"),
         }
@@ -2721,16 +2729,17 @@ mod tests {
                 let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
+
+                assert_debug_snapshot!(DisplayDescrs(chunk));
             }
             _ => panic!("expected ArrowMsg"),
         };
 
-        // 3rd, 4th, 5th, 6th, and 7th messages are all the single-row batched chunks themselves,
+        // 3rd, 4th, 5th, and 6th messages are all the single-row batched chunks themselves,
         // which were sent as a result of the implicit flush when swapping the underlying sink
         // from buffered to in-memory. Note that these messages contain the 2 recording property
         // chunks.
-        assert_next_row();
-        assert_next_row();
+        assert_next_row(); // Contains `RecordingInfo`
         assert_next_row();
         assert_next_row();
         assert_next_row();
@@ -2791,18 +2800,8 @@ mod tests {
                     let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                     chunk.sanity_check().unwrap();
-                }
-                _ => panic!("expected ArrowMsg"),
-            }
 
-            // For the same reasons as above, another chunk that contains the `RecordingInfo`.
-            match msgs.pop().unwrap() {
-                LogMsg::ArrowMsg(rid, msg) => {
-                    assert_eq!(store_info.store_id, rid);
-
-                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
-
-                    chunk.sanity_check().unwrap();
+                    assert_debug_snapshot!(DisplayDescrs(chunk));
                 }
                 _ => panic!("expected ArrowMsg"),
             }
@@ -2815,6 +2814,8 @@ mod tests {
                     let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                     chunk.sanity_check().unwrap();
+
+                    assert_debug_snapshot!(DisplayDescrs(chunk));
                 }
                 _ => panic!("expected ArrowMsg"),
             }
