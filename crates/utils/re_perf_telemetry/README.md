@@ -56,7 +56,7 @@ print(df.count())
 * Example of out-of-process profiling using Jaeger (run `pixi run compose-dev` in the Redap repository to start a Jaeger instance):
   ```sh
   # Build the SDK with performance telemetry enabled, in the 'examples' environment:
-  $ py-build-release-perf-examples
+  $ py-build-perf-examples
 
   # Run your script with both telemetry and the OpenTelemetry integration enabled:
   $ TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true <your_script>
@@ -74,7 +74,7 @@ print(df.count())
 * Example of in-process profiling using Tracy:
   ```sh
   # Build the SDK with performance telemetry enabled, in the 'examples' environment:
-  $ py-build-release-perf-examples
+  $ py-build-perf-examples
 
   # Run your script with both telemetry and the Tracy integration enabled:
   $ TELEMETRY_ENABLED=true TRACY_ENABLED=true <your_script>
@@ -102,7 +102,7 @@ The integration only really works with in-process profiling, and even then with 
 * Example of in-process profiling using Tracy:
   ```sh
   # Start the viewer with both telemetry and the Tracy integration enabled:
-  $ TELEMETRY_ENABLED=true TRACY_ENABLED=true pixi run rerun-release-perf
+  $ TELEMETRY_ENABLED=true TRACY_ENABLED=true pixi run rerun-perf
   ```
   <picture>
     <img src="https://static.rerun.io/re_perf_telemetry_viewer_tracy/d6dbfe38d753ff550646a52f17d71942a3b27d6d/full.png" alt="">
