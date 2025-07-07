@@ -55,7 +55,7 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
 }
 use re_types::{blueprint::components::Eye3DKind, components::LinearSpeed};
 
-// Logic should be similar to impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye
+// Logic should be similar to `impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye`
 impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
         {
