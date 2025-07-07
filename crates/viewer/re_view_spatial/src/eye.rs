@@ -608,6 +608,7 @@ impl ViewEye {
 
 re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Eye3DKind]);
 
+// logic should be similar to impl `TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D
 impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
         {

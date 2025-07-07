@@ -53,5 +53,37 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
             .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
     }
 }
+use re_types::{blueprint::components::Eye3DKind, components::LinearSpeed};
 
-re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);
+// Logic should be similar to impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye
+impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+        {
+            let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<
+                crate::SpatialViewState,
+            >(ctx.view_ctx.view_state);
+            let speed = match maybe_state {
+                Ok(spatial_view_state) => {
+                    let bounding_boxes = &spatial_view_state.bounding_boxes;
+                    match spatial_view_state.state_3d.view_eye {
+                        Some(eye) => eye.speed(bounding_boxes) as f64,
+                        None => 1.0_f64,
+                    }
+                }
+                Err(view_system_execution_error) => {
+                    re_log::error!("Error while downcasting {}", view_system_execution_error);
+                    1.0_f64
+                }
+            };
+            LinearSpeed(re_types::datatypes::Float64(speed))
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Eye3DKind> for SpatialView3D {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Eye3DKind {
+        Eye3DKind::default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D, LinearSpeed, Eye3DKind]);
