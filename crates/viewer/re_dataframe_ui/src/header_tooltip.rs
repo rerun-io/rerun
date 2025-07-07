@@ -3,25 +3,23 @@ use std::collections::HashSet;
 use arrow::datatypes::Field;
 
 use re_sorbet::{BatchType, ColumnDescriptorRef};
-use re_ui::UiExt as _;
 
 pub fn column_header_tooltip_ui(
     ui: &mut egui::Ui,
     desc: &ColumnDescriptorRef<'_>,
     column_field: &Field,
     migrated_column_field: &Field,
+    show_extras: bool,
 ) {
-    ui.with_optional_extras(|ui, show_extras| {
-        column_descriptor_ui(ui, desc, column_field);
-        column_arrow_metadata_ui(ui, column_field, show_extras);
+    column_descriptor_ui(ui, desc, column_field);
+    column_arrow_metadata_ui(ui, column_field, show_extras);
 
-        if show_extras {
-            extras_column_descriptor_ui(ui, desc, migrated_column_field);
-        } else {
-            ui.separator();
-            ui.weak("Hold `Alt` to see extras");
-        }
-    });
+    if show_extras {
+        extras_column_descriptor_ui(ui, desc, migrated_column_field);
+    } else {
+        ui.separator();
+        ui.weak("Hold `Alt` to see extras");
+    }
 }
 
 fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, column_field: &Field) {

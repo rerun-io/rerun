@@ -52,26 +52,27 @@ fn test_column_header_tooltips() {
         sorbet_batch.fields(),
         descriptions
     ) {
-        let mut harness = Harness::builder()
-            .with_size(vec2(400.0, 700.0))
-            .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
+        for show_extras in [false, true] {
+            let mut harness = Harness::builder()
+                .with_size(vec2(600.0, 800.0))
+                .build_ui(|ui| {
+                    re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                column_header_tooltip_ui(
-                    ui,
-                    &(&desc).into(),
-                    field.as_ref(),
-                    migrated_field.as_ref(),
-                );
-            });
+                    column_header_tooltip_ui(
+                        ui,
+                        &(&desc).into(),
+                        field.as_ref(),
+                        migrated_field.as_ref(),
+                        show_extras,
+                    );
+                });
 
-        harness.run();
-        harness.snapshot(&format!("header_tooltip_{description}"));
-
-        harness.input_mut().modifiers.alt = true;
-
-        harness.run();
-        harness.snapshot(&format!("header_tooltip_{description}_with_extras"));
+            harness.run();
+            harness.snapshot(&format!(
+                "header_tooltip_{description}{}",
+                if show_extras { "_with_extras" } else { "" }
+            ));
+        }
     }
 }
 

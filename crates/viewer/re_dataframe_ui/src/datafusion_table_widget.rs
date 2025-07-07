@@ -619,12 +619,15 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 })
                 .inner
                 .on_hover_ui(|ui| {
-                    column_header_tooltip_ui(
-                        ui,
-                        &column.desc,
-                        column_field,
-                        &self.migrated_fields[index],
-                    );
+                    ui.with_optional_extras(|ui, show_extras| {
+                        column_header_tooltip_ui(
+                            ui,
+                            &column.desc,
+                            column_field,
+                            &self.migrated_fields[index],
+                            show_extras,
+                        );
+                    });
                 });
             }
         }
