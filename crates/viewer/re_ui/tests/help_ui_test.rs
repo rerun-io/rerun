@@ -58,6 +58,6 @@ fn test_help() {
 
         harness.try_run_realtime().ok();
 
-        snapshot_results.add(harness.try_snapshot(&format!("help_{os:?}")));
+        snapshot_results.add(harness.try_snapshot(format!("help_{os:?}")));
     }
 }

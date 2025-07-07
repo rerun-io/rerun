@@ -23,8 +23,17 @@ int main() {
         "trig/cos",
         rerun::SeriesLines().with_colors(rerun::Rgba32{0, 255, 0}).with_names("cos(0.01t)")
     );
+
+    // NOTE: `SeriesLines` and `SeriesPoints` can both be logged without any associated data
+    //       (all fields are optional). In `v0.24` we removed indicators, which now results in
+    //       no data logged at all, when no fields are specified. Therefore we log a circle shape
+    //       here. More information: https://github.com/rerun-io/rerun/issues/10512
+
     // Log scattered points under a different root so that they show in a different plot by default.
-    rec.log_static("scatter/lcg", rerun::SeriesPoints());
+    rec.log_static(
+        "scatter/lcg",
+        rerun::SeriesPoints().with_markers(rerun::components::MarkerShape::Circle)
+    );
 
     // Log the data on a timeline called "step".
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {

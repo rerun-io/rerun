@@ -183,7 +183,7 @@ pub fn test_all_components_ui_as_list_items_narrow() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
-        SnapshotOptions::default().output_path("tests/snapshots/all_components_list_item_narrow");
+        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_narrow");
 
     let results = test_cases
         .iter()
@@ -207,7 +207,7 @@ pub fn test_all_components_ui_as_list_items_wide() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
-        SnapshotOptions::default().output_path("tests/snapshots/all_components_list_item_wide");
+        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_wide");
 
     let results = test_cases
         .iter()
@@ -271,7 +271,7 @@ fn test_single_component_ui_as_list_item(
         });
 
     harness.run();
-    harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
+    harness.try_snapshot_options(format!("{test_case}"), _snapshot_options)
 }
 
 // ---

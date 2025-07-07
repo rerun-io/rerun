@@ -173,7 +173,7 @@ class GraphEdges(Archetype):
                 graph_type=graph_type,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -205,8 +205,7 @@ class GraphEdges(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     edges: components.GraphEdgeBatch | None = field(
         metadata={"component": True},

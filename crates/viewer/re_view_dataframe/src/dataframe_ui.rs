@@ -276,7 +276,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let is_selected = self.ctx.selection().contains_item(&item);
                     let response = ui.put(
                         egui::Rect::from_min_size(pos, size),
-                        egui::SelectableLabel::new(is_selected, galley),
+                        egui::Button::selectable(is_selected, galley),
                     );
                     self.ctx
                         .handle_select_hover_drag_interactions(&response, item, false);

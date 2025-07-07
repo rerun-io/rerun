@@ -200,10 +200,7 @@ impl ::re_types_core::AsComponents for Scalars {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.scalars.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.scalars.clone()).flatten().collect()
     }
 }
 
@@ -258,12 +255,7 @@ impl Scalars {
             .scalars
             .map(|scalars| scalars.partitioned(_lengths.clone()))
             .transpose()?];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

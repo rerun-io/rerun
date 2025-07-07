@@ -538,7 +538,6 @@ impl ::re_types_core::AsComponents for AffixFuzzer1 {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.fuzz1001.clone(),
             self.fuzz1002.clone(),
             self.fuzz1003.clone(),
@@ -811,12 +810,7 @@ impl AffixFuzzer1 {
                 .map(|fuzz1022| fuzz1022.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

@@ -18,6 +18,8 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 fn main() -> std::process::ExitCode {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
+
+    #[cfg(not(feature = "perf_telemetry"))]
     re_log::setup_logging();
 
     let build_info = re_build_info::build_info!();

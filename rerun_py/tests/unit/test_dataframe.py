@@ -101,8 +101,8 @@ class TestDataframe:
 
         # log_tick, log_time, my_index
         assert len(schema.index_columns()) == 3
-        # RecordingInfoIndicator, Timestamp, Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
-        assert len(schema.component_columns()) == 8
+        # Timestamp, Color, Position3D, Radius, Text
+        assert len(schema.component_columns()) == 5
 
         # Index columns
         assert schema.index_columns()[0].name == "log_tick"
@@ -112,13 +112,6 @@ class TestDataframe:
         col = 0
 
         # Content columns
-        assert schema.component_columns()[col].entity_path == "/points"
-        assert schema.component_columns()[col].archetype is None
-        assert schema.component_columns()[col].component == "rerun.components.Points3DIndicator"
-        assert schema.component_columns()[col].component_type is None
-        assert schema.component_columns()[col].is_static is False
-        col += 1
-
         assert schema.component_columns()[col].entity_path == "/points"
         assert schema.component_columns()[col].archetype == "rerun.archetypes.Points3D"
         assert schema.component_columns()[col].component == "Points3D:colors"
@@ -141,24 +134,9 @@ class TestDataframe:
         col += 1
 
         assert schema.component_columns()[col].entity_path == "/static_text"
-        assert schema.component_columns()[col].archetype is None
-        assert schema.component_columns()[col].component == "rerun.components.TextLogIndicator"
-        assert schema.component_columns()[col].component_type is None
-        assert schema.component_columns()[col].is_static is True
-        col += 1
-
-        assert schema.component_columns()[col].entity_path == "/static_text"
         assert schema.component_columns()[col].archetype == "rerun.archetypes.TextLog"
         assert schema.component_columns()[col].component == "TextLog:text"
         assert schema.component_columns()[col].component_type == "rerun.components.Text"
-        assert schema.component_columns()[col].is_static is True
-        col += 1
-
-        # Default property columns
-        assert schema.component_columns()[col].entity_path == "/__properties"
-        assert schema.component_columns()[col].archetype is None
-        assert schema.component_columns()[col].component == "rerun.components.RecordingInfoIndicator"
-        assert schema.component_columns()[col].component_type is None
         assert schema.component_columns()[col].is_static is True
         col += 1
 

@@ -85,10 +85,10 @@ mod tests {
 
                 harness.run();
 
-                let snapshot_options = SnapshotOptions::default().output_path(format!(
+                let snapshot_options = SnapshotOptions::new().output_path(format!(
                     "tests/snapshots/all_view_selecion_uis/{egui_theme:?}"
                 ));
-                harness.snapshot_options(&entry.identifier, &snapshot_options);
+                harness.snapshot_options(entry.identifier.to_string(), &snapshot_options);
 
                 drop(harness);
 

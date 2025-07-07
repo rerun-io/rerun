@@ -1200,23 +1200,29 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         .collect::<Vec<_>>();
 
     let all_component_batches = {
-        std::iter::once(quote! {
-            Some(Self::indicator())
-        })
-        .chain(obj.fields.iter().map(|obj_field| {
+        obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
             quote!(self.#field_name.clone())
-        }))
+        })
     };
 
-    let as_components_impl = quote! {
-        #[inline]
-        fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-            use ::re_types_core::Archetype as _;
-            [#(#all_component_batches,)*].into_iter().flatten().collect()
+    let as_components_impl = if all_component_batches.len() == 1 {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                std::iter::once(#(#all_component_batches)*).flatten().collect()
+            }
+        }
+    } else {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                [#(#all_component_batches,)*].into_iter().flatten().collect()
+            }
         }
     };
-
     let all_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
@@ -1679,8 +1685,6 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
         });
 
-        let indicator_column = quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?);
-
         quote! {
             #columns_doc
             #[inline]
@@ -1692,7 +1696,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                Ok(columns.into_iter().flatten().chain([#indicator_column]))
+                Ok(columns.into_iter().flatten())
             }
 
             #columns_unary_doc

@@ -7,12 +7,11 @@ use ahash::HashMap;
 use egui::os::OperatingSystem;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use tap::Tap as _;
 
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_global_context::DisplayMode;
+use re_global_context::{AppOptions, DisplayMode};
 use re_log_types::{
     EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
     external::re_tuid::Tuid,
@@ -25,116 +24,10 @@ use re_ui::Help;
 
 use crate::{
     ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StorageContext, StoreContext,
-    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
-    blueprint_timeline, command_channel,
+    DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub, SystemCommand,
+    ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    command_channel,
 };
-
-pub trait HarnessExt {
-    /// Fails the test iff more than `broken_pixels_fraction * num_pixels` pixels are broken.
-    //
-    // TODO(emilk/egui#5683): this should be natively supported by kittest
-    fn snapshot_with_broken_pixels_threshold(
-        &mut self,
-        name: &str,
-        num_pixels: u64,
-        broken_pixels_fraction: f64,
-    );
-
-    fn try_snapshot_with_broken_pixels_threshold(
-        &mut self,
-        name: &str,
-        num_pixels: u64,
-        broken_pixels_fraction: f64,
-    ) -> bool;
-
-    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: usize);
-}
-
-impl HarnessExt for egui_kittest::Harness<'_> {
-    fn snapshot_with_broken_pixels_threshold(
-        &mut self,
-        name: &str,
-        num_pixels: u64,
-        broken_fraction_threshold: f64,
-    ) {
-        match self.try_snapshot(name) {
-            Ok(_) => {}
-
-            Err(err) => match err {
-                egui_kittest::SnapshotError::Diff {
-                    name,
-                    diff: num_broken_pixels,
-                    diff_path,
-                } => {
-                    let broken_fraction = num_broken_pixels as f64 / num_pixels as f64;
-                    re_log::debug!(num_pixels, num_broken_pixels, broken_fraction);
-                    assert!(
-                        broken_fraction <= broken_fraction_threshold,
-                        "{name} failed because {broken_fraction} > {broken_fraction_threshold}\n{diff_path:?}"
-                    );
-                }
-
-                _ => panic!("{name} failed: {err}"),
-            },
-        }
-    }
-
-    fn try_snapshot_with_broken_pixels_threshold(
-        &mut self,
-        name: &str,
-        num_pixels: u64,
-        broken_pixels_fraction: f64,
-    ) -> bool {
-        match self.try_snapshot(name) {
-            Ok(_) => true,
-
-            Err(err) => match err {
-                egui_kittest::SnapshotError::Diff {
-                    name,
-                    diff: num_broken_pixels,
-                    diff_path,
-                } => {
-                    let broken_fraction = num_broken_pixels as f64 / num_pixels as f64;
-                    re_log::debug!(num_pixels, num_broken_pixels, broken_fraction);
-                    if broken_fraction >= broken_pixels_fraction {
-                        re_log::error!(
-                            "{name} failed because {broken_fraction} > {broken_pixels_fraction}\n{diff_path:?}"
-                        );
-                        return false;
-                    }
-
-                    true
-                }
-
-                _ => panic!("{name} failed: {err}"),
-            },
-        }
-    }
-
-    #[track_caller]
-    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels_threshold: usize) {
-        match self.try_snapshot(name) {
-            Ok(_) => {}
-
-            Err(err) => match err {
-                egui_kittest::SnapshotError::Diff {
-                    name,
-                    diff: num_broken_pixels,
-                    diff_path,
-                } => {
-                    re_log::debug!(num_broken_pixels, broken_pixels_threshold);
-                    assert!(
-                        num_broken_pixels as usize <= broken_pixels_threshold,
-                        "{name} failed because {num_broken_pixels} > {broken_pixels_threshold}\n{diff_path:?}"
-                    );
-                }
-
-                _ => panic!("{name} failed: {err}"),
-            },
-        }
-    }
-}
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -153,8 +46,10 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// // re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 /// ```
 pub struct TestContext {
-    pub recording_store: EntityDb,
-    pub blueprint_store: EntityDb,
+    pub app_options: AppOptions,
+
+    /// Store hub prepopulated with a single active recording & a blueprint recording.
+    pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
 
     // Mutex is needed, so we can update these from the `run` method
@@ -191,8 +86,8 @@ impl TestContext {
     pub fn new() -> Self {
         re_log::setup_logging();
 
-        let mut recording_store =
-            EntityDb::new(StoreId::from_uuid(StoreKind::Recording, Uuid::nil()));
+        let recording_id = StoreId::from_uuid(StoreKind::Recording, Uuid::nil());
+        let mut recording_store = EntityDb::new(recording_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
@@ -252,7 +147,17 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+        let blueprint_id = StoreId::random(StoreKind::Blueprint);
+        let blueprint_store = EntityDb::new(blueprint_id.clone());
+
+        let mut store_hub = StoreHub::test_hub();
+        let application_id = recording_store.store_info().unwrap().application_id.clone();
+        store_hub.insert_entity_db(recording_store);
+        store_hub.insert_entity_db(blueprint_store);
+        store_hub.set_active_recording_id(recording_id);
+        store_hub
+            .set_cloned_blueprint_active_for_app(&application_id, &blueprint_id)
+            .expect("Failed to set blueprint as active");
 
         let (command_sender, command_receiver) = command_channel();
 
@@ -271,8 +176,8 @@ impl TestContext {
             .set_timeline(Timeline::log_tick());
 
         Self {
-            recording_store,
-            blueprint_store,
+            app_options: Default::default(),
+
             view_class_registry: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -290,6 +195,8 @@ impl TestContext {
             // Created lazily since each egui_kittest harness needs a new one.
             egui_render_state: Mutex::new(None),
             called_setup_kittest_for_rendering: AtomicBool::new(false),
+
+            store_hub: Mutex::new(store_hub),
         }
     }
 
@@ -417,6 +324,23 @@ impl TestContext {
         *self.recording_config.time_ctrl.read().timeline()
     }
 
+    pub fn active_blueprint(&mut self) -> &mut EntityDb {
+        let store_hub = self.store_hub.get_mut();
+        let blueprint_id = store_hub
+            .active_blueprint_id()
+            .expect("expected an active blueprint")
+            .clone();
+        store_hub.entity_db_mut(&blueprint_id)
+    }
+
+    pub fn active_recording_id(&self) -> StoreId {
+        self.store_hub
+            .lock()
+            .active_recording()
+            .expect("expected an active recording")
+            .store_id()
+    }
+
     pub fn set_active_timeline(&self, timeline: Timeline) {
         self.recording_config
             .time_ctrl
@@ -441,7 +365,9 @@ impl TestContext {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
         let builder = build_chunk(Chunk::builder(entity_path));
-        self.recording_store
+        let store_hub = self.store_hub.get_mut();
+        let active_recording = store_hub.active_recording_mut().unwrap();
+        active_recording
             .add_chunk(&Arc::new(
                 builder.build().expect("chunk should be successfully built"),
             ))
@@ -463,21 +389,20 @@ impl TestContext {
         re_log::PanicOnWarnScope::new(); // TODO(andreas): There should be a way to opt-out of this.
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
-        let store_context = StoreContext {
-            app_id: "rerun_test".into(),
-            blueprint: &self.blueprint_store,
-            default_blueprint: None,
-            recording: &self.recording_store,
-            caches: &Default::default(),
-            should_enable_heuristics: false,
-        };
+        let mut store_hub = self.store_hub.lock();
+        store_hub.begin_frame_caches();
+        let (storage_context, store_context) = store_hub.read_context();
+        let store_context = store_context
+            .expect("TestContext should always have enough information to provide a store context");
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(&store_context.recording.store_id());
         let maybe_visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(&self.recording_store.store_id());
+            .maybe_visualizable_entities_for_visualizer_systems(
+                &store_context.recording.store_id(),
+            );
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -493,14 +418,11 @@ impl TestContext {
         let mut selection_state = self.selection_state.lock();
         let mut focused_item = self.focused_item.lock();
 
-        let bundle = re_entity_db::StoreBundle::default()
-            .tap_mut(|store_bundle| store_bundle.insert(self.recording_store.clone()));
-
         let ctx = ViewerContext {
             global_context: GlobalContext {
                 is_test: true,
 
-                app_options: &Default::default(),
+                app_options: &self.app_options,
                 reflection: &self.reflection,
 
                 egui_ctx,
@@ -514,11 +436,7 @@ impl TestContext {
             view_class_registry: &self.view_class_registry,
             connected_receivers: &Default::default(),
             store_context: &store_context,
-            storage_context: &StorageContext {
-                hub: &Default::default(),
-                bundle: &bundle,
-                tables: &Default::default(),
-            },
+            storage_context: &storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
@@ -611,26 +529,21 @@ impl TestContext {
             let command_name = format!("{command:?}");
             match command {
                 SystemCommand::AppendToStore(store_id, chunks) => {
-                    if store_id == self.recording_store.store_id() {
-                        for chunk in chunks {
-                            self.recording_store
-                                .add_chunk(&Arc::new(chunk))
-                                .expect("Updating the recording chunk store failed");
-                        }
-                    } else if store_id == self.blueprint_store.store_id() {
-                        for chunk in chunks {
-                            self.blueprint_store
-                                .add_chunk(&Arc::new(chunk))
-                                .expect("Updating the blueprint chunk store failed");
-                        }
-                    } else {
-                        panic!("Unknown store id: {store_id:?}");
+                    let store_hub = self.store_hub.get_mut();
+                    let db = store_hub.entity_db_mut(&store_id);
+
+                    for chunk in chunks {
+                        db.add_chunk(&Arc::new(chunk))
+                            .expect("Updating the chunk store failed");
                     }
                 }
 
                 SystemCommand::DropEntity(store_id, entity_path) => {
-                    assert_eq!(store_id, self.blueprint_store.store_id());
-                    self.blueprint_store
+                    let store_hub = self.store_hub.get_mut();
+                    assert_eq!(Some(&store_id), store_hub.active_blueprint_id());
+
+                    store_hub
+                        .entity_db_mut(&store_id)
                         .drop_entity_path_recursive(&entity_path);
                 }
 
@@ -647,7 +560,10 @@ impl TestContext {
                     timeline,
                     time,
                 } => {
-                    assert_eq!(rec_id, self.recording_store.store_id());
+                    assert_eq!(
+                        rec_id,
+                        self.store_hub.lock().active_recording().unwrap().store_id()
+                    );
                     let mut time_ctrl = self.recording_config.time_ctrl.write();
                     time_ctrl.set_timeline(timeline);
                     if let Some(time) = time {

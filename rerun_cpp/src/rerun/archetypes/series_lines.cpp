@@ -26,7 +26,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> SeriesLines::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(6);
+        columns.reserve(5);
         if (colors.has_value()) {
             columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
@@ -42,10 +42,6 @@ namespace rerun::archetypes {
         if (aggregation_policy.has_value()) {
             columns.push_back(aggregation_policy.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<SeriesLines>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -76,7 +72,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(5);
 
         if (archetype.colors.has_value()) {
             cells.push_back(archetype.colors.value());
@@ -92,11 +88,6 @@ namespace rerun {
         }
         if (archetype.aggregation_policy.has_value()) {
             cells.push_back(archetype.aggregation_policy.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<SeriesLines>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));
