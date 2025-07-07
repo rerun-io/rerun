@@ -572,9 +572,7 @@ impl ViewEye {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Eye3DKind]);
-
-// logic should be similar to impl `TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D
+// Logic should be similar to `impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D`
 impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
         let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<crate::SpatialViewState>(
@@ -587,8 +585,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
             }
             Err(view_system_execution_error) => {
                 re_log::error!("Error while downcasting {}", view_system_execution_error);
-                // is there a good default?
-                1.0
+                1.0_f64
             }
         };
         LinearSpeed(re_types::datatypes::Float64(speed))
@@ -600,3 +597,5 @@ impl TypedComponentFallbackProvider<Eye3DKind> for ViewEye {
         Eye3DKind::default()
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Eye3DKind]);
