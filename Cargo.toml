@@ -100,8 +100,9 @@ re_format = { path = "crates/utils/re_format", version = "=0.24.0-alpha.1", defa
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.24.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.24.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.24.0-alpha.1", default-features = false }
-re_span = { path = "crates/utils/re_span", version = "=0.24.0-alpha.1", default-features = false }
+re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.24.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.24.0-alpha.1", default-features = false }
+re_span = { path = "crates/utils/re_span", version = "=0.24.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.24.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.24.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.24.0-alpha.1", default-features = false }
@@ -229,6 +230,7 @@ h264-reader = "0.8"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "16.0.0"
 home = "=0.5.9"
+http = "1.2.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
@@ -259,6 +261,10 @@ num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
+opentelemetry = { version = "0.30", features = ["metrics"] }
+opentelemetry-appender-tracing = "0.30"
+opentelemetry-otlp = "0.30"
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 ordered-float = "4.3.0"
 parking_lot = "0.12"
 parquet = { version = "55.1", default-features = false }
@@ -331,9 +337,22 @@ tonic-web = "0.13.1"
 tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
 tower-http = "0.6"
-tracing = { version = "0.1", default-features = false, features = [
-  "attributes",
+tracing = "0.1.40"
+tracing-opentelemetry = "0.31.0"
+tracing-subscriber = { version = "0.3.18", features = [
+  "tracing-log",
+  "fmt",
+  "env-filter",
 ] }
+tracing-tracy = { version = "0.11", default-features = false, features = [
+  "broadcast",
+  "callstack-inlines",
+  "code-transfer",
+  "context-switch-tracing",
+  "enable",
+  "ondemand",               # much nicer for a long-lived program
+  "system-tracing",
+] } # no sampling, it's very noisy and not that useful
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
@@ -377,7 +396,6 @@ wgpu = { version = "25.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 xshell = "0.2.7"
-
 
 # ---------------------------------------------------------------------------------
 [profile]

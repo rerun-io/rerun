@@ -19,11 +19,19 @@ use re_protos::{
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SearchResultsTableProvider {
     //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     request: SearchDatasetRequest,
+}
+
+impl std::fmt::Debug for SearchResultsTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SearchResultsTableProvider")
+            .field("request", &self.request)
+            .finish()
+    }
 }
 
 impl SearchResultsTableProvider {

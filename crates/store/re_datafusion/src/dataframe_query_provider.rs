@@ -27,6 +27,7 @@ pub struct DataframePartitionStream {
 }
 
 impl DataframeQueryTableProvider {
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn new(
         query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
         query_expression: &QueryExpression,
@@ -82,6 +83,7 @@ impl PartitionStream for DataframePartitionStream {
         &self.schema
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn execute(&self, _ctx: Arc<datafusion::execution::TaskContext>) -> SendableRecordBatchStream {
         let partition_id = self.partition_id.clone();
         let query_engine = self.query_engine.clone();
@@ -132,12 +134,14 @@ impl std::fmt::Debug for DataframePartitionStream {
     }
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
     let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
     fields.extend(schema.fields().iter().map(|f| (**f).clone()));
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 fn prepend_partition_id_column(
     batch: &RecordBatch,
     partition_id_field: Field,
@@ -158,6 +162,7 @@ fn prepend_partition_id_column(
     RecordBatch::try_new(schema, columns)
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn align_record_batch_to_schema(
     batch: &RecordBatch,
     target_schema: &Arc<Schema>,

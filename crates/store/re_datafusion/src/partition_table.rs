@@ -20,11 +20,19 @@ use re_protos::{
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PartitionTableProvider {
     //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
     dataset_id: EntryId,
+}
+
+impl std::fmt::Debug for PartitionTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartitionTableProvider")
+            .field("dataset_id", &self.dataset_id)
+            .finish()
+    }
 }
 
 impl PartitionTableProvider {
