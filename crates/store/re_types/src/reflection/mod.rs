@@ -1353,7 +1353,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "color",
                     display_name : "Color", component_type : "rerun.components.Color"
                     .into(), docstring_md : "The color of the bar chart", is_required :
-                    false, },
+                    false, }, ArchetypeFieldReflection { name : "indexes", display_name :
+                    "Indexes", component_type : "rerun.components.TensorData".into(),
+                    docstring_md :
+                    "The indexes. Should always be a 1-dimensional tensor (i.e. a vector).",
+                    is_required : false, },
                 ],
             },
         ),

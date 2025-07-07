@@ -54,6 +54,9 @@ pub struct BarChart {
 
     /// The color of the bar chart
     pub color: Option<SerializedComponentBatch>,
+
+    /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+    pub indexes: Option<SerializedComponentBatch>,
 }
 
 impl BarChart {
@@ -80,6 +83,18 @@ impl BarChart {
             component_type: Some("rerun.components.Color".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::indexes`].
+    ///
+    /// The corresponding component is [`crate::components::TensorData`].
+    #[inline]
+    pub fn descriptor_indexes() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.BarChart".into()),
+            component: "BarChart:indexes".into(),
+            component_type: Some("rerun.components.TensorData".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
@@ -88,15 +103,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [BarChart::descriptor_color()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [BarChart::descriptor_color(), BarChart::descriptor_indexes()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| [BarChart::descriptor_values(), BarChart::descriptor_color()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            BarChart::descriptor_values(),
+            BarChart::descriptor_color(),
+            BarChart::descriptor_indexes(),
+        ]
+    });
 
 impl BarChart {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for BarChart {
@@ -143,7 +164,14 @@ impl ::re_types_core::Archetype for BarChart {
         let color = arrays_by_descr
             .get(&Self::descriptor_color())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
-        Ok(Self { values, color })
+        let indexes = arrays_by_descr
+            .get(&Self::descriptor_indexes())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_indexes()));
+        Ok(Self {
+            values,
+            color,
+            indexes,
+        })
     }
 }
 
@@ -151,10 +179,14 @@ impl ::re_types_core::AsComponents for BarChart {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.values.clone(), self.color.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.values.clone(),
+            self.color.clone(),
+            self.indexes.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -167,6 +199,7 @@ impl BarChart {
         Self {
             values: try_serialize_field(Self::descriptor_values(), [values]),
             color: None,
+            indexes: None,
         }
     }
 
@@ -188,6 +221,10 @@ impl BarChart {
             color: Some(SerializedComponentBatch::new(
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_color(),
+            )),
+            indexes: Some(SerializedComponentBatch::new(
+                crate::components::TensorData::arrow_empty(),
+                Self::descriptor_indexes(),
             )),
         }
     }
@@ -217,6 +254,9 @@ impl BarChart {
             self.color
                 .map(|color| color.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.indexes
+                .map(|indexes| indexes.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -231,7 +271,12 @@ impl BarChart {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_values = self.values.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
-        let len = None.or(len_values).or(len_color).unwrap_or(0);
+        let len_indexes = self.indexes.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_values)
+            .or(len_color)
+            .or(len_indexes)
+            .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
 
@@ -274,11 +319,33 @@ impl BarChart {
         self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
+
+    /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+    #[inline]
+    pub fn with_indexes(mut self, indexes: impl Into<crate::components::TensorData>) -> Self {
+        self.indexes = try_serialize_field(Self::descriptor_indexes(), [indexes]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_indexes`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_indexes(
+        mut self,
+        indexes: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+    ) -> Self {
+        self.indexes = try_serialize_field(Self::descriptor_indexes(), indexes);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for BarChart {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.values.heap_size_bytes() + self.color.heap_size_bytes()
+        self.values.heap_size_bytes()
+            + self.color.heap_size_bytes()
+            + self.indexes.heap_size_bytes()
     }
 }

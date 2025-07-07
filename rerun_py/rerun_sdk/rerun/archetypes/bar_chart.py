@@ -50,7 +50,13 @@ class BarChart(BarChartExt, Archetype):
 
     """
 
-    def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None) -> None:
+    def __init__(
+        self: Any,
+        values: datatypes.TensorDataLike,
+        *,
+        color: datatypes.Rgba32Like | None = None,
+        indexes: datatypes.TensorDataLike | None = None,
+    ) -> None:
         """
         Create a new instance of the BarChart archetype.
 
@@ -60,12 +66,14 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        indexes:
+            The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
 
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(values=values, color=color)
+            self.__attrs_init__(values=values, color=color, indexes=indexes)
             return
         self.__attrs_clear__()
 
@@ -74,6 +82,7 @@ class BarChart(BarChartExt, Archetype):
         self.__attrs_init__(
             values=None,
             color=None,
+            indexes=None,
         )
 
     @classmethod
@@ -90,6 +99,7 @@ class BarChart(BarChartExt, Archetype):
         clear_unset: bool = False,
         values: datatypes.TensorDataLike | None = None,
         color: datatypes.Rgba32Like | None = None,
+        indexes: datatypes.TensorDataLike | None = None,
     ) -> BarChart:
         """
         Update only some specific fields of a `BarChart`.
@@ -102,6 +112,8 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        indexes:
+            The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
 
         """
 
@@ -110,6 +122,7 @@ class BarChart(BarChartExt, Archetype):
             kwargs = {
                 "values": values,
                 "color": color,
+                "indexes": indexes,
             }
 
             if clear_unset:
@@ -132,6 +145,7 @@ class BarChart(BarChartExt, Archetype):
         *,
         values: datatypes.TensorDataArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
+        indexes: datatypes.TensorDataArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -147,6 +161,8 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        indexes:
+            The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
 
         """
 
@@ -155,13 +171,14 @@ class BarChart(BarChartExt, Archetype):
             inst.__attrs_init__(
                 values=values,
                 color=color,
+                indexes=indexes,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"BarChart:values": values, "BarChart:color": color}
+        kwargs = {"BarChart:values": values, "BarChart:color": color, "BarChart:indexes": indexes}
         columns = []
 
         for batch in batches:
@@ -206,6 +223,15 @@ class BarChart(BarChartExt, Archetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # The color of the bar chart
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    indexes: components.TensorDataBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
+    )
+    # The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

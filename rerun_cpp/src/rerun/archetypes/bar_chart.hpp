@@ -42,6 +42,9 @@ namespace rerun::archetypes {
         /// The color of the bar chart
         std::optional<ComponentBatch> color;
 
+        /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+        std::optional<ComponentBatch> indexes;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
@@ -53,6 +56,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
             ArchetypeName, "BarChart:color", Loggable<rerun::components::Color>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `indexes` field.
+        static constexpr auto Descriptor_indexes = ComponentDescriptor(
+            ArchetypeName, "BarChart:indexes",
+            Loggable<rerun::components::TensorData>::ComponentType
         );
 
       public: // START of extensions from bar_chart_ext.cpp:
@@ -219,6 +227,21 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         BarChart with_many_color(const Collection<rerun::components::Color>& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+        BarChart with_indexes(const rerun::components::TensorData& _indexes) && {
+            indexes = ComponentBatch::from_loggable(_indexes, Descriptor_indexes).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `indexes` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_indexes` should
+        /// be used when logging a single row's worth of data.
+        BarChart with_many_indexes(const Collection<rerun::components::TensorData>& _indexes) && {
+            indexes = ComponentBatch::from_loggable(_indexes, Descriptor_indexes).value_or_throw();
             return std::move(*this);
         }
 

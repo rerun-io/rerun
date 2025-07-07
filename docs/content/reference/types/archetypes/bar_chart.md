@@ -13,6 +13,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 ### Optional
 * `color`: [`Color`](../components/color.md)
+* `indexes`: [`TensorData`](../components/tensor_data.md)
 
 
 ## Can be shown in
