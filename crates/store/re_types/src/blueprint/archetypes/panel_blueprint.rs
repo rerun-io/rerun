@@ -136,7 +136,7 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.state.clone()].into_iter().flatten().collect()
+        std::iter::once(self.state.clone()).flatten().collect()
     }
 }
 

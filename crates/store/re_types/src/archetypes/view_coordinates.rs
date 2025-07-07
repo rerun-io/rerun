@@ -177,7 +177,7 @@ impl ::re_types_core::AsComponents for ViewCoordinates {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.xyz.clone()].into_iter().flatten().collect()
+        std::iter::once(self.xyz.clone()).flatten().collect()
     }
 }
 

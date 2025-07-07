@@ -1206,14 +1206,23 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         })
     };
 
-    let as_components_impl = quote! {
-        #[inline]
-        fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-            use ::re_types_core::Archetype as _;
-            [#(#all_component_batches,)*].into_iter().flatten().collect()
+    let as_components_impl = if all_component_batches.len() == 1 {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                std::iter::once(#(#all_component_batches)*).flatten().collect()
+            }
+        }
+    } else {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                [#(#all_component_batches,)*].into_iter().flatten().collect()
+            }
         }
     };
-
     let all_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);

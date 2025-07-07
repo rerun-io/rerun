@@ -186,7 +186,7 @@ impl ::re_types_core::AsComponents for AnnotationContext {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.context.clone()].into_iter().flatten().collect()
+        std::iter::once(self.context.clone()).flatten().collect()
     }
 }
 

@@ -146,7 +146,7 @@ impl ::re_types_core::AsComponents for VisibleTimeRanges {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.ranges.clone()].into_iter().flatten().collect()
+        std::iter::once(self.ranges.clone()).flatten().collect()
     }
 }
 

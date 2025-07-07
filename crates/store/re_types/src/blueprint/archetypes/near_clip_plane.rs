@@ -140,8 +140,7 @@ impl ::re_types_core::AsComponents for NearClipPlane {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.near_clip_plane.clone()]
-            .into_iter()
+        std::iter::once(self.near_clip_plane.clone())
             .flatten()
             .collect()
     }
