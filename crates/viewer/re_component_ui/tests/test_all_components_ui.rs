@@ -271,7 +271,7 @@ fn test_single_component_ui_as_list_item(
         });
 
     harness.run();
-    harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
+    harness.try_snapshot_options(format!("{test_case}"), _snapshot_options)
 }
 
 // ---
