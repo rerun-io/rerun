@@ -38,7 +38,9 @@ fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path
         VideoCodec::H264 => "h264",
         VideoCodec::H265 => "h265",
         VideoCodec::VP9 => "vp9",
-        VideoCodec::VP8 => panic!("Don't have test data for vp8. Mp4 doesn't support it."),
+        VideoCodec::VP8 => {
+            panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
+        }
         VideoCodec::AV1 => "av1",
     };
 
@@ -193,17 +195,15 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
 
     // Use pixi ffmpeg install if available.
-    if cfg!(target_os = "windows") {
-        let pixi_ffmpeg_path = pixi_ffmpeg_path();
-        if pixi_ffmpeg_path.exists() {
-            test_context.app_options.video_decoder_ffmpeg_path =
-                pixi_ffmpeg_path.to_str().unwrap().to_owned();
+    let pixi_ffmpeg_path = pixi_ffmpeg_path();
+    if pixi_ffmpeg_path.exists() {
+        test_context.app_options.video_decoder_ffmpeg_path =
+            pixi_ffmpeg_path.to_str().unwrap().to_owned();
 
-            re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
-        } else {
-            // End up using system install. Fine usually, no need to force a pixi environment here.
-            re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
-        }
+        re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
+    } else {
+        // End up using system install. Fine usually, no need to force a pixi environment here.
+        re_log::info!("Pixi ffmpeg not found at {pixi_ffmpeg_path:?}");
     }
 
     let need_dts_equal_pts = video_type == VideoType::VideoStream; // TODO(#10090): Video stream doesn't support bframes
@@ -251,15 +251,12 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             );
 
             for sample in video_data_description.samples.iter() {
-                let raw_sample_bytes =
-                    &blob_bytes[sample.byte_span.start as usize..sample.byte_span.end() as usize];
-
                 let (codec, sample_bytes) = match video_data_description.codec {
                     VideoCodec::H264 => {
                         let sample_bytes = convert_avcc_sample_to_annexb(
                             &video_data_description,
                             sample,
-                            raw_sample_bytes,
+                            &blob_bytes[sample.byte_span.range_usize()],
                         );
 
                         (components::VideoCodec::H264, sample_bytes)
@@ -292,7 +289,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     });
 
     // Decoding videos can take quite a while!
-    let step_dt_seconds = 1.0 / 4.0; // This is also the default, but let's be explicit since we use `try_run_realtime`.
+    let step_dt_seconds = 1.0 / 4.0; // This is also the current egui_kittest default, but let's be explicit since we use `try_run_realtime`.
     let max_total_time_seconds = 60.0;
 
     // Using a single harness for all frames - we want to make sure that we use the same decoder,
@@ -304,6 +301,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
         .with_size(egui::vec2(300.0, 200.0))
         .build(|ctx| {
+            // Since we can't access `test_context` after creating `harness`, we have to do the seeking in here.
             {
                 let mut time_ctrl = test_context.recording_config.time_ctrl.write();
                 time_ctrl.set_time(TimeInt::from_nanos(
