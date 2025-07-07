@@ -1005,13 +1005,6 @@ mod tests {
         let chunk4 = Chunk::builder(entity_path.clone())
             .with_component_batches(row_id3_1, timepoint_static.clone(), [])
             .build()?;
-        let chunk5 = Chunk::builder(entity_path.clone())
-            .with_component_batches(
-                row_id3_2,
-                timepoint_static.clone(),
-                [(MyPoints::descriptor_labels(), labels2 as _)],
-            )
-            .build()?;
 
         let chunk1 = Arc::new(chunk1);
         let chunk2 = Arc::new(chunk2);
