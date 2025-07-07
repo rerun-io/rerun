@@ -611,23 +611,21 @@ re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Ey
 // logic should be similar to impl `TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D
 impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
-        {
-            let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<
-                crate::SpatialViewState,
-            >(ctx.view_ctx.view_state);
-            let speed = match maybe_state {
-                Ok(spatial_view_state) => {
-                    let bounding_boxes = &spatial_view_state.bounding_boxes;
-                    self.fallback_speed_for_mode(bounding_boxes) as f64
-                }
-                Err(view_system_execution_error) => {
-                    re_log::error!("Error while downcasting {}", view_system_execution_error);
-                    // is there a good default?
-                    1.0
-                }
-            };
-            LinearSpeed(re_types::datatypes::Float64(speed))
-        }
+        let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<crate::SpatialViewState>(
+            ctx.view_ctx.view_state,
+        );
+        let speed = match maybe_state {
+            Ok(spatial_view_state) => {
+                let bounding_boxes = &spatial_view_state.bounding_boxes;
+                self.fallback_speed_for_mode(bounding_boxes) as f64
+            }
+            Err(view_system_execution_error) => {
+                re_log::error!("Error while downcasting {}", view_system_execution_error);
+                // is there a good default?
+                1.0
+            }
+        };
+        LinearSpeed(re_types::datatypes::Float64(speed))
     }
 }
 
