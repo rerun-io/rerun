@@ -626,6 +626,20 @@ impl PyDatasetEntry {
             provider,
         })
     }
+
+    #[instrument(skip_all, err)]
+    fn do_maintenance(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        build_scalar_index: bool,
+        compact_fragments: bool,
+    ) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        connection.do_maintenance(py, dataset_id, build_scalar_index, compact_fragments)
+    }
 }
 
 impl PyDatasetEntry {

@@ -203,6 +203,22 @@ impl ConnectionHandle {
         })
     }
 
+    pub fn do_maintenance(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        build_scalar_indexes: bool,
+        compact_fragments: bool,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            self.client()
+                .await?
+                .do_maintenance(dataset_id, build_scalar_indexes, compact_fragments)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
     // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn query_tasks(&self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
         wait_for_future(py, async {

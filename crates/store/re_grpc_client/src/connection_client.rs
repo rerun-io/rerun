@@ -1,3 +1,4 @@
+use re_protos::frontend::v1alpha1::DoMaintenanceRequest;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
@@ -292,5 +293,25 @@ where
             })
         })
         .collect()
+    }
+
+    pub async fn do_maintenance(
+        &mut self,
+        dataset_id: EntryId,
+        build_scalar_indexes: bool,
+        compact_fragments: bool,
+    ) -> Result<(), StreamError> {
+        self.inner()
+            .do_maintenance(tonic::Request::new(
+                DoMaintenanceRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    build_scalar_indexes,
+                    compact_fragments,
+                }
+                .into(),
+            ))
+            .await?;
+
+        Ok(())
     }
 }
