@@ -261,8 +261,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def set_active_recording(self, recording_id: str) -> None:
         self.send({"type": "recording_id", "recording_id": recording_id})
 
-    def set_active_partition_uri(self, partition_uri: str) -> None:
-        self._partition_uri = partition_uri
+    def set_active_partition_url(self, partition_url: str) -> None:
+        self._partition_url = partition_url
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
