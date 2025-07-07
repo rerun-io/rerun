@@ -170,7 +170,7 @@ rerun = "cargo run --package rerun-cli --no-default-features --features map_view
 # Compile and run the rerun viewer, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
@@ -186,7 +186,7 @@ rerun-release = "cargo run --package rerun-cli --no-default-features --features 
 # Compile and run the rerun viewer in release, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
@@ -431,10 +431,10 @@ py-build = "pixi run -e py py-build-common"
 py-build-release = "pixi run -e py py-build-common-release"
 
 # Dedicated alias for building the python bindings for the `py` environment, with performance telemetry.
-py-build-perf = "pixi run -e py py-build-common --features perf_telemetry"
+py-build-perf-debug = "pixi run -e py py-build-common --features perf_telemetry"
 
 # Dedicated alias for building the python bindings in release mode for the `py` environment, with performance telemetry.
-py-build-release-perf = "pixi run -e py py-build-common-release --features perf_telemetry"
+py-build-perf = "pixi run -e py py-build-common-release --features perf_telemetry"
 
 py-check-signatures = "python scripts/ci/python_check_signatures.py"
 
@@ -480,13 +480,13 @@ rerun-from-path = "rerun"
 py-build-examples = "pixi run -e examples py-build-common"
 
 # Dedicated alias for building the python bindings for the `examples` environment, with perf telemetry.
-py-build-perf-examples = "pixi run -e examples py-build-common --features perf_telemetry"
+py-build-perf-debug-examples = "pixi run -e examples py-build-common --features perf_telemetry"
 
 # Dedicated alias for building the python bindings for the `examples` environment, in release.
 py-build-release-examples = "pixi run -e examples py-build-common-release"
 
 # Dedicated alias for building the python bindings for the `examples` environment, in release, with perf telemetry.
-py-build-release-perf-examples = "pixi run -e examples py-build-common-release --features perf_telemetry"
+py-build-perf-examples = "pixi run -e examples py-build-common-release --features perf_telemetry"
 
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
