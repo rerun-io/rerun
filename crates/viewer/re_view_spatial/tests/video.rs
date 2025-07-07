@@ -325,7 +325,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         // and don't busy loop.
         harness.try_run_realtime().unwrap();
         harness.snapshot_options(
-            &format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
+            format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
             &SnapshotOptions::new()
                 .threshold(image_diff_threshold(codec))
                 .failed_pixel_count_threshold(image_failed_pixel_count_threshold(codec)),
