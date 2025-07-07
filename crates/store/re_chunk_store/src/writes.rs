@@ -962,7 +962,6 @@ mod tests {
         let row_id2_1 = RowId::new();
         let row_id2_2 = RowId::new();
         let row_id3_1 = RowId::new();
-        let row_id3_2 = RowId::new();
 
         let timepoint_static = TimePoint::STATIC;
 
