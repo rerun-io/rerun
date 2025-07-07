@@ -6,7 +6,7 @@ use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_transform_hierarchy() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
 
@@ -140,17 +140,6 @@ pub fn test_transform_hierarchy() {
         "transform_hierarchy",
         egui::vec2(300.0, 150.0),
     );
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    test_context
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

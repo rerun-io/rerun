@@ -348,6 +348,16 @@ message QueryDatasetRequest {
   // ```
   bool select_all_entity_paths = 7;
 
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 8;
 
@@ -416,18 +426,8 @@ message QueryLatestAt {
   // Leave this empty to query for static data.
   optional int64 at = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 3;
-  // TODO(cmc): I shall bring that back into a more structured form later.
-  // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 /// A chunk-level range query, aka `RangeRelevantChunks`.
@@ -440,18 +440,8 @@ message QueryRange {
   // What index range are we looking for?
   rerun.common.v1alpha1.TimeRange index_range = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 3;
-  // TODO(cmc): I shall bring that back into a more structured form later.
-  // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 message GetChunksRequest {
@@ -484,6 +474,16 @@ message GetChunksRequest {
   // true                    | ['foo', 'bar'] | invalid query, error
   // ```
   bool select_all_entity_paths = 6;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
 
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 7;

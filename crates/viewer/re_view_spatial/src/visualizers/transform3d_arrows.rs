@@ -289,7 +289,7 @@ impl IdentifiedViewSystem for AxisLengthDetector {
 impl VisualizerSystem for AxisLengthDetector {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
-        query_info.indicators = Default::default();
+        query_info.relevant_archetypes = Default::default();
 
         query_info
             .required

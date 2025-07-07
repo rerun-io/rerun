@@ -218,6 +218,16 @@ message QueryDatasetRequest {
   // ```
   bool select_all_entity_paths = 7;
 
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 8;
 
@@ -259,6 +269,16 @@ message GetChunksRequest {
   // true                    | ['foo', 'bar'] | invalid query, error
   // ```
   bool select_all_entity_paths = 6;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
 
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 7;

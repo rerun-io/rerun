@@ -24,14 +24,11 @@ use re_protos::manifest_registry::v1alpha1::{
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
-use crate::catalog::task::PyTasks;
-use crate::catalog::{
-    PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, to_py_err,
+use super::{
+    PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
+    dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
 };
-use crate::dataframe::{
-    AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
-};
+use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -191,18 +188,36 @@ impl PyDatasetEntry {
     ///     The URI of the RRD to register
     ///
     /// timeout_secs: int
-    ///     The timeout after which this method returns.
+    ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
+    ///
+    /// Returns
+    /// -------
+    /// partition_id: str
+    ///     The partition ID of the registered RRD.
+    ///
     #[pyo3(signature = (recording_uri, timeout_secs = 60))]
-    fn register(self_: PyRef<'_, Self>, recording_uri: String, timeout_secs: u64) -> PyResult<()> {
+    fn register(
+        self_: PyRef<'_, Self>,
+        recording_uri: String,
+        timeout_secs: u64,
+    ) -> PyResult<String> {
         let register_timeout = std::time::Duration::from_secs(timeout_secs);
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let task_ids =
+        let mut results =
             connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
 
-        connection.wait_for_tasks(self_.py(), &task_ids, register_timeout)
+        let Some(task_descriptor) = results.pop() else {
+            return Err(PyRuntimeError::new_err(
+                "Failed to register recording, no task returned.",
+            ));
+        };
+
+        connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
+
+        Ok(task_descriptor.partition_id.id)
     }
 
     /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
@@ -215,14 +230,18 @@ impl PyDatasetEntry {
     /// recording_uris: list[str]
     ///     The URIs of the RRDs to register
     #[allow(rustdoc::broken_intra_doc_links)]
+    // TODO(ab): it might be useful to return partition ids directly since we have them
     fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let task_ids = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
+        let results = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
 
-        Ok(PyTasks::new(super_.client.clone_ref(self_.py()), task_ids))
+        Ok(PyTasks::new(
+            super_.client.clone_ref(self_.py()),
+            results.into_iter().map(|desc| desc.task_id),
+        ))
     }
 
     /// Download a partition from the dataset.
@@ -247,6 +266,7 @@ impl PyDatasetEntry {
                     chunk_ids: vec![],
                     entity_paths: vec![],
                     select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
                     exclude_static_data: false,
                     exclude_temporal_data: false,
                     query: None,

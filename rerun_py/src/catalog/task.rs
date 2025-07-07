@@ -8,8 +8,7 @@ use pyo3::{Py, PyRef, PyResult, Python, pyclass, pymethods};
 use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 
-use crate::catalog::{PyCatalogClientInternal, to_py_err};
-use crate::dataframe::PyDataFusionTable;
+use super::{PyCatalogClientInternal, PyDataFusionTable, to_py_err};
 
 /// A handle on a remote task.
 #[pyclass(name = "Task")]
@@ -39,7 +38,7 @@ impl PyTask {
     pub fn wait(&self, py: Python<'_>, timeout_secs: u64) -> PyResult<()> {
         let connection = self.client.borrow(py).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
-        connection.wait_for_tasks(py, &[self.id.clone()], timeout)?;
+        connection.wait_for_tasks(py, vec![self.id.clone()], timeout)?;
 
         Ok(())
     }
@@ -76,7 +75,7 @@ impl PyTasks {
     pub fn wait(self_: PyRef<'_, Self>, timeout_secs: u64) -> PyResult<()> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let timeout = std::time::Duration::from_secs(timeout_secs);
-        connection.wait_for_tasks(self_.py(), &self_.ids, timeout)?;
+        connection.wait_for_tasks(self_.py(), self_.ids.clone(), timeout)?;
 
         Ok(())
     }

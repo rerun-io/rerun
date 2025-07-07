@@ -143,7 +143,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
 /// use re_viewer_context::test_context::TestContext;
 /// use re_viewer_context::ViewerContext;
 ///
-/// let mut test_context = TestContext::default();
+/// let mut test_context = TestContext::new();
 /// test_context.run_in_egui_central_panel(|ctx: &ViewerContext, _| {
 ///     /* do something with ctx */
 /// });
@@ -183,6 +183,12 @@ pub struct TestContext {
 
 impl Default for TestContext {
     fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TestContext {
+    pub fn new() -> Self {
         re_log::setup_logging();
 
         let mut recording_store =
@@ -285,6 +291,19 @@ impl Default for TestContext {
             egui_render_state: Mutex::new(None),
             called_setup_kittest_for_rendering: AtomicBool::new(false),
         }
+    }
+
+    /// Create a new test context that knows about a specific view class.
+    ///
+    /// This is useful for tests that need test a single view class.
+    ///
+    /// Note that it's important to first register the view class before adding any entities,
+    /// otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
+    /// and thus will not find anything applicable to the visualizer.
+    pub fn new_with_view_class<T: ViewClass + Default + 'static>() -> Self {
+        let mut test_context = Self::new();
+        test_context.register_view_class::<T>();
+        test_context
     }
 }
 
@@ -700,7 +719,7 @@ mod test {
     /// from `TestContext::run`.
     #[test]
     fn test_edit_selection() {
-        let test_context = TestContext::default();
+        let test_context = TestContext::new();
 
         let item = Item::InstancePath(InstancePath::entity_all("/entity/path".into()));
 

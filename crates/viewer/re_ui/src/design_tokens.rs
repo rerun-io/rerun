@@ -90,13 +90,20 @@ pub struct DesignTokens {
     pub example_tag_bg_fill: Color32,
     pub example_tag_stroke: Stroke,
 
-    /// Color for breadcrumb text
-    pub breadcrumb_text_color: Color32,
+    // ------
+    // Colors for things with a blue selection-background ("primary"), e.g. the breadcrumb:
+    pub surface_on_primary_hovered: Color32,
+    pub text_color_on_primary: Color32,
+    pub text_color_on_primary_hovered: Color32,
+    pub icon_color_on_primary: Color32,
+    pub icon_color_on_primary_hovered: Color32,
+    pub selection_stroke_color: Color32,
+    pub selection_bg_fill: Color32,
 
-    /// Color for breadcrumb separators
-    pub breadcrumb_separator_color: Color32,
-
+    // ------
     pub panel_bg_color: Color32,
+
+    pub text_edit_bg_color: Color32,
 
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
@@ -147,7 +154,6 @@ pub struct DesignTokens {
     pub faint_bg_color: Color32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
-    pub selection_stroke_color: Color32,
     pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
     pub widget_hovered_weak_bg_fill: Color32,
@@ -157,7 +163,6 @@ pub struct DesignTokens {
     pub widget_open_weak_bg_fill: Color32,
     pub widget_noninteractive_weak_bg_fill: Color32,
     pub widget_noninteractive_bg_fill: Color32,
-    pub selection_bg_fill: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
     pub text_subdued: Color32,
     pub text_default: Color32,
@@ -181,13 +186,11 @@ pub struct DesignTokens {
     pub frustum_color: Color32,
 
     // List item colors
-    pub list_item_selected_text: Color32,
     pub list_item_active_text: Color32,
     pub list_item_noninteractive_text: Color32,
     pub list_item_hovered_text: Color32,
     pub list_item_default_text: Color32,
     pub list_item_strong_text: Color32,
-    pub list_item_selected_icon: Color32,
     pub list_item_active_icon: Color32,
     pub list_item_hovered_icon: Color32,
     pub list_item_default_icon: Color32,
@@ -250,9 +253,16 @@ impl DesignTokens {
             example_tag_bg_fill: get_color("example_tag_bg_fill"),
             example_tag_stroke: get_stroke("example_tag_stroke"),
 
-            breadcrumb_text_color: get_color("breadcrumb_text_color"),
-            breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
+            surface_on_primary_hovered: get_color("surface_on_primary_hovered"),
+            text_color_on_primary: get_color("text_color_on_primary"),
+            text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
+            icon_color_on_primary: get_color("icon_color_on_primary"),
+            icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
+            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_stroke_color: get_color("selection_stroke_color"),
+
             panel_bg_color: get_color("panel_bg_color"),
+            text_edit_bg_color: get_color("text_edit_bg_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -286,8 +296,6 @@ impl DesignTokens {
             widget_open_weak_bg_fill: get_color("widget_open_weak_bg_fill"),
             widget_noninteractive_weak_bg_fill: get_color("widget_noninteractive_weak_bg_fill"),
             widget_noninteractive_bg_fill: get_color("widget_noninteractive_bg_fill"),
-            selection_bg_fill: get_color("selection_bg_fill"),
-            selection_stroke_color: get_color("selection_stroke_color"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_subdued: get_color("text_subdued"),
             text_default: get_color("text_default"),
@@ -311,13 +319,11 @@ impl DesignTokens {
             frustum_color: get_color("frustum_color"),
 
             // List item colors
-            list_item_selected_text: get_color("list_item_selected_text"),
             list_item_active_text: get_color("list_item_active_text"),
             list_item_noninteractive_text: get_color("list_item_noninteractive_text"),
             list_item_hovered_text: get_color("list_item_hovered_text"),
             list_item_default_text: get_color("list_item_default_text"),
             list_item_strong_text: get_color("list_item_strong_text"),
-            list_item_selected_icon: get_color("list_item_selected_icon"),
             list_item_active_icon: get_color("list_item_active_icon"),
             list_item_hovered_icon: get_color("list_item_hovered_icon"),
             list_item_default_icon: get_color("list_item_default_icon"),
@@ -456,13 +462,13 @@ impl DesignTokens {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
-        // Used as the background of text edits, scroll bars and others things
-        // that needs to look different from other interactive stuff.
-        // We need this very dark, since the theme overall is very, very dark.
+        // Used as the background of scroll bars and others things
+        // that needs to look different from other interactive stuff..
         egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;
+        egui_style.visuals.text_edit_bg_color = Some(self.text_edit_bg_color);
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
@@ -693,7 +699,7 @@ impl DesignTokens {
     /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
     /// allocated for it. It's set to the same size as the small icon size so that everything is
     /// properly aligned in [`crate::list_item::ListItem`].
-    pub fn collapsing_triangle_area(&self) -> Vec2 {
+    pub fn collapsing_triangle_size(&self) -> Vec2 {
         self.small_icon_size
     }
 }

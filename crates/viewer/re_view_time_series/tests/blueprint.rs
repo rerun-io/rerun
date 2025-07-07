@@ -11,7 +11,7 @@ use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     for i in 0..32 {
         let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
@@ -31,17 +31,6 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         "blueprint_overrides_and_defaults_with_time_series",
         egui::vec2(300.0, 300.0),
     );
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<TimeSeriesView>();
-
-    test_context
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

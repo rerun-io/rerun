@@ -91,7 +91,7 @@ pub(crate) fn dataframe_ui(
         .take_while(|cd| matches!(cd, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_)))
         .count();
 
-    egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
+    ui.scope(|ui| {
         apply_table_style_fixes(ui.style_mut());
         egui_table::Table::new()
             .id_salt(table_id_salt)

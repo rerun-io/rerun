@@ -393,7 +393,7 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
 // TODO(ab): It would be nice to generalise this utility. However, TestContext current lives in
 // re_viewer_context, which cannot depend on re_component_ui.
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     test_context.component_ui_registry = create_component_ui_registry();
     test_context
 }

@@ -24,8 +24,17 @@ pub fn test_clear_series_points_and_line() {
 }
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    // TODO(#10512): Potentially fix up this after we have "markers".
+    // There are some intricacies involved with this test. `SeriesLines` and
+    // `SeriesPoints` can both be logged without any associated data (all
+    // fields are optional). Now that indicators are gone, no data is logged
+    // at all when no fields are specified.
+    //
+    // The reason why `SeriesLines` still shows up is because it is the fallback
+    // visualizer for scalar values. We force `SeriesPoints` to have data, by
+    // explicitly setting the marker shape to circle.
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype(
             RowId::new(),
@@ -37,7 +46,8 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesPoints::new(),
+            &re_types::archetypes::SeriesPoints::new()
+                .with_markers([re_types::components::MarkerShape::Circle]),
         )
     });
 
@@ -130,7 +140,7 @@ fn test_line_properties() {
 }
 
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let properties_static = if multiple_properties {
         re_types::archetypes::SeriesLines::new()
@@ -202,7 +212,7 @@ fn test_per_series_visibility() {
         ("per_series_visibility_splat_false", vec![false]),
         ("per_series_visibility_splat_true", vec![true]),
     ] {
-        let mut test_context = get_test_context();
+        let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
         test_context.log_entity("plots", |builder| {
             builder.with_archetype(
@@ -253,7 +263,7 @@ fn test_point_properties() {
 }
 
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
@@ -325,17 +335,6 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         egui::vec2(300.0, 300.0),
         0.00006, // Allow 5 broken pixels
     );
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<TimeSeriesView>();
-
-    test_context
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

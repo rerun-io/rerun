@@ -36,7 +36,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
         } else {
             // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
-                indicators: Default::default(),
+                relevant_archetypes: Default::default(),
                 required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
                 queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }

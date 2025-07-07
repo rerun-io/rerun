@@ -16,7 +16,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 #[test]
 pub fn time_panel_two_sections_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
@@ -45,7 +45,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 #[test]
 pub fn time_panel_dense_data_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -102,7 +102,7 @@ pub fn time_panel_filter_test_active_query_should_match_snapshot() {
 #[allow(clippy::unwrap_used)]
 pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_name: &str) {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
@@ -148,7 +148,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
 
     for timeline in ["timeline_a", "timeline_b"] {
         for time in [0, 5, i64::MAX] {
-            let mut test_context = TestContext::default();
+            let mut test_context = TestContext::new();
 
             log_data_for_various_entity_kinds_tests(&mut test_context);
 
@@ -184,7 +184,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
 pub fn test_focused_item_is_focused() {
     TimePanel::ensure_registered_subscribers();
 
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     log_data_for_various_entity_kinds_tests(&mut test_context);
 

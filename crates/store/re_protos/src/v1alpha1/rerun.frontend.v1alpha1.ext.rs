@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, EntryId};
 
-use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
-use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::Query;
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{IfDuplicateBehavior, ScanParameters};
+use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---
@@ -72,6 +72,26 @@ impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_type
                 "dataset_id"
             ))?
             .try_into()?)
+    }
+}
+
+// --- RegisterWithDatasetRequest ---
+
+#[derive(Debug)]
+pub struct RegisterWithDatasetRequest {
+    pub dataset_id: EntryId,
+    pub data_sources: Vec<DataSource>,
+    pub on_duplicate: IfDuplicateBehavior,
+}
+
+impl From<RegisterWithDatasetRequest> for crate::frontend::v1alpha1::RegisterWithDatasetRequest {
+    fn from(value: RegisterWithDatasetRequest) -> Self {
+        Self {
+            dataset_id: Some(value.dataset_id.into()),
+            data_sources: value.data_sources.into_iter().map(Into::into).collect(),
+            on_duplicate: crate::common::v1alpha1::IfDuplicateBehavior::from(value.on_duplicate)
+                as i32,
+        }
     }
 }
 

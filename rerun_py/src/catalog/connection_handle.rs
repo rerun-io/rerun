@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
@@ -16,20 +16,20 @@ use re_dataframe::ChunkStoreHandle;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::DatasetDetails;
-use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
-use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use re_protos::{
     catalog::v1alpha1::{
         EntryFilter, ReadTableEntryRequest,
-        ext::{DatasetEntry, EntryDetails, TableEntry},
+        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
-    common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    frontend::v1alpha1::{
-        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, RegisterWithDatasetRequest,
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, ScanParameters},
     },
-    manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
+    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
+    manifest_registry::v1alpha1::ext::{
+        DataSource, Query, QueryLatestAt, QueryRange, RegisterWithDatasetTaskDescriptor,
+    },
+    redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
 use crate::catalog::to_py_err;
@@ -177,67 +177,29 @@ impl ConnectionHandle {
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
-    /// corresponding task IDs.
+    /// corresponding task descriptors.
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
-    ) -> PyResult<Vec<TaskId>> {
+    ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let data_sources = recording_uris
+            .iter()
+            .map(DataSource::new_rrd)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
+
         wait_for_future(py, async {
-            let data_sources = recording_uris
-                .iter()
-                .map(|uri| DataSource::new_rrd(uri).map(Into::into))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(to_py_err)?;
-
-            let response = self
-                .client()
+            self.client()
                 .await?
-                .inner()
-                .register_with_dataset(RegisterWithDatasetRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    data_sources,
-                    //TODO(ab): expose this to as a method argument
-                    on_duplicate: IfDuplicateBehavior::Error as i32,
-                })
+                //TODO(ab): expose `on_duplicate` as a method argument
+                .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
                 .await
-                .map_err(to_py_err)?
-                .into_inner()
-                .data
-                .ok_or_else(|| PyValueError::new_err("missing data from response"))?
-                .decode()
-                .map_err(to_py_err)?;
-
-            // TODO(andrea): why is the schema completely off?
-            #[expect(clippy::overly_complex_bool_expr)]
-            if false
-                && !response
-                    .schema()
-                    .contains(&RegisterWithDatasetResponse::schema())
-            {
-                return Err(PyValueError::new_err(
-                    "invalid schema for RegisterWithDatasetResponse",
-                ));
-            }
-
-            response
-                .column_by_name(RegisterWithDatasetResponse::TASK_ID)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                        .map(|col| {
-                            col.iter()
-                                .filter_map(|v| v.map(|id| TaskId { id: id.to_owned() }))
-                                .collect::<Vec<_>>()
-                        })
-                })
-                .ok_or_else(|| PyValueError::new_err("bug: invalid response schema"))
+                .map_err(to_py_err)
         })
     }
 
@@ -270,7 +232,7 @@ impl ConnectionHandle {
     pub fn wait_for_tasks(
         &self,
         py: Python<'_>,
-        task_ids: &[TaskId],
+        task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
     ) -> PyResult<()> {
         use futures::StreamExt as _;
@@ -282,7 +244,7 @@ impl ConnectionHandle {
                 ))
             })?;
             let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
-                ids: task_ids.to_vec(),
+                ids: task_ids,
                 timeout: Some(timeout),
             };
             let mut response_stream = self
@@ -306,7 +268,7 @@ impl ConnectionHandle {
                     .decode()
                     .map_err(to_py_err)?;
 
-                // TODO(andrea): all this column unrwapping is a bit hideous. Maybe the idea of returning a dataframe rather
+                // TODO(andrea): all this column unwrapping is a bit hideous. Maybe the idea of returning a dataframe rather
                 // than a nicely typed object should be revisited.
 
                 let schema = item.schema();
@@ -400,6 +362,20 @@ impl ConnectionHandle {
         // Therefore, we are never trying to use a server-side wildcard.
         let select_all_entity_paths = false;
 
+        let fuzzy_descriptors: Vec<String> = query_expression
+            .view_contents
+            .as_ref()
+            .map_or(BTreeSet::new(), |contents| {
+                contents
+                    .values()
+                    .filter_map(|opt_set| opt_set.as_ref())
+                    .flat_map(|set| set.iter().copied())
+                    .collect::<BTreeSet<_>>()
+            })
+            .into_iter()
+            .map(|ident| ident.to_string())
+            .collect();
+
         // NOTE: Do not ever run complex futures chain directly on top of `block_on`, make sure to
         // always spawn new tasks instead.
         //
@@ -423,6 +399,7 @@ impl ConnectionHandle {
                             chunk_ids: vec![],
                             entity_paths,
                             select_all_entity_paths,
+                            fuzzy_descriptors,
                             exclude_static_data: false,
                             exclude_temporal_data: false,
                             query: Some(query.into()),
@@ -604,6 +581,20 @@ impl ConnectionHandle {
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
 
+        let fuzzy_descriptors: Vec<String> = query_expression
+            .view_contents
+            .as_ref()
+            .map_or(BTreeSet::new(), |contents| {
+                contents
+                    .values()
+                    .filter_map(|opt_set| opt_set.as_ref())
+                    .flat_map(|set| set.iter().copied())
+                    .collect::<BTreeSet<_>>()
+            })
+            .into_iter()
+            .map(|ident| ident.to_string())
+            .collect();
+
         let query = query_from_query_expression(query_expression);
 
         wait_for_future(py, async {
@@ -623,6 +614,7 @@ impl ConnectionHandle {
                         .map(|p| (*p).clone().into())
                         .collect(),
                     select_all_entity_paths,
+                    fuzzy_descriptors,
                     exclude_static_data: false,
                     exclude_temporal_data: false,
                     query: Some(query.into()),
@@ -676,18 +668,14 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
             .map(|latest_at| QueryLatestAt {
                 index: Some(latest_at.timeline().to_string()),
                 at: latest_at.at(),
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
             })
     };
 
     Query {
         latest_at,
-        range: query_expression.max_range().map(|range| {
-            QueryRange {
-                index: range.timeline().to_string(),
-                index_range: range.range,
-                fuzzy_descriptors: vec![], // TODO(jleibs): support this
-            }
+        range: query_expression.max_range().map(|range| QueryRange {
+            index: range.timeline().to_string(),
+            index_range: range.range,
         }),
         columns_always_include_everything: false,
         columns_always_include_chunk_ids: false,

@@ -6,6 +6,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
+    TypeConversionError,
     catalog::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest,
@@ -14,11 +15,19 @@ use re_protos::{
             ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
     },
-    common::v1alpha1::ext::{IfMissingBehavior, PartitionId, ScanParameters},
-    frontend::v1alpha1::{
-        ext::ScanPartitionTableRequest, frontend_service_client::FrontendServiceClient,
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
-    manifest_registry::v1alpha1::ScanPartitionTableResponse,
+    frontend::v1alpha1::{
+        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
+        frontend_service_client::FrontendServiceClient,
+    },
+    manifest_registry::v1alpha1::{
+        RegisterWithDatasetResponse, ScanPartitionTableResponse,
+        ext::{DataSource, PartitionType, RegisterWithDatasetTaskDescriptor},
+    },
+    missing_field,
 };
 
 use crate::StreamError;
@@ -188,5 +197,100 @@ where
         }
 
         Ok(partition_ids)
+    }
+
+    /// Initiate registration of the provided recording URIs with a dataset and return the
+    /// corresponding task descriptors.
+    ///
+    /// NOTE: The server may pool multiple registrations into a single task. The result always has
+    /// the same length as the output, so task ids may be duplicated.
+    pub async fn register_with_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, StreamError> {
+        let response = self
+            .inner()
+            .register_with_dataset(tonic::Request::new(
+                RegisterWithDatasetRequest {
+                    dataset_id,
+                    data_sources,
+                    on_duplicate,
+                }
+                .into(),
+            ))
+            .await?
+            .into_inner()
+            .data
+            .ok_or_else(|| missing_field!(RegisterWithDatasetResponse, "data"))?
+            .decode()?;
+
+        // TODO(andrea): why is the schema completely off?
+        #[expect(clippy::overly_complex_bool_expr)]
+        if false
+            && !response
+                .schema()
+                .contains(&RegisterWithDatasetResponse::schema())
+        {
+            return Err(StreamError::MissingDataframeColumn(
+                "invalid schema for RegisterWithDatasetResponse".to_owned(),
+            ));
+        }
+
+        let get_string_array = |column_name: &str| {
+            response
+                .column_by_name(column_name)
+                .and_then(|column| {
+                    column
+                        .try_downcast_array_ref::<arrow::array::StringArray>()
+                        .ok()
+                })
+                .ok_or_else(|| StreamError::MissingDataframeColumn(column_name.to_owned()))
+        };
+
+        let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
+        let partition_type_column = PartitionType::many_from_arrow(
+            response
+                .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
+                .ok_or_else(|| {
+                    StreamError::MissingDataframeColumn(
+                        RegisterWithDatasetResponse::PARTITION_TYPE.to_owned(),
+                    )
+                })?,
+        )?;
+        let storage_url_column = get_string_array(RegisterWithDatasetResponse::STORAGE_URL)?;
+        let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
+
+        itertools::izip!(
+            partition_id_column,
+            partition_type_column,
+            storage_url_column,
+            task_id_column,
+        )
+        .map(|(partition_id, partition_type, storage_url, task_id)| {
+            Ok(RegisterWithDatasetTaskDescriptor {
+                partition_id: PartitionId::new(
+                    partition_id
+                        .ok_or_else(|| {
+                            StreamError::MissingData("Unexpected null partition id".to_owned())
+                        })?
+                        .to_owned(),
+                ),
+                partition_type,
+                storage_url: url::Url::parse(storage_url.ok_or_else(|| {
+                    StreamError::MissingData("Unexpected null storage_url".to_owned())
+                })?)
+                .map_err(TypeConversionError::UrlParseError)?,
+                task_id: TaskId {
+                    id: task_id
+                        .ok_or_else(|| {
+                            StreamError::MissingData("Unexpected null task_id".to_owned())
+                        })?
+                        .to_owned(),
+                },
+            })
+        })
+        .collect()
     }
 }

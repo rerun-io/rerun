@@ -33,6 +33,7 @@ re_uri.workspace = true
 
 arrow.workspace = true
 async-stream.workspace = true
+itertools.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
