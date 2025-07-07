@@ -285,28 +285,10 @@ impl ViewEye {
     }
 
     /// Compute the actual speed depending on the [`Eye3DKind`].
-    fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+    pub fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.kind {
             Eye3DKind::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
             Eye3DKind::Orbital => self.orbit_radius,
-        }
-    }
-
-    /// Returns the actual speed (float) of [`ViewEye`].
-    pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
-        match self.speed {
-            CameraTranslationSpeed::Auto => self.fallback_speed_for_mode(bounding_boxes),
-            CameraTranslationSpeed::Override(speed) => speed,
-        }
-    }
-
-    /// Set the speed to a specific value set by the user via the UI.
-    ///
-    /// `None` resets speed to the default.
-    pub fn set_speed(&mut self, new_speed: Option<f32>) {
-        match new_speed {
-            Some(speed) => self.speed = CameraTranslationSpeed::Override(speed),
-            None => self.speed = CameraTranslationSpeed::Auto,
         }
     }
 
