@@ -302,14 +302,11 @@ where
         compact_fragments: bool,
     ) -> Result<(), StreamError> {
         self.inner()
-            .do_maintenance(tonic::Request::new(
-                DoMaintenanceRequest {
-                    dataset_id: Some(dataset_id.into()),
-                    build_scalar_indexes,
-                    compact_fragments,
-                }
-                .into(),
-            ))
+            .do_maintenance(tonic::Request::new(DoMaintenanceRequest {
+                dataset_id: Some(dataset_id.into()),
+                build_scalar_indexes,
+                compact_fragments,
+            }))
             .await?;
 
         Ok(())
