@@ -58,8 +58,8 @@ print(df.count())
   # Build the SDK with performance telemetry enabled, in the 'examples' environment:
   $ py-build-release-perf-examples
 
-  # Run the script with both telemetry and the OpenTelemetry integration enabled:
-  $ TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true pixi run -e examples python
+  # Run your script with both telemetry and the OpenTelemetry integration enabled:
+  $ TELEMETRY_ENABLED=true OTEL_SDK_ENABLED=true <your_script>
 
   # Go to the Jaeger UI (http://localhost:16686/search) to look at the results
   ```
@@ -76,8 +76,8 @@ print(df.count())
   # Build the SDK with performance telemetry enabled, in the 'examples' environment:
   $ py-build-release-perf-examples
 
-  # Run the script with both telemetry and the Tracy integration enabled:
-  $ TELEMETRY_ENABLED=true TRACY_ENABLED=true pixi run -e examples python
+  # Run your script with both telemetry and the Tracy integration enabled:
+  $ TELEMETRY_ENABLED=true TRACY_ENABLED=true <your_script>
   ```
   <picture>
     <img src="https://static.rerun.io/re_perf_telemetry_sdk_tracy/7787342837a61d8dd85ce9174a820d5884048f9b/full.png" alt="">
