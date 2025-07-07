@@ -10,6 +10,8 @@ pub use server::Profiler;
 
 pub mod reexports {
     #[cfg(not(target_arch = "wasm32"))]
+    pub use profiling;
+    #[cfg(not(target_arch = "wasm32"))]
     pub use puffin;
 }
 
@@ -19,8 +21,11 @@ pub mod reexports {
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
+        // #[cfg(not(target_arch = "wasm32"))]
+        // $crate::reexports::puffin::profile_function!($($arg)*);
+
         #[cfg(not(target_arch = "wasm32"))]
-        $crate::reexports::puffin::profile_function!($($arg)*);
+        $crate::reexports::profiling::function_scope!(stringify!($($arg)*));
     };
 }
 
@@ -39,8 +44,11 @@ macro_rules! profile_function_if {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
+        // #[cfg(not(target_arch = "wasm32"))]
+        // $crate::reexports::puffin::profile_scope!($($arg)*);
+
         #[cfg(not(target_arch = "wasm32"))]
-        $crate::reexports::puffin::profile_scope!($($arg)*);
+        $crate::reexports::profiling::scope!(stringify!($($arg)*));
     };
 }
 
@@ -68,15 +76,24 @@ macro_rules! profile_scope_if {
 #[macro_export]
 macro_rules! profile_wait {
     () => {
+        // #[cfg(not(target_arch = "wasm32"))]
+        // $crate::reexports::puffin::profile_scope!("[WAIT]");
+
         #[cfg(not(target_arch = "wasm32"))]
-        $crate::reexports::puffin::profile_scope!("[WAIT]");
+        $crate::reexports::profiling::scope!("[WAIT]");
     };
     ($id:expr) => {
+        // #[cfg(not(target_arch = "wasm32"))]
+        // $crate::reexports::puffin::profile_scope!(concat!("[WAIT] ", $id));
+
         #[cfg(not(target_arch = "wasm32"))]
-        $crate::reexports::puffin::profile_scope!(concat!("[WAIT] ", $id));
+        $crate::reexports::profiling::scope!(concat!("[WAIT] ", $id));
     };
     ($id:expr, $data:expr) => {
+        // #[cfg(not(target_arch = "wasm32"))]
+        // $crate::reexports::puffin::profile_scope!(concat!("[WAIT] ", $id), $data);
+
         #[cfg(not(target_arch = "wasm32"))]
-        $crate::reexports::puffin::profile_scope!(concat!("[WAIT] ", $id), $data);
+        $crate::reexports::profiling::scope!(stringify!(concat!("[WAIT] ", $id), $data));
     };
 }

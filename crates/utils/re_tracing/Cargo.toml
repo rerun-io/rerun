@@ -33,6 +33,7 @@ server = ["dep:puffin_http", "dep:re_log", "dep:rfd", "dep:wayland-sys"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
+profiling = {workspace = true, features = ["profile-with-tracing"]}
 
 # Optional dependencies:
 puffin_http = { workspace = true, optional = true }
