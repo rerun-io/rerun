@@ -62,6 +62,7 @@ impl ChunkStore {
                 // Our dangling logic retrieves relevant chunks by component descriptors,
                 // so it would never be able to find it. So we never add that chunk in the
                 // first place.
+                re_log::debug_once!("Ignoring static chunk without component.");
                 return Ok(Vec::new());
             }
 
