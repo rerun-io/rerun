@@ -154,17 +154,6 @@ impl Eye {
     }
 }
 
-// ----------------------------------------------------------------------------
-/// The speed of a [`ViewEye`] can be computed automatically or set manually.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-enum CameraTranslationSpeed {
-    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`ViewEye::fallback_speed_for_mode`]
-    Auto,
-
-    /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
-    Override(f32),
-}
-
 /// An eye (camera) in 3D space, controlled by the user.
 ///
 /// This is either a first person camera or an orbital camera,
@@ -201,8 +190,6 @@ pub struct ViewEye {
     /// use it at the moment.
     eye_up: Vec3,
 
-    /// For controlling the eye with WSAD in a smooth way.
-    speed: CameraTranslationSpeed,
     velocity: Vec3,
 }
 
@@ -223,7 +210,6 @@ impl ViewEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
-            speed: CameraTranslationSpeed::Auto,
             velocity: Vec3::ZERO,
         }
     }
@@ -327,7 +313,6 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
-        self.speed = CameraTranslationSpeed::Auto;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
@@ -347,7 +332,6 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                speed: other.speed,
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
