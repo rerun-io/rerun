@@ -14,7 +14,7 @@ use nohash_hasher::IntMap;
 
 use re_format::format_uint;
 use re_log_types::{EntryId, TimelineName, Timestamp};
-use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -273,13 +273,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let sorbet_schema = {
+        let (sorbet_schema, migrated_fields) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            sorbet_batch.sorbet_schema()
+            (sorbet_batch.sorbet_schema(), sorbet_batch.fields())
         };
 
         let num_rows = sorbet_batches
@@ -352,6 +352,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             fields,
+            migrated_fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
             blueprint: table_state.blueprint(),
@@ -527,6 +528,7 @@ enum BottomBarAction {
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     fields: &'a Fields,
+    migrated_fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     blueprint: &'a TableBlueprint,
@@ -616,7 +618,39 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 })
                 .inner
                 .on_hover_ui(|ui| {
-                    column_descriptor_ui(ui, &column.desc, column_field.as_ref());
+                    let migrated_column_field = &self.migrated_fields[index];
+
+                    let advanced_view = ui.input(|input| input.modifiers.alt);
+
+                    let content_changed = ui.data_mut(|data| {
+                        let stored_advanced_view =
+                            data.get_temp_mut_or_insert_with(ui.id(), || advanced_view);
+                        if *stored_advanced_view != advanced_view {
+                            *stored_advanced_view = advanced_view;
+                            true
+                        } else {
+                            false
+                        }
+                    });
+
+                    let mut builder = egui::UiBuilder::new();
+                    if content_changed {
+                        builder = builder.sizing_pass();
+                    }
+
+                    ui.scope_builder(builder, |ui| {
+                        column_descriptor_ui(
+                            ui,
+                            &column.desc,
+                            column_field.as_ref(),
+                            migrated_column_field.as_ref(),
+                            advanced_view,
+                        );
+                    });
+
+                    if content_changed {
+                        ui.ctx().request_repaint();
+                    }
                 });
             }
         }
@@ -671,8 +705,29 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 }
 
-fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, column_field: &Field) {
+fn column_descriptor_ui(
+    ui: &mut egui::Ui,
+    column: &ColumnDescriptorRef<'_>,
+    column_field: &Field,
+    migrated_field: &Field,
+    advanced_view: bool,
+) {
     header_property_ui(ui, "Physical name", column_field.name());
+
+    if advanced_view {
+        header_property_ui(ui, "Migrated physical name", migrated_field.name());
+        header_property_ui(
+            ui,
+            "Descriptor column name (chunk mode)",
+            column.column_name(BatchType::Chunk),
+        );
+        header_property_ui(
+            ui,
+            "Descriptor column name (dataframe mode)",
+            column.column_name(BatchType::Dataframe),
+        );
+        header_property_ui(ui, "Descriptor display name", column.display_name());
+    }
 
     match *column {
         ColumnDescriptorRef::RowId(desc) => {
@@ -721,12 +776,12 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, col
                 component_type.map(|a| a.as_str()).unwrap_or("-"),
             );
 
-            if false {
-                // TODO(#10315): these are sometimes inaccurate. Also, the user don't care.
-                header_property_ui(ui, "Static", is_static.to_string());
-                header_property_ui(ui, "Indicator", is_indicator.to_string());
-                header_property_ui(ui, "Tombstone", is_tombstone.to_string());
-                header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+            if advanced_view {
+                // TODO(#10315): these are sometimes inaccurate.
+                header_property_ui(ui, "Is static", is_static.to_string());
+                header_property_ui(ui, "Is indicator", is_indicator.to_string());
+                header_property_ui(ui, "Is tombstone", is_tombstone.to_string());
+                header_property_ui(ui, "Is empty", is_semantically_empty.to_string());
             }
         }
     }
