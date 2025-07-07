@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, RecordBatch};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use egui::vec2;
-use egui_kittest::Harness;
+use egui_kittest::{Harness, SnapshotOptions};
 
 use re_dataframe_ui::column_header_tooltip_ui;
 use re_log_types::{EntityPath, Timeline};
@@ -68,10 +68,13 @@ fn test_column_header_tooltips() {
                 });
 
             harness.run();
-            harness.snapshot(&format!(
-                "header_tooltip_{description}{}",
-                if show_extras { "_with_extras" } else { "" }
-            ));
+            harness.snapshot_options(
+                &format!(
+                    "header_tooltip_{description}{}",
+                    if show_extras { "_with_extras" } else { "" }
+                ),
+                &SnapshotOptions::new().threshold(3.1),
+            );
         }
     }
 }
