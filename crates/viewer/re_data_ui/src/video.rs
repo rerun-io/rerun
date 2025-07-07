@@ -373,7 +373,7 @@ pub fn show_decoded_frame_info(
                 )
             };
 
-            if decoder_delay_state.should_rerequest_frame() {
+            if decoder_delay_state.should_request_more_frames() {
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
             }
 

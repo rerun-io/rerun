@@ -212,7 +212,7 @@ impl VideoFrameReferenceVisualizer {
                             if let Some([w, h]) = video.dimensions() {
                                 video_resolution = glam::vec2(w as _, h as _);
                             }
-                            if err.should_rerequest_frame() {
+                            if err.should_request_more_frames() {
                                 ctx.view_ctx.egui_ctx().request_repaint();
                             }
                             show_video_error(
