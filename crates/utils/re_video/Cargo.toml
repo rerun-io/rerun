@@ -101,7 +101,6 @@ re_log = { workspace = true, features = ["setup"] }
 re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
-
 [[example]]
 name = "frames"
 

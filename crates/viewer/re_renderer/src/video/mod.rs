@@ -49,6 +49,14 @@ pub enum VideoPlayerError {
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
+impl VideoPlayerError {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Decoders often (not always!) recover from errors and will succeed eventually.
+        // Gotta keep trying!
+        matches!(self, Self::DecodeChunk(_))
+    }
+}
+
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
 /// Describes whether a decoder is lagging behind or not.
@@ -72,7 +80,7 @@ pub enum DecoderDelayState {
 impl DecoderDelayState {
     /// Whether a user of a video player should keep requesting a more up to date video frame even
     /// if the requested time has not changed.
-    pub fn should_rerequest_frame(&self) -> bool {
+    pub fn should_request_more_frames(&self) -> bool {
         match self {
             Self::UpToDate => false,
             Self::UpToDateWithinTolerance | Self::Behind => true,
