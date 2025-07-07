@@ -507,7 +507,7 @@ impl EntityDb {
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
-    pub fn add_chunk_with_timestamp_metadata(
+    fn add_chunk_with_timestamp_metadata(
         &mut self,
         chunk: &Arc<Chunk>,
         timestamps: &re_sorbet::TimestampMetadata,
