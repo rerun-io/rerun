@@ -407,14 +407,12 @@ pub struct TableEntry {
     pub provider_details: prost_types::Any,
 }
 
-impl TryFrom<TableEntry> for crate::catalog::v1alpha1::TableEntry {
-    type Error = TypeConversionError;
-
-    fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
-        Ok(Self {
+impl From<TableEntry> for crate::catalog::v1alpha1::TableEntry {
+    fn from(value: TableEntry) -> Self {
+        Self {
             details: Some(value.details.into()),
             provider_details: Some(value.provider_details),
-        })
+        }
     }
 }
 
