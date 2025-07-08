@@ -163,7 +163,40 @@ impl PyDatasetEntry {
         })
     }
 
-    /// Return the URL for the given partition.
+    // Return the URL for the given partition.
+    //
+    // Parameters
+    // ----------
+    // partition_id: str
+    //     The ID of the partition to get the URL for.
+    //
+    // timeline: str | None
+    //     The name of the timeline to display.
+    //
+    // start: int | datetime | None
+    //     The start time for the partition.
+    //     Integer for ticks, or datetime/nanoseconds for timestamps.
+    //
+    // end: int | datetime | None
+    //     The end time for the partition.
+    //     Integer for ticks, or datetime/nanoseconds for timestamps.
+    //
+    // Examples
+    // --------
+    // # With ticks
+    // >>> start_tick, end_time = 0, 10
+    // >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    //
+    // # With timestamps
+    // >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+    // >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    //
+    // Returns
+    // -------
+    // str
+    //     The URL for the given partition.
+    //
+    //
     #[pyo3(signature = (partition_id, timeline=None, start=None, end=None))]
     fn partition_url(
         self_: PyRef<'_, Self>,
