@@ -17,7 +17,7 @@ service CatalogService {
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
-  /// Register a foreign table as a new table entry in the catalog.
+  // Register a foreign table as a new table entry in the catalog.
   rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
 
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}

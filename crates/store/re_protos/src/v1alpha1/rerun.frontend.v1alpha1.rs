@@ -859,7 +859,7 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// / Register a foreign table as a new table entry in the catalog.
+        /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -1205,7 +1205,7 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
-        /// / Register a foreign table as a new table entry in the catalog.
+        /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
             request: tonic::Request<super::super::super::catalog::v1alpha1::RegisterTableRequest>,

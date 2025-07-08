@@ -609,7 +609,7 @@ pub mod catalog_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// / Register a foreign table as a new table entry in the catalog.
+        /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterTableRequest>,
@@ -683,7 +683,7 @@ pub mod catalog_service_server {
             &self,
             request: tonic::Request<super::UpdateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
-        /// / Register a foreign table as a new table entry in the catalog.
+        /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
             request: tonic::Request<super::RegisterTableRequest>,
