@@ -7,6 +7,7 @@ use datafusion::common::DataFusionError;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::SessionContext;
 
+use re_chunk::external::re_byte_size::SizeBytes as _;
 use re_log_types::TableId;
 use re_sorbet::ComponentColumnDescriptor;
 
@@ -23,6 +24,14 @@ impl TableStore {
 
     pub fn session_context(&self) -> Arc<SessionContext> {
         self.session_ctx.clone()
+    }
+
+    pub fn total_size_bytes(&self) -> u64 {
+        self.record_batches
+            .read()
+            .iter()
+            .map(|record_batch| record_batch.total_size_bytes())
+            .sum()
     }
 
     pub fn add_record_batch(&self, record_batch: RecordBatch) -> Result<(), DataFusionError> {

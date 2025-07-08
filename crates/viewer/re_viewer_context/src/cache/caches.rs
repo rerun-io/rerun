@@ -17,6 +17,11 @@ impl Caches {
         }
     }
 
+    pub fn total_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+        self.0.lock().values().map(|cache| cache.bytes_used()).sum()
+    }
+
     /// Attempt to free up memory.
     pub fn purge_memory(&self) {
         re_tracing::profile_function!();
@@ -69,8 +74,9 @@ pub trait Cache: std::any::Any + Send + Sync {
         _ = events;
     }
 
-    // TODO(andreas): Track bytes used for each cache and show in the memory panel!
-    //fn bytes_used(&self) -> usize;
+    fn bytes_used(&self) -> u64 {
+        0 // TODO
+    }
 
     /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn Any;

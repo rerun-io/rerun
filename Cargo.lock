@@ -7609,7 +7609,6 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "backtrace",
- "emath",
  "itertools 0.14.0",
  "memory-stats",
  "nohash-hasher",
@@ -8474,6 +8473,7 @@ dependencies = [
  "egui_kittest",
  "egui_plot",
  "ehttp",
+ "emath",
  "glam",
  "image",
  "itertools 0.14.0",

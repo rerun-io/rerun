@@ -36,7 +36,6 @@
 
 pub mod accounting_allocator;
 mod allocation_tracker;
-mod memory_history;
 mod memory_limit;
 mod memory_use;
 mod ram_warner;
@@ -57,7 +56,6 @@ use backtrace_web::Backtrace;
 pub use {
     accounting_allocator::{AccountingAllocator, TrackingStatistics},
     allocation_tracker::{CallstackStatistics, ReadableBacktrace},
-    memory_history::MemoryHistory,
     memory_limit::MemoryLimit,
     memory_use::MemoryUse,
     ram_warner::*,
