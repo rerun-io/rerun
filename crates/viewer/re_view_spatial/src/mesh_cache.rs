@@ -87,6 +87,8 @@ impl Cache for MeshCache {
     }
 
     fn bytes_used(&self) -> u64 {
+        // Can't use the default implementation for `HashMap`,
+        // because we don't want to amortize `Arc` as zero bytes, as is the default.
         self.0
             .iter()
             .map(|(key, map)| {
