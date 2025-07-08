@@ -425,7 +425,7 @@ impl PyDataframeQueryView {
 
     /// Convert this view to a [`pyarrow.RecordBatchReader`][].
     #[instrument(skip_all)]
-    fn to_reader<'py>(
+    fn to_arrow_reader<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
