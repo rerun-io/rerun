@@ -27,17 +27,24 @@ def changed_files() -> list[str]:
 
 @dataclass
 class LintJob:
-    command: str
+    command: str | list[str]
     extensions: list[str] | None = None
     accepts_files: bool = True
     no_filter_args: list[str] = field(default_factory=list)
     no_filter_cmd: str | None = None
     allow_no_filter: bool = True
+    _commands: list[str] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.command, str):
+            self._commands = self.command.split()
+        else:
+            self._commands = self.command
 
     def run_cmd(self, files: list[str], skip_list: list[str], no_change_filter: bool) -> bool:
         start = time.time()
 
-        cmd = self.command
+        cmd = self._commands
 
         if self.extensions is not None:
             files = [f for f in files if any(f.endswith(e) for e in self.extensions)]
@@ -58,9 +65,9 @@ class LintJob:
                 return True
             files = self.no_filter_args
             if self.no_filter_cmd is not None:
-                cmd = self.no_filter_cmd
+                cmd = self.no_filter_cmd.split()
 
-        cmd_arr = ["pixi", "run", cmd]
+        cmd_arr = ["pixi", "run"] + cmd
 
         cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
@@ -156,7 +163,7 @@ def main() -> None:
         # with running on the full project.
         LintJob("py-lint", extensions=[".py"], accepts_files=False),
         LintJob("toml-fmt-check", extensions=[".toml"]),
-        LintJob("lint-typos"),
+        LintJob("lint-typos --force-exclude"),
     ]
 
     for command in skip:
