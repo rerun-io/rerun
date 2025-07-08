@@ -142,6 +142,13 @@ pub trait ContextExt {
             self.ctx().debug_painter().add(Shape::mesh(mesh));
         }
     }
+
+    /// Whether to show extra information in the UI, e.g. in tooltips.
+    ///
+    /// This is controlled by holding the `Alt` key down.
+    fn show_extras(&self) -> bool {
+        self.ctx().input(|input| input.modifiers.alt)
+    }
 }
 
 impl ContextExt for egui::Context {
