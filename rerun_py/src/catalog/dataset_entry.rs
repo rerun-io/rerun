@@ -628,6 +628,10 @@ impl PyDatasetEntry {
     }
 
     /// Perform maintenance tasks on the datasets.
+    #[pyo3(signature = (
+            build_scalar_index = false,
+            compact_fragments = false,
+    ))]
     #[instrument(skip_all, err)]
     fn do_maintenance(
         self_: PyRef<'_, Self>,
