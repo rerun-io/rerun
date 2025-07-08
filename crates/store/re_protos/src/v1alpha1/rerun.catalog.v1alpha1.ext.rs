@@ -375,6 +375,30 @@ impl TryFrom<crate::catalog::v1alpha1::DeleteEntryRequest> for re_log_types::Ent
     }
 }
 
+// --- RegisterTableRequest ---
+
+#[derive(Debug, Clone)]
+pub struct RegisterTableRequest {
+    pub name: String,
+    pub provider_details: prost_types::Any,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::RegisterTableRequest> for RegisterTableRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::RegisterTableRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            provider_details: value.provider_details.ok_or(missing_field!(
+                crate::catalog::v1alpha1::RegisterTableRequest,
+                "provider_details"
+            ))?,
+        })
+    }
+}
+
 // --- TableEntry ---
 
 #[derive(Debug, Clone)]
