@@ -29,11 +29,11 @@ def test_isolated_streams() -> None:
         rec1_path = f"{tmpdir}/rec1.rrd"
         rec2_path = f"{tmpdir}/rec2.rrd"
 
-        rec1 = rr.RecordingStream("rerun_example")
+        rec1 = rr.RecordingStream("rerun_example_multi_stream")
         rec1.log("/data1", rr.TextLog("Data1"))
         rec1.save(rec1_path)
 
-        rec2 = rr.RecordingStream("rerun_example")
+        rec2 = rr.RecordingStream("rerun_example_multi_stream")
         rec2.log("/data2", rr.TextLog("Data2"))
         rec2.save(rec2_path)
 
