@@ -421,6 +421,8 @@ impl TryFrom<crate::catalog::v1alpha1::TableEntry> for TableEntry {
     }
 }
 
+// --- ProviderDetails ---
+
 pub trait ProviderDetails {
     fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
 
@@ -428,6 +430,8 @@ pub trait ProviderDetails {
     where
         Self: Sized;
 }
+
+// --- SystemTable ---
 
 #[derive(Debug, Clone)]
 pub struct SystemTable {
@@ -463,6 +467,45 @@ impl ProviderDetails for SystemTable {
         Ok(as_proto.try_into()?)
     }
 }
+
+// --- LanceTable ---
+
+#[derive(Debug, Clone)]
+pub struct LanceTable {
+    pub table_url: url::Url,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::LanceTable> for LanceTable {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::LanceTable) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table_url: url::Url::parse(&value.table_url)?,
+        })
+    }
+}
+
+impl From<LanceTable> for crate::catalog::v1alpha1::LanceTable {
+    fn from(value: LanceTable) -> Self {
+        Self {
+            table_url: value.table_url.to_string(),
+        }
+    }
+}
+
+impl ProviderDetails for LanceTable {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        let as_proto: crate::catalog::v1alpha1::LanceTable = self.clone().into();
+        Ok(prost_types::Any::from_msg(&as_proto)?)
+    }
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        let as_proto = any.to_msg::<crate::catalog::v1alpha1::LanceTable>()?;
+        Ok(as_proto.try_into()?)
+    }
+}
+
+// --- EntryKind ---
 
 impl EntryKind {
     pub fn display_name(&self) -> &'static str {
