@@ -558,7 +558,7 @@ impl FrameBuffer {
                 } else {
                     // This is the first frame we're receiving since the last decoder reset.
                     // We expect to always start at a sync-frame.
-                    // Sync frames should have DTS == PTS, therefore the first frame info should be correct.
+                    // Note that sync frames do _not_ imply DTS == PTS since DTS may start with a negative offset for some videos.
                     debug_assert!(
                         frame_info.is_sync,
                         "Expected first received frame after a decoder reset to be a sync-frame (start of group of pictures)."
