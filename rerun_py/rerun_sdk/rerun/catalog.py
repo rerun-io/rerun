@@ -117,6 +117,10 @@ class CatalogClient:
         """Creates a new dataset with the given name."""
         return self._raw_client.create_dataset(name)
 
+    def register_table(self, name: str, url: str) -> TableEntry:
+        """Registers a foreign Lance table (identified by its URL) as a new table entry with the given name."""
+        return self._raw_client.register_table(name, url)
+
     @property
     def ctx(self) -> datafusion.SessionContext:
         """Returns a DataFusion session context for querying the catalog."""
