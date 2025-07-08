@@ -319,6 +319,7 @@ pub struct FrameContent {
     pub format: PixelFormat,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl re_byte_size::SizeBytes for FrameContent {
     fn heap_size_bytes(&self) -> u64 {
         let Self {

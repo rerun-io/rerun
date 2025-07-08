@@ -18,6 +18,12 @@ use crate::{Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDeta
 #[repr(transparent)]
 pub struct WebVideoFrame(web_sys::VideoFrame);
 
+impl re_byte_size::SizeBytes for WebVideoFrame {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // unknown, and hopefully VRAM
+    }
+}
+
 impl Drop for WebVideoFrame {
     fn drop(&mut self) {
         self.0.close();
