@@ -33,6 +33,17 @@ pub struct MeshCacheKey {
     pub media_type: Option<MediaType>,
 }
 
+impl re_byte_size::SizeBytes for MeshCacheKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            versioned_instance_path_hash: _,
+            query_result_hash: _,
+            media_type,
+        } = self;
+        media_type.heap_size_bytes()
+    }
+}
+
 /// Caches meshes based on their [`MeshCacheKey`].
 #[derive(Default)]
 pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>>);
@@ -87,21 +98,7 @@ impl Cache for MeshCache {
     }
 
     fn bytes_used(&self) -> u64 {
-        // Can't use the default implementation for `HashMap`,
-        // because we don't want to amortize `Arc` as zero bytes, as is the default.
-        self.0
-            .iter()
-            .map(|(key, map)| {
-                std::mem::size_of_val(key) as u64
-                    + map
-                        .iter()
-                        .map(|(key, mesh)| {
-                            std::mem::size_of_val(key) as u64
-                                + mesh.as_deref().map_or(0, |mesh| mesh.total_size_bytes())
-                        })
-                        .sum::<u64>()
-            })
-            .sum::<u64>()
+        self.0.total_size_bytes()
     }
 
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {

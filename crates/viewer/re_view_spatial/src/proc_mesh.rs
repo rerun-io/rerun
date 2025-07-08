@@ -87,6 +87,12 @@ pub enum ProcMeshKey {
     },
 }
 
+impl re_byte_size::SizeBytes for ProcMeshKey {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl ProcMeshKey {
     /// Returns the bounding box which can be computed from the mathematical shape,
     /// without regard for its exact approximation as a mesh.
@@ -216,10 +222,7 @@ impl Cache for WireframeCache {
     }
 
     fn bytes_used(&self) -> u64 {
-        self.0
-            .values()
-            .map(|v| v.as_ref().map_or(0, |mesh| mesh.as_ref().heap_size_bytes()))
-            .sum()
+        self.0.total_size_bytes()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
