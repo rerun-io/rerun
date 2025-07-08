@@ -1,12 +1,14 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
-use re_memory::{MemoryHistory, MemoryLimit, MemoryUse, util::sec_since_start};
-use re_query::{CacheStats, CachesStats};
+use re_memory::{MemoryLimit, MemoryUse, util::sec_since_start};
+use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+
+use super::memory_history::MemoryHistory;
 
 // ----------------------------------------------------------------------------
 
@@ -24,21 +26,7 @@ impl MemoryPanel {
         store_stats: Option<&StoreHubStats>,
     ) {
         re_tracing::profile_function!();
-        self.history.capture(
-            Some(
-                (gpu_resource_stats.total_buffer_size_in_bytes
-                    + gpu_resource_stats.total_texture_size_in_bytes) as _,
-            ),
-            store_stats.map(|stats| {
-                (stats.recording_stats2.static_chunks.total_size_bytes
-                    + stats.recording_stats2.temporal_chunks.total_size_bytes) as _
-            }),
-            store_stats.map(|stats| stats.recording_cached_stats.total_size_bytes() as _),
-            store_stats.map(|stats| {
-                (stats.blueprint_stats.static_chunks.total_size_bytes
-                    + stats.blueprint_stats.temporal_chunks.total_size_bytes) as _
-            }),
-        );
+        self.history.capture(Some(gpu_resource_stats), store_stats);
     }
 
     /// Note that we purged memory at this time, to show in stats.
@@ -94,27 +82,20 @@ impl MemoryPanel {
 
         if let Some(store_stats) = store_stats {
             ui.separator();
-            ui.collapsing("Datastore Resources", |ui| {
-                Self::store_stats2(
-                    ui,
-                    &store_stats.recording_config2,
-                    &store_stats.recording_stats2,
-                );
-            });
 
-            ui.separator();
-            ui.collapsing("Primary Cache Resources", |ui| {
-                Self::caches_stats(ui, &store_stats.recording_cached_stats);
-            });
+            for (store_id, store_stats) in &store_stats.store_stats {
+                let title = format!("{} {}", store_id.kind, store_id.id);
+                ui.collapsing_header(&title, false, |ui| {
+                    ui.collapsing("Datastore Resources", |ui| {
+                        Self::store_stats(ui, &store_stats.store_config, &store_stats.store_stats);
+                    });
 
-            ui.separator();
-            ui.collapsing("Blueprint Resources", |ui| {
-                Self::store_stats2(
-                    ui,
-                    &store_stats.blueprint_config,
-                    &store_stats.blueprint_stats,
-                );
-            });
+                    ui.separator();
+                    ui.collapsing("Primary Query Caches", |ui| {
+                        Self::caches_stats(ui, &store_stats.query_cache_stats);
+                    });
+                });
+            }
         }
     }
 
@@ -211,7 +192,7 @@ impl MemoryPanel {
             });
     }
 
-    fn store_stats2(
+    fn store_stats(
         ui: &mut egui::Ui,
         store_config: &ChunkStoreConfig,
         store_stats: &ChunkStoreStats,
@@ -263,8 +244,8 @@ impl MemoryPanel {
             });
     }
 
-    fn caches_stats(ui: &mut egui::Ui, caches_stats: &CachesStats) {
-        let CachesStats { latest_at, range } = caches_stats;
+    fn caches_stats(ui: &mut egui::Ui, caches_stats: &QueryCachesStats) {
+        let QueryCachesStats { latest_at, range } = caches_stats;
 
         if !latest_at.is_empty() {
             ui.separator();
@@ -287,7 +268,7 @@ impl MemoryPanel {
                             ui.end_row();
 
                             for (cache_key, stats) in latest_at {
-                                let &CacheStats {
+                                let &QueryCacheStats {
                                     total_chunks,
                                     total_effective_size_bytes,
                                     total_actual_size_bytes,
@@ -325,7 +306,7 @@ impl MemoryPanel {
                             ui.end_row();
 
                             for (cache_key, stats) in range {
-                                let &CacheStats {
+                                let &QueryCacheStats {
                                     total_chunks,
                                     total_effective_size_bytes,
                                     total_actual_size_bytes,
@@ -443,9 +424,7 @@ impl MemoryPanel {
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
                 if let Some(max_bytes) = limit.max_bytes {
-                    plot_ui.hline(
-                        egui_plot::HLine::new("Limit (counted)", max_bytes as f64).width(2.0),
-                    );
+                    plot_ui.hline(egui_plot::HLine::new("Limit", max_bytes as f64).width(2.0));
                 }
 
                 for &time in &self.memory_purge_times {
@@ -458,19 +437,23 @@ impl MemoryPanel {
 
                 let MemoryHistory {
                     resident,
-                    counted,
-                    counted_gpu,
-                    counted_store,
-                    counted_primary_caches,
-                    counted_blueprint,
+                    counted_allocator,
+                    counted_vram,
+                    counted_blueprints,
+                    counted_recordings,
+                    counted_query_caches,
+                    counted_viewer_caches,
+                    counted_table_stores,
                 } = &self.history;
 
                 plot_ui.line(to_line("Resident", resident).width(1.5));
-                plot_ui.line(to_line("Counted", counted).width(1.5));
-                plot_ui.line(to_line("Counted GPU", counted_gpu).width(1.5));
-                plot_ui.line(to_line("Counted store 2", counted_store).width(1.5));
-                plot_ui.line(to_line("Counted primary caches", counted_primary_caches).width(1.5));
-                plot_ui.line(to_line("Counted blueprint", counted_blueprint).width(1.5));
+                plot_ui.line(to_line("Allocator", counted_allocator).width(1.5));
+                plot_ui.line(to_line("VRAM", counted_vram).width(1.5));
+                plot_ui.line(to_line("Blueprints", counted_blueprints).width(1.5));
+                plot_ui.line(to_line("Recordings", counted_recordings).width(1.5));
+                plot_ui.line(to_line("Query caches", counted_query_caches).width(1.5));
+                plot_ui.line(to_line("Viewer caches", counted_viewer_caches).width(1.5));
+                plot_ui.line(to_line("Table stores", counted_table_stores).width(1.5));
             });
     }
 }
