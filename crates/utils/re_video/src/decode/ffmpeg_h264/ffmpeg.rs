@@ -194,8 +194,8 @@ struct FFmpegProcessAndListener {
 
     /// Number of samples submitted to ffmpeg that has not yet been outputted by ffmpeg.
     ///
-    /// This is a counter for debugging purposes only.
-    outstanding_frames: Arc<AtomicI32>,
+    /// This counter is for debugging purposes only.
+    num_outstanding_frames: Arc<AtomicI32>,
 
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
@@ -346,7 +346,7 @@ impl FFmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
-            outstanding_frames,
+            num_outstanding_frames: outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -379,7 +379,7 @@ impl FFmpegProcessAndListener {
                 },
             )
         } else {
-            self.outstanding_frames.fetch_add(1, Ordering::Relaxed);
+            self.num_outstanding_frames.fetch_add(1, Ordering::Relaxed);
 
             Ok(())
         }
@@ -450,7 +450,7 @@ impl Drop for FFmpegProcessAndListener {
 
         re_log::trace!(
             "Outstanding frames after shutting down ffmpeg: {}",
-            self.outstanding_frames.load(Ordering::Relaxed)
+            self.num_outstanding_frames.load(Ordering::Relaxed)
         );
     }
 }
