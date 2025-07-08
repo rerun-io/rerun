@@ -7315,7 +7315,6 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.15",
  "itertools 0.14.0",
- "re_arrow_util",
  "re_dataframe",
  "re_grpc_client",
  "re_log_encoding",
