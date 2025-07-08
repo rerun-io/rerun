@@ -394,7 +394,7 @@ impl re_byte_size::SizeBytes for SamplesStatistics {
         } = self;
         has_sample_highest_pts_so_far
             .as_ref()
-            .map_or(0, |bitvec| bitvec.len() as u64 / 8)
+            .map_or(0, |bitvec| bitvec.capacity() as u64 / 8)
     }
 }
 
