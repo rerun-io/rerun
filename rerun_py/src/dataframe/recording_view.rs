@@ -291,14 +291,8 @@ impl PyRecordingView {
     ///
     ///     The original view will not be modified.
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed a sequence.
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this check? If so, how can we accomplish it?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not a sequence.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
@@ -362,14 +356,8 @@ impl PyRecordingView {
     ///
     ///     The original view will not be modified.
     fn filter_range_secs(&self, start: f64, end: f64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed temporal.
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this check? If so, how can we accomplish it?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not temporal.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
@@ -420,14 +408,8 @@ impl PyRecordingView {
     ///
     ///     The original view will not be modified.
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed temporal.
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not temporal.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
