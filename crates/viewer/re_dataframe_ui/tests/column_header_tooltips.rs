@@ -69,7 +69,7 @@ fn test_column_header_tooltips() {
 
             harness.run();
             harness.snapshot_options(
-                &format!(
+                format!(
                     "header_tooltip_{description}{}",
                     if show_extras { "_with_extras" } else { "" }
                 ),
