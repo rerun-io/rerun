@@ -627,6 +627,7 @@ impl PyDatasetEntry {
         })
     }
 
+    /// Perform maintenance tasks on the datasets.
     #[instrument(skip_all, err)]
     fn do_maintenance(
         self_: PyRef<'_, Self>,
