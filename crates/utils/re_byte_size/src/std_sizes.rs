@@ -119,7 +119,11 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
 impl<T: SizeBytes> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0 // assume it's amortized
+        if Self::strong_count(self) == 1 {
+            T::total_size_bytes(&**self)
+        } else {
+            0 // assume it's amortized
+        }
     }
 }
 
