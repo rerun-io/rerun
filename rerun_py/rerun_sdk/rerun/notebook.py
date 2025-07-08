@@ -368,8 +368,6 @@ class Viewer:
         """
         Set the active partition url for the viewer.
 
-        This is equivalent to clicking on the partition in the dataset table.
-
         Parameters
         ----------
         url: str

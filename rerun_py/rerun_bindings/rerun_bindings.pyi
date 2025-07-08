@@ -606,7 +606,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
-# TODO(#9187): this will be entirely replaced with `RecordingStream` is qitself written in Rust
+# TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
     def is_forked_child(self) -> bool:
         """
