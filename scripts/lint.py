@@ -1257,7 +1257,7 @@ def main() -> None:
                 num_errors += lint_file(filepath, args)
     else:
         for root, dirs, files in os.walk(".", topdown=True):
-            dirs[:] = [d for d in dirs if not should_ignore(d)]
+            dirs[:] = [d for d in dirs if not should_ignore(os.path.join(root, d))]
 
             for filename in files:
                 extension = filename.split(".")[-1]
