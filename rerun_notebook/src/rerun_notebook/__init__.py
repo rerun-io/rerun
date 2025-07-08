@@ -154,6 +154,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _width = traitlets.Int(allow_none=True).tag(sync=True)
     _height = traitlets.Int(allow_none=True).tag(sync=True)
 
+    # TODO(nick): This traitlet is only used for initialization
+    # we should figure out how to pass directly and remove it
     _url = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     _panel_states = traitlets.Dict(
@@ -262,7 +264,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self.send({"type": "recording_id", "recording_id": recording_id})
 
     def set_active_partition_url(self, url: str) -> None:
-        self._partition_url = url
+        self.send({"type": "partition_url", "partition_url": url})
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
