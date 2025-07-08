@@ -64,6 +64,10 @@ def test_bad_any_value() -> None:
 
         assert "Converting data for 'good_data':" in str(warnings[0].message)
 
+    with pytest.raises(ValueError):
+        non_keyword_arg = 1
+        rr.AnyValues(non_keyword_arg)
+
 
 def test_none_any_value() -> None:
     with pytest.warns(RerunWarning) as warnings:
