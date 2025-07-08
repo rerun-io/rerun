@@ -399,6 +399,31 @@ impl TryFrom<crate::catalog::v1alpha1::RegisterTableRequest> for RegisterTableRe
     }
 }
 
+// --- RegisterTableResponse ---
+
+#[derive(Debug, Clone)]
+pub struct RegisterTableResponse {
+    pub table_entry: TableEntry,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::RegisterTableResponse> for RegisterTableResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::RegisterTableResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table_entry: value
+                .table_entry
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::RegisterTableResponse,
+                    "table_entry"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
 // --- TableEntry ---
 
 #[derive(Debug, Clone)]

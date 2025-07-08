@@ -49,6 +49,8 @@ message CreateDatasetEntryRequest {
   // The name is a short human-readable string
   // TODO(jleibs): Define valid name constraints
   optional string name = 1;
+
+  //TODO(ab): add IfExistingBehavior?
 }
 
 message CreateDatasetEntryResponse {
@@ -92,12 +94,14 @@ message RegisterTableRequest {
   //
   // This must be encoded message of one one of the following supported types:
   // - rerun.catalog.v1alpha1.LanceTable
-  google.protobuf.Any provider_details = 3;
+  google.protobuf.Any provider_details = 2;
+
+  //TODO(ab): add IfExistingBehavior?
 }
 
 message RegisterTableResponse {
   // Details about the table that was created and registered.
-  TableEntry table = 1;
+  TableEntry table_entry = 1;
 }
 
 // ReadTableEntry

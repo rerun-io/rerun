@@ -163,7 +163,7 @@ pub struct RegisterTableRequest {
     ///
     /// This must be encoded message of one one of the following supported types:
     /// - rerun.catalog.v1alpha1.LanceTable
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
 }
 impl ::prost::Name for RegisterTableRequest {
@@ -180,7 +180,7 @@ impl ::prost::Name for RegisterTableRequest {
 pub struct RegisterTableResponse {
     /// Details about the table that was created and registered.
     #[prost(message, optional, tag = "1")]
-    pub table: ::core::option::Option<TableEntry>,
+    pub table_entry: ::core::option::Option<TableEntry>,
 }
 impl ::prost::Name for RegisterTableResponse {
     const NAME: &'static str = "RegisterTableResponse";

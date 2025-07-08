@@ -1,10 +1,10 @@
+use pyo3::exceptions::PyValueError;
 use pyo3::{
     Py, PyAny, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
-
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::{
@@ -271,6 +271,33 @@ impl PyCatalogClientInternal {
         };
 
         Py::new(py, (dataset, entry))
+    }
+
+    fn register_table(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: String,
+        url: String,
+    ) -> PyResult<Py<PyTableEntry>> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        let url = url
+            .parse::<url::Url>()
+            .map_err(|e| PyValueError::new_err(format!("Invalid URL: {e}")))?;
+
+        let table_entry = connection.register_table(py, name, url)?;
+
+        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+
+        let entry = PyEntry {
+            client: self_.clone_ref(py),
+            id: entry_id,
+            details: table_entry.details,
+        };
+
+        let table = PyTableEntry::default();
+
+        Py::new(py, (table, entry))
     }
 
     /// The DataFusion context (if available).
