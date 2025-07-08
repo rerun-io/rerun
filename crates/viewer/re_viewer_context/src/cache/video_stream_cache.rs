@@ -470,6 +470,7 @@ impl Cache for VideoStreamCache {
             .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
 
         // Of the remaining video data, remove all unused decoders.
+        #[expect(clippy::iter_over_hash_type)]
         for entry in self.0.values_mut() {
             entry.used_this_frame.store(false, Ordering::Release);
             let video_stream = entry.video_stream.write();
@@ -498,6 +499,7 @@ impl Cache for VideoStreamCache {
                 continue;
             }
 
+            #[expect(clippy::iter_over_hash_type)] //  TODO(#6198): verify that this is fine
             for timeline in event.chunk.timelines().keys() {
                 let key = VideoStreamKey {
                     entity_path: event.chunk.entity_path().hash(),

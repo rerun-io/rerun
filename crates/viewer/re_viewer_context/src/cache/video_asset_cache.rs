@@ -97,6 +97,7 @@ impl Cache for VideoAssetCache {
         });
 
         // Of the remaining video data, remove all unused decoders.
+        #[expect(clippy::iter_over_hash_type)]
         for per_key in self.0.values() {
             for v in per_key.values() {
                 v.used_this_frame.store(false, Ordering::Release);

@@ -201,6 +201,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 continue;
             }
 
+            #[expect(clippy::iter_over_hash_type)]
             for (component_desc, list_array) in event.diff.chunk.components().iter() {
                 if let Some(index) = self.required_components_indices.get(component_desc) {
                     // The component might be present, but logged completely empty.

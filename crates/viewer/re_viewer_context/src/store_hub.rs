@@ -839,6 +839,7 @@ impl StoreHub {
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
 
+        #[expect(clippy::iter_over_hash_type)]
         for (app_id, blueprint_id) in &self.active_blueprint_by_app_id {
             if app_id == &Self::welcome_screen_app_id() {
                 continue; // Don't save changes to the welcome screen

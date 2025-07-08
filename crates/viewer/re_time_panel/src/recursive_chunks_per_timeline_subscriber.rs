@@ -78,6 +78,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     fn add_chunk(&mut self, chunk: &Arc<Chunk>) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for (timeline, time_column) in chunk.timelines() {
             let chunks_per_entities = self
                 .chunks_per_timeline_per_entity
@@ -107,6 +108,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     fn remove_chunk(&mut self, chunk: &Chunk) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for timeline in chunk.timelines().keys() {
             let Some(chunks_per_entities) = self.chunks_per_timeline_per_entity.get_mut(timeline)
             else {
