@@ -20,7 +20,7 @@ pub struct WebVideoFrame(web_sys::VideoFrame);
 
 impl re_byte_size::SizeBytes for WebVideoFrame {
     fn heap_size_bytes(&self) -> u64 {
-        0 // unknown, and hopefully VRAM
+        0 // Part of Browser's memory, not wasm heap.
     }
 }
 
