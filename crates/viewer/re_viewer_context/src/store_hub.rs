@@ -702,13 +702,13 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
+        for cache in self.caches_per_recording.values_mut() {
+            cache.purge_memory();
+        }
+
         let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
             return;
         };
-
-        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-            caches.purge_memory();
-        }
 
         let store_bundle = &mut self.store_bundle;
 
@@ -833,11 +833,14 @@ impl StoreHub {
 
     /// See [`crate::Caches::begin_frame`].
     pub fn begin_frame_caches(&mut self) {
-        if let Some(store_id) = self.active_recording_id().cloned() {
-            if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+        self.caches_per_recording.retain(|store_id, caches| {
+            if self.store_bundle.contains(store_id) {
                 caches.begin_frame();
+                true // keep caches for existing recordings
+            } else {
+                false // remove caches for recordings that no longer exist
             }
-        }
+        });
     }
 
     /// Persist any in-use blueprints to durable storage.
