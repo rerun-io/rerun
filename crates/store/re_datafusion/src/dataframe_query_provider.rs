@@ -36,7 +36,6 @@ const DEFAULT_BATCH_SIZE: usize = 2048;
 
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
-    // partition_streams: Vec<Arc<DataframePartitionStream>>,
     query_engines: Vec<(String, QueryEngine<StorageEngine>)>,
     query_expression: QueryExpression,
     sort_index: Option<Index>,
