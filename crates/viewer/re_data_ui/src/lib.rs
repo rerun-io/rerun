@@ -2,6 +2,8 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use re_log_types::EntityPath;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_types::{ComponentDescriptor, RowId};

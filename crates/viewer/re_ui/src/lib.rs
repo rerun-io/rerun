@@ -1,5 +1,7 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 pub mod alert;
 mod color_table;
 mod command;
