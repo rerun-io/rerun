@@ -48,4 +48,6 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+egui_kittest.workspace = true
+itertools.workspace = true
 static_assertions.workspace = true

@@ -36,7 +36,7 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
-    for (snapshot_name, should_expand) in &[
+    for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
     ] {
@@ -73,7 +73,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         viewer_ctx,
                         &view_id,
                         CollapseScope::BlueprintTree,
-                        *should_expand,
+                        should_expand,
                     );
 
                     let blueprint = ViewportBlueprint::from_db(

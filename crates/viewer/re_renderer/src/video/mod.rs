@@ -31,7 +31,7 @@ pub enum VideoPlayerError {
     #[error("Failed to decode video chunk: {0}")]
     DecodeChunk(String),
 
-    /// e.g. unsupported codec
+    /// Various errors that can occur during video decoding.
     #[error("Failed to decode video: {0}")]
     Decoding(#[from] re_video::DecodeError),
 
@@ -53,7 +53,10 @@ impl VideoPlayerError {
     pub fn should_request_more_frames(&self) -> bool {
         // Decoders often (not always!) recover from errors and will succeed eventually.
         // Gotta keep trying!
-        matches!(self, Self::DecodeChunk(_))
+        match self {
+            Self::Decoding(err) => err.should_request_more_frames(),
+            _ => false,
+        }
     }
 }
 

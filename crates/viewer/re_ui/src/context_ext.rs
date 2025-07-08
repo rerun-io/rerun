@@ -98,17 +98,8 @@ pub trait ContextExt {
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
-        let make_room_for_window_buttons = !style_like_web && {
-            #[cfg(target_os = "macos")]
-            {
-                crate::FULLSIZE_CONTENT && !fullscreen
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                _ = fullscreen;
-                false
-            }
-        };
+        let make_room_for_window_buttons =
+            !style_like_web && cfg!(target_os = "macos") && crate::FULLSIZE_CONTENT && !fullscreen;
 
         let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
@@ -150,6 +141,13 @@ pub trait ContextExt {
             mesh.add_rect_with_uv(rect, uv, self.ctx().tokens().strong_fg_color);
             self.ctx().debug_painter().add(Shape::mesh(mesh));
         }
+    }
+
+    /// Whether to show extra information in the UI, e.g. in tooltips.
+    ///
+    /// This is controlled by holding the `Alt` key down.
+    fn show_extras(&self) -> bool {
+        self.ctx().input(|input| input.modifiers.alt)
     }
 }
 

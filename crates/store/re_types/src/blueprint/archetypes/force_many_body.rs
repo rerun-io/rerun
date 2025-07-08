@@ -167,14 +167,10 @@ impl ::re_types_core::AsComponents for ForceManyBody {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.enabled.clone(),
-            self.strength.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.enabled.clone(), self.strength.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

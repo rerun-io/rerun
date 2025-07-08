@@ -237,7 +237,6 @@ impl ::re_types_core::AsComponents for DataframeQuery {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.timeline.clone(),
             self.filter_by_range.clone(),
             self.filter_is_not_null.clone(),

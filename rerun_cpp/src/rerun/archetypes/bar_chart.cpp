@@ -17,17 +17,13 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> BarChart::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(2);
         if (values.has_value()) {
             columns.push_back(values.value().partitioned(lengths_).value_or_throw());
         }
         if (color.has_value()) {
             columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<BarChart>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -49,18 +45,13 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(2);
 
         if (archetype.values.has_value()) {
             cells.push_back(archetype.values.value());
         }
         if (archetype.color.has_value()) {
             cells.push_back(archetype.color.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<BarChart>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -19,9 +19,15 @@ impl App {
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
-        // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
-        let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
-        let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
+        let desired_icon_height = if ui.max_rect().height() <= 24.0 {
+            // This is a bit of a hack to produce a sharp logo on mac on low-DPI screens.
+            // At a 16x16 size, the Rerun logo SVG just happens to have all its vertical
+            // lines at even pixel positions, making it look sharp and nice.
+            16.0
+        } else {
+            ui.max_rect().height() - 4.0
+        };
+        let desired_icon_height = desired_icon_height.at_most(28.0);
 
         let image = re_ui::icons::RERUN_MENU
             .as_image()

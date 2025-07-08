@@ -58,7 +58,8 @@ pub trait Archetype {
     /// Returns all component descriptors that _should_ be provided by the user when constructing this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
-        std::borrow::Cow::Owned(vec![Self::indicator().descriptor.clone()])
+        // TODO(#10512): Maybe add the "marker" component back here?
+        std::borrow::Cow::Owned(vec![])
     }
 
     /// Returns all component descriptors that _may_ be provided by the user when constructing this archetype.
