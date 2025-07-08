@@ -256,14 +256,22 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Flush and then cleanup any orphaned recordings
 #[pyfunction]
 fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
+    // Start by clearing the current global data recording. Otherwise this holds
+    // a reference to the recording, which prevents it from being dropped.
+    set_global_data_recording(py, None);
+
     py.allow_threads(|| {
-        // Flush all recordings before cleaning them up.
+        // Now flush all recordings to handle weird cases where the data in the queue
+        // is actually holding onto the ref to the recording.
         for recording in all_recordings().iter() {
             recording.flush_blocking();
         }
 
-        // Remove any recordings that have a refcount of 1, which means they are no longer being
-        // used by the Python SDK.
+        // Flush the garbage queue.
+        flush_garbage_queue();
+
+        // Finally remove any recordings that have a refcount of 1, which means they are ONLY
+        // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
     });
 }

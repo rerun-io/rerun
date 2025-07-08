@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 
 import rerun as rr
+import platform
 
 
 def test_init_twice() -> None:
@@ -42,3 +43,41 @@ def test_isolated_streams() -> None:
 
         assert rec1_data.view(index="log_tick", contents="/data1").select().read_all().num_rows == 1
         assert rec2_data.view(index="log_tick", contents="/data2").select().read_all().num_rows == 1
+
+
+def test_cleanup_reinit() -> None:
+    system = platform.system()
+    if system == "Linux":
+        import os
+
+        def is_file_open(file_path: str) -> bool:
+            file_path = os.path.realpath(file_path)
+
+            fd_dir = f"/proc/self/fd"
+            if not os.path.isdir(fd_dir):
+                return False  # Only works on platforms with /proc
+
+            try:
+                for fd in os.listdir(fd_dir):
+                    try:
+                        target = os.readlink(os.path.join(fd_dir, fd))
+                        if os.path.samefile(file_path, target):
+                            return True
+                    except (FileNotFoundError, PermissionError, OSError):
+                        continue
+            except Exception:
+                pass
+
+            return False
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rec_path = f"{tmpdir}/my_rec.rrd"
+            rr.init("rerun_example_reinit")
+            rr.save(rec_path)
+            rr.log("/data1", rr.TextLog("Data1"))
+
+            assert is_file_open(rec_path), "Recording file should be open after saving"
+
+            rr.init("rerun_example_reinit")
+
+            assert not is_file_open(rec_path), "Recording file should be closed after calling rr.init"
