@@ -108,6 +108,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 }
             }
 
+            #[expect(clippy::iter_over_hash_type)] // order doesn't matter - we're taking a max
             for (descr, list_array) in components.iter() {
                 let Some(archetype_name) = descr.archetype else {
                     // Don't care about non-builtin types, therefore archetype name should be present.

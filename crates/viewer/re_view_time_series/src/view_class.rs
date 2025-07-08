@@ -283,6 +283,7 @@ impl ViewClass for TimeSeriesView {
         // If there's other entities that have the right indicator & didn't match the above,
         // spawn a time series view for each child of the root that has any entities with the right indicator.
         let mut child_of_root_entities = HashSet::default();
+        #[expect(clippy::iter_over_hash_type)]
         for entity in indicated_entities.iter() {
             if let Some(child_of_root) = entity.iter().next() {
                 child_of_root_entities.insert(child_of_root);

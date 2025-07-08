@@ -12,6 +12,8 @@ impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
+
+        #[expect(clippy::iter_over_hash_type)]
         for cache in self.0.lock().values_mut() {
             cache.begin_frame();
         }
@@ -20,6 +22,8 @@ impl Caches {
     /// Attempt to free up memory.
     pub fn purge_memory(&self) {
         re_tracing::profile_function!();
+
+        #[expect(clippy::iter_over_hash_type)]
         for cache in self.0.lock().values_mut() {
             cache.purge_memory();
         }
@@ -31,6 +35,7 @@ impl Caches {
     pub fn on_store_events(&self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for cache in self.0.lock().values_mut() {
             cache.on_store_events(events);
         }

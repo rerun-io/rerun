@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
