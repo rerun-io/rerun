@@ -8,7 +8,7 @@ use egui::{
 
 use crate::alert::Alert;
 use crate::{
-    DesignTokens, Icon, LabelStyle, icons,
+    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
     list_item::{self, LabelContent},
 };
 
@@ -1240,6 +1240,38 @@ pub trait UiExt {
         } else {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
+    }
+
+    /// Display some UI that may optionally include extras (see [`crate::ContextExt::show_extras`]).
+    ///
+    /// This assumes that the content will change based on whether extras are shown or not, so it
+    /// takes care of triggering a sizing pass and repaint as required.
+    ///
+    /// The closure is passed a `bool` indicating whether extras are shown or not.
+    fn with_optional_extras<R>(&mut self, content: impl FnOnce(&mut egui::Ui, bool) -> R) -> R {
+        let ui = self.ui_mut();
+
+        let show_extras = ui.ctx().show_extras();
+
+        let content_changed = ui.data_mut(|data| {
+            let stored_show_extras = data
+                .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
+            if *stored_show_extras != show_extras {
+                *stored_show_extras = show_extras;
+                true
+            } else {
+                false
+            }
+        });
+
+        let mut builder = egui::UiBuilder::new();
+        if content_changed {
+            builder = builder.sizing_pass();
+            ui.ctx().request_repaint();
+        }
+
+        ui.scope_builder(builder, |ui| content(ui, show_extras))
+            .inner
     }
 }
 
