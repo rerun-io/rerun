@@ -17,6 +17,9 @@ service CatalogService {
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
+  /// Register a foreign table as a new table entry in the catalog.
+  rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
+
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 }
 
@@ -75,6 +78,26 @@ message UpdateDatasetEntryRequest {
 message UpdateDatasetEntryResponse {
   // The updated dataset entry
   DatasetEntry dataset = 1;
+}
+
+
+// RegisterTable
+
+message RegisterTableRequest {
+  // The name is a short human-readable string
+  // TODO(jleibs): Define valid name constraints
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - rerun.catalog.v1alpha1.LanceTable
+  google.protobuf.Any provider_details = 3;
+}
+
+message RegisterTableResponse {
+  // Details about the table that was created and registered.
+  TableEntry table = 1;
 }
 
 // ReadTableEntry
@@ -170,4 +193,10 @@ enum SystemTableKind {
 
 message SystemTable {
   SystemTableKind kind = 1;
+}
+
+// A foreign table stored as a Lance table.
+message LanceTable {
+  // The URL of the Lance table.
+  string table_url = 1;
 }

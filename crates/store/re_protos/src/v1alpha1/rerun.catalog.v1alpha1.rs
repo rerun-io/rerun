@@ -153,6 +153,45 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
         "/rerun.catalog.v1alpha1.UpdateDatasetEntryResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableRequest {
+    /// The name is a short human-readable string
+    /// TODO(jleibs): Define valid name constraints
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Information about the table to register.
+    ///
+    /// This must be encoded message of one one of the following supported types:
+    /// - rerun.catalog.v1alpha1.LanceTable
+    #[prost(message, optional, tag = "3")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for RegisterTableRequest {
+    const NAME: &'static str = "RegisterTableRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.RegisterTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.RegisterTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableResponse {
+    /// Details about the table that was created and registered.
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for RegisterTableResponse {
+    const NAME: &'static str = "RegisterTableResponse";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.RegisterTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.RegisterTableResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ReadTableEntryRequest {
     #[prost(message, optional, tag = "1")]
@@ -304,6 +343,23 @@ impl ::prost::Name for SystemTable {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.catalog.v1alpha1.SystemTable".into()
+    }
+}
+/// A foreign table stored as a Lance table.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LanceTable {
+    /// The URL of the Lance table.
+    #[prost(string, tag = "1")]
+    pub table_url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for LanceTable {
+    const NAME: &'static str = "LanceTable";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.LanceTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.LanceTable".into()
     }
 }
 /// What type of entry. This has strong implication on which APIs are available for this entry.
@@ -553,6 +609,26 @@ pub mod catalog_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// / Register a foreign table as a new table entry in the catalog.
+        pub async fn register_table(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.catalog.v1alpha1.CatalogService/RegisterTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.catalog.v1alpha1.CatalogService",
+                "RegisterTable",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn read_table_entry(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadTableEntryRequest>,
@@ -607,6 +683,11 @@ pub mod catalog_service_server {
             &self,
             request: tonic::Request<super::UpdateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
+        /// / Register a foreign table as a new table entry in the catalog.
+        async fn register_table(
+            &self,
+            request: tonic::Request<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>;
         async fn read_table_entry(
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
@@ -878,6 +959,47 @@ pub mod catalog_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateDatasetEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.catalog.v1alpha1.CatalogService/RegisterTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct RegisterTableSvc<T: CatalogService>(pub Arc<T>);
+                    impl<T: CatalogService> tonic::server::UnaryService<super::RegisterTableRequest>
+                        for RegisterTableSvc<T>
+                    {
+                        type Response = super::RegisterTableResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::RegisterTableRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as CatalogService>::register_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = RegisterTableSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
