@@ -152,7 +152,9 @@ fn top_bar_ui(
         if let Some(wgpu) = frame.wgpu_render_state() {
             let info = wgpu.adapter.get_info();
             if info.device_type == wgpu::DeviceType::Cpu {
-                // TODO(#4304): replace with a panel showing recent log messages
+                // TODO(emilk): we could consider logging this as a warning instead,
+                // and relying on the notification panel to show it.
+                // However, this let's us customize the message a bit more, with links etc.
                 ui.hyperlink_to(
                     egui::RichText::new("⚠ Software rasterizer ⚠")
                         .small()
