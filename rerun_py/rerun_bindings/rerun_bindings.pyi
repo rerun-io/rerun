@@ -1211,7 +1211,6 @@ class DatasetEntry(Entry):
             The start time for the partition.
             Integer for ticks, or datetime/nanoseconds for timestamps.
 
-
         end: int | datetime | None
             The end time for the partition.
             Integer for ticks, or datetime/nanoseconds for timestamps.
