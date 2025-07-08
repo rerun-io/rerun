@@ -53,6 +53,16 @@ pub struct VersionedInstancePathHash {
     pub row_id: RowId,
 }
 
+impl re_byte_size::SizeBytes for VersionedInstancePathHash {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            instance_path_hash: _,
+            row_id: _,
+        } = self;
+        0
+    }
+}
+
 impl std::fmt::Debug for VersionedInstancePathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {

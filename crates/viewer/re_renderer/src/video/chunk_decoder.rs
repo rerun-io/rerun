@@ -32,6 +32,16 @@ struct DecoderOutput {
     error: Option<TimedDecodingError>,
 }
 
+impl re_byte_size::SizeBytes for DecoderOutput {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frames_by_pts,
+            error: _,
+        } = self;
+        frames_by_pts.heap_size_bytes()
+    }
+}
+
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
 ///
 /// Expected to be reset upon backwards seeking.
@@ -39,6 +49,17 @@ pub struct VideoSampleDecoder {
     debug_name: String,
     decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
+}
+
+impl re_byte_size::SizeBytes for VideoSampleDecoder {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            debug_name,
+            decoder: _, // TODO(emilk): maybe we should count this
+            decoder_output,
+        } = self;
+        debug_name.heap_size_bytes() + decoder_output.lock().heap_size_bytes()
+    }
 }
 
 impl VideoSampleDecoder {

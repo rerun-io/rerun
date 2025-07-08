@@ -89,6 +89,12 @@ pub struct VideoPlayer {
     decoder_delay_state: DecoderDelayState,
 }
 
+impl re_byte_size::SizeBytes for VideoPlayer {
+    fn heap_size_bytes(&self) -> u64 {
+        self.sample_decoder.heap_size_bytes()
+    }
+}
+
 impl Drop for VideoPlayer {
     fn drop(&mut self) {
         re_log::debug!("Dropping VideoPlayer {:?}", self.debug_name());

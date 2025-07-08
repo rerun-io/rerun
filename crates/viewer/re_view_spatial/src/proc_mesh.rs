@@ -8,6 +8,8 @@ use glam::{Vec3, Vec3A, uvec3, vec3};
 use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
 use ordered_float::NotNan;
+use re_byte_size::SizeBytes as _;
+use re_chunk_store::external::re_chunk::external::re_byte_size;
 use smallvec::smallvec;
 
 use macaw::MeshGen;
@@ -85,6 +87,12 @@ pub enum ProcMeshKey {
     },
 }
 
+impl re_byte_size::SizeBytes for ProcMeshKey {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl ProcMeshKey {
     /// Returns the bounding box which can be computed from the mathematical shape,
     /// without regard for its exact approximation as a mesh.
@@ -135,6 +143,20 @@ pub struct WireframeMesh {
     pub line_strips: Vec<Vec<Vec3>>,
 }
 
+impl re_byte_size::SizeBytes for WireframeMesh {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            bbox: _,
+            vertex_count: _,
+            line_strips,
+        } = self;
+        line_strips
+            .iter()
+            .map(|strip| strip.len() * std::mem::size_of::<Vec3>())
+            .sum::<usize>() as _
+    }
+}
+
 /// A renderable mesh generated from a [`ProcMeshKey`] by the [`SolidCache`],
 /// which is to be drawn as triangles rather than lines.
 ///
@@ -147,6 +169,12 @@ pub struct SolidMesh {
     /// Mesh to render. Note that its colors are set to black, so that the
     /// `MeshInstance::additive_tint` can be used to set the color per instance.
     pub gpu_mesh: Arc<GpuMesh>,
+}
+
+impl re_byte_size::SizeBytes for SolidMesh {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // Mostly VRAM
+    }
 }
 
 /// Errors that may arise from attempting to generate a mesh from a [`ProcMeshKey`].
@@ -191,6 +219,10 @@ impl WireframeCache {
 impl Cache for WireframeCache {
     fn purge_memory(&mut self) {
         self.0.clear();
+    }
+
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -481,6 +513,10 @@ impl SolidCache {
 impl Cache for SolidCache {
     fn purge_memory(&mut self) {
         self.0.clear();
+    }
+
+    fn bytes_used(&self) -> u64 {
+        0 // mostly VRAM
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

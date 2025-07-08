@@ -14,6 +14,16 @@ impl Timescale {
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Time(pub i64);
 
+impl re_byte_size::SizeBytes for Time {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// Round a `f64` to the nearest `i64`.
 ///
 /// Does not have exactly the same result as `round`, don't use in contexts where you care!

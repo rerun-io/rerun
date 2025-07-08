@@ -1,6 +1,7 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{archetypes::Tensor, datatypes::TensorData};
@@ -28,6 +29,10 @@ impl TensorStatsCache {
 impl Cache for TensorStatsCache {
     fn purge_memory(&mut self) {
         // Purging the tensor stats is not worth it - these are very small objects!
+    }
+
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
     }
 
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {

@@ -359,7 +359,7 @@ impl EntityPathFilter {
     /// Adds a rule to this filter.
     ///
     /// If there's already an effect for the rule, it is overwritten with the new effect.
-    pub fn add_rule(&mut self, effect: RuleEffect, rule: EntityPathRule) {
+    pub fn insert_rule(&mut self, effect: RuleEffect, rule: EntityPathRule) {
         self.rules.insert(rule, effect);
     }
 

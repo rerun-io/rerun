@@ -134,6 +134,11 @@ impl Cache for ImageDecodeCache {
         self.generation += 1;
     }
 
+    /// Total memory used by this cache, in bytes.
+    fn bytes_used(&self) -> u64 {
+        self.memory_used // we already have this pre-computed!
+    }
+
     fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 

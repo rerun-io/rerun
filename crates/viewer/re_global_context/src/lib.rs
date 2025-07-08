@@ -1,5 +1,7 @@
 //! State that is shared with most top-level crates.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod app_options;
 mod blueprint_id;
 mod command_sender;

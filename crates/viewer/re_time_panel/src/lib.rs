@@ -3,6 +3,8 @@
 //! This crate provides a panel that shows all entities in the store and allows control of time and
 //! timelines, as well as all necessary ui elements that make it up.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod data_density_graph;
 mod paint_ticks;
 mod recursive_chunks_per_timeline_subscriber;

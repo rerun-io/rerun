@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
@@ -10,7 +12,7 @@ use re_chunk_store::{
 use re_entity_db::{EntityDb, StoreBundle};
 use re_global_context::RecordingOrTable;
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
-use re_query::CachesStats;
+use re_query::QueryCachesStats;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{BlueprintUndoState, Caches, StorageContext, StoreContext, TableStore, TableStores};
@@ -53,7 +55,7 @@ pub struct StoreHub {
     /// These applications should enable the heuristics early next frame.
     should_enable_heuristics_by_app_id: HashSet<ApplicationId>,
 
-    /// Things that need caching.
+    /// Viewer caches (e.g. image decode cache).
     caches_per_recording: HashMap<StoreId, Caches>,
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last saved
@@ -82,16 +84,27 @@ pub struct BlueprintPersistence {
     pub validator: Option<Box<BlueprintValidator>>,
 }
 
+/// Convenient information used for `MemoryPanel`.
+///
+/// This is per [`StoreId`], which could be either a recording or a blueprint.
+pub struct StoreStats {
+    pub store_config: ChunkStoreConfig,
+    pub store_stats: ChunkStoreStats,
+
+    /// These are the query caches.
+    pub query_cache_stats: QueryCachesStats,
+
+    /// These are the viewer caches, e.g. image decode caches etc.
+    pub viewer_cache_size: u64,
+}
+
 /// Convenient information used for `MemoryPanel`
 #[derive(Default)]
 pub struct StoreHubStats {
-    pub blueprint_stats: ChunkStoreStats,
-    pub blueprint_cached_stats: CachesStats,
-    pub blueprint_config: ChunkStoreConfig,
+    pub store_stats: BTreeMap<StoreId, StoreStats>,
 
-    pub recording_stats2: ChunkStoreStats,
-    pub recording_cached_stats: CachesStats,
-    pub recording_config2: ChunkStoreConfig,
+    /// Memory used by each [`TableStore`].
+    pub table_stats: BTreeMap<TableId, u64>,
 }
 
 impl StoreHub {
@@ -689,13 +702,14 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
+        for cache in self.caches_per_recording.values_mut() {
+            cache.purge_memory();
+        }
+
         let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
             return;
         };
-
-        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-            caches.purge_memory();
-        }
 
         let store_bundle = &mut self.store_bundle;
 
@@ -820,11 +834,14 @@ impl StoreHub {
 
     /// See [`crate::Caches::begin_frame`].
     pub fn begin_frame_caches(&mut self) {
-        if let Some(store_id) = self.active_recording_id().cloned() {
-            if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+        self.caches_per_recording.retain(|store_id, caches| {
+            if self.store_bundle.contains(store_id) {
                 caches.begin_frame();
+                true // keep caches for existing recordings
+            } else {
+                false // remove caches for recordings that no longer exist
             }
-        }
+        });
     }
 
     /// Persist any in-use blueprints to durable storage.
@@ -839,6 +856,7 @@ impl StoreHub {
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
 
+        #[expect(clippy::iter_over_hash_type)]
         for (app_id, blueprint_id) in &self.active_blueprint_by_app_id {
             if app_id == &Self::welcome_screen_app_id() {
                 continue; // Don't save changes to the welcome screen
@@ -907,58 +925,52 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Populate a [`StoreHubStats`] based on the active app.
-    //
-    // TODO(jleibs): We probably want stats for all recordings, not just the active recording.
+    /// Populate a [`StoreHubStats`].
     pub fn stats(&self) -> StoreHubStats {
         re_tracing::profile_function!();
 
-        // If we have an app-id, then use it to look up the blueprint.
-        let blueprint = self
-            .active_application_id
-            .as_ref()
-            .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id))
-            .map(|entity_db| entity_db.storage_engine());
-        let blueprint = blueprint.as_ref();
+        let Self {
+            persistence: _,
+            active_recording_or_table: _,
+            active_application_id: _,
+            default_blueprint_by_app_id: _,
+            active_blueprint_by_app_id: _,
+            store_bundle,
+            table_stores,
+            should_enable_heuristics_by_app_id: _,
+            caches_per_recording,
+            blueprint_last_save: _,
+            blueprint_last_gc: _,
+        } = self;
 
-        let blueprint_stats = blueprint
-            .map(|engine| engine.store().stats())
-            .unwrap_or_default();
+        let mut store_stats = BTreeMap::new();
 
-        let blueprint_cached_stats = blueprint
-            .map(|engine| engine.cache().stats())
-            .unwrap_or_default();
+        for store in store_bundle.entity_dbs() {
+            let store_id = store.store_id();
+            let engine = store.storage_engine();
+            store_stats.insert(
+                store_id.clone(),
+                StoreStats {
+                    store_config: engine.store().config().clone(),
+                    store_stats: engine.store().stats(),
+                    query_cache_stats: engine.cache().stats(),
+                    viewer_cache_size: caches_per_recording
+                        .get(&store_id)
+                        .map_or(0, |caches| caches.total_size_bytes()),
+                },
+            );
+        }
 
-        let blueprint_config = blueprint
-            .map(|engine| engine.store().config().clone())
-            .unwrap_or_default();
+        let mut table_stats = BTreeMap::new();
 
-        let recording = self
-            .active_recording()
-            .map(|entity_db| entity_db.storage_engine());
-        let recording = recording.as_ref();
-
-        let recording_stats2 = recording
-            .map(|engine| engine.store().stats())
-            .unwrap_or_default();
-
-        let recording_cached_stats = recording
-            .map(|engine| engine.cache().stats())
-            .unwrap_or_default();
-
-        let recording_config2 = recording
-            .map(|engine| engine.store().config().clone())
-            .unwrap_or_default();
+        #[expect(clippy::iter_over_hash_type)]
+        for (table_id, table_store) in table_stores {
+            table_stats.insert(table_id.clone(), table_store.total_size_bytes());
+        }
 
         StoreHubStats {
-            blueprint_stats,
-            blueprint_cached_stats,
-            blueprint_config,
-
-            recording_stats2,
-            recording_cached_stats,
-            recording_config2,
+            store_stats,
+            table_stats,
         }
     }
 }
