@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import platform
 import tempfile
 
 import rerun as rr
-import platform
 
 
 def test_init_twice() -> None:
@@ -53,7 +53,7 @@ def test_cleanup_reinit() -> None:
         def is_file_open(file_path: str) -> bool:
             file_path = os.path.realpath(file_path)
 
-            fd_dir = f"/proc/self/fd"
+            fd_dir = "/proc/self/fd"
             if not os.path.isdir(fd_dir):
                 return False  # Only works on platforms with /proc
 
