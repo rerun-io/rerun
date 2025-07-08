@@ -119,6 +119,11 @@ service FrontendService {
 
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
+
+  // -- Utilities --
+
+  // Maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
 }
 
 message VersionRequest {}
@@ -312,4 +317,11 @@ message ScanTableRequest {
 
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  bool build_scalar_indexes = 2;
+  bool compact_fragments = 3;
 }

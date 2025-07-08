@@ -2,6 +2,8 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod annotations;
 mod async_runtime_handle;
 mod blueprint_helpers;

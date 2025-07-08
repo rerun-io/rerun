@@ -108,14 +108,12 @@ pub enum DecodeError {
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
 
-    #[cfg(with_dav1d)]
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
 
     #[error(
         "Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755"
     )]
-    #[cfg(linux_arm64)]
     NoDav1dOnLinuxArm64,
 
     #[cfg(target_arch = "wasm32")]
@@ -128,6 +126,32 @@ pub enum DecodeError {
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
+}
+
+impl DecodeError {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Decoders often (not always!) recover from errors and will succeed eventually.
+        // Gotta keep trying!
+        match self {
+            // Unsupported codec / decoder not available:
+            Self::UnsupportedCodec(_) | Self::Dav1dWithoutNasm | Self::NoDav1dOnLinuxArm64 => false,
+
+            // Issue with AV1 decoding.
+            #[cfg(with_dav1d)]
+            Self::Dav1d(_) => true,
+
+            // Issue with WebCodecs decoding.
+            #[cfg(target_arch = "wasm32")]
+            Self::WebDecoder(_) => true,
+
+            // Issue with FFmpeg decoding.
+            #[cfg(with_ffmpeg)]
+            Self::Ffmpeg(err) => err.should_request_more_frames(),
+
+            // Unsupported format.
+            Self::BadBitsPerComponent(_) => false,
+        }
+    }
 }
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
@@ -296,6 +320,19 @@ pub struct FrameContent {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl re_byte_size::SizeBytes for FrameContent {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            data,
+            width: _,
+            height: _,
+            format: _,
+        } = self;
+        data.heap_size_bytes()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl FrameContent {
     pub fn width(&self) -> u32 {
         self.width
@@ -391,6 +428,13 @@ impl FrameInfo {
 pub struct Frame {
     pub content: FrameContent,
     pub info: FrameInfo,
+}
+
+impl re_byte_size::SizeBytes for Frame {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { content, info: _ } = self;
+        content.heap_size_bytes()
+    }
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].

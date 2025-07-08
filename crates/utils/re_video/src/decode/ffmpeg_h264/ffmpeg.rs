@@ -88,6 +88,16 @@ pub enum Error {
     SpsParsing,
 }
 
+impl Error {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Restarting ffmpeg can recover from some decoder internal errors.
+        matches!(
+            self,
+            Self::Ffmpeg(_) | Self::FfmpegFatal(_) | Self::UnexpectedFfmpegOutputChunk
+        )
+    }
+}
+
 impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
@@ -183,7 +193,9 @@ struct FFmpegProcessAndListener {
     write_thread: Option<std::thread::JoinHandle<()>>,
 
     /// Number of samples submitted to ffmpeg that has not yet been outputted by ffmpeg.
-    outstanding_frames: Arc<AtomicI32>,
+    ///
+    /// This counter is for debugging purposes only.
+    num_outstanding_frames: Arc<AtomicI32>,
 
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
@@ -285,7 +297,7 @@ impl FFmpegProcessAndListener {
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
 
-        let outstanding_frames = Arc::new(AtomicI32::new(0));
+        let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
@@ -297,7 +309,7 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
-                let outstanding_frames = outstanding_frames.clone();
+                let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
@@ -334,7 +346,7 @@ impl FFmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
-            outstanding_frames,
+            num_outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -367,7 +379,7 @@ impl FFmpegProcessAndListener {
                 },
             )
         } else {
-            self.outstanding_frames.fetch_add(1, Ordering::Relaxed);
+            self.num_outstanding_frames.fetch_add(1, Ordering::Relaxed);
 
             Ok(())
         }
@@ -438,7 +450,7 @@ impl Drop for FFmpegProcessAndListener {
 
         re_log::trace!(
             "Outstanding frames after shutting down ffmpeg: {}",
-            self.outstanding_frames.load(Ordering::Relaxed)
+            self.num_outstanding_frames.load(Ordering::Relaxed)
         );
     }
 }
@@ -506,68 +518,68 @@ fn write_ffmpeg_input(
 struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
-    /// Sorted by their presentation timestamp.
-    pending: BTreeMap<Time, FFmpegFrameInfo>,
+    /// Key is the frame number, making this list sorted in presentation order.
+    pending: BTreeMap<u32, FFmpegFrameInfo>,
 
-    /// Hightess DTC (Decoder timestamp) encountered so far.
-    highest_dts: Time,
+    /// The frame number of the next frame if we had any so far.
+    ///
+    /// `None` if we haven't received any frames yet since the last decoder reset.
+    next_frame_nr: Option<u32>,
 }
 
 impl FrameBuffer {
     fn new() -> Self {
         Self {
             pending: BTreeMap::new(),
-            highest_dts: Time::MIN,
+            next_frame_nr: None,
         }
     }
 
     fn on_frame(
         &mut self,
-        debug_name: &str,
         pixel_format: &PixelFormat,
         frame_info_rx: &Receiver<FFmpegFrameInfo>,
         frame: ffmpeg_sidecar::event::OutputVideoFrame,
     ) -> Option<Frame> {
+        // ffmpeg gives us raw images, but we have to pair them up with frame infos.
+        //
         // We input frames into ffmpeg in decode (DTS) order, and so that's
         // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
+        //
         // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
         // We want to accurately match the `FrameInfo` with its corresponding output frame.
         // To do that, we need to buffer frames that come out of ffmpeg.
-        //
-        // How do we know how large this buffer needs to be?
-        // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
-        // Otherwise, we'd assign the wrong PTS to the frame that just came in.
         let frame_info = loop {
-            let oldest_pts_in_buffer = self.pending.first_key_value().map(|(pts, _)| *pts);
-            let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
-            if is_caught_up {
-                // There must be an element here, otherwise we wouldn't be here.
-                #[expect(clippy::unwrap_used)]
-                break self.pending.pop_first().unwrap().1;
-            } else {
-                // We're behind:
+            let oldest_pending = self.pending.first_entry();
 
-                let Ok(frame_info) = frame_info_rx.try_recv() else {
-                    re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
-                    return None;
+            if let Some(oldest_pending) = oldest_pending {
+                let frame_info = oldest_pending.get();
+
+                let is_next_expected_frame = if let Some(next_frame_nr) = self.next_frame_nr {
+                    frame_info.frame_nr == next_frame_nr
+                } else {
+                    // This is the first frame we're receiving since the last decoder reset.
+                    // We expect to always start at a sync-frame.
+                    // Note that sync frames do _not_ imply DTS == PTS since DTS may start with a negative offset for some videos.
+                    debug_assert!(
+                        frame_info.is_sync,
+                        "Expected first received frame after a decoder reset to be a sync-frame (start of group of pictures)."
+                    );
+                    true
                 };
 
-                // If the decode timestamp did not increase, we're probably seeking backwards!
-                // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
-                // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
-                if self.highest_dts > frame_info.decode_timestamp {
-                    re_log::warn!(
-                        "Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
-                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.",
-                        self.highest_dts,
-                        frame_info.decode_timestamp
-                    );
+                if is_next_expected_frame {
+                    self.next_frame_nr = Some(frame_info.frame_nr + 1);
+                    break oldest_pending.remove_entry().1;
                 }
-                self.highest_dts = frame_info.decode_timestamp;
+            };
 
-                self.pending
-                    .insert(frame_info.presentation_timestamp, frame_info);
-            }
+            // We haven't received the frame info for this frame yet.
+            let Ok(frame_info) = frame_info_rx.recv() else {
+                re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
+                return None;
+            };
+            self.pending.insert(frame_info.frame_nr, frame_info);
         };
 
         let ffmpeg_sidecar::event::OutputVideoFrame {
@@ -719,8 +731,7 @@ fn read_ffmpeg_output(
 
                 let frame_num = ffmpeg_frame.frame_num; // sequence-number made up by ffmpeg sidecar.
 
-                let frame =
-                    buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
+                let frame = buffer.on_frame(pixel_format, frame_info_rx, ffmpeg_frame)?;
 
                 {
                     // Log
@@ -1019,20 +1030,28 @@ fn write_avc_chunk_to_nalu_stream(
         buffer_offset = data_end;
     }
 
-    // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
-    // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-    write_bytes(
-        nalu_stream,
-        &[
-            // TODO(andreas): We use to use an IDC ("priority") of 3 here. But it doesn't _seem_ to make much of a difference either way.
-            UnitType::AccessUnitDelimiter.id(),
-            // Two arbitrary bytes? 0000 worked as well, but this is what
-            // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
-            0xFF,
-            0x80,
-        ],
-    )?;
+    // We observed with both Mac & Windows FFMpeg 7.1 that the following block causes spurious errors with messages like:
+    // "missing picture in access unit with size 17"
+    // "no frame!"
+    // Not adding the Access Unit Delimiters makes these go away reliably
+    // (over several test runs comparing before/after with the same video material).
+    if false {
+        // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
+        // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
+        write_bytes(
+            nalu_stream,
+            &[
+                // We use to use an IDC ("priority") of 3 here. But it doesn't seem to make much of a difference either way.
+                // Has also no effect on the errors describe above.
+                UnitType::AccessUnitDelimiter.id(),
+                // Two arbitrary bytes? 0000 worked as well, but this is what
+                // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
+                0xFF,
+                0x80,
+            ],
+        )?;
+    }
 
     Ok(())
 }

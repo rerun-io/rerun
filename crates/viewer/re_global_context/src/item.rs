@@ -223,6 +223,7 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
 
+        #[expect(clippy::iter_over_hash_type)]
         for component_descr in &component_descrs {
             if let Some(array) = engine
                 .cache()

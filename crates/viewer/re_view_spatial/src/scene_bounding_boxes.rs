@@ -61,6 +61,7 @@ impl SceneBoundingBoxes {
             }
         }
 
+        #[expect(clippy::iter_over_hash_type)] // order-independent:
         for bbox in self.per_entity.values() {
             self.current = self.current.union(*bbox);
         }

@@ -2,6 +2,8 @@
 //!
 //! Types & utilities for defining View classes and communicating with the Viewport.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 pub mod controls;
 
 mod annotation_context_utils;

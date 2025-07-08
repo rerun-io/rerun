@@ -2,8 +2,7 @@
 //!
 //! This crate provides the central panel that contains all views.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod system_execution;
 mod view_highlights;

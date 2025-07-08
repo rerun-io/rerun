@@ -1326,6 +1326,13 @@ class DatasetEntry(Entry):
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
 
+    def do_maintenance(
+        self,
+        build_scalar_index: bool = False,
+        compact_fragments: bool = False,
+    ) -> None:
+        """Perform maintenance tasks on the datasets."""
+
 class TableEntry(Entry):
     """
     A table entry in the catalog.

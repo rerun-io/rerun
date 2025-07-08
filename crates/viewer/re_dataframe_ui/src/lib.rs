@@ -1,5 +1,7 @@
 //! Rich table widget over `datafusion`.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod datafusion_adapter;
 mod datafusion_table_widget;
 mod display_record_batch;

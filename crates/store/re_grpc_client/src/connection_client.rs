@@ -21,6 +21,7 @@ use re_protos::{
     },
     external::prost::bytes::Bytes,
     frontend::v1alpha1::{
+        DoMaintenanceRequest,
         ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
         frontend_service_client::FrontendServiceClient,
     },
@@ -315,5 +316,22 @@ where
             .try_into()?;
 
         Ok(response.table_entry)
+    }
+
+    pub async fn do_maintenance(
+        &mut self,
+        dataset_id: EntryId,
+        build_scalar_indexes: bool,
+        compact_fragments: bool,
+    ) -> Result<(), StreamError> {
+        self.inner()
+            .do_maintenance(tonic::Request::new(DoMaintenanceRequest {
+                dataset_id: Some(dataset_id.into()),
+                build_scalar_indexes,
+                compact_fragments,
+            }))
+            .await?;
+
+        Ok(())
     }
 }
