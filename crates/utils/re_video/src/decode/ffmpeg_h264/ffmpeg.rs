@@ -88,6 +88,16 @@ pub enum Error {
     SpsParsing,
 }
 
+impl Error {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Restarting ffmpeg can recover from some decoder internal errors.
+        matches!(
+            self,
+            Self::Ffmpeg(_) | Self::FfmpegFatal(_) | Self::UnexpectedFfmpegOutputChunk
+        )
+    }
+}
+
 impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
@@ -1019,20 +1029,28 @@ fn write_avc_chunk_to_nalu_stream(
         buffer_offset = data_end;
     }
 
-    // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
-    // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-    write_bytes(
-        nalu_stream,
-        &[
-            // TODO(andreas): We use to use an IDC ("priority") of 3 here. But it doesn't _seem_ to make much of a difference either way.
-            UnitType::AccessUnitDelimiter.id(),
-            // Two arbitrary bytes? 0000 worked as well, but this is what
-            // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
-            0xFF,
-            0x80,
-        ],
-    )?;
+    // We observed with both Mac & Windows FFMpeg 7.1 that the following block causes spurious errors with messages like:
+    // "missing picture in access unit with size 17"
+    // "no frame!"
+    // Not adding the Access Unit Delimiters makes these go away reliably
+    // (over several test runs comparing before/after with the same video material).
+    if false {
+        // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
+        // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
+        write_bytes(
+            nalu_stream,
+            &[
+                // We use to use an IDC ("priority") of 3 here. But it doesn't seem to make much of a difference either way.
+                // Has also no effect on the errors describe above.
+                UnitType::AccessUnitDelimiter.id(),
+                // Two arbitrary bytes? 0000 worked as well, but this is what
+                // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
+                0xFF,
+                0x80,
+            ],
+        )?;
+    }
 
     Ok(())
 }
