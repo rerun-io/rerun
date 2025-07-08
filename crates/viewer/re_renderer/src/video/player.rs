@@ -203,8 +203,7 @@ impl VideoPlayer {
             .sample_decoder
             .latest_decoded_frame_at_and_drop_earlier_frames(requested_sample_pts)
         {
-            self.decoder_delay_state = update_decoder_delay_state(
-                self.decoder_delay_state,
+            self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
                 requested_sample,
                 decoded_frame.info.presentation_timestamp,
@@ -234,8 +233,7 @@ impl VideoPlayer {
             self.decoder_delay_state = if let Some(last_decoded_pts) =
                 current_frame_info.map(|info| info.presentation_timestamp)
             {
-                update_decoder_delay_state(
-                    self.decoder_delay_state,
+                self.determine_new_decoder_delay_state(
                     video_description,
                     requested_sample,
                     last_decoded_pts,
@@ -251,6 +249,9 @@ impl VideoPlayer {
                 self.last_time_caught_up = Some(Instant::now());
                 false
             }
+
+            // Haven't caught up, but intentionally don't show a spinner.
+            DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => false,
 
             DecoderDelayState::UpToDateWithinTolerance | DecoderDelayState::Behind => {
                 // Might we be pending because of an error?
@@ -362,7 +363,6 @@ impl VideoPlayer {
             // Check if the last enqueued gop is actually fully enqueued. If not, enqueue its remaining samples.
             // This happens regularly in live video streams.
             if last_enqueued.sample_idx + 1 < last_enqueued_gop.sample_range.end {
-                // Enqueue all remaining samples of the current GOP.
                 self.enqueue_samples_of_gop(
                     video_description,
                     last_enqueued.gop_idx,
@@ -549,39 +549,65 @@ impl VideoPlayer {
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
-}
 
-/// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
-#[must_use]
-fn update_decoder_delay_state(
-    previous_decoder_delay_state: DecoderDelayState,
-    video_description: &re_video::VideoDataDescription,
-    requested_sample: Option<&re_video::SampleMetadata>,
-    last_decoded_frame_pts: Time,
-) -> DecoderDelayState {
-    let up_to_date =
-        requested_sample.is_some_and(|s| s.presentation_timestamp == last_decoded_frame_pts);
+    /// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
+    #[must_use]
+    fn determine_new_decoder_delay_state(
+        &self,
+        video_description: &re_video::VideoDataDescription,
+        requested_sample: Option<&re_video::SampleMetadata>,
+        last_decoded_frame_pts: Time,
+    ) -> DecoderDelayState {
+        let Some(requested_sample) = requested_sample else {
+            // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
+            // We're technically not catching up, but we may as well behave as if we are.
+            return DecoderDelayState::Behind;
+        };
 
-    match previous_decoder_delay_state {
-        DecoderDelayState::UpToDate | DecoderDelayState::UpToDateWithinTolerance => {
-            if up_to_date {
-                DecoderDelayState::UpToDate
-            } else if is_significantly_behind(
-                video_description,
-                requested_sample,
-                last_decoded_frame_pts,
+        if requested_sample.presentation_timestamp == last_decoded_frame_pts {
+            return DecoderDelayState::UpToDate;
+        }
+
+        // If we're streaming in live video, we're a bit more relaxed about what counts as "catching up" for newly incoming frames:
+        // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
+        // * some decoders need a certain amount of samples in the queue to produce a frame.
+        //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
+        let recently_updated_video = video_description
+            .last_time_updated_samples
+            .is_some_and(|t| t.elapsed() < TIME_UNTIL_VIDEO_ASSUMED_ENDED);
+        if recently_updated_video {
+            let min_num_samples_to_enqueue_ahead =
+                self.sample_decoder.min_num_samples_to_enqueue_ahead();
+            let allowed_delay =
+                min_num_samples_to_enqueue_ahead + TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES;
+
+            let sample_idx_end = video_description.samples.next_index();
+            for (_, sample) in video_description.samples.iter_index_range_clamped(
+                &(sample_idx_end.saturating_sub(allowed_delay)..sample_idx_end),
             ) {
-                DecoderDelayState::Behind
-            } else {
-                DecoderDelayState::UpToDateWithinTolerance
+                if sample.presentation_timestamp == last_decoded_frame_pts {
+                    return DecoderDelayState::UpToDateToleratedEdgeOfLiveStream;
+                }
             }
         }
 
-        DecoderDelayState::Behind => {
-            // Only exit behind state if we caught up to the requested frame.
-            if up_to_date {
-                DecoderDelayState::UpToDate
-            } else {
+        match self.decoder_delay_state {
+            DecoderDelayState::UpToDate
+            | DecoderDelayState::UpToDateWithinTolerance
+            | DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => {
+                if is_significantly_behind(
+                    video_description,
+                    requested_sample,
+                    last_decoded_frame_pts,
+                ) {
+                    DecoderDelayState::Behind
+                } else {
+                    DecoderDelayState::UpToDateWithinTolerance
+                }
+            }
+
+            DecoderDelayState::Behind => {
+                // Only exit behind state if we caught up to the requested frame.
                 DecoderDelayState::Behind
             }
         }
@@ -591,14 +617,10 @@ fn update_decoder_delay_state(
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
 fn is_significantly_behind(
     video_description: &re_video::VideoDataDescription,
-    requested_sample: Option<&re_video::SampleMetadata>,
+    requested_sample: &re_video::SampleMetadata,
     decoded_frame_pts: Time,
 ) -> bool {
-    let Some(requested_pts) = requested_sample.map(|s| s.presentation_timestamp) else {
-        // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
-        // We're technically not catching up, but we may as well behave as if we are.
-        return true;
-    };
+    let requested_pts = requested_sample.presentation_timestamp;
 
     if decoded_frame_pts == requested_pts {
         // Decoder caught up with request!
@@ -621,7 +643,7 @@ fn is_significantly_behind(
     // we have to successively use `latest_sample_index_at_presentation_timestamp`:
     // Start at the desired sample and walk backwards from there until we find the sample for the actually produced frame.
     let mut num_frames_behind = 0;
-    let mut sample = requested_sample;
+    let mut sample = Some(requested_sample);
     loop {
         let Some(current_sample) = sample else {
             // Sample doesn't exist anymore. This should only happen if the video is being GC'ed from the back.

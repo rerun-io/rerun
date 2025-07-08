@@ -68,6 +68,12 @@ pub enum DecoderDelayState {
     /// The decoder is caught up with the most recent requested frame.
     UpToDate,
 
+    /// We're not up to date, but we're close enough to the newest content of a live stream that we're ok.
+    ///
+    /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
+    UpToDateToleratedEdgeOfLiveStream,
+
     /// The decoder is caught up within a certain tolerance.
     ///
     /// I.e. the video texture is not the most recently requested frame, but it's quite close.
@@ -86,7 +92,9 @@ impl DecoderDelayState {
     pub fn should_request_more_frames(&self) -> bool {
         match self {
             Self::UpToDate => false,
-            Self::UpToDateWithinTolerance | Self::Behind => true,
+            Self::UpToDateWithinTolerance
+            | Self::Behind
+            | Self::UpToDateToleratedEdgeOfLiveStream => true,
         }
     }
 }

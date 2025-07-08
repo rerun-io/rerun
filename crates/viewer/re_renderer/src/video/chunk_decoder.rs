@@ -152,7 +152,26 @@ impl VideoSampleDecoder {
         let mut decoder_output = self.decoder_output.lock();
 
         // Keep everything at or after the given PTS.
-        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&pts);
+        let frames_at_or_after_pts = decoder_output.frames_by_pts.split_off(&pts);
+        let mut frames_before_pts = std::mem::take(&mut decoder_output.frames_by_pts);
+        decoder_output.frames_by_pts = frames_at_or_after_pts;
+
+        // Latest-at semantics means that if `pts` doesn't land on the exact PTS of a decode frame we have,
+        // we provide the next *older* frame.
+        // That's not what `split_off` does, so we may have to add the older frame back.
+        if decoder_output
+            .frames_by_pts
+            .first_key_value()
+            .is_none_or(|(_, frame)| frame.info.presentation_timestamp > pts)
+        {
+            if let Some((next_older_pts, next_older_frame)) = frames_before_pts.pop_last() {
+                debug_assert!(next_older_pts < pts);
+
+                decoder_output
+                    .frames_by_pts
+                    .insert(next_older_pts, next_older_frame);
+            }
+        }
 
         if !decoder_output.frames_by_pts.is_empty() {
             Some(parking_lot::MutexGuard::map(
