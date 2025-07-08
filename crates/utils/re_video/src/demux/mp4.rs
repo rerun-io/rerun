@@ -140,6 +140,7 @@ impl VideoDataDescription {
             timescale: Some(timescale),
             duration: Some(duration),
             samples_statistics,
+            last_time_updated_samples: None,
             gops,
             samples,
             mp4_tracks,

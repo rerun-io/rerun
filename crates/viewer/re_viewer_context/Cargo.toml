@@ -79,6 +79,7 @@ serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 wgpu.workspace = true
 
 # Optional dependencies:

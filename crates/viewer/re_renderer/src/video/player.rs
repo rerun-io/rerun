@@ -34,6 +34,10 @@ const DECODING_GRACE_DELAY_BEFORE_REPORTING: Duration = Duration::from_millis(40
 ///      would cause us to show in-progress frames until the tolerance is hit
 const TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES: usize = 3;
 
+/// If we haven't seen new samples in this amount of time, we assume the video has ended
+/// and signal the end of the video to the decoder.
+const TIME_UNTIL_VIDEO_ASSUMED_ENDED: Duration = Duration::from_millis(250);
+
 #[derive(Debug)]
 pub struct TimedDecodingError {
     time_of_first_error: Instant,
@@ -76,6 +80,9 @@ pub struct VideoPlayer {
 
     last_requested: Option<SampleAndGopIndex>,
     last_enqueued: Option<SampleAndGopIndex>,
+
+    /// Whether we've signaled the end of the video to the decoder since the last decoder reset.
+    signaled_end_of_video: bool,
 
     /// Last error that was encountered during decoding.
     ///
@@ -146,6 +153,8 @@ impl VideoPlayer {
 
             last_requested: None,
             last_enqueued: None,
+
+            signaled_end_of_video: false,
 
             last_error: None,
 
@@ -367,6 +376,18 @@ impl VideoPlayer {
 
         self.last_requested = Some(requested);
 
+        // If this is a potentially live stream, signal the end of the video after a certain amount of time.
+        // This helps decoders to flush out any pending frames.
+        // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
+        if video_description
+            .last_time_updated_samples
+            .is_some_and(|last_time_updated_samples| {
+                last_time_updated_samples.elapsed() > TIME_UNTIL_VIDEO_ASSUMED_ENDED
+            })
+        {
+            self.signal_end_of_video_if_not_already_signaled()?;
+        }
+
         Ok(())
     }
 
@@ -378,6 +399,16 @@ impl VideoPlayer {
     ) -> Result<(), VideoPlayerError> {
         // If we haven't decoded anything at all yet, reset the decoder.
         let Some(last_requested) = self.last_requested else {
+            return self.reset(video_description);
+        };
+
+        let Some(last_enqueued) = self.last_enqueued else {
+            // If we hit this we already requested a frame, but haven't enqueued any samples yet.
+            // That's a weird state to be in, better reset!
+            debug_assert!(
+                false,
+                "We already requested a frame, but haven't enqueued any samples yet."
+            );
             return self.reset(video_description);
         };
 
@@ -437,6 +468,10 @@ impl VideoPlayer {
                 self.reset(video_description)?;
             }
         }
+        // Previously signaled the end of the video, but encountering new frames now.
+        else if self.signaled_end_of_video && last_enqueued.sample_idx < requested.sample_idx {
+            self.reset(video_description)?;
+        }
 
         Ok(())
     }
@@ -488,12 +523,17 @@ impl VideoPlayer {
         if gop_idx + 1 == video_description.gops.next_index()
             && video_description.duration.is_some()
         {
-            // Last GOP - there is nothing more to decode,
-            // so flush out any pending frames:
-            // See https://github.com/rerun-io/rerun/issues/8073
-            self.sample_decoder.end_of_video()?;
+            self.signal_end_of_video_if_not_already_signaled()?;
         }
 
+        Ok(())
+    }
+
+    fn signal_end_of_video_if_not_already_signaled(&mut self) -> Result<(), VideoPlayerError> {
+        if !self.signaled_end_of_video {
+            self.sample_decoder.end_of_video()?;
+            self.signaled_end_of_video = true;
+        }
         Ok(())
     }
 
@@ -505,6 +545,7 @@ impl VideoPlayer {
         self.sample_decoder.reset(video_descr)?;
         self.last_requested = None;
         self.last_enqueued = None;
+        self.signaled_end_of_video = false;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
