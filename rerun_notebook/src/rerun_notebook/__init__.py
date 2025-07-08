@@ -140,6 +140,8 @@ class ErrorWidget:
             display(self._html)
 
 
+
+
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
@@ -151,8 +153,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     #
     # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
 
-    _width = traitlets.Int(allow_none=True).tag(sync=True)
-    _height = traitlets.Int(allow_none=True).tag(sync=True)
+    _width = traitlets.Union([traitlets.Int(), traitlets.Unicode()], allow_none=True).tag(sync=True)
+    _height = traitlets.Union([traitlets.Int(), traitlets.Unicode()], allow_none=True).tag(sync=True)
 
     _url = traitlets.Unicode(allow_none=True).tag(sync=True)
 
@@ -173,8 +175,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"] | None = None,
+        height: int | Literal["auto"] | None = None,
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,
