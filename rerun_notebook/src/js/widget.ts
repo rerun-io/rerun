@@ -48,11 +48,6 @@ class ViewerWidget {
 
     model.on("msg:custom", this.on_custom_message);
 
-    model.on("change:_time_ctrl", (_, [timeline, time, play]) =>
-      this.on_time_ctrl(null, timeline, time, play),
-    );
-    model.on("change:_recording_id", this.on_set_recording_id);
-
     this.options.fallback_token = model.get("_fallback_token");
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
@@ -127,25 +122,39 @@ class ViewerWidget {
   };
 
   on_custom_message = (msg: any, buffers: DataView[]) => {
-    if (msg?.type === "rrd") {
-      if (!this.channel)
-        throw new Error("on_custom_message called before channel init");
-      this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
-    } else if (msg?.type === "table") {
-      if (!this.channel)
-        throw new Error("on_custom_message called before channel init")
-      this.channel.send_table(new Uint8Array(buffers[0].buffer));
-    } else {
-      console.log("unknown message type", msg, buffers);
+    switch (msg?.type) {
+      case "rrd": {
+        if (!this.channel)
+          throw new Error("on_custom_message called before channel init");
+        this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
+        break;
+      }
+      case "table": {
+        if (!this.channel)
+          throw new Error("on_custom_message called before channel init")
+        this.channel.send_table(new Uint8Array(buffers[0].buffer));
+        break;
+      }
+      case "time_ctrl": {
+        this.set_time_ctrl(msg.timeline ?? null, msg.time ?? null, msg.play ?? false);
+        break;
+      }
+      case "recording_id": {
+        this.set_recording_id(msg.recording_id ?? null)
+        break;
+      }
+      default: {
+        console.error("received unknown message type", msg, buffers);
+        throw new Error(`unknown message type ${msg}, check console for more details`);
+      }
     }
   };
 
-  on_time_ctrl = (
-    _: unknown,
+  set_time_ctrl(
     timeline: string | null,
     time: number | null,
     play: boolean,
-  ) => {
+  ) {
     let recording_id = this.viewer.get_active_recording_id();
     if (recording_id === null) {
       return;
@@ -172,7 +181,7 @@ class ViewerWidget {
     }
   };
 
-  on_set_recording_id = (_: unknown, recording_id: string | null) => {
+  set_recording_id(recording_id: string | null) {
     if (recording_id === null) {
       return;
     }

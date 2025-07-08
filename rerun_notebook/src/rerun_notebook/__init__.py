@@ -144,6 +144,13 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
 
+    # NOTE: A property which may be set from within the Viewer should NOT be a traitlet!
+    # Use `self.send` instead, events from which are handled in `on_custom_message` in `widget.ts`.
+    # To expose it bi-directionally, add a Viewer event for it instead.
+    # This makes the asynchronous communication between the Viewer and SDK more explicit, leading to fewer surprises.
+    # 
+    # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
+
     _width = traitlets.Int(allow_none=True).tag(sync=True)
     _height = traitlets.Int(allow_none=True).tag(sync=True)
 
@@ -158,14 +165,6 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _ready = False
     _data_queue: list[bytes]
     _table_queue: list[bytes]
-
-    _time_ctrl = traitlets.Tuple(
-        traitlets.Unicode(allow_none=True),
-        traitlets.Int(allow_none=True),
-        traitlets.Bool(),
-        allow_none=True,
-    ).tag(sync=True)
-    _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
 
@@ -257,10 +256,10 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._panel_states = new_panel_states
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
-        self._time_ctrl = (timeline, time, play)
+        self.send({"type":"time_ctrl", "timeline":timeline, "time":time, "play":play})
 
     def set_active_recording(self, recording_id: str) -> None:
-        self._recording_id = recording_id
+        self.send({"type":"recording_id", "recording_id":recording_id})
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
