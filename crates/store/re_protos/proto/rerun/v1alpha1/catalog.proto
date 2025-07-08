@@ -82,7 +82,6 @@ message UpdateDatasetEntryResponse {
   DatasetEntry dataset = 1;
 }
 
-
 // RegisterTable
 
 message RegisterTableRequest {

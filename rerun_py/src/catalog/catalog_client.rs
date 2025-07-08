@@ -283,7 +283,7 @@ impl PyCatalogClientInternal {
 
         let url = url
             .parse::<url::Url>()
-            .map_err(|e| PyValueError::new_err(format!("Invalid URL: {e}")))?;
+            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
 
