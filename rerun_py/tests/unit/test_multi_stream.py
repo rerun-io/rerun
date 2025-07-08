@@ -5,6 +5,25 @@ import tempfile
 import rerun as rr
 
 
+def test_init_twice() -> None:
+    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)."""
+    # Always set strict mode to false in case it leaked from another test
+    rr.set_strict_mode(False)
+
+    # Using default recording id
+    rr.init("rerun_example_test_app_id")
+    recording_id = rr.get_recording_id()
+
+    rr.init("rerun_example_test_app_id")
+    assert recording_id == rr.get_recording_id()
+
+    # Using a custom recording id
+    recording_id = "test_recording_id"
+    rr.init("rerun_example_test_app_id", recording_id=recording_id)
+    rr.init("rerun_example_test_app_id", recording_id=recording_id)
+    assert recording_id == rr.get_recording_id()
+
+
 def test_isolated_streams() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rec1_path = f"{tmpdir}/rec1.rrd"

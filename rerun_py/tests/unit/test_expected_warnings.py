@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Callable
 
 import pytest
-import rerun as rr
 from rerun.error_utils import RerunWarning
+
+import rerun as rr
 
 rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context
@@ -50,22 +51,3 @@ def test_expected_warnings() -> None:
         lambda: rr.log("world/image", rr.Pinhole(focal_length=3)),
         "Must provide one of principal_point, resolution, or width/height)",
     )
-
-
-def test_init_twice() -> None:
-    """Regression test for #9948: creating the same recording twice caused hangs in the past (should instead warn)."""
-    # Always set strict mode to false in case it leaked from another test
-    rr.set_strict_mode(False)
-
-    # Using default recording id
-    rr.init("rerun_example_test_app_id")
-    recording_id = rr.get_recording_id()
-
-    rr.init("rerun_example_test_app_id")
-    assert recording_id == rr.get_recording_id()
-
-    # Using a custom recording id
-    recording_id = "test_recording_id"
-    rr.init("rerun_example_test_app_id", recording_id=recording_id)
-    rr.init("rerun_example_test_app_id", recording_id=recording_id)
-    assert recording_id == rr.get_recording_id()
