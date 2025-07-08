@@ -172,6 +172,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(cleanup_if_forked_child, m)?)?;
     m.add_function(wrap_pyfunction!(spawn, m)?)?;
+    m.add_function(wrap_pyfunction!(flush_and_cleanup_orphaned_recordings, m)?)?;
 
     // recordings
     m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
@@ -252,6 +253,20 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 // --- Init ---
+/// Flush and then cleanup any orphaned recordings
+#[pyfunction]
+fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
+    py.allow_threads(|| {
+        // Flush all recordings before cleaning them up.
+        for recording in all_recordings().iter() {
+            recording.flush_blocking();
+        }
+
+        // Remove any recordings that have a refcount of 1, which means they are no longer being
+        // used by the Python SDK.
+        all_recordings().retain(|recording| recording.ref_count() > 1);
+    });
+}
 
 /// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]

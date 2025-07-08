@@ -654,6 +654,9 @@ class PyBinarySinkStorage:
 # init
 #
 
+def flush_and_cleanup_orphaned_recordings() -> None:
+    """Flush and then cleanup any orphaned recordings."""
+
 def new_recording(
     application_id: str,
     recording_id: Optional[str] = None,

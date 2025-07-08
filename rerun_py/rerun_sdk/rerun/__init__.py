@@ -229,6 +229,9 @@ def init(
 
     For more advanced use cases, e.g. multiple recordings setups, see [`rerun.RecordingStream`][].
 
+    To deal with accumulation of recording state on re-initialization, this function will
+    have the side-effect of flushing all existing recordings and cleaning up any orphaned global recordings.
+
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
         at the start of the process.
@@ -306,6 +309,11 @@ def init(
 
     if strict is not None:
         set_strict_mode(strict)
+
+    # Rerun is being re-initialized. We may have recordings from a previous call to init that are lingering.
+    # Clean them up now to avoid memory leaks. This could cause a problem if we call rr.init() from inside a
+    # destructor during shutdown, but that seems like a fair compromise.
+    bindings.flush_and_cleanup_orphaned_recordings()
 
     # Always check whether we are a forked child when calling init. This should have happened
     # via `_register_on_fork` but it's worth being conservative.
