@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::Bound;
-use pyo3::types::PyAnyMethods;
+use pyo3::types::PyAnyMethods as _;
 use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
@@ -191,24 +191,21 @@ impl PyDatasetEntry {
             .transpose()?;
         let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
 
-        let time_range: Option<re_uri::TimeRange> = match timeline {
-            Some(name) => Some(re_uri::TimeRange {
-                timeline: re_chunk::Timeline::new_timestamp(name),
-                min: start_i64
-                    .map(|start| start.try_into().expect("start time must be valid"))
-                    .unwrap_or(re_log_types::NonMinI64::MIN),
-                max: end_i64
-                    .map(|end| end.try_into().expect("end time must be valid"))
-                    .unwrap_or(re_log_types::NonMinI64::MAX),
-            }),
-            None => None,
-        };
+        let time_range: Option<re_uri::TimeRange> = timeline.map(|name| re_uri::TimeRange {
+            timeline: re_chunk::Timeline::new_timestamp(name),
+            min: start_i64
+                .map(|start| start.try_into().expect("start time must be valid"))
+                .unwrap_or(re_log_types::NonMinI64::MIN),
+            max: end_i64
+                .map(|end| end.try_into().expect("end time must be valid"))
+                .unwrap_or(re_log_types::NonMinI64::MAX),
+        });
         Ok(re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
 
-            time_range: time_range,
+            time_range,
             //TODO(ab): add support for this
             fragment: Default::default(),
         }
@@ -712,7 +709,7 @@ impl PyDatasetEntry {
 /// - Python int
 /// - numpy datetime64 (via timestamp conversion)
 /// - Any object with an `__int__` method
-/// - Any object that can be converted to int via Python's int() function
+/// - Any object that can be converted to int via Python's `int()` function
 fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
     // First try direct extraction as i64
     if let Ok(value) = obj.extract::<i64>() {
