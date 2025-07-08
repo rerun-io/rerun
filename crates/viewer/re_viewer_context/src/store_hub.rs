@@ -702,6 +702,7 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for cache in self.caches_per_recording.values_mut() {
             cache.purge_memory();
         }
@@ -961,6 +962,8 @@ impl StoreHub {
         }
 
         let mut table_stats = BTreeMap::new();
+
+        #[expect(clippy::iter_over_hash_type)]
         for (table_id, table_store) in table_stores {
             table_stats.insert(table_id.clone(), table_store.total_size_bytes());
         }
