@@ -175,11 +175,11 @@ message DatasetEntry {
 message TableEntry {
   EntryDetails details = 1;
 
-  // The known schema of this table
-  rerun.common.v1alpha1.Schema schema = 2;
-
   // Details specific to the table-provider
   google.protobuf.Any provider_details = 3;
+
+  reserved 2;
+  reserved "schema";
 }
 
 enum SystemTableKind {

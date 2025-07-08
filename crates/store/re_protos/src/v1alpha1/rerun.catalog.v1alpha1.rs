@@ -313,9 +313,6 @@ impl ::prost::Name for DatasetEntry {
 pub struct TableEntry {
     #[prost(message, optional, tag = "1")]
     pub details: ::core::option::Option<EntryDetails>,
-    /// The known schema of this table
-    #[prost(message, optional, tag = "2")]
-    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
     /// Details specific to the table-provider
     #[prost(message, optional, tag = "3")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
