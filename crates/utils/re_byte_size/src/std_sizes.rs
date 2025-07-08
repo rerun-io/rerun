@@ -119,11 +119,8 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
 impl<T: SizeBytes> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        if Self::strong_count(self) == 1 {
-            T::total_size_bytes(&**self)
-        } else {
-            0 // assume it's amortized
-        }
+        // A good approximation, that crucially works well for strong_count=1:
+        T::total_size_bytes(&**self) / Self::strong_count(self) as u64
     }
 }
 
