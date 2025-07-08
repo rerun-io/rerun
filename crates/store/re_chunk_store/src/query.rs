@@ -59,7 +59,9 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentDescriptor`]s in the store.
-    pub fn all_components(&self) -> BTreeSet<ComponentDescriptor> {
+    ///
+    /// See also [`Self::all_components_sorted`].
+    pub fn all_components(&self) -> IntSet<ComponentDescriptor> {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -79,6 +81,8 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentDescriptor`]s in the store.
+    ///
+    /// See also [`Self::all_components`].
     pub fn all_components_sorted(&self) -> ComponentDescriptorSet {
         self.static_chunk_ids_per_entity
             .values()
