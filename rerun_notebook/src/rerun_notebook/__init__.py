@@ -140,8 +140,6 @@ class ErrorWidget:
             display(self._html)
 
 
-
-
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
