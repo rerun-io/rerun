@@ -297,7 +297,7 @@ impl FFmpegProcessAndListener {
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
 
-        let outstanding_frames = Arc::new(AtomicI32::new(0));
+        let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
@@ -309,7 +309,7 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
-                let outstanding_frames = outstanding_frames.clone();
+                let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
@@ -346,7 +346,7 @@ impl FFmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
-            num_outstanding_frames: outstanding_frames,
+            num_outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -518,10 +518,12 @@ fn write_ffmpeg_input(
 struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
-    /// Sorted by their frame number.
+    /// Key is the frame number, making this list sorted in presentation order.
     pending: BTreeMap<u32, FFmpegFrameInfo>,
 
     /// The frame number of the next frame if we had any so far.
+    ///
+    /// `None` if we haven't received any frames yet since the last decoder reset.
     next_frame_nr: Option<u32>,
 }
 
