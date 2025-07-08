@@ -689,13 +689,13 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
+        for cache in self.caches_per_recording.values_mut() {
+            cache.purge_memory();
+        }
+
         let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
             return;
         };
-
-        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
-            caches.purge_memory();
-        }
 
         let store_bundle = &mut self.store_bundle;
 
