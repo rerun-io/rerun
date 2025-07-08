@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
+use crossbeam::channel::{Receiver, Sender};
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
 use re_mp4::StsdBoxContent;
@@ -39,12 +41,18 @@ impl std::ops::Deref for WebVideoFrame {
     }
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct PtsInMicros(u64);
+
 pub struct WebVideoDecoder {
     codec: VideoCodec,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     on_output: Arc<OutputCallback>,
+
+    /// TODO: explain
+    frame_info_tx: Sender<(PtsInMicros, FrameInfo)>,
 }
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -126,7 +134,8 @@ impl WebVideoDecoder {
         // Higher fps should be still just fine, the web just needs _something_.
         let timescale = video_descr.timescale.unwrap_or(Timescale::new(30));
 
-        let decoder = init_video_decoder(on_output.clone(), timescale)?;
+        let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
+        let decoder = init_video_decoder(on_output.clone(), frame_info_rx, timescale)?;
 
         Ok(Self {
             codec: video_descr.codec,
@@ -134,6 +143,7 @@ impl WebVideoDecoder {
             decoder,
             hw_acceleration,
             on_output,
+            frame_info_tx,
         })
     }
 }
@@ -147,13 +157,28 @@ impl AsyncDecoder for WebVideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let web_chunk = EncodedVideoChunkInit::new(
-            &data,
+
+        let pts_in_micros = PtsInMicros(
             video_chunk
                 .presentation_timestamp
-                .into_micros(self.timescale),
-            type_,
+                .into_micros(self.timescale) as u64, // TODO: explain
         );
+
+        // We use the presentation timestamp in microseconds as the key to lookup the frame info
+        // when we receive the frame back from the decoder.
+        self.frame_info_tx.send((
+            pts_in_micros,
+            FrameInfo {
+                is_sync: Some(video_chunk.is_sync),
+                sample_idx: Some(video_chunk.sample_idx),
+                frame_nr: Some(video_chunk.frame_nr),
+                presentation_timestamp: video_chunk.presentation_timestamp,
+                duration: video_chunk.duration,
+                latest_decode_timestamp: Some(video_chunk.decode_timestamp),
+            },
+        )); // TODO: error handling
+
+        let web_chunk = EncodedVideoChunkInit::new(&data, pts_in_micros.0 as _, type_);
 
         if let Some(duration) = video_chunk.duration {
             let duration_millis = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
@@ -177,7 +202,11 @@ impl AsyncDecoder for WebVideoDecoder {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
+
+            let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
+            self.frame_info_tx = frame_info_tx;
+            self.decoder =
+                init_video_decoder(self.on_output.clone(), frame_info_rx, self.timescale)?;
         };
 
         let encoding_details = video_descr
@@ -234,36 +263,54 @@ static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
 
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
+    frame_info_tx: Receiver<(PtsInMicros, FrameInfo)>,
     timescale: Timescale,
 ) -> Result<web_sys::VideoDecoder, WebError> {
     let on_output = {
         let on_output = on_output_callback.clone();
+        let mut pending_frame_info_by_pts_in_micros = HashMap::default();
+
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
-            // We assume that the timestamp returned by the decoder is in time since start,
-            // and does not represent demuxed "raw" presentation timestamps.
-            let presentation_timestamp =
-                Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-            let duration = frame.duration().map(|d| Time::from_micros(d, timescale));
+            // TODO: explain
+            loop {
+                match frame_info_tx.try_recv() {
+                    Ok((pts_in_micros, frame_info)) => {
+                        pending_frame_info_by_pts_in_micros.insert(pts_in_micros, frame_info);
+                    }
+                    Err(crossbeam::channel::TryRecvError::Empty) => break,
+                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                        // Other side has disconnected, decoder is either shutting down or being reset.
+                        return;
+                    }
+                }
+            }
+
+            // We assume that the timestamp returned by the decoder is the exact same we provided on the chunk.
+            let pts_in_micros = PtsInMicros(frame.timestamp().unwrap_or(0.0) as u64);
+            let frame_info = pending_frame_info_by_pts_in_micros.remove(&pts_in_micros).unwrap_or_else(|| {
+                debug_assert!(false, "No frame info found for presentation timestamp returned by the decoder {:?}us. Available: {:?}", pts_in_micros, pending_frame_info_by_pts_in_micros.keys());
+                FrameInfo {
+                    is_sync: None,
+                    sample_idx: None,
+                    frame_nr: None,
+                    presentation_timestamp: Time::from_micros(pts_in_micros.0 as f64, timescale),
+                    duration: frame.duration().map(|d| Time::from_micros(d, timescale)),
+                    latest_decode_timestamp: None,
+                }
+            });
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
-                info: FrameInfo {
-                    is_sync: None,    // TODO(emilk)
-                    sample_idx: None, // TODO(emilk)
-                    frame_nr: None,   // TODO(emilk)
-                    presentation_timestamp,
-                    duration,
-                    latest_decode_timestamp: None,
-                },
+                info: frame_info,
             }));
-        }) as Box<dyn Fn(web_sys::VideoFrame)>)
+        }) as Box<dyn FnMut(web_sys::VideoFrame)>)
     };
 
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
         on_output_callback(Err(super::DecodeError::WebDecoder(WebError::Decoding(
             js_error_to_string(&err),
         ))));
-    }) as Box<dyn Fn(js_sys::Error)>);
+    }) as Box<dyn FnMut(js_sys::Error)>);
 
     let Ok(on_output) = on_output.into_js_value().dyn_into::<Function>() else {
         unreachable!()
