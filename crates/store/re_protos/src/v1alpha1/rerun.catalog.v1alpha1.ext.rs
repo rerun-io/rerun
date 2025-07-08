@@ -383,6 +383,15 @@ pub struct RegisterTableRequest {
     pub provider_details: prost_types::Any,
 }
 
+impl From<RegisterTableRequest> for crate::catalog::v1alpha1::RegisterTableRequest {
+    fn from(value: RegisterTableRequest) -> Self {
+        Self {
+            name: value.name,
+            provider_details: Some(value.provider_details),
+        }
+    }
+}
+
 impl TryFrom<crate::catalog::v1alpha1::RegisterTableRequest> for RegisterTableRequest {
     type Error = TypeConversionError;
 

@@ -302,14 +302,14 @@ where
         name: String,
         url: url::Url,
     ) -> Result<TableEntry, StreamError> {
-        let request = re_protos::catalog::v1alpha1::RegisterTableRequest {
+        let request = re_protos::catalog::v1alpha1::ext::RegisterTableRequest {
             name,
-            provider_details: Some(LanceTable { table_url: url }.try_as_any()?),
+            provider_details: LanceTable { table_url: url }.try_as_any()?,
         };
 
         let response: RegisterTableResponse = self
             .inner()
-            .register_table(request)
+            .register_table(tonic::Request::new(request.into()))
             .await?
             .into_inner()
             .try_into()?;
