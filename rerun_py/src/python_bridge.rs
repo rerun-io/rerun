@@ -280,19 +280,6 @@ fn new_recording(
         default_store_id(py, StoreKind::Recording, &application_id)
     };
 
-    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
-    // Check if recording already exists first.
-    // NOTE: This is scoped in order to release the Mutex locked by `all_recordings` as soon as possible
-    /*
-    if let Some(existing_recording) = all_recordings().get(&recording_id) {
-        utils::py_rerun_warn(
-            format!("Recording with id: {} already exists, will ignore creation and return existing recording.",
-            &recording_id).as_str()
-        )?;
-        return Ok(PyRecordingStream(existing_recording.clone()));
-    }
-    */
-
     let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
