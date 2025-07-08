@@ -15,24 +15,54 @@ const PANELS = ["top", "blueprint", "selection", "time"] as const;
 
 /* Specifies attributes defined with traitlets in ../rerun_notebook/__init__.py */
 interface WidgetModel {
-  _width?: number | string;
-  _height?: number | string;
+  _width: number | string;
+  _height: number | string;
 
   _url?: string;
   _panel_states?: PanelStates;
-  _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
-  _recording_id?: string;
 
   _fallback_token?: string;
 }
 
 type Opt<T> = T | null | undefined;
 
+function _resize(el: HTMLElement, width: number | string, height: number | string) {
+  const style = el.style;
+
+  if (typeof width === "string" && width === "auto") {
+    style.width = "100%";
+  } else if (typeof width === "number") {
+    style.width = `${Math.max(200, width)}px`;
+  } else {
+    style.width = "640px";
+  }
+
+  if (typeof height === "string" && height === "auto") {
+    style.height = "auto";
+    style.aspectRatio = "16 / 9";
+  } else if (typeof height === "number") {
+    style.height = `${Math.max(200, height)}px`;
+    style.aspectRatio = "";
+  } else {
+    style.height = "640px";
+    style.aspectRatio = "";
+  }
+}
+
+function dbg(...args: any[]): boolean {
+  console.log(...args)
+  return true;
+}
+
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
-  options: WebViewerOptions = { hide_welcome_screen: true };
+  options: WebViewerOptions = {
+    hide_welcome_screen: true,
+    width: "100%",
+    height: "100%",
+  };
 
   channel: LogChannel | null = null;
 
@@ -43,8 +73,8 @@ class ViewerWidget {
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    model.on("change:_width", (_, width) => this.on_resize(width, undefined));
-    model.on("change:_height", (_, height) => this.on_resize(undefined, height));
+    model.on("change:_width", (_, width) => dbg("resize") && this.on_resize(el, width, model.get("_height")));
+    model.on("change:_height", (_, height) => dbg("resize") && this.on_resize(el, model.get("_width"), height));
 
     model.on("msg:custom", this.on_custom_message);
 
@@ -59,33 +89,16 @@ class ViewerWidget {
       model.send("ready");
     });
 
-    // `start` is asynchronous, but we don't need to await it
     this.viewer.start(this.url ?? null, el, this.options);
-    // `on_resize` must be called after synchronous portion of `start`
-    this.on_resize(model.get("_width"), model.get("_height"));
+    this.on_resize(el, model.get("_width"), model.get("_height"));
   }
 
   stop() {
     this.viewer.stop();
   }
 
-  on_resize(width?: number | string, height?: number | string) {
-    const canvas = this.viewer.canvas;
-    if (!canvas) throw new Error("on_resize called before viewer ready");
-
-    if (typeof width === "string" && width === "auto") {
-      canvas.style.width = "100%";
-    } else if (typeof width === "number") {
-      canvas.style.width = `${Math.max(200, width)}px`;
-    }
-
-    if (typeof height === "string" && height === "auto") {
-      canvas.style.height = "auto";
-      canvas.style.aspectRatio = "16 / 9";
-    } else if (typeof height === "number") {
-      canvas.style.height = `${Math.max(200, height)}px`;
-      canvas.style.aspectRatio = "";
-    }
+  on_resize(parent: HTMLElement, width: number | string, height: number | string) {
+    _resize(parent, width, height)
   };
 
   on_change_url = (_: unknown, new_url?: Opt<string>) => {
@@ -177,7 +190,10 @@ class ViewerWidget {
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
 
-  let widget = new ViewerWidget(model, el);
+  const container = document.createElement("div");
+  el.append(container);
+
+  let widget = new ViewerWidget(model, container);
   return () => widget.stop();
 };
 

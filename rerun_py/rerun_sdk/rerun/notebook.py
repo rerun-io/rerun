@@ -66,8 +66,8 @@ class Viewer:
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"] | None = None,
+        height: int | Literal["auto"] | None = None,
         url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,

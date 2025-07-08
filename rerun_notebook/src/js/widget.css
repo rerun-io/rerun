@@ -6,6 +6,12 @@
   background: transparent !important;
 }
 
+.rerun_notebook > div {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
 div.cell-output-ipywidget-background {
   margin: 0;
   padding: 0;
