@@ -8,16 +8,16 @@ pub struct ImageCommand {
     #[arg(long = "static")]
     static_: bool,
 
-    #[arg(default_value_t = 1024)]
+    #[arg(long = "width", default_value_t = 1024)]
     width: u64,
 
-    #[arg(default_value_t = 1024)]
+    #[arg(long = "height", default_value_t = 1024)]
     height: u64,
 
     /// How many times we log the image.
     ///
     /// Each log call a single pixel changes.
-    #[arg(default_value_t = 20_000)]
+    #[arg(long = "count", default_value_t = 20_000)]
     num_log_calls: usize,
 }
 
@@ -53,7 +53,7 @@ impl ImageCommand {
         re_tracing::profile_function!();
 
         for i in 0..self.num_log_calls {
-            raw_image_data[i] += 1; // Change a single pixel of the image data, just to make sure we transmit something different each time.
+            raw_image_data[i] = 255; // Change a single pixel of the image data, just to make sure we transmit something different each time.
 
             let image = {
                 re_tracing::profile_scope!("rerun::Image::from_rgba32");
