@@ -64,6 +64,9 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
     fn begin_frame(&mut self) {}
 
+    /// Total memory used by this cache, in bytes.
+    fn bytes_used(&self) -> u64;
+
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
 
@@ -72,10 +75,6 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Useful to e.g. invalidate unreachable data.
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         _ = events;
-    }
-
-    fn bytes_used(&self) -> u64 {
-        0 // TODO
     }
 
     /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.

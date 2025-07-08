@@ -319,6 +319,18 @@ pub struct FrameContent {
     pub format: PixelFormat,
 }
 
+impl re_byte_size::SizeBytes for FrameContent {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            data,
+            width: _,
+            height: _,
+            format: _,
+        } = self;
+        data.heap_size_bytes()
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 impl FrameContent {
     pub fn width(&self) -> u32 {
@@ -415,6 +427,13 @@ impl FrameInfo {
 pub struct Frame {
     pub content: FrameContent,
     pub info: FrameInfo,
+}
+
+impl re_byte_size::SizeBytes for Frame {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { content, info: _ } = self;
+        content.heap_size_bytes()
+    }
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashSet};
 
 use itertools::Either;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
@@ -83,6 +84,22 @@ impl MeshCache {
 impl Cache for MeshCache {
     fn purge_memory(&mut self) {
         self.0.clear();
+    }
+
+    fn bytes_used(&self) -> u64 {
+        self.0
+            .iter()
+            .map(|(key, map)| {
+                std::mem::size_of_val(key) as u64
+                    + map
+                        .iter()
+                        .map(|(key, mesh)| {
+                            std::mem::size_of_val(key) as u64
+                                + mesh.as_deref().map_or(0, |mesh| mesh.total_size_bytes())
+                        })
+                        .sum::<u64>()
+            })
+            .sum::<u64>()
     }
 
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {

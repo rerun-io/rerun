@@ -9,6 +9,7 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::{EntityPathHash, TimeType};
@@ -22,10 +23,21 @@ use crate::Cache;
 /// It's essentially a pointer into a column of [`re_types::components::VideoSample`]s inside a Rerun chunk.
 struct SampleBuffer {
     buffer: ArrowBuffer,
-    source_chunk: ChunkId,
+    source_chunk_id: ChunkId,
 
     /// Indexes into [`re_video::VideoDataDescription::samples`] that this buffer contains.
     sample_index_range: std::ops::Range<re_video::SampleIndex>,
+}
+
+impl re_byte_size::SizeBytes for SampleBuffer {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            buffer: _, // ref-counted - already counted in the store
+            source_chunk_id: _,
+            sample_index_range: _,
+        } = self;
+        0
+    }
 }
 
 /// Video stream from the store, ready for playback.
@@ -39,6 +51,16 @@ pub struct PlayableVideoStream {
 
     /// All buffers (each mapping 1:1 to a rerun chunk) that have samples for this video stream.
     video_sample_buffers: StableIndexDeque<SampleBuffer>,
+}
+
+impl re_byte_size::SizeBytes for PlayableVideoStream {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            video_renderer,
+            video_sample_buffers,
+        } = self;
+        video_renderer.heap_size_bytes() + video_sample_buffers.heap_size_bytes()
+    }
 }
 
 impl PlayableVideoStream {
@@ -64,12 +86,33 @@ struct VideoStreamCacheEntry {
     video_stream: Arc<RwLock<PlayableVideoStream>>,
 }
 
+impl re_byte_size::SizeBytes for VideoStreamCacheEntry {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            used_this_frame: _,
+            video_stream,
+        } = self;
+
+        video_stream.read().heap_size_bytes()
+    }
+}
+
 /// Identifies a video stream.
 
 #[derive(Hash, Eq, PartialEq)]
 struct VideoStreamKey {
     entity_path: EntityPathHash,
     timeline: TimelineName,
+}
+
+impl re_byte_size::SizeBytes for VideoStreamKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            entity_path,
+            timeline,
+        } = self;
+        entity_path.heap_size_bytes() + timeline.heap_size_bytes()
+    }
 }
 
 /// Caches metadata and active players for video streams.
@@ -442,7 +485,7 @@ fn read_samples_from_chunk(
 
     chunk_buffers.push_back(SampleBuffer {
         buffer: values.clone(),
-        source_chunk: chunk.id(),
+        source_chunk_id: chunk.id(),
         sample_index_range: sample_base_idx..samples.next_index(),
     });
 
@@ -475,6 +518,10 @@ impl Cache for VideoStreamCache {
             let video_stream = entry.video_stream.write();
             video_stream.video_renderer.begin_frame();
         }
+    }
+
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
     }
 
     fn purge_memory(&mut self) {
@@ -525,7 +572,7 @@ impl Cache for VideoStreamCache {
                         let chunk = if let Some(compaction) = &event.compacted {
                             for chunk_id in compaction.srcs.keys() {
                                 if let Some(first_invalid_buffer_idx) = video_sample_buffers
-                                    .position(|buffer| buffer.source_chunk == *chunk_id)
+                                    .position(|buffer| buffer.source_chunk_id == *chunk_id)
                                 {
                                     // Remove all samples that are in this and future buffers.
                                     video_data.samples.remove_all_with_index_larger_equal(
@@ -573,7 +620,7 @@ impl Cache for VideoStreamCache {
                         // we'd still want to delete all prior samples & buffers since we can't handle gaps
                         // in the video stream.
                         if let Some(last_invalid_buffer_idx) = video_sample_buffers
-                            .position(|buffer| buffer.source_chunk == event.chunk.id())
+                            .position(|buffer| buffer.source_chunk_id == event.chunk.id())
                         {
                             let last_invalid_buffer =
                                 &video_sample_buffers[last_invalid_buffer_idx];

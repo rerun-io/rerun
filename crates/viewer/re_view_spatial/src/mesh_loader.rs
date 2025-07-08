@@ -40,6 +40,12 @@ pub struct LoadedMesh {
     bbox: macaw::BoundingBox,
 }
 
+impl re_byte_size::SizeBytes for LoadedMesh {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // Mostly VRAM, not counted here.
+    }
+}
+
 impl LoadedMesh {
     pub fn load(
         name: String,

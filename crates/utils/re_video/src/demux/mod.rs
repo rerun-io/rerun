@@ -171,6 +171,26 @@ pub struct VideoDataDescription {
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
+impl re_byte_size::SizeBytes for VideoDataDescription {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            codec: _,
+            encoding_details: _,
+            timescale: _,
+            duration: _,
+            gops,
+            samples,
+            samples_statistics,
+            mp4_tracks,
+        } = self;
+
+        gops.heap_size_bytes()
+            + samples.heap_size_bytes()
+            + samples_statistics.heap_size_bytes()
+            + mp4_tracks.len() as u64 * std::mem::size_of::<(TrackId, Option<TrackKind>)>() as u64
+    }
+}
+
 impl VideoDataDescription {
     /// Checks various invariants that the video description should always uphold.
     ///
@@ -364,6 +384,18 @@ pub struct SamplesStatistics {
     /// TODO(andreas): We don't have a mechanism for shrinking this bitvec when dropping samples, i.e. it will keep growing.
     /// ([`StableIndexDeque`] makes sure that indices in the bitvec will still match up with the samples even when samples are dropped from the front.)
     pub has_sample_highest_pts_so_far: Option<BitVec>,
+}
+
+impl re_byte_size::SizeBytes for SamplesStatistics {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            dts_always_equal_pts: _,
+            has_sample_highest_pts_so_far,
+        } = self;
+        has_sample_highest_pts_so_far
+            .as_ref()
+            .map_or(0, |bitvec| bitvec.len() as u64 / 8)
+    }
 }
 
 impl SamplesStatistics {
@@ -635,6 +667,16 @@ pub struct GroupOfPictures {
     pub sample_range: Range<SampleIndex>,
 }
 
+impl re_byte_size::SizeBytes for GroupOfPictures {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// A single sample in a video.
 ///
 /// This is equivalent to MP4's definition of a single sample.
@@ -694,6 +736,16 @@ pub struct SampleMetadata {
 
     /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
     pub byte_span: Span<u32>,
+}
+
+impl re_byte_size::SizeBytes for SampleMetadata {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl SampleMetadata {
