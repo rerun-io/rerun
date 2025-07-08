@@ -156,8 +156,10 @@ fn create_view_for_selected_entities(
     // Note that these entity paths will always be absolute, rather than
     // relative to the origin. This makes sense since if you create a view and
     // then change the origin you likely wanted those entities to still be there.
+
+    #[expect(clippy::iter_over_hash_type)] // Order of rule insertion does not matter here
     for path in entities_of_interest {
-        query_filter.add_rule(
+        query_filter.insert_rule(
             RuleEffect::Include,
             EntityPathRule::including_entity_subtree(&path),
         );

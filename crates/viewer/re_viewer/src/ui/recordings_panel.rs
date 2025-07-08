@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
     EXAMPLES_ORIGIN, EntryKind, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
@@ -144,7 +145,7 @@ fn recording_list_ui(
                             entity_dbs,
                         );
                     }
-                    for table_id in ctx.storage_context.tables.keys() {
+                    for table_id in ctx.storage_context.tables.keys().sorted() {
                         table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
                     }
                 },

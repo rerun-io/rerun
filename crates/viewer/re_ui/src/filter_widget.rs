@@ -424,6 +424,7 @@ pub struct PathRanges {
 impl PathRanges {
     /// Merge another [`Self`].
     pub fn merge(&mut self, other: Self) {
+        #[expect(clippy::iter_over_hash_type)] // We sort on remove
         for (part_index, part_ranges) in other.ranges {
             self.ranges
                 .entry(part_index)

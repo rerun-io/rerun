@@ -1793,7 +1793,7 @@ impl App {
 
         for event in store_events {
             let chunk = &event.diff.chunk;
-            for component_descr in chunk.components().keys() {
+            for component_descr in chunk.components().keys().sorted() {
                 if let Some(archetype_name) = component_descr.archetype {
                     if let Some(archetype) = self.reflection.archetypes.get(&archetype_name) {
                         for &view_type in archetype.view_types {
