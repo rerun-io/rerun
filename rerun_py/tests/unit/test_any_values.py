@@ -66,7 +66,7 @@ def test_bad_any_value() -> None:
 
     with pytest.raises(ValueError):
         non_keyword_arg = 1
-        rr.AnyValues(non_keyword_arg)
+        rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
 
 def test_none_any_value() -> None:
