@@ -148,7 +148,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     # Use `self.send` instead, events from which are handled in `on_custom_message` in `widget.ts`.
     # To expose it bi-directionally, add a Viewer event for it instead.
     # This makes the asynchronous communication between the Viewer and SDK more explicit, leading to fewer surprises.
-    # 
+    #
     # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
 
     _width = traitlets.Int(allow_none=True).tag(sync=True)
@@ -256,10 +256,10 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._panel_states = new_panel_states
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
-        self.send({"type":"time_ctrl", "timeline":timeline, "time":time, "play":play})
+        self.send({"type": "time_ctrl", "timeline": timeline, "time": time, "play": play})
 
     def set_active_recording(self, recording_id: str) -> None:
-        self.send({"type":"recording_id", "recording_id":recording_id})
+        self.send({"type": "recording_id", "recording_id": recording_id})
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
