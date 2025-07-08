@@ -311,14 +311,14 @@ def init(
     if strict is not None:
         set_strict_mode(strict)
 
+    # Always check whether we are a forked child when calling init. This should have happened
+    # via `_register_on_fork` but it's worth being conservative.
+    cleanup_if_forked_child()
+
     # Rerun is being re-initialized. We may have recordings from a previous call to init that are lingering.
     # Clean them up now to avoid memory leaks. This could cause a problem if we call rr.init() from inside a
     # destructor during shutdown, but that seems like a fair compromise.
     bindings.flush_and_cleanup_orphaned_recordings()
-
-    # Always check whether we are a forked child when calling init. This should have happened
-    # via `_register_on_fork` but it's worth being conservative.
-    cleanup_if_forked_child()
 
     if recording_id is not None:
         recording_id = str(recording_id)
