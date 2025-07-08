@@ -820,11 +820,14 @@ impl StoreHub {
 
     /// See [`crate::Caches::begin_frame`].
     pub fn begin_frame_caches(&mut self) {
-        if let Some(store_id) = self.active_recording_id().cloned() {
-            if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+        self.caches_per_recording.retain(|store_id, caches| {
+            if self.store_bundle.contains(store_id) {
                 caches.begin_frame();
+                true // keep caches for existing recordings
+            } else {
+                false // remove caches for recordings that no longer exist
             }
-        }
+        });
     }
 
     /// Persist any in-use blueprints to durable storage.
