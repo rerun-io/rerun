@@ -4,6 +4,12 @@ order: 986
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## Micro-batcher default flushing duration increased from 8ms to 150ms
+
+`RERUN_FLUSH_TICK_SECS` now defaults to 150ms when left unspecified, instead of 8ms.
+
+You can learn more about micro-batching in our [dedicated documentation page](../sdk/micro-batching.md).
+
 ## Changed timeline navigation keyboard shortcut
 
 To accommodate the new tree keyboard navigation feature, the timeline navigation is changed as follows:
