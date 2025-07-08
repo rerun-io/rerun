@@ -229,8 +229,9 @@ def init(
 
     For more advanced use cases, e.g. multiple recordings setups, see [`rerun.RecordingStream`][].
 
-    To deal with accumulation of recording state on re-initialization, this function will
-    have the side-effect of flushing all existing recordings and cleaning up any orphaned global recordings.
+    To deal with accumulation of recording state when calling init() multiple times, this function will
+    have the side-effect of flushing all existing recordings. After flushing, any recordings which
+    are otherwise orphaned will also be destructed to free resources, close open file-descriptors, etc.
 
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
