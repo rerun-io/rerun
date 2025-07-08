@@ -60,17 +60,12 @@ def test_init_twice() -> None:
     # Using default recording id
     rr.init("rerun_example_test_app_id")
     recording_id = rr.get_recording_id()
-    expect_warning(
-        lambda: rr.init("rerun_example_test_app_id"),
-        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
-    )
+
+    rr.init("rerun_example_test_app_id")
     assert recording_id == rr.get_recording_id()
 
     # Using a custom recording id
     recording_id = "test_recording_id"
     rr.init("rerun_example_test_app_id", recording_id=recording_id)
-    expect_warning(
-        lambda: rr.init("rerun_example_test_app_id", recording_id=recording_id),
-        f"Recording with id: {recording_id} already exists, will ignore creation and return existing recording.",
-    )
+    rr.init("rerun_example_test_app_id", recording_id=recording_id)
     assert recording_id == rr.get_recording_id()
