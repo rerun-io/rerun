@@ -8,6 +8,7 @@ import argparse
 import concurrent.futures
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -33,6 +34,7 @@ class LintJob:
     no_filter_args: list[str] = field(default_factory=list)
     no_filter_cmd: str | None = None
     allow_no_filter: bool = True
+    filter_files: str | None = None
     _commands: list[str] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -66,6 +68,11 @@ class LintJob:
             files = self.no_filter_args
             if self.no_filter_cmd is not None:
                 cmd = self.no_filter_cmd.split()
+        else:
+            # Apply regex filtering if filter_files is specified
+            if self.filter_files is not None:
+                pattern = re.compile(self.filter_files)
+                files = [f for f in files if not pattern.match(f)]
 
         cmd_arr = ["pixi", "run"] + cmd
 
@@ -157,6 +164,7 @@ def main() -> None:
             "lint-rs-files",
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
+            filter_files=r"^crates/store/re_types(_core)?/",
         ),
         LintJob("py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         # Even though mypy will accept a list of files, the results it generates are inconsistent
