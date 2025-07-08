@@ -314,8 +314,11 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         });
 
     for seek_location in VideoTestSeekLocation::ALL {
-        if codec == VideoCodec::H264 && seek_location == VideoTestSeekLocation::BeyondEnd {
-            // TODO(#8073): H264 decoder never finishes for the last few frames.
+        if codec == VideoCodec::H264
+            && seek_location == VideoTestSeekLocation::BeyondEnd
+            && video_type == VideoType::VideoStream
+        {
+            // TODO(#8073): H264 decoder never finishes for the last few frames for video streams.
             continue;
         }
 
