@@ -1,7 +1,7 @@
 use std::iter;
 use std::sync::Arc;
 
-use arrow::datatypes::{Field, Fields};
+use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
@@ -21,6 +21,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::display_record_batch::DisplayColumn;
+use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
@@ -273,13 +274,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let sorbet_schema = {
+        let (sorbet_schema, migrated_fields) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            sorbet_batch.sorbet_schema()
+            (sorbet_batch.sorbet_schema(), sorbet_batch.fields())
         };
 
         let num_rows = sorbet_batches
@@ -352,6 +353,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             fields,
+            migrated_fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
             blueprint: table_state.blueprint(),
@@ -527,6 +529,7 @@ enum BottomBarAction {
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     fields: &'a Fields,
+    migrated_fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     blueprint: &'a TableBlueprint,
@@ -560,6 +563,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                 header_ui(ui, true, |ui| {
                     egui::Sides::new()
+                        .shrink_left()
                         .show(
                             ui,
                             |ui| {
@@ -615,7 +619,15 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 })
                 .inner
                 .on_hover_ui(|ui| {
-                    column_descriptor_ui(ui, &column.desc, column_field.as_ref());
+                    ui.with_optional_extras(|ui, show_extras| {
+                        column_header_tooltip_ui(
+                            ui,
+                            &column.desc,
+                            column_field,
+                            &self.migrated_fields[index],
+                            show_extras,
+                        );
+                    });
                 });
             }
         }
@@ -668,100 +680,4 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         self.row_height
     }
-}
-
-fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, column_field: &Field) {
-    header_property_ui(ui, "Physical name", column_field.name());
-
-    match *column {
-        ColumnDescriptorRef::RowId(desc) => {
-            let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
-
-            header_property_ui(ui, "Type", "row id");
-            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
-        }
-        ColumnDescriptorRef::Time(desc) => {
-            let re_sorbet::IndexColumnDescriptor {
-                timeline,
-                datatype,
-                is_sorted,
-            } = desc;
-
-            header_property_ui(ui, "Type", "index");
-            header_property_ui(ui, "Timeline", timeline.name());
-            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
-            datatype_ui(ui, &column.display_name(), datatype);
-        }
-        ColumnDescriptorRef::Component(desc) => {
-            let re_sorbet::ComponentColumnDescriptor {
-                store_datatype,
-                component_type,
-                entity_path,
-                archetype,
-                component,
-                is_static,
-                is_indicator,
-                is_tombstone,
-                is_semantically_empty,
-            } = desc;
-
-            header_property_ui(ui, "Column type", "Component");
-            header_property_ui(ui, "Entity path", entity_path.to_string());
-            datatype_ui(ui, &column.display_name(), store_datatype);
-            header_property_ui(
-                ui,
-                "Archetype",
-                archetype.map(|a| a.full_name()).unwrap_or("-"),
-            );
-            header_property_ui(ui, "Component", component);
-            header_property_ui(
-                ui,
-                "Component type",
-                component_type.map(|a| a.as_str()).unwrap_or("-"),
-            );
-
-            if false {
-                // TODO(#10315): these are sometimes inaccurate. Also, the user don't care.
-                header_property_ui(ui, "Static", is_static.to_string());
-                header_property_ui(ui, "Indicator", is_indicator.to_string());
-                header_property_ui(ui, "Tombstone", is_tombstone.to_string());
-                header_property_ui(ui, "Empty", is_semantically_empty.to_string());
-            }
-        }
-    }
-}
-
-fn sorted_text(sorted: bool) -> &'static str {
-    if sorted { "true" } else { "unknown" }
-}
-
-fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
-    egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
-}
-
-fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes::DataType) {
-    egui::Sides::new().show(
-        ui,
-        |ui| ui.strong("Datatype"),
-        |ui| {
-            // We don't want the copy button to stand out next to the other properties. The copy
-            // icon already indicates that it's a button.
-            ui.visuals_mut().widgets.inactive.fg_stroke =
-                ui.visuals_mut().widgets.noninteractive.fg_stroke;
-
-            if ui
-                .add(
-                    egui::Button::image_and_text(
-                        re_ui::icons::COPY.as_image(),
-                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
-                    )
-                    .image_tint_follows_text_color(true),
-                )
-                .clicked()
-            {
-                ui.ctx().copy_text(format!("{datatype:#?}"));
-                re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
-            }
-        },
-    );
 }

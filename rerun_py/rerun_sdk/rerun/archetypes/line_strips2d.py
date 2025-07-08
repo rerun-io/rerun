@@ -313,7 +313,7 @@ class LineStrips2D(Archetype):
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -353,8 +353,7 @@ class LineStrips2D(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     strips: components.LineStrip2DBatch | None = field(
         metadata={"component": True},

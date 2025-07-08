@@ -93,9 +93,9 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
         .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
-        let Some(suggested_root) = entry
+        let Some(suggested_origin) = entry
             .class
-            .recommended_root_for_entities(&entities_of_interest, recording)
+            .recommended_origin_for_entities(&entities_of_interest, recording)
         else {
             continue;
         };
@@ -104,7 +104,7 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
             &maybe_visualizable_entities,
             recording,
             &view_class_registry.new_visualizer_collection(entry.identifier),
-            &suggested_root,
+            &suggested_origin,
         );
 
         // We consider a view class to be recommended if all selected entities are
@@ -144,7 +144,7 @@ fn create_view_for_selected_entities(
         .viewer_context
         .view_class_registry()
         .get_class_or_log_error(identifier)
-        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
+        .recommended_origin_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
 
     let mut query_filter = EntityPathFilter::default();

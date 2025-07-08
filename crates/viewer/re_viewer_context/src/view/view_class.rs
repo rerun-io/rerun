@@ -109,12 +109,15 @@ pub trait ViewClass: Send + Sync {
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
     /// of the entities (for this, use [`Self::visualizable_filter_context`]).
-    fn recommended_root_for_entities(
+    fn recommended_origin_for_entities(
         &self,
-        _entities: &IntSet<EntityPath>,
+        entities: &IntSet<EntityPath>,
         _entity_db: &re_entity_db::EntityDb,
     ) -> Option<EntityPath> {
-        Some(EntityPath::root())
+        // For example: when creating a view from a single entity, we want that
+        // entity to be the origin of the view.
+        // If we select two sibling entities, we want their parent to be the origin.
+        Some(EntityPath::common_ancestor_of(entities.iter()))
     }
 
     /// Create context object that is passed to all of this classes visualizers

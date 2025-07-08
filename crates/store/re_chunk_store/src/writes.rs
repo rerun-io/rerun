@@ -57,6 +57,15 @@ impl ChunkStore {
 
             let row_id_range_per_component = chunk.row_id_range_per_component();
 
+            if chunk.num_components() == 0 {
+                // A static chunk without any components would be dangling from the start.
+                // Our dangling logic retrieves relevant chunks by component descriptors,
+                // so it would never be able to find it. So we never add that chunk in the
+                // first place.
+                re_log::debug_once!("Ignoring static chunk without component.");
+                return Ok(Vec::new());
+            }
+
             let mut overwritten_chunk_ids = HashMap::default();
 
             for (component_desc, list_array) in chunk.components().iter() {
@@ -656,8 +665,11 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::{TimePoint, Timeline};
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_chunk::{TimeInt, TimePoint, Timeline};
+    use re_log_types::{
+        build_frame_nr, build_log_time,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+    };
     use similar_asserts::assert_eq;
 
     use crate::ChunkStoreDiffKind;
@@ -860,6 +872,82 @@ mod tests {
     }
 
     #[test]
+    fn no_components() -> anyhow::Result<()> {
+        re_log::setup_logging();
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            Default::default(),
+        );
+
+        {
+            let entity_path = EntityPath::from("/nothing-at-all");
+            let chunk = Chunk::builder(entity_path.clone()).build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+        {
+            let entity_path = EntityPath::from("/static-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), TimePoint::STATIC, [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+
+        let timepoint_log = build_log_time(TimeInt::new_temporal(10).into());
+        let timepoint_frame = build_frame_nr(123);
+
+        {
+            let entity_path = EntityPath::from("/log-time-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_log], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(
+                events.len() == 1
+                    && events[0].chunk.id() == chunk.id()
+                    && events[0].kind == ChunkStoreDiffKind::Addition,
+            );
+        }
+        {
+            let entity_path = EntityPath::from("/frame-nr-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_frame], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(
+                events.len() == 1
+                    && events[0].chunk.id() == chunk.id()
+                    && events[0].kind == ChunkStoreDiffKind::Addition,
+            );
+        }
+        {
+            let entity_path = EntityPath::from("/both-log-frame-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_log, timepoint_frame], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(
+                events.len() == 1
+                    && events[0].chunk.id() == chunk.id()
+                    && events[0].kind == ChunkStoreDiffKind::Addition,
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn static_overwrites() -> anyhow::Result<()> {
         re_log::setup_logging();
 
@@ -873,8 +961,9 @@ mod tests {
         let row_id1_1 = RowId::new();
         let row_id2_1 = RowId::new();
         let row_id2_2 = RowId::new();
+        let row_id3_1 = RowId::new();
 
-        let timepoint_static = TimePoint::default();
+        let timepoint_static = TimePoint::STATIC;
 
         let points1 = &[MyPoint::new(1.0, 1.0)];
         let colors1 = &[MyColor::from_rgb(1, 1, 1)];
@@ -908,14 +997,18 @@ mod tests {
         let chunk3 = Chunk::builder(entity_path.clone())
             .with_component_batches(
                 row_id2_2,
-                timepoint_static,
+                timepoint_static.clone(),
                 [(MyPoints::descriptor_labels(), labels2 as _)],
             )
+            .build()?;
+        let chunk4 = Chunk::builder(entity_path.clone())
+            .with_component_batches(row_id3_1, timepoint_static.clone(), [])
             .build()?;
 
         let chunk1 = Arc::new(chunk1);
         let chunk2 = Arc::new(chunk2);
         let chunk3 = Arc::new(chunk3);
+        let chunk4 = Arc::new(chunk4);
 
         let events = store.insert_chunk(&chunk1)?;
         assert!(
@@ -953,7 +1046,26 @@ mod tests {
                 && events[0].kind == ChunkStoreDiffKind::Addition
                 && events[1].chunk.id() == chunk1.id()
                 && events[1].kind == ChunkStoreDiffKind::Deletion,
-            "the final write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
+            "the third write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
+        );
+
+        let stats_after = store.stats();
+        {
+            let ChunkStoreChunkStats {
+                num_chunks,
+                total_size_bytes: _,
+                num_rows,
+                num_events,
+            } = stats_after.static_chunks;
+            assert_eq!(2, num_chunks);
+            assert_eq!(2, num_rows);
+            assert_eq!(3, num_events);
+        }
+
+        let events = store.insert_chunk(&chunk4)?;
+        assert!(
+            events.is_empty(),
+            "the fourth write should result in no changes at all"
         );
 
         let stats_after = store.stats();

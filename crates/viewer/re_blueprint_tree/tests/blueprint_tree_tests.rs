@@ -2,6 +2,7 @@
 
 use egui::Vec2;
 
+use egui_kittest::{OsThreshold, SnapshotOptions};
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -15,9 +16,7 @@ use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn basic_blueprint_panel_should_match_snapshot() {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     test_context.log_entity("/entity0", add_point_to_chunk_builder);
     test_context.log_entity("/entity1", add_point_to_chunk_builder);
@@ -37,13 +36,11 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
-    for (snapshot_name, should_expand) in &[
+    for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
     ] {
-        let mut test_context = TestContext::default();
-
-        test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+        let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
         test_context.log_entity("/path/to/entity0", add_point_to_chunk_builder);
         test_context.log_entity("/path/to/entity1", add_point_to_chunk_builder);
@@ -76,7 +73,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         viewer_ctx,
                         &view_id,
                         CollapseScope::BlueprintTree,
-                        *should_expand,
+                        should_expand,
                     );
 
                     let blueprint = ViewportBlueprint::from_db(
@@ -91,7 +88,12 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
             });
 
         harness.run();
-        harness.snapshot(snapshot_name);
+        harness.snapshot_options(
+            snapshot_name,
+            // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
+            // (Software Rasterizer on CI seems fine with the default).
+            &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
+        );
     }
 }
 
@@ -131,8 +133,7 @@ fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
 }
 
 fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
-    let mut test_context = TestContext::default();
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
     test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
@@ -206,5 +207,12 @@ fn run_blueprint_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(snapshot_name);
+    harness.snapshot_options(
+        snapshot_name,
+        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
+        // (Software Rasterizer on CI seems fine with the default).
+        &SnapshotOptions::new()
+            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
+            .failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
+    );
 }

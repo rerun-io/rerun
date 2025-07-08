@@ -314,7 +314,13 @@ impl ContainerBlueprint {
     /// Placeholder name displayed in the UI if the user hasn't explicitly named the view.
     #[inline]
     pub fn missing_name_placeholder(&self) -> String {
-        format!("{:?}", self.container_kind)
+        match self.container_kind {
+            egui_tiles::ContainerKind::Tabs => "Tab container",
+            egui_tiles::ContainerKind::Horizontal => "Horizontal container",
+            egui_tiles::ContainerKind::Vertical => "Vertical container",
+            egui_tiles::ContainerKind::Grid => "Grid container",
+        }
+        .to_owned()
     }
 
     /// Returns this container's display name

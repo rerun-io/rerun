@@ -581,6 +581,7 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
+    #[cfg(not(all(not(target_arch = "wasm32"), feature = "perf_telemetry")))]
     re_crash_handler::install_crash_handlers(build_info.clone());
 
     use clap::Parser as _;
@@ -630,6 +631,44 @@ where
             }
         }
     } else {
+        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+        let mut _telemetry = {
+            // Safety: anything touching the env is unsafe, tis what it is.
+            #[expect(unsafe_code)]
+            unsafe {
+                std::env::set_var("OTEL_SERVICE_NAME", "rerun");
+            }
+
+            // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
+            use re_perf_telemetry::external::clap::Parser as _;
+            let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
+
+            // Remember: telemetry must be init in a Tokio context.
+            tokio_runtime.block_on(async {
+                re_perf_telemetry::Telemetry::init(
+                    args,
+                    re_perf_telemetry::TelemetryDropBehavior::Shutdown,
+                )
+                // Perf telemetry is a developer tool, it's not compiled into final user builds.
+                .expect("could not start perf telemetry")
+            })
+
+            // TODO(tokio-rs/tracing#3239): The viewer will crash on exit because of what appears
+            // to be a design flaw in `tracing-subscriber`'s shutdown implementation, specifically
+            // it assumes that all the relevant thread-local state will be dropped in the proper
+            // order, when really it won't and there's no way to guarantee that.
+            // See <https://github.com/tokio-rs/tracing/issues/3239>.
+            //
+            // What happens in practice will depend on what you and all your dependencies are
+            // doing. This problem has been seen before specifically for egui apps [1], but really
+            // it has nothing to do with egui per se.
+            // [1]: <https://github.com/smol-rs/polling/issues/231>
+            //
+            // Since this is a very niche feature only meant to be used for deep performance work,
+            // I think this is fine for now (and I don't think there's anything we can do from
+            // userspace anyhow, this is a pure `tracing` issue, unrelated to `re_perf_telemetry`).
+        };
+
         run_impl(
             main_thread_token,
             build_info,

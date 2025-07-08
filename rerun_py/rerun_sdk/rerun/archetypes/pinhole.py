@@ -254,7 +254,7 @@ class Pinhole(PinholeExt, Archetype):
                 image_plane_distance=image_plane_distance,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
@@ -291,8 +291,7 @@ class Pinhole(PinholeExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     image_from_camera: components.PinholeProjectionBatch | None = field(
         metadata={"component": True},

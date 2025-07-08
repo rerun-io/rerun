@@ -863,7 +863,7 @@ fn container_top_level_properties(
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Kind").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Container kind").value_fn(|ui, _| {
         let mut container_kind = container.container_kind;
         container_kind_selection_ui(ui, &mut container_kind);
         viewport.set_container_kind(*container_id, container_kind);
@@ -1100,18 +1100,19 @@ mod tests {
     /// Snapshot test for the selection panel when a recording is selected.
     #[test]
     fn selection_panel_recording_snapshot() {
-        let mut test_context = TestContext::default();
+        let mut test_context = TestContext::new();
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
         // Select recording:
+        let recording_id = test_context.active_recording_id();
         test_context
             .selection_state
             .lock()
-            .set_selection(Item::StoreId(test_context.recording_store.store_id()));
+            .set_selection(Item::StoreId(recording_id));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
-            &test_context.blueprint_store,
+            test_context.active_blueprint(),
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 

@@ -12,11 +12,23 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+
+default = []
+
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["dep:re_perf_telemetry"]
+
+
 [lints]
 workspace = true
 
+
 [package.metadata.docs.rs]
 all-features = true
+
 
 [dependencies]
 re_auth.workspace = true
@@ -44,6 +56,7 @@ url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tonic = { workspace = true, default-features = false, features = [
   "transport",

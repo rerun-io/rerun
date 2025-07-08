@@ -4,7 +4,7 @@
 #![cfg(feature = "testing")]
 
 use egui::Vec2;
-use egui_kittest::{SnapshotError, SnapshotOptions};
+use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 
 use re_blueprint_tree::BlueprintTree;
@@ -107,9 +107,7 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
 }
 
 fn test_context(test_case: &TestCase) -> TestContext {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     match test_case.recording_kind {
         RecordingKind::Empty => {}
@@ -212,12 +210,18 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
 
     harness.run();
 
-    let options = SnapshotOptions::default().output_path(format!(
-        "tests/snapshots/view_structure_test/{}",
-        filter_query
-            .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-            .unwrap_or("no-query".to_owned())
-    ));
+    let options = SnapshotOptions::new()
+        .output_path(format!(
+            "tests/snapshots/view_structure_test/{}",
+            filter_query
+                .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
+                .unwrap_or("no-query".to_owned())
+        ))
+        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
+        // (Software Rasterizer on CI seems fine with the default).
+        .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
+        .failed_pixel_count_threshold(OsThreshold::new(0).windows(15));
+
     harness.try_snapshot_options(test_case.name, &options)
 }
 

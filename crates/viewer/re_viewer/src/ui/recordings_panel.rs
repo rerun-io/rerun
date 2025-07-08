@@ -161,7 +161,7 @@ fn recording_list_ui(
     // Always show welcome screen last, if at all:
     if (ctx
         .app_options()
-        .include_welcome_screen_button_in_recordings_panel
+        .include_rerun_examples_button_in_recordings_panel
         && !welcome_screen_state.hide)
         || !example_recordings.is_empty()
     {

@@ -2,8 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::{SpatialView3D, SpatialViewState};
 use re_viewer_context::{
-    RecommendedView, ViewClass as _, ViewId,
-    test_context::{HarnessExt as _, TestContext},
+    RecommendedView, ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions,
+    test_context::TestContext,
 };
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -155,12 +155,7 @@ pub fn test_transform_tree_origins() {
 }
 
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     // Make sure we can draw stuff in the hover tables.
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
@@ -221,5 +216,8 @@ fn run_view_ui_and_save_snapshot(
             });
         });
 
-    harness.snapshot_with_broken_pixels(name, num_pixels_allowed_to_deviate);
+    harness.snapshot_options(
+        name,
+        &SnapshotOptions::new().failed_pixel_count_threshold(num_pixels_allowed_to_deviate),
+    );
 }

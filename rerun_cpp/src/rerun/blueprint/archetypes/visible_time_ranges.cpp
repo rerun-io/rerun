@@ -16,14 +16,10 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> VisibleTimeRanges::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(1);
         if (ranges.has_value()) {
             columns.push_back(ranges.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<VisibleTimeRanges>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -43,15 +39,10 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(1);
 
         if (archetype.ranges.has_value()) {
             cells.push_back(archetype.ranges.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<VisibleTimeRanges>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -176,6 +176,8 @@ impl VideoPlayer {
             .latest_sample_index_at_presentation_timestamp(requested_pts)
             .ok_or(VideoPlayerError::EmptyVideo)?;
         let requested_sample = video_description.samples.get(requested_sample_idx); // This is only `None` if we no longer have the sample around.
+        let requested_sample_pts =
+            requested_sample.map_or(requested_pts, |s| s.presentation_timestamp);
 
         // Ensure we have enough samples enqueued to the decoder to cover the request.
         // (This method also makes sure that the next few frames become available, so call this even if we already have the frame we want.)
@@ -184,7 +186,7 @@ impl VideoPlayer {
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
         if let Some(decoded_frame) = self
             .sample_decoder
-            .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
+            .latest_decoded_frame_at_and_drop_earlier_frames(requested_sample_pts)
         {
             self.decoder_delay_state = update_decoder_delay_state(
                 self.decoder_delay_state,
@@ -195,7 +197,8 @@ impl VideoPlayer {
 
             // Update the texture if it isn't already up to date and we're not waiting for the decoder to catch up.
             let current_frame_info = self.video_texture.frame_info.as_ref();
-            if current_frame_info.is_none_or(|info| info.presentation_timestamp != requested_pts)
+            if current_frame_info
+                .is_none_or(|info| info.presentation_timestamp != requested_sample_pts)
                 && self.decoder_delay_state != DecoderDelayState::Behind
             {
                 update_video_texture_with_frame(

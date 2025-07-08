@@ -1,5 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_viewer_context::external::egui_kittest::SnapshotOptions;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport::test_context_ext::TestContextExt as _;
@@ -7,7 +8,7 @@ use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_transform_clamping() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     {
         test_context.log_entity("boxes/clamped_colors", |builder| {
@@ -143,22 +144,6 @@ pub fn test_transform_clamping() {
     );
 }
 
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    // Make sure we can draw stuff in the hover tables.
-    test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
-    // Also register the legacy UIs.
-    re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
-
-    test_context
-}
-
 #[allow(clippy::unwrap_used)]
 fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -228,13 +213,12 @@ fn run_view_ui_and_save_snapshot(
             });
             harness.run_steps(10);
             let broken_pixels_fraction = 0.0045;
-            let num_pixels = (size.x * size.y).ceil() as u64;
 
-            use re_viewer_context::test_context::HarnessExt as _;
-            harness.snapshot_with_broken_pixels_threshold(
+            harness.snapshot_options(
                 &name,
-                num_pixels,
-                broken_pixels_fraction,
+                &SnapshotOptions::new().failed_pixel_count_threshold(
+                    (size.x * size.y * broken_pixels_fraction).round() as usize,
+                ),
             );
         }
     }

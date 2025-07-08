@@ -103,7 +103,11 @@ impl ListVisuals {
         let design_tokens = design_tokens_of(self.theme);
 
         if self.selected {
-            design_tokens.list_item_selected_text
+            if self.hovered {
+                design_tokens.text_color_on_primary_hovered
+            } else {
+                design_tokens.text_color_on_primary
+            }
         } else if self.active {
             design_tokens.list_item_active_text
         } else if !self.interactive {
@@ -121,7 +125,7 @@ impl ListVisuals {
         let design_tokens = design_tokens_of(self.theme);
 
         if self.selected {
-            design_tokens.list_item_selected_icon
+            design_tokens.icon_color_on_primary
         } else if self.active {
             design_tokens.list_item_active_icon
         } else if self.hovered {
@@ -133,8 +137,12 @@ impl ListVisuals {
 
     pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
-        if self.selected && icon_hovered {
-            design_tokens.list_item_selected_text
+        if self.selected {
+            if icon_hovered {
+                design_tokens.icon_color_on_primary_hovered
+            } else {
+                design_tokens.icon_color_on_primary
+            }
         } else if icon_hovered {
             design_tokens.list_item_hovered_text
         } else {
@@ -412,10 +420,10 @@ impl ListItem {
             height -= y_offset;
         }
 
-        let collapsing_triangle_area = tokens.collapsing_triangle_area();
+        let collapsing_triangle_size = tokens.collapsing_triangle_size();
 
         let collapse_extra = if collapse_openness.is_some() {
-            collapsing_triangle_area.x + tokens.text_to_icon_padding()
+            collapsing_triangle_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -502,15 +510,29 @@ impl ListItem {
         if let Some(openness) = collapse_openness {
             let triangle_pos = egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * collapsing_triangle_area.y,
+                rect.center().y - 0.5 * collapsing_triangle_size.y,
             )
             .round_to_pixels(ui.pixels_per_point());
-            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_area);
+            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),
                 egui::Sense::click(),
             );
+
+            if triangle_response.hovered() {
+                // Draw a background:
+                let bg_color = if selected {
+                    tokens.surface_on_primary_hovered
+                } else {
+                    ui.visuals().widgets.hovered.bg_fill
+                };
+                ui.painter().rect_filled(
+                    triangle_response.rect,
+                    ui.visuals().widgets.hovered.corner_radius,
+                    bg_color,
+                );
+            }
 
             let color = visuals.collapse_button_color(triangle_response.hovered());
 

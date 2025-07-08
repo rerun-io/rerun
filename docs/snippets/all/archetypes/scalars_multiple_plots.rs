@@ -19,8 +19,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_colors([[0, 255, 0]])
             .with_names(["cos(0.01t)"]),
     )?;
+
+    // NOTE: `SeriesLines` and `SeriesPoints` can both be logged without any associated data
+    //       (all fields are optional). In `v0.24` we removed indicators, which now results in
+    //       no data logged at all, when no fields are specified. Therefore we log a circle shape
+    //       here. More information: https://github.com/rerun-io/rerun/issues/10512
+
     // Log scattered points under a different root so that they show in a different plot by default.
-    rec.log_static("scatter/lcg", &rerun::SeriesPoints::new())?;
+    rec.log_static(
+        "scatter/lcg",
+        &rerun::SeriesPoints::new().with_markers([rerun::components::MarkerShape::Circle]),
+    )?;
 
     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
         rec.set_time_sequence("step", t);

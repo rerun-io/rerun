@@ -46,6 +46,7 @@ fn main() {
 
     let mut always_run = false;
     let mut check = false;
+    let mut warnings_as_errors = false;
 
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
@@ -58,6 +59,7 @@ fn main() {
                 always_run = true;
                 check = true;
             }
+            "--warnings-as-errors" => warnings_as_errors = true,
 
             #[cfg(feature = "tracing")]
             "--profile" => profiler.start(),
@@ -170,7 +172,7 @@ fn main() {
         ),
     );
 
-    report.finalize();
+    report.finalize(warnings_as_errors);
 
     write_versioning_hash(re_types_source_hash_path, new_hash);
 

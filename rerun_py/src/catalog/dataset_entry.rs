@@ -24,14 +24,11 @@ use re_protos::manifest_registry::v1alpha1::{
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
-use crate::catalog::task::PyTasks;
-use crate::catalog::{
-    PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, to_py_err,
+use super::{
+    PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
+    dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
 };
-use crate::dataframe::{
-    AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
-};
+use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.

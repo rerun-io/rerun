@@ -192,7 +192,7 @@ TRANSLATION_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 def test_transform3d_translation_columns() -> None:
     for input, expected in TRANSLATION_CASES:
         data = [*rr.Transform3D.columns(translation=input)]
-        assert np.allclose(data[1].as_arrow_array().to_pylist(), np.asarray(expected))
+        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))
 
 
 MAT_3X3_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
@@ -219,4 +219,4 @@ MAT_3X3_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 def test_transform3d_mat3x3_columns() -> None:
     for input, expected in MAT_3X3_CASES:
         data = [*rr.Transform3D.columns(mat3x3=input)]
-        assert np.allclose(data[1].as_arrow_array().to_pylist(), np.asarray(expected))
+        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))

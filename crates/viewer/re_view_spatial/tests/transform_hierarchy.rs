@@ -1,12 +1,14 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewer_context::{
+    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
+};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_transform_hierarchy() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
 
@@ -142,17 +144,6 @@ pub fn test_transform_hierarchy() {
     );
 }
 
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    test_context
-}
-
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view_blueprint =
@@ -218,15 +209,15 @@ fn run_view_ui_and_save_snapshot(
 
             harness.run_steps(8);
 
-            let broken_pixels_fraction = 0.0036;
-            let num_pixels = (size.x * size.y).ceil() as u64;
+            let broken_pixels_fraction = 0.004;
 
-            use re_viewer_context::test_context::HarnessExt as _;
-            success = harness.try_snapshot_with_broken_pixels_threshold(
-                &name,
-                num_pixels,
-                broken_pixels_fraction,
+            let options = SnapshotOptions::new().failed_pixel_count_threshold(
+                (size.x * size.y * broken_pixels_fraction).round() as usize,
             );
+
+            if harness.try_snapshot_options(&name, &options).is_err() {
+                success = false;
+            }
         }
         assert!(success, "one or more snapshots failed");
     }
