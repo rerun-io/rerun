@@ -460,6 +460,8 @@ impl ChunkStore {
     ///
     /// See also [`ChunkStore::remove_chunks`].
     pub(crate) fn remove_chunk(&mut self, chunk_id: ChunkId) -> Vec<ChunkStoreDiff> {
+        re_tracing::profile_function!();
+
         let Some(chunk) = self.chunks_per_chunk_id.get(&chunk_id) else {
             return Vec::new();
         };
@@ -518,6 +520,8 @@ impl ChunkStore {
         // before we had time to clean the other.
 
         for (entity_path, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
+            re_tracing::profile_scope!("chunk-id");
+
             let HashMapEntry::Occupied(mut temporal_chunk_ids_per_timeline) = self
                 .temporal_chunk_ids_per_entity_per_component
                 .entry(entity_path.clone())
@@ -532,6 +536,7 @@ impl ChunkStore {
             };
 
             for (timeline, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
+                re_tracing::profile_scope!("timeline");
                 // Component-less indices
                 {
                     let HashMapEntry::Occupied(mut temporal_chunk_ids_per_time_componentless) =
@@ -676,18 +681,24 @@ impl ChunkStore {
             }
         }
 
-        self.chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-            chunk_ids.retain(|chunk_id| !chunk_ids_removed.contains(chunk_id));
-            !chunk_ids.is_empty()
-        });
+        {
+            re_tracing::profile_scope!("retain");
+            self.chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
+                chunk_ids.retain(|chunk_id| !chunk_ids_removed.contains(chunk_id));
+                !chunk_ids.is_empty()
+            });
+        }
 
-        chunk_ids_removed
-            .into_iter()
-            .filter_map(|chunk_id| self.chunks_per_chunk_id.remove(&chunk_id))
-            .inspect(|chunk| {
-                self.temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
-            })
-            .map(ChunkStoreDiff::deletion)
-            .collect()
+        {
+            re_tracing::profile_scope!("last collect");
+            chunk_ids_removed
+                .into_iter()
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.remove(&chunk_id))
+                .inspect(|chunk| {
+                    self.temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
+                })
+                .map(ChunkStoreDiff::deletion)
+                .collect()
+        }
     }
 }
