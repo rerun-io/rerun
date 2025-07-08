@@ -53,7 +53,10 @@ impl VideoPlayerError {
     pub fn should_request_more_frames(&self) -> bool {
         // Decoders often (not always!) recover from errors and will succeed eventually.
         // Gotta keep trying!
-        matches!(self, Self::Decoding(_))
+        match self {
+            Self::Decoding(err) => err.should_request_more_frames(),
+            _ => false,
+        }
     }
 }
 

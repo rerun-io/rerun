@@ -88,6 +88,16 @@ pub enum Error {
     SpsParsing,
 }
 
+impl Error {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Restarting ffmpeg can recover from some decoder internal errors.
+        matches!(
+            self,
+            Self::Ffmpeg(_) | Self::FfmpegFatal(_) | Self::UnexpectedFfmpegOutputChunk
+        )
+    }
+}
+
 impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
