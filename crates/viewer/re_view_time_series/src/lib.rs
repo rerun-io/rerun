@@ -2,8 +2,6 @@
 //!
 //! A View that shows plots over Rerun timelines.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod aggregation;
