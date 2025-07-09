@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
+use crossbeam::channel::{Receiver, Sender};
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
 use re_mp4::StsdBoxContent;
@@ -12,7 +13,7 @@ use web_sys::{
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
-use crate::{Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDetails};
+use crate::{DecodeError, Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDetails};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -41,10 +42,15 @@ impl std::ops::Deref for WebVideoFrame {
 
 pub struct WebVideoDecoder {
     codec: VideoCodec,
+
     timescale: Timescale,
+    first_frame_pts: Time,
+
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     on_output: Arc<OutputCallback>,
+
+    frame_info_tx: Sender<(u64, FrameInfo)>,
 }
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -66,6 +72,9 @@ pub enum WebError {
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
     Decoding(String),
+
+    #[error("The WebCodec decoder shut down unexpectedly.")]
+    UnexpectedShutdown,
 
     #[error(
         "Not enough codec information to configure the video decoder. For live streams this typically happens prior to the arrival of the first key frame."
@@ -124,16 +133,27 @@ impl WebVideoDecoder {
         // Web APIs insist on microsecond timestamps throughout.
         // If we don't have a timescale, assume a 30fps video where time units are frames.
         // Higher fps should be still just fine, the web just needs _something_.
+        // For details on how we treat timestamps, see submit_chunk.
         let timescale = video_descr.timescale.unwrap_or(Timescale::new(30));
 
-        let decoder = init_video_decoder(on_output.clone(), timescale)?;
+        let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
+        let decoder = init_video_decoder(on_output.clone(), frame_info_rx)?;
+
+        let first_frame_pts = video_descr
+            .samples
+            .front()
+            .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
             codec: video_descr.codec,
+
             timescale,
+            first_frame_pts,
+
             decoder,
             hw_acceleration,
             on_output,
+            frame_info_tx,
         })
     }
 }
@@ -147,17 +167,61 @@ impl AsyncDecoder for WebVideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let web_chunk = EncodedVideoChunkInit::new(
-            &data,
-            video_chunk
-                .presentation_timestamp
-                .into_micros(self.timescale),
-            type_,
-        );
 
+        // WebCodec consumes timestamps in microseconds.
+        // The exact role of the timestamps in the decoding process is not specified as far as I can tell,
+        // but it's reasonable to assume they play a role in ordering of outputs and are therefore important
+        // in the presence of H.264/H.265 bframes, where sample/chunk-data is not submitted in presentation order.
+        // In fact, experimenting with frame numbers instead of timestamps worked fine just as well in the absence of bframes.
+        // However, to be on the safe side we stick with meaningful timestamps in microseconds.
+        //
+        // The exact timestamps are supposed to show up when receiving the frames.
+        // Therefore, we should be able to use the timestamp to match the frame to the frameinfo!
+        // See https://www.w3.org/TR/webcodecs/#output-videoframes:
+        // > Let timestamp and duration be the timestamp and duration from the EncodedVideoChunk associated with output.
+        //
+        // However, in practice, the timestamps received are often off by more than can be just explained with
+        // the wasm->js->wasm transition (which is bound to mess with accuracy) and the fact that
+        // WebCodec specifies timestamps to be internally represented as i64.
+        // In chrome this is likely related to this bug:
+        // https://issues.chromium.org/issues/40925070
+        // (comments describe that decoders may mess with the timestamps)
+        //
+        // Therefore we make a best-effort attempt:
+        // * use whole numbered microseconds since first frame
+        // * when retrieving frame-infos, look for the _closest_ match.
+        let web_timestamp_us = (video_chunk.presentation_timestamp - self.first_frame_pts)
+            .into_micros(self.timescale) as u64;
+
+        if self
+            .frame_info_tx
+            .send((
+                web_timestamp_us,
+                FrameInfo {
+                    frame_nr: Some(video_chunk.frame_nr),
+                    is_sync: Some(video_chunk.is_sync),
+                    sample_idx: Some(video_chunk.sample_idx),
+                    presentation_timestamp: video_chunk.presentation_timestamp,
+                    duration: video_chunk.duration,
+                    latest_decode_timestamp: Some(video_chunk.decode_timestamp),
+                },
+            ))
+            .is_err()
+        {
+            return Err(DecodeError::WebDecoder(WebError::UnexpectedShutdown));
+        }
+
+        // Setup chunk for the WebCodec decoder to decode.
+        let web_chunk = EncodedVideoChunkInit::new(&data, web_timestamp_us as _, type_);
+
+        // Empirically, decoders don't care about the presence of the duration field.
+        // The spec also marks it as entirely optional, but does not specify whether it may affect the decoding itself.
+        // Given that we err on the side of providing too much than too little information.
         if let Some(duration) = video_chunk.duration {
-            let duration_millis = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
-            web_chunk.set_duration(duration_millis);
+            let duration_micros = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
+            web_chunk.set_duration(duration_micros);
+        } else {
+            web_chunk.set_duration(1.0 / 30.0 * 1000.0 * 1000.0);
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
@@ -177,7 +241,9 @@ impl AsyncDecoder for WebVideoDecoder {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
+            let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
+            self.frame_info_tx = frame_info_tx;
+            self.decoder = init_video_decoder(self.on_output.clone(), frame_info_rx)?;
         };
 
         let encoding_details = video_descr
@@ -210,6 +276,9 @@ impl AsyncDecoder for WebVideoDecoder {
         // """
         // -> Nothing of this indicates that we _have_ to call it and rather discourages it,
         // but it points out that it might be a good idea once "all desired work is queued".
+        //
+        // Note that the next frame after a flush has to be a key frame.
+        // This is already part of the contract for `AsyncDecoder::end_of_video`.
         let _ignored = self.decoder.flush();
 
         Ok(())
@@ -234,36 +303,94 @@ static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
 
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
-    timescale: Timescale,
+    frame_info_tx: Receiver<(u64, FrameInfo)>,
 ) -> Result<web_sys::VideoDecoder, WebError> {
     let on_output = {
         let on_output = on_output_callback.clone();
+        let mut pending_frame_info = BTreeMap::default();
+
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
-            // We assume that the timestamp returned by the decoder is in time since start,
-            // and does not represent demuxed "raw" presentation timestamps.
-            let presentation_timestamp =
-                Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-            let duration = frame.duration().map(|d| Time::from_micros(d, timescale));
+            loop {
+                match frame_info_tx.try_recv() {
+                    Ok((web_timestamp_us, frame_info)) => {
+                        pending_frame_info.insert(web_timestamp_us, frame_info);
+                    }
+                    Err(crossbeam::channel::TryRecvError::Empty) => break,
+                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                        // We're probably shutting down.
+                        return;
+                    }
+                }
+            }
+
+            let Some(web_timestamp_us_raw) = frame.timestamp() else {
+                // Spec says this should never happen.
+                re_log::warn_once!("WebCodec decoded video frame without any timestamp data.");
+                return;
+            };
+
+            // As described in submit_chunk, use closest frame info for the received frame timestamp truncated to integer.
+            // We do this to be robust against inaccurate timestamps returned from the WebCodec API.
+            let web_timestamp_us = web_timestamp_us_raw as u64;
+            let timestamp_smaller_equal = pending_frame_info
+                .range(..=web_timestamp_us)
+                .next_back()
+                .map(|(k, _)| *k);
+            let loopup_timestamp_us = if Some(web_timestamp_us) == timestamp_smaller_equal {
+                web_timestamp_us
+            } else {
+                let timestamp_bigger = pending_frame_info
+                    .range(web_timestamp_us..)
+                    .next()
+                    .map(|(k, _)| *k);
+
+                match (timestamp_smaller_equal, timestamp_bigger) {
+                    (Some(smaller), Some(bigger)) => {
+                        if web_timestamp_us - smaller < bigger - web_timestamp_us {
+                            smaller
+                        } else {
+                            bigger
+                        }
+                    }
+                    (Some(smaller), None) => smaller,
+                    (None, Some(bigger)) => bigger,
+                    (None, None) => {
+                        // This unfortunately happens every now and then for our video stream demo.
+                        re_log::debug_once!("WebCodec decoded video frame for which we didn't have any corresponding frame info.
+                                This happens when the decoder emits more frames than we expected.
+                                This is due to interpolation in the decoder or if a video sample corresponds to more than one video frame which Rerun doesn't support."
+                            );
+                        return;
+                    }
+                }
+            };
+
+            if loopup_timestamp_us as f64 != web_timestamp_us_raw {
+                re_log::trace!(
+                    "WebCodec's decoded frame hat a PTS of {web_timestamp_us_raw}us, but we the closest we had was {loopup_timestamp_us}us. Abs difference: {}us",
+                    (web_timestamp_us_raw - loopup_timestamp_us as f64).abs()
+                );
+            }
+
+            let Some(info) = pending_frame_info.remove(&loopup_timestamp_us) else {
+                re_log::error_once!(
+                    "Determined video frame info for PTS {loopup_timestamp_us}us doesn't exist. This is an implementation error in Rerun.",
+                );
+                return;
+            };
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
-                info: FrameInfo {
-                    is_sync: None,    // TODO(emilk)
-                    sample_idx: None, // TODO(emilk)
-                    frame_nr: None,   // TODO(emilk)
-                    presentation_timestamp,
-                    duration,
-                    latest_decode_timestamp: None,
-                },
+                info,
             }));
-        }) as Box<dyn Fn(web_sys::VideoFrame)>)
+        }) as Box<dyn FnMut(web_sys::VideoFrame)>)
     };
 
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
         on_output_callback(Err(super::DecodeError::WebDecoder(WebError::Decoding(
             js_error_to_string(&err),
         ))));
-    }) as Box<dyn Fn(js_sys::Error)>);
+    }) as Box<dyn FnMut(js_sys::Error)>);
 
     let Ok(on_output) = on_output.into_js_value().dyn_into::<Function>() else {
         unreachable!()

@@ -172,6 +172,7 @@ pub trait AsyncDecoder: Send + Sync {
     /// Called after submitting the last chunk.
     ///
     /// Should flush all pending frames.
+    /// The next submitted chunk is guaranteed to be a key frame.
     fn end_of_video(&mut self) -> Result<()> {
         Ok(())
     }
@@ -391,9 +392,11 @@ pub struct FrameInfo {
     /// None = unknown.
     pub frame_nr: Option<u32>,
 
-    /// Time at which this sample appears in the frame stream, in time units.
+    /// Time at which this frame appears in the frame stream, in time units.
     ///
     /// The frame should be shown at this time.
+    /// We expect this timestamp to be identical with a the presentation timestamp of the [`crate::Chunk`]
+    /// which is associated with this frame.
     /// Often synonymous with `composition_timestamp`.
     ///
     /// `decode_timestamp <= presentation_timestamp`
