@@ -217,7 +217,10 @@ impl VideoPlayer {
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
         if let Some(decoded_frame) = self
             .sample_decoder
-            .latest_decoded_frame_at_and_drop_earlier_frames(requested_sample_pts)
+            // Use the `requested_pts` which may be a bit higher than the PTS of the latest-at sample for `requested_pts`.
+            // This is to hedge against not well-behaved decoders, that may produce PTS values that
+            // don't show up in the input data (that in and on its own is a bug, but this makes it more robust)
+            .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
         {
             self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
@@ -669,7 +672,18 @@ fn is_significantly_behind(
             // We're technically not catching up, but we may as well behave as if we are.
             return true;
         };
-        if current_sample.presentation_timestamp == decoded_frame_pts {
+        if current_sample.presentation_timestamp <= decoded_frame_pts {
+            // Decoded PTS is _supposed_ to show be exactly matched with one of the sample PTS.
+            // Checking for smaller equal here, hedges against bugs in decoders that may emit PTS values
+            // that don't show up in the input data.
+            if current_sample.presentation_timestamp != decoded_frame_pts {
+                re_log::debug!(
+                    "PTS {:?} of decoded sample is not equal to any sample pts {:?}. This hints at a bug in the decoder implementation.",
+                    decoded_frame_pts,
+                    current_sample.presentation_timestamp
+                );
+            }
+
             // This is the frame we actually got and we stayed under the tolerance.
             // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
             return false;
