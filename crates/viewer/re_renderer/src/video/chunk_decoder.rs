@@ -26,6 +26,11 @@ struct DecoderOutput {
     /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
     /// reset decoder.
     /// See also <https://github.com/rerun-io/rerun/issues/7961>
+    ///
+    /// Note that this technically a bug in their respective WebCodec implementations as the spec says
+    /// (<https://www.w3.org/TR/webcodecs/#dom-videodecoder-decode>):
+    /// > VideoDecoder requires that frames are output in the order they expect to be presented, commonly known as presentation order.
+    /// Either way, being robust against this seems like a good idea!
     frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
