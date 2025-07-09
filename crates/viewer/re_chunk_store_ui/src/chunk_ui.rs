@@ -51,6 +51,7 @@ impl ChunkUi {
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
         let tokens = ui.tokens();
 
+        let table_style = re_ui::TableStyle::Dense;
         let should_exit = self.chunk_info_ui(ui);
 
         //
@@ -180,9 +181,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(tokens.deprecated_table_line_height(), header_ui)
+                    .header(tokens.table_row_height(table_style), header_ui)
                     .body(|body| {
-                        body.rows(tokens.deprecated_table_line_height(), row_ids.len(), row_ui);
+                        body.rows(tokens.table_row_height(table_style), row_ids.len(), row_ui);
                     });
             });
 
