@@ -107,7 +107,7 @@ impl DecoderDelayState {
             Self::UpToDate => false,
 
             // Everything that isn't up-to-date means that we have to request more frames
-            // since the frame that is displayed right now is the the one that was requested.
+            // since the frame that is displayed right now is the one that was requested.
             Self::UpToDateWithinTolerance
             | Self::Behind
             | Self::UpToDateToleratedEdgeOfLiveStream => true,

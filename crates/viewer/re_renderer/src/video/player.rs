@@ -49,6 +49,7 @@ impl Default for PlayerConfiguration {
         }
     }
 }
+
 #[derive(Debug)]
 pub struct TimedDecodingError {
     time_of_first_error: Instant,
