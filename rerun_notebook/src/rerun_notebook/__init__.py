@@ -151,9 +151,11 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     #
     # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
 
-    _width = traitlets.Int(allow_none=True).tag(sync=True)
-    _height = traitlets.Int(allow_none=True).tag(sync=True)
+    _width = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
+    _height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
 
+    # TODO(nick): This traitlet is only used for initialization
+    # we should figure out how to pass directly and remove it
     _url = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     _panel_states = traitlets.Dict(
@@ -173,8 +175,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"],
+        height: int | Literal["auto"],
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,
@@ -260,6 +262,9 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     def set_active_recording(self, recording_id: str) -> None:
         self.send({"type": "recording_id", "recording_id": recording_id})
+
+    def set_active_partition_url(self, url: str) -> None:
+        self.send({"type": "partition_url", "partition_url": url})
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""

@@ -606,8 +606,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
-# TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust
-
+# TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
     def is_forked_child(self) -> bool:
         """
@@ -653,6 +652,9 @@ class PyBinarySinkStorage:
 #
 # init
 #
+
+def flush_and_cleanup_orphaned_recordings() -> None:
+    """Flush and then cleanup any orphaned recordings."""
 
 def new_recording(
     application_id: str,
@@ -1190,8 +1192,48 @@ class DatasetEntry(Entry):
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
 
-    def partition_url(self, partition_id: str) -> str:
-        """Return the URL for the given partition."""
+    def partition_url(
+        self,
+        partition_id: str,
+        timeline: str | None = None,
+        start: datetime | int | None = None,
+        end: datetime | int | None = None,
+    ) -> str:
+        """
+        Return the URL for the given partition.
+
+        Parameters
+        ----------
+        partition_id: str
+            The ID of the partition to get the URL for.
+
+        timeline: str | None
+            The name of the timeline to display.
+
+        start: int | datetime | None
+            The start time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        end: int | datetime | None
+            The end time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        Examples
+        --------
+        # With ticks
+        >>> start_tick, end_time = 0, 10
+        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+
+        # With timestamps
+        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+
+        Returns
+        -------
+        str
+            The URL for the given partition.
+
+        """
 
     def register(self, recording_uri: str, timeout_secs: int = 60) -> str:
         """

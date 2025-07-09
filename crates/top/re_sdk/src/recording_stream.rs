@@ -811,6 +811,14 @@ impl RecordingStream {
             },
         }
     }
+
+    /// Returns the current reference count of the [`RecordingStream`].
+    pub fn ref_count(&self) -> usize {
+        match &self.inner {
+            Either::Left(strong) => Arc::strong_count(strong),
+            Either::Right(weak) => weak.strong_count(),
+        }
+    }
 }
 
 // TODO(#5335): shutdown flushing behavior is too brittle.

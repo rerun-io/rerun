@@ -513,8 +513,7 @@ impl PyDataframeQueryView {
             .collect();
 
         DataframeQueryTableProvider::new(query_engines, &self.query_expression)
-            .map_err(to_py_err)?
-            .try_into()
+            .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
             .map_err(to_py_err)
     }
 }

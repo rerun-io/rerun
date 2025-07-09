@@ -1575,6 +1575,8 @@ impl App {
                     self.show_text_logs_as_notifications();
                 }
             });
+
+        self.notifications.show_toasts(egui_ctx);
     }
 
     /// Show recent text log messages to the user as toast notifications.
