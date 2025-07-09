@@ -11,8 +11,10 @@ extend-exclude = [
   "rerun_cpp/src/rerun/archetypes/image.hpp",     # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
+  "*.png",
+  "*.mp4",
+  "*.rrd",
 ]
-
 
 [default.extend-words]
 lod = "lod"     # level-of-detail

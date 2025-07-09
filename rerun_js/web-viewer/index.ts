@@ -396,7 +396,7 @@ export class WebViewer {
   // NOTE: Callbacks passed to this function must NOT invoke any viewer methods!
   //       The `setTimeout` is omitted to avoid the 1-tick delay, as it is unnecessary,
   //       because this is only meant to be used for sending events to Jupyter/Gradio.
-  // 
+  //
   // Do not change this without searching for grepping for usage!
   private _on_raw_event(callback: (event: string) => void): () => void {
     this.#_raw_events.add(callback);
