@@ -134,7 +134,7 @@ impl NotificationUi {
     pub fn notification_toggle_button(&mut self, ui: &mut egui::Ui) {
         let popup_id = notification_panel_popup_id();
 
-        let is_panel_visible = ui.memory(|mem| mem.is_popup_open(popup_id));
+        let is_panel_visible = egui::Popup::is_id_open(ui.ctx(), popup_id);
         let button_response =
             ui.medium_icon_toggle_button(&icons::NOTIFICATION, &mut is_panel_visible.clone());
 

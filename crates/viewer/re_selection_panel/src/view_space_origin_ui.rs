@@ -174,7 +174,7 @@ fn view_space_origin_widget_editing_ui(
     //
 
     if output.response.has_focus() {
-        ui.memory_mut(|mem| mem.open_popup(popup_id));
+        egui::Popup::open_id(ui.ctx(), popup_id);
     }
 
     let suggestions_ui = |ui: &mut egui::Ui| {
@@ -210,7 +210,7 @@ fn view_space_origin_widget_editing_ui(
 
     ui.list_item_popup(popup_id, &output.response, suggestions_ui);
 
-    if control_flow.is_continue() && !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+    if control_flow.is_continue() && !egui::Popup::is_id_open(ui.ctx(), popup_id) {
         control_flow = ControlFlow::Break(None);
     };
 
