@@ -455,6 +455,15 @@ impl VideoPlayer {
         else if requested.gop_idx < last_requested.gop_idx {
             self.reset(video_description)?;
         }
+        // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
+        else if self.signaled_end_of_video
+            && last_enqueued.sample_idx + 1 < video_description.samples.next_index()
+        {
+            re_log::debug!(
+                "Reset because new frames appeared since we previously signaled the end of video."
+            );
+            self.reset(video_description)?;
+        }
         // Backwards seeking within the current GOP
         else if requested.sample_idx != last_requested.sample_idx {
             let requested_sample = video_description.samples.get(last_requested.sample_idx); // If it is not available, it got GC'ed by now.
@@ -487,12 +496,6 @@ impl VideoPlayer {
                 // (comparing decode timestamps should be equivalent to comparing sample indices)
                 self.reset(video_description)?;
             }
-        }
-        // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
-        else if self.signaled_end_of_video
-            && last_enqueued.sample_idx + 1 < video_description.samples.next_index()
-        {
-            self.reset(video_description)?;
         }
 
         Ok(())
@@ -553,6 +556,7 @@ impl VideoPlayer {
 
     fn signal_end_of_video_if_not_already_signaled(&mut self) -> Result<(), VideoPlayerError> {
         if !self.signaled_end_of_video {
+            re_log::debug!("Signaling end of video");
             self.sample_decoder.end_of_video()?;
             self.signaled_end_of_video = true;
         }
