@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -17,12 +15,13 @@ from .._baseclasses import (
     ComponentColumnList,
 )
 from ..error_utils import catch_and_log_exceptions
+from .series_points_ext import SeriesPointsExt
 
 __all__ = ["SeriesPoints"]
 
 
 @define(str=False, repr=False, init=False)
-class SeriesPoints(Archetype):
+class SeriesPoints(SeriesPointsExt, Archetype):
     """
     **Archetype**: Define the style properties for one or more point series (scatter plot) in a chart.
 
@@ -87,54 +86,7 @@ class SeriesPoints(Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        *,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        markers: components.MarkerShapeArrayLike | None = None,
-        names: datatypes.Utf8ArrayLike | None = None,
-        visible_series: datatypes.BoolArrayLike | None = None,
-        marker_sizes: datatypes.Float32ArrayLike | None = None,
-    ) -> None:
-        """
-        Create a new instance of the SeriesPoints archetype.
-
-        Parameters
-        ----------
-        colors:
-            Color for the corresponding series.
-
-            May change over time, but can cause discontinuities in the line.
-        markers:
-            What shape to use to represent the point
-
-            May change over time.
-        names:
-            Display name of the series.
-
-            Used in the legend. Expected to be unchanging over time.
-        visible_series:
-            Which lines are visible.
-
-            If not set, all line series on this entity are visible.
-            Unlike with the regular visibility property of the entire entity, any series that is hidden
-            via this property will still be visible in the legend.
-
-            May change over time.
-        marker_sizes:
-            Sizes of the markers.
-
-            May change over time.
-
-        """
-
-        # You can define your own __init__ function as a member of SeriesPointsExt in series_points_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                colors=colors, markers=markers, names=names, visible_series=visible_series, marker_sizes=marker_sizes
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in series_points_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
