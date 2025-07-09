@@ -336,7 +336,7 @@ fn init_video_decoder(
                 .range(..=web_timestamp_us)
                 .next_back()
                 .map(|(k, _)| *k);
-            let loopup_timestamp_us = if Some(web_timestamp_us) == timestamp_smaller_equal {
+            let lookup_timestamp_us = if Some(web_timestamp_us) == timestamp_smaller_equal {
                 web_timestamp_us
             } else {
                 let timestamp_bigger = pending_frame_info
@@ -365,16 +365,16 @@ fn init_video_decoder(
                 }
             };
 
-            if loopup_timestamp_us as f64 != web_timestamp_us_raw {
+            if lookup_timestamp_us as f64 != web_timestamp_us_raw {
                 re_log::trace!(
-                    "WebCodec's decoded frame hat a PTS of {web_timestamp_us_raw}us, but we the closest we had was {loopup_timestamp_us}us. Abs difference: {}us",
-                    (web_timestamp_us_raw - loopup_timestamp_us as f64).abs()
+                    "WebCodec's decoded frame hat a PTS of {web_timestamp_us_raw}us, but we the closest we had was {lookup_timestamp_us}us. Abs difference: {}us",
+                    (web_timestamp_us_raw - lookup_timestamp_us as f64).abs()
                 );
             }
 
-            let Some(info) = pending_frame_info.remove(&loopup_timestamp_us) else {
+            let Some(info) = pending_frame_info.remove(&lookup_timestamp_us) else {
                 re_log::error_once!(
-                    "Determined video frame info for PTS {loopup_timestamp_us}us doesn't exist. This is an implementation error in Rerun.",
+                    "Determined video frame info for PTS {lookup_timestamp_us}us doesn't exist. This is an implementation error in Rerun.",
                 );
                 return;
             };
