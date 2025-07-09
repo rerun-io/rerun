@@ -155,6 +155,7 @@ impl NotificationUi {
         let spacing = 2.0;
 
         egui::Popup::menu(&button_response)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .id(popup_id)
             .frame(frame)
             // Put the popup below the button, but all the way to the right of the screen:
