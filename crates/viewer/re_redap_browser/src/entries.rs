@@ -284,7 +284,7 @@ impl DatasetKind {
                 name: _,
                 origin: _,
                 entry_id,
-            } => Item::RedapDatasetEntry(*entry_id),
+            } => Item::RedapEntry(*entry_id),
             Self::Local(app_id) => Item::AppId(app_id.clone()),
         }
     }
@@ -389,7 +389,7 @@ pub fn dataset_and_its_recordings_ui(
 }
 
 pub fn table_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, table: &Table) {
-    let item = Item::RedapTableEntry(table.id());
+    let item = Item::RedapEntry(table.id());
     let selected = ctx.selection().contains_item(&item);
     let is_active = ctx.active_redap_entry() == Some(&table.id());
 

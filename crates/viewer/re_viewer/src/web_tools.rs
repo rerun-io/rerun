@@ -157,11 +157,7 @@ pub fn url_to_receiver(
 
         EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => {
             command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-
-            //TODO: what if its a table
-            command_sender.send_system(SystemCommand::SetSelection(Item::RedapDatasetEntry(
-                uri.entry_id,
-            )));
+            command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
             None
         }
 

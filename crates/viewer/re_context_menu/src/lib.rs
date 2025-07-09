@@ -382,10 +382,9 @@ trait ContextMenuAction {
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapDatasetEntry(entry_id) => {
-                    self.process_redap_dataset_entry(ctx, entry_id);
+                Item::RedapEntry(entry_id) => {
+                    self.process_redap_entry(ctx, entry_id);
                 }
-                Item::RedapTableEntry(entry_id) => self.process_redap_table_entry(ctx, entry_id),
             }
         }
     }
@@ -412,16 +411,8 @@ trait ContextMenuAction {
     /// Process a single redap server.
     fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
 
-    /// Process a single redap dataset entry.
-    fn process_redap_dataset_entry(
-        &self,
-        _ctx: &ContextMenuContext<'_>,
-        _entry_id: &re_log_types::EntryId,
-    ) {
-    }
-
-    /// Process a single redap table entry.
-    fn process_redap_table_entry(
+    /// Process a single reda entry (dataset or table).
+    fn process_redap_entry(
         &self,
         _ctx: &ContextMenuContext<'_>,
         _entry_id: &re_log_types::EntryId,

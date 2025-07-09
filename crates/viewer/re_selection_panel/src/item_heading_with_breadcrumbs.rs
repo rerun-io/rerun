@@ -86,8 +86,7 @@ fn item_bread_crumbs_ui(
         Item::AppId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
-        | Item::RedapDatasetEntry(_)
-        | Item::RedapTableEntry(_)
+        | Item::RedapEntry(_)
         | Item::RedapServer(_)
         | Item::TableId(_) => {
             // These have no bread crumbs, at least not currently.
@@ -210,8 +209,7 @@ fn last_part_of_item_heading(
         | Item::View { .. }
         | Item::TableId { .. }
         | Item::StoreId { .. }
-        | Item::RedapDatasetEntry(_)
-        | Item::RedapTableEntry(_)
+        | Item::RedapEntry(_)
         | Item::RedapServer(_) => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,

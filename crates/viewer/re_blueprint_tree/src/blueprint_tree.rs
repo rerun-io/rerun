@@ -1149,8 +1149,7 @@ impl BlueprintTree {
             | Item::TableId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
-            | Item::RedapDatasetEntry(_)
-            | Item::RedapTableEntry(_)
+            | Item::RedapEntry(_)
             | Item::RedapServer(_) => None,
 
             Item::Container(container_id) => {

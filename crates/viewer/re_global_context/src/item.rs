@@ -35,11 +35,10 @@ pub enum Item {
     /// An entity or instance in the context of a view's data results.
     DataResult(ViewId, InstancePath),
 
-    /// A dataset entry stored in a Redap server.
-    RedapDatasetEntry(EntryId),
-
-    /// A table entry stored in a Redap server.
-    RedapTableEntry(EntryId),
+    /// A table or dataset entry stored in a Redap server.
+    // TODO(ab): this should probably be split into separate variant, and made more consistent with
+    // `AppId` and `TableId`.
+    RedapEntry(EntryId),
 
     /// A Redap server.
     RedapServer(re_uri::Origin),
@@ -55,8 +54,7 @@ impl Item {
             | Self::Container(_)
             | Self::StoreId(_)
             | Self::RedapServer(_)
-            | Self::RedapDatasetEntry(_)
-            | Self::RedapTableEntry(_) => None,
+            | Self::RedapEntry(_) => None,
 
             Self::ComponentPath(component_path) => Some(&component_path.entity_path),
 
@@ -147,7 +145,7 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapDatasetEntry(entry_id) | Self::RedapTableEntry(entry_id) => {
+            Self::RedapEntry(entry_id) => {
                 write!(f, "{entry_id}")
             }
             Self::RedapServer(server) => write!(f, "{server}"),
@@ -176,8 +174,7 @@ impl Item {
                     "Data result entity"
                 }
             }
-            Self::RedapDatasetEntry(_) => "Redap dataset entry",
-            Self::RedapTableEntry(_) => "Redap table entry",
+            Self::RedapEntry(_) => "Redap entry",
             Self::RedapServer(_) => "Redap server",
         }
     }
@@ -205,8 +202,7 @@ pub fn resolve_mono_instance_path_item(
         | Item::ComponentPath(_)
         | Item::View(_)
         | Item::Container(_)
-        | Item::RedapDatasetEntry(_)
-        | Item::RedapTableEntry(_)
+        | Item::RedapEntry(_)
         | Item::RedapServer(_) => item.clone(),
     }
 }

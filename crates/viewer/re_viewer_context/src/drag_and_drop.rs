@@ -282,8 +282,7 @@ struct ItemCounter {
     instance_cnt: u32,
     component_cnt: u32,
     redap_server_cnt: u32,
-    redap_dataset_entry_cnt: u32,
-    redap_table_entry_cnt: u32,
+    redap_entry_cnt: u32,
 }
 
 impl ItemCounter {
@@ -304,8 +303,7 @@ impl ItemCounter {
             }
             Item::ComponentPath(_) => self.component_cnt += 1,
             Item::RedapServer(_) => self.redap_server_cnt += 1,
-            Item::RedapDatasetEntry(_) => self.redap_dataset_entry_cnt += 1,
-            Item::RedapTableEntry(_) => self.redap_table_entry_cnt += 1,
+            Item::RedapEntry(_) => self.redap_entry_cnt += 1,
         }
     }
 }

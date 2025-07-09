@@ -684,7 +684,7 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapDatasetEntry(entry_id) | Item::RedapTableEntry(entry_id) => {
+                    Item::RedapEntry(entry_id) => {
                         self.state
                             .navigation
                             .replace(DisplayMode::RedapEntry(*entry_id));
