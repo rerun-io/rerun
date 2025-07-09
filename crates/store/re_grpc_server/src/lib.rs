@@ -49,6 +49,40 @@ pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 const MESSAGE_QUEUE_CAPACITY: usize =
     (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
 
+/// Wrapper with a nicer error message
+#[derive(Debug)]
+pub struct TonicStatusError(pub tonic::Status);
+
+impl std::fmt::Display for TonicStatusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(emilk): duplicated in `re_grpc_client`
+        let status = &self.0;
+
+        write!(f, "gRPC error")?;
+
+        if status.code() != tonic::Code::Unknown {
+            write!(f, ", code: '{}'", status.code())?;
+        }
+        if !status.message().is_empty() {
+            write!(f, ", message: {:?}", status.message())?;
+        }
+        // Binary data - not useful.
+        // if !status.details().is_empty() {
+        //     write!(f, ", details: {:?}", status.details())?;
+        // }
+        if !status.metadata().is_empty() {
+            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
+        }
+        Ok(())
+    }
+}
+
+impl From<tonic::Status> for TonicStatusError {
+    fn from(value: tonic::Status) -> Self {
+        Self(value)
+    }
+}
+
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
 /// Start a Rerun server, listening on `addr`.
@@ -770,7 +804,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 }
 
                 Err(err) => {
-                    re_log::error!("Error while receiving messages: {err}");
+                    re_log::error!("Error while receiving messages: {}", TonicStatusError(err));
                     break;
                 }
             }
