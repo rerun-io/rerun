@@ -556,6 +556,16 @@ pub struct QueryDatasetRequest {
     /// ```
     #[prost(bool, tag = "7")]
     pub select_all_entity_paths: bool,
+    /// Which components are we interested in?
+    ///
+    /// If left unspecified, all existing components are considered of interest.
+    ///
+    /// This will perform a basic fuzzy match on the available columns' descriptors.
+    /// The fuzzy logic is a simple case-sensitive `contains()` query.
+    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
+    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    #[prost(string, repeated, tag = "10")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// If set, static data will be excluded from the results.
     #[prost(bool, tag = "8")]
     pub exclude_static_data: bool,
@@ -657,20 +667,6 @@ pub struct QueryLatestAt {
     /// Leave this empty to query for static data.
     #[prost(int64, optional, tag = "2")]
     pub at: ::core::option::Option<i64>,
-    /// Which components are we interested in?
-    ///
-    /// If left unspecified, all existing components are considered of interest.
-    ///
-    /// This will perform a basic fuzzy match on the available columns' descriptors.
-    /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLines`, etc.
-    ///
-    /// TODO(cmc): I shall bring that back into a more structured form later.
-    /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
-    #[prost(string, repeated, tag = "3")]
-    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryLatestAt {
     const NAME: &'static str = "QueryLatestAt";
@@ -693,20 +689,6 @@ pub struct QueryRange {
     /// What index range are we looking for?
     #[prost(message, optional, tag = "2")]
     pub index_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
-    /// Which components are we interested in?
-    ///
-    /// If left unspecified, all existing components are considered of interest.
-    ///
-    /// This will perform a basic fuzzy match on the available columns' descriptors.
-    /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLines`, etc.
-    ///
-    /// TODO(cmc): I shall bring that back into a more structured form later.
-    /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
-    #[prost(string, repeated, tag = "3")]
-    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryRange {
     const NAME: &'static str = "QueryRange";
@@ -750,6 +732,16 @@ pub struct GetChunksRequest {
     /// ```
     #[prost(bool, tag = "6")]
     pub select_all_entity_paths: bool,
+    /// Which components are we interested in?
+    ///
+    /// If left unspecified, all existing components are considered of interest.
+    ///
+    /// This will perform a basic fuzzy match on the available columns' descriptors.
+    /// The fuzzy logic is a simple case-sensitive `contains()` query.
+    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
+    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    #[prost(string, repeated, tag = "9")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// If set, static data will be excluded from the results.
     #[prost(bool, tag = "7")]
     pub exclude_static_data: bool,

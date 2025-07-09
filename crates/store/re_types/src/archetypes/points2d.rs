@@ -398,7 +398,6 @@ impl ::re_types_core::AsComponents for Points2D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.positions.clone(),
             self.radii.clone(),
             self.colors.clone(),
@@ -524,12 +523,7 @@ impl Points2D {
                 .map(|keypoint_ids| keypoint_ids.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

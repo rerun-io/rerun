@@ -199,6 +199,16 @@ pub struct QueryDatasetRequest {
     /// ```
     #[prost(bool, tag = "7")]
     pub select_all_entity_paths: bool,
+    /// Which components are we interested in?
+    ///
+    /// If left unspecified, all existing components are considered of interest.
+    ///
+    /// This will perform a basic fuzzy match on the available columns' descriptors.
+    /// The fuzzy logic is a simple case-sensitive `contains()` query.
+    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
+    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    #[prost(string, repeated, tag = "10")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// If set, static data will be excluded from the results.
     #[prost(bool, tag = "8")]
     pub exclude_static_data: bool,
@@ -252,6 +262,16 @@ pub struct GetChunksRequest {
     /// ```
     #[prost(bool, tag = "6")]
     pub select_all_entity_paths: bool,
+    /// Which components are we interested in?
+    ///
+    /// If left unspecified, all existing components are considered of interest.
+    ///
+    /// This will perform a basic fuzzy match on the available columns' descriptors.
+    /// The fuzzy logic is a simple case-sensitive `contains()` query.
+    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
+    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    #[prost(string, repeated, tag = "9")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// If set, static data will be excluded from the results.
     #[prost(bool, tag = "7")]
     pub exclude_static_data: bool,
@@ -333,6 +353,25 @@ impl ::prost::Name for ScanTableResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.frontend.v1alpha1.ScanTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoMaintenanceRequest {
+    #[prost(message, optional, tag = "1")]
+    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    #[prost(bool, tag = "2")]
+    pub build_scalar_indexes: bool,
+    #[prost(bool, tag = "3")]
+    pub compact_fragments: bool,
+}
+impl ::prost::Name for DoMaintenanceRequest {
+    const NAME: &'static str = "DoMaintenanceRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.DoMaintenanceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.DoMaintenanceRequest".into()
     }
 }
 /// Generated client implementations.
@@ -956,6 +995,30 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Maintenance operations: scalar index creation, compaction, etc.
+        pub async fn do_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<
+            tonic::Response<
+                super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse,
+            >,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/DoMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "DoMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -1208,6 +1271,16 @@ pub mod frontend_service_server {
                 super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
             >,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
+        /// Maintenance operations: scalar index creation, compaction, etc.
+        async fn do_maintenance(
+            &self,
+            request: tonic::Request<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<
+            tonic::Response<
+                super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse,
+            >,
+            tonic::Status,
+        >;
     }
     /// Redap's public API.
     #[derive(Debug)]
@@ -2259,6 +2332,49 @@ pub mod frontend_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/DoMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoMaintenanceSvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<super::DoMaintenanceRequest>
+                        for DoMaintenanceSvc<T>
+                    {
+                        type Response =
+                            super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::do_maintenance(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

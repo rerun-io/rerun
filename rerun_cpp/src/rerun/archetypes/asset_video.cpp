@@ -18,17 +18,13 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> AssetVideo::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(2);
         if (blob.has_value()) {
             columns.push_back(blob.value().partitioned(lengths_).value_or_throw());
         }
         if (media_type.has_value()) {
             columns.push_back(media_type.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<AssetVideo>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -50,18 +46,13 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(2);
 
         if (archetype.blob.has_value()) {
             cells.push_back(archetype.blob.value());
         }
         if (archetype.media_type.has_value()) {
             cells.push_back(archetype.media_type.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<AssetVideo>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

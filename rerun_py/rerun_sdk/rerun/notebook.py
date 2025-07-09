@@ -360,6 +360,23 @@ class Viewer:
 
         self._viewer.set_active_recording(recording_id)
 
+    def set_active_partition_url(
+        self,
+        *,
+        url: str,
+    ) -> None:
+        """
+        Set the active partition url for the viewer.
+
+        Parameters
+        ----------
+        url: str
+            The URL of the partition to set the viewer to.
+
+        """
+
+        self._viewer.set_active_partition_url(url)
+
     @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
     @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(

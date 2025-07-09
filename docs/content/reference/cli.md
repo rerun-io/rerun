@@ -105,6 +105,14 @@ The Rerun command-line interface:
 > `rerun --serve-grpc` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
 > [Default: `false`]
 
+* `--connect <CONNECT>`
+> Do not attempt to start a new server, instead try to connect to an existing one.
+>
+> Optionally accepts a URL to a gRPC server.
+>
+> The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`, and the pathname must be `/proxy`.
+> [Default: `rerun+http://127.0.0.1:9876/proxy`]
+
 * `--expect-data-soon <EXPECT_DATA_SOON>`
 > This is a hint that we expect a recording to stream in very soon.
 >

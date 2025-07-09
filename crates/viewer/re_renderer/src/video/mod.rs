@@ -31,7 +31,7 @@ pub enum VideoPlayerError {
     #[error("Failed to decode video chunk: {0}")]
     DecodeChunk(String),
 
-    /// e.g. unsupported codec
+    /// Various errors that can occur during video decoding.
     #[error("Failed to decode video: {0}")]
     Decoding(#[from] re_video::DecodeError),
 
@@ -47,6 +47,17 @@ pub enum VideoPlayerError {
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
+}
+
+impl VideoPlayerError {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Decoders often (not always!) recover from errors and will succeed eventually.
+        // Gotta keep trying!
+        match self {
+            Self::Decoding(err) => err.should_request_more_frames(),
+            _ => false,
+        }
+    }
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
@@ -72,7 +83,7 @@ pub enum DecoderDelayState {
 impl DecoderDelayState {
     /// Whether a user of a video player should keep requesting a more up to date video frame even
     /// if the requested time has not changed.
-    pub fn should_rerequest_frame(&self) -> bool {
+    pub fn should_request_more_frames(&self) -> bool {
         match self {
             Self::UpToDate => false,
             Self::UpToDateWithinTolerance | Self::Behind => true,
@@ -108,12 +119,32 @@ pub struct VideoFrameTexture {
 
 pub struct VideoPlayerStreamId(pub u64);
 
+impl re_byte_size::SizeBytes for VideoPlayerStreamId {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 struct PlayerEntry {
     player: player::VideoPlayer,
 
     /// Was this used last frame?
     /// This is reset every frame, and used to determine whether to purge the player.
     used_last_frame: bool,
+}
+
+impl re_byte_size::SizeBytes for PlayerEntry {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            player,
+            used_last_frame: _,
+        } = self;
+        player.heap_size_bytes()
+    }
 }
 
 /// Video data + decoder(s).
@@ -124,6 +155,20 @@ pub struct Video {
     video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_settings: DecodeSettings,
+}
+
+impl re_byte_size::SizeBytes for Video {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            debug_name,
+            video_description,
+            players,
+            decode_settings: _,
+        } = self;
+        debug_name.heap_size_bytes()
+            + video_description.heap_size_bytes()
+            + players.lock().heap_size_bytes()
+    }
 }
 
 impl Drop for Video {

@@ -1,5 +1,7 @@
 //! The UI for the selection panel.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod defaults_ui;
 mod item_heading_no_breadcrumbs;
 mod item_heading_with_breadcrumbs;
@@ -26,7 +28,7 @@ mod test {
     fn test_selection_panel() {
         re_log::setup_logging();
 
-        let test_ctx = re_viewer_context::test_context::TestContext::default();
+        let test_ctx = re_viewer_context::test_context::TestContext::new();
         test_ctx.edit_selection(|selection_state| {
             selection_state.set_selection(Item::View(ViewId::random()));
         });

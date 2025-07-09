@@ -67,7 +67,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> AffixFuzzer3::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(19);
+        columns.reserve(18);
         if (fuzz2001.has_value()) {
             columns.push_back(fuzz2001.value().partitioned(lengths_).value_or_throw());
         }
@@ -122,10 +122,6 @@ namespace rerun::archetypes {
         if (fuzz2018.has_value()) {
             columns.push_back(fuzz2018.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<AffixFuzzer3>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -195,7 +191,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(19);
+        cells.reserve(18);
 
         if (archetype.fuzz2001.has_value()) {
             cells.push_back(archetype.fuzz2001.value());
@@ -250,11 +246,6 @@ namespace rerun {
         }
         if (archetype.fuzz2018.has_value()) {
             cells.push_back(archetype.fuzz2018.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<AffixFuzzer3>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

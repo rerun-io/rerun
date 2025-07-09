@@ -10,7 +10,12 @@ import rerun.blueprint as rrb
 README = """\
 # Context Menu - Multi-selection
 
+Related:
+- [TODO(#10455)](https://github.com/rerun-io/rerun/issues/10455): improve "Save screenshot..." on multiple views
+
 For each of the multi-selection below, check the context menu content as per the following table.
+
+
 
 
 ```plaintext
@@ -19,6 +24,8 @@ ITEMS                               CONTEXT MENU CONTENT
 ==========================================================
 2x Views                            Hide all
                                     Remove
+
+                                    Save screenshot...
 
                                     Expand all
                                     Collapse all
@@ -46,12 +53,16 @@ View + 'box2d' data result          Hide all
 ==========================================================
 'box2d' data result                 Hide all
 + 'box3d' entity (streams tree)
+                                    Copy entity paths
+
                                     Expand all
                                     Collapse all
 
                                     Add to new view
 ----------------------------------------------------------
 + some component                    Hide all
+
+                                    Copy entity paths
 
                                     Expand all
                                     Collapse all

@@ -8,6 +8,7 @@ use re_types::{
     ArchetypeName, Component, ComponentDescriptor, archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
+    reflection::ComponentDescriptorExt as _,
 };
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{

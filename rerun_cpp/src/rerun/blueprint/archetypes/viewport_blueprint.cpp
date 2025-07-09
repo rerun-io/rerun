@@ -32,7 +32,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> ViewportBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(6);
+        columns.reserve(5);
         if (root_container.has_value()) {
             columns.push_back(root_container.value().partitioned(lengths_).value_or_throw());
         }
@@ -50,10 +50,6 @@ namespace rerun::blueprint::archetypes {
                 past_viewer_recommendations.value().partitioned(lengths_).value_or_throw()
             );
         }
-        columns.push_back(ComponentColumn::from_indicators<ViewportBlueprint>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -85,7 +81,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(5);
 
         if (archetype.root_container.has_value()) {
             cells.push_back(archetype.root_container.value());
@@ -101,11 +97,6 @@ namespace rerun {
         }
         if (archetype.past_viewer_recommendations.has_value()) {
             cells.push_back(archetype.past_viewer_recommendations.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<ViewportBlueprint>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

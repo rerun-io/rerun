@@ -606,8 +606,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
-# TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust
-
+# TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
     def is_forked_child(self) -> bool:
         """
@@ -748,6 +747,56 @@ def set_thread_local_blueprint_recording(
 
     Returns the previous one, if any.
     """
+
+#
+# component descriptor
+#
+
+class ComponentDescriptor:
+    """
+    A `ComponentDescriptor` fully describes the semantics of a column of data.
+
+    Every component at a given entity path is uniquely identified by the
+    `component` field of the descriptor. The `archetype` and `component_type`
+    fields provide additional information about the semantics of the data.
+    """
+
+    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
+        """Creates a component descriptor."""
+
+    @property
+    def archetype(self) -> str | None:
+        """
+        Optional name of the `Archetype` associated with this data.
+
+        `None` if the data wasn't logged through an archetype.
+
+        Example: `rerun.archetypes.Points3D`.
+        """
+
+    @property
+    def component(self) -> str:
+        """
+        Uniquely identifies of the component associated with this data.
+
+        Example: `Points3D:positions`.
+        """
+
+    @property
+    def component_type(self) -> str | None:
+        """
+        Optional type information for this component.
+
+        Can be used to inform applications on how to interpret the data.
+
+        Example: `rerun.components.Position3D`.
+        """
+
+    def with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Unconditionally sets `archetype` and `component_type` to the given ones (if specified)."""
+
+    def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Sets `archetype` and `component_type` to the given one iff it's not already set."""
 
 #
 # sinks
@@ -1140,10 +1189,50 @@ class DatasetEntry(Entry):
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
 
-    def partition_url(self, partition_id: str) -> str:
-        """Return the URL for the given partition."""
+    def partition_url(
+        self,
+        partition_id: str,
+        timeline: str | None = None,
+        start: datetime | int | None = None,
+        end: datetime | int | None = None,
+    ) -> str:
+        """
+        Return the URL for the given partition.
 
-    def register(self, recording_uri: str, timeout_secs: int = 60) -> None:
+        Parameters
+        ----------
+        partition_id: str
+            The ID of the partition to get the URL for.
+
+        timeline: str | None
+            The name of the timeline to display.
+
+        start: int | datetime | None
+            The start time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        end: int | datetime | None
+            The end time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        Examples
+        --------
+        # With ticks
+        >>> start_tick, end_time = 0, 10
+        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+
+        # With timestamps
+        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+
+        Returns
+        -------
+        str
+            The URL for the given partition.
+
+        """
+
+    def register(self, recording_uri: str, timeout_secs: int = 60) -> str:
         """
         Register a RRD URI to the dataset and wait for completion.
 
@@ -1156,7 +1245,12 @@ class DatasetEntry(Entry):
             The URI of the RRD to register
 
         timeout_secs: int
-            The timeout after which this method returns.
+            The timeout after which this method raises a `TimeoutError` if the task is not completed.
+
+        Returns
+        -------
+        partition_id: str
+            The partition ID of the registered RRD.
 
         """
 
@@ -1270,6 +1364,13 @@ class DatasetEntry(Entry):
         top_k: int,
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
+
+    def do_maintenance(
+        self,
+        build_scalar_index: bool = False,
+        compact_fragments: bool = False,
+    ) -> None:
+        """Perform maintenance tasks on the datasets."""
 
 class TableEntry(Entry):
     """
@@ -1447,6 +1548,9 @@ class DataframeQueryView:
 
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
+
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
 
 # TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:

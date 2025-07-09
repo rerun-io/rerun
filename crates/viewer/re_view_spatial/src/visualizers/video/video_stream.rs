@@ -114,6 +114,12 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
             };
 
+            let video_time = video_stream_time_from_query(query_context.query);
+            if video_time.0 < 0 {
+                // The frame is from before the video starts, so nothing to draw here!
+                continue;
+            }
+
             let frame_result = {
                 let video = video.read();
 
@@ -130,7 +136,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             };
 
             match frame_result {
-                Ok(video_frame_reference) => {
+                Ok(frame_texture) => {
                     let depth_offset = depth_offsets
                         .per_entity_and_visualizer
                         .get(&(Self::identifier(), entity_path.hash()))
@@ -139,7 +145,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     visualize_video_frame_texture(
                         ctx,
                         &mut self.data,
-                        video_frame_reference,
+                        frame_texture,
                         entity_path,
                         depth_offset,
                         world_from_entity,
@@ -149,6 +155,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
+                    if err.should_request_more_frames() {
+                        ctx.egui_ctx().request_repaint();
+                    }
                     show_video_error(
                         ctx,
                         &mut self.data,

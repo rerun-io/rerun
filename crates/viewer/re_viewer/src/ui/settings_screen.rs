@@ -67,21 +67,14 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("General");
 
-    if cfg!(debug_assertions) {
-        let theme_preference = ui.ctx().options(|opt| opt.theme_preference);
-        // TODO(#3058): finish light node
-        if theme_preference != egui::ThemePreference::Dark {
-            ui.warning_label("Light mode support is experimental!");
-        }
-        ui.horizontal(|ui| {
-            ui.label("Theme:");
-            egui::global_theme_preference_buttons(ui);
-        });
-    }
+    ui.horizontal(|ui| {
+        ui.label("Theme:");
+        egui::global_theme_preference_buttons(ui);
+    });
 
     ui.re_checkbox(
-        &mut app_options.include_welcome_screen_button_in_recordings_panel,
-        "Show 'Welcome screen' button",
+        &mut app_options.include_rerun_examples_button_in_recordings_panel,
+        "Show 'Rerun examples' button",
     );
 
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")

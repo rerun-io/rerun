@@ -5,6 +5,7 @@ use std::sync::{
 
 use ahash::HashMap;
 
+use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
@@ -21,6 +22,19 @@ struct Entry {
 
     /// Keeps failed loads around, so we can don't try again and again.
     video: Arc<Result<Video, VideoLoadError>>,
+}
+
+impl re_byte_size::SizeBytes for Entry {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            used_this_frame: _,
+            video,
+        } = self;
+        match video.as_ref() {
+            Ok(video) => video.heap_size_bytes(),
+            Err(_) => 100, // close enough
+        }
+    }
 }
 
 /// Caches videos assets and their players based on media type & row id.
@@ -97,6 +111,7 @@ impl Cache for VideoAssetCache {
         });
 
         // Of the remaining video data, remove all unused decoders.
+        #[expect(clippy::iter_over_hash_type)]
         for per_key in self.0.values() {
             for v in per_key.values() {
                 v.used_this_frame.store(false, Ordering::Release);
@@ -105,6 +120,10 @@ impl Cache for VideoAssetCache {
                 }
             }
         }
+    }
+
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
     }
 
     fn purge_memory(&mut self) {

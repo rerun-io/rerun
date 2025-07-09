@@ -171,6 +171,26 @@ pub struct VideoDataDescription {
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
+impl re_byte_size::SizeBytes for VideoDataDescription {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            codec: _,
+            encoding_details: _,
+            timescale: _,
+            duration: _,
+            gops,
+            samples,
+            samples_statistics,
+            mp4_tracks,
+        } = self;
+
+        gops.heap_size_bytes()
+            + samples.heap_size_bytes()
+            + samples_statistics.heap_size_bytes()
+            + mp4_tracks.len() as u64 * std::mem::size_of::<(TrackId, Option<TrackKind>)>() as u64
+    }
+}
+
 impl VideoDataDescription {
     /// Checks various invariants that the video description should always uphold.
     ///
@@ -366,6 +386,18 @@ pub struct SamplesStatistics {
     pub has_sample_highest_pts_so_far: Option<BitVec>,
 }
 
+impl re_byte_size::SizeBytes for SamplesStatistics {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            dts_always_equal_pts: _,
+            has_sample_highest_pts_so_far,
+        } = self;
+        has_sample_highest_pts_so_far
+            .as_ref()
+            .map_or(0, |bitvec| bitvec.capacity() as u64 / 8)
+    }
+}
+
 impl SamplesStatistics {
     /// Special case for videos that have no h264/h265 B-frames.
     ///
@@ -434,6 +466,8 @@ impl VideoDataDescription {
 
     /// Length of the video if known.
     ///
+    /// NOTE: This includes the duration of the final frame too!
+    ///
     /// For video streams (as opposed to video files) this is generally unknown.
     #[inline]
     pub fn duration(&self) -> Option<std::time::Duration> {
@@ -462,9 +496,27 @@ impl VideoDataDescription {
     }
 
     /// The number of samples in the video.
+    ///
+    /// Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
+    /// a frame is always a single chunk of data is always a single sample, see [`crate::decode::Chunk`].
+    /// So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     #[inline]
     pub fn num_samples(&self) -> usize {
         self.samples.num_elements()
+    }
+
+    /// `num_frames / duration`.
+    ///
+    /// Note that the video could have a variable framerate!
+    #[inline]
+    pub fn average_fps(&self) -> Option<f32> {
+        self.duration().map(|duration| {
+            let num_frames = self.num_samples();
+
+            // NOTE: the video duration includes the duration of the final frame too,
+            // so we don't have a fence-post problem here!
+            num_frames as f32 / duration.as_secs_f32()
+        })
     }
 
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
@@ -615,6 +667,16 @@ pub struct GroupOfPictures {
     pub sample_range: Range<SampleIndex>,
 }
 
+impl re_byte_size::SizeBytes for GroupOfPictures {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// A single sample in a video.
 ///
 /// This is equivalent to MP4's definition of a single sample.
@@ -674,6 +736,16 @@ pub struct SampleMetadata {
 
     /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
     pub byte_span: Span<u32>,
+}
+
+impl re_byte_size::SizeBytes for SampleMetadata {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl SampleMetadata {

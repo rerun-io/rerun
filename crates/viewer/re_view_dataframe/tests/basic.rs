@@ -7,8 +7,8 @@ use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_null_timeline() {
@@ -69,12 +69,7 @@ pub fn test_unknown_timeline() {
 }
 
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_dataframe::DataframeView>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_dataframe::DataframeView>();
 
     // Make sure we can draw stuff in the table.
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
@@ -106,34 +101,7 @@ fn run_view_ui_and_save_snapshot(
         .setup_kittest_for_rendering()
         .with_size(size)
         .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(DataframeView::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+            test_context.run_with_single_view(ctx, view_id);
         });
 
     harness.run();

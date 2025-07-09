@@ -51,6 +51,7 @@ import-stl = ["dep:stl_io"]
 serde = ["dep:serde"]
 
 [dependencies]
+re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true

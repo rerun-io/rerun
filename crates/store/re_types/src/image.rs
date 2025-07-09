@@ -43,6 +43,17 @@ impl ImageKind {
         }
     }
 }
+
+impl re_byte_size::SizeBytes for ImageKind {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Errors when converting images from the [`image`] crate to an [`archetypes::Image`].

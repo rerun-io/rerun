@@ -15,6 +15,7 @@ use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};

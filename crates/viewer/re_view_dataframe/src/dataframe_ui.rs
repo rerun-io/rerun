@@ -13,6 +13,7 @@ use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::ComponentDescriptor;
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
@@ -90,7 +91,7 @@ pub(crate) fn dataframe_ui(
         .take_while(|cd| matches!(cd, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_)))
         .count();
 
-    egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
+    ui.scope(|ui| {
         apply_table_style_fixes(ui.style_mut());
         egui_table::Table::new()
             .id_salt(table_id_salt)
@@ -275,7 +276,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let is_selected = self.ctx.selection().contains_item(&item);
                     let response = ui.put(
                         egui::Rect::from_min_size(pos, size),
-                        egui::SelectableLabel::new(is_selected, galley),
+                        egui::Button::selectable(is_selected, galley),
                     );
                     self.ctx
                         .handle_select_hover_drag_interactions(&response, item, false);

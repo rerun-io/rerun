@@ -35,6 +35,13 @@ extension-module = ["pyo3/extension-module"]
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
+
+server = ["re_sdk/server", "dep:re_grpc_server"]
+
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
 ## Enabling this adds quite a bit to the binary size,
@@ -45,7 +52,6 @@ web_viewer = [
   "dep:re_grpc_server",
 ]
 
-server = ["re_sdk/server", "dep:re_grpc_server"]
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -102,6 +108,10 @@ tokio-stream.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
 thiserror.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 
 
 [build-dependencies]

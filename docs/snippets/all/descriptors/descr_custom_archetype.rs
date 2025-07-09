@@ -15,7 +15,7 @@ impl CustomPoints3D {
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::partial("colors")
+        ComponentDescriptor::partial("user.CustomPoints3D:colors")
             .or_with_archetype(|| "user.CustomPoints3D".into())
             .or_with_component_type(<rerun::components::Color as rerun::Component>::name)
     }
@@ -80,8 +80,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();
-        // Skip the first two chunks, as they represent the `RecordingInfo`.
-        let chunks = store.iter_chunks().skip(2).collect::<Vec<_>>();
+        // Skip the first chunk, as it represent the `RecordingInfo`.
+        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();

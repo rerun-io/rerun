@@ -2,10 +2,10 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
-    ViewClass as _, ViewId,
-    test_context::{HarnessExt as _, TestContext},
+    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
 };
-use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
+use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport_blueprint::ViewBlueprint;
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
     re_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
@@ -23,8 +23,17 @@ pub fn test_clear_series_points_and_line() {
 }
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
+    // TODO(#10512): Potentially fix up this after we have "markers".
+    // There are some intricacies involved with this test. `SeriesLines` and
+    // `SeriesPoints` can both be logged without any associated data (all
+    // fields are optional). Now that indicators are gone, no data is logged
+    // at all when no fields are specified.
+    //
+    // The reason why `SeriesLines` still shows up is because it is the fallback
+    // visualizer for scalar values. We force `SeriesPoints` to have data, by
+    // explicitly setting the marker shape to circle.
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype(
             RowId::new(),
@@ -36,7 +45,8 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesPoints::new(),
+            &re_types::archetypes::SeriesPoints::new()
+                .with_markers([re_types::components::MarkerShape::Circle]),
         )
     });
 
@@ -89,11 +99,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
         ),
         egui::vec2(300.0, 300.0),
-        if two_series_per_entity {
-            0.00006
-        } else {
-            0.00002
-        },
+        if two_series_per_entity { 5 } else { 2 },
     );
 }
 
@@ -129,7 +135,7 @@ fn test_line_properties() {
 }
 
 fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let properties_static = if multiple_properties {
         re_types::archetypes::SeriesLines::new()
@@ -189,7 +195,7 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        if multiple_scalars { 0.00006 } else { 0.0 },
+        if multiple_scalars { 5 } else { 0 },
     );
 }
 
@@ -201,7 +207,7 @@ fn test_per_series_visibility() {
         ("per_series_visibility_splat_false", vec![false]),
         ("per_series_visibility_splat_true", vec![true]),
     ] {
-        let mut test_context = get_test_context();
+        let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
         test_context.log_entity("plots", |builder| {
             builder.with_archetype(
@@ -225,7 +231,7 @@ fn test_per_series_visibility() {
             view_id,
             name,
             egui::vec2(300.0, 300.0),
-            0.0,
+            0,
         );
     }
 }
@@ -252,7 +258,7 @@ fn test_point_properties() {
 }
 
 fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let static_props = if multiple_properties {
         re_types::archetypes::SeriesPoints::new()
@@ -322,19 +328,8 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         view_id,
         &name,
         egui::vec2(300.0, 300.0),
-        0.00006, // Allow 5 broken pixels
+        5, // Allow 5 broken pixels
     );
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<TimeSeriesView>();
-
-    test_context
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -350,46 +345,17 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
-    broken_pixels_fraction: f64,
+    num_allowed_broken_pixels: usize,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
         .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(TimeSeriesView::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+            test_context.run_with_single_view(ctx, view_id);
         });
 
-    harness.run();
-    harness.snapshot_with_broken_pixels_threshold(
+    harness.snapshot_options(
         name,
-        (size.x * size.y) as u64,
-        broken_pixels_fraction,
+        &SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
     );
 }

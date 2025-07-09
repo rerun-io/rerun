@@ -33,6 +33,7 @@ testing = [
 
 [dependencies]
 re_arrow_util.workspace = true
+re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
@@ -77,7 +78,6 @@ parking_lot = { workspace = true, features = ["serde"] }
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
-tap.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
 

@@ -25,7 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// of the visualizer system. It is not intended to be a long-term solution, but provides
 /// enough utility to be useful in the short term.
 ///
-/// The long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>
+/// **NOTE**: Rerun `v0.24` changed the behavior of [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides], so that currently they only
+/// work with time series views. We plan to bring this feature for all views in future versions.
 ///
 /// This can only be used as part of blueprints. It will have no effect if used
 /// in a regular entity.
@@ -146,10 +147,7 @@ impl ::re_types_core::AsComponents for VisualizerOverrides {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.ranges.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.ranges.clone()).flatten().collect()
     }
 }
 

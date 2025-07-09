@@ -12,6 +12,7 @@
 //! The bread crumbs hierarchy should be identical to the hierarchy in the
 //! either the blueprint tree panel, or the streams/time panel.
 
+use egui::Color32;
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
@@ -42,24 +43,30 @@ pub fn item_heading_with_breadcrumbs(
             list_item::CustomContent::new(|ui, _| {
                 ui.spacing_mut().item_spacing.x = 4.0;
 
-                {
-                    // No background rectangles, even for hovered items
-                    let visuals = ui.visuals_mut();
-                    visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-                }
+                let tokens = ui.tokens();
 
                 // First the C>R>U>M>B>S>
+                // where icon color follows text color:
                 {
-                    let breadcrumb_text_color = ui.tokens().breadcrumb_text_color;
-                    let previous_style = ui.style().clone();
-                    // Dimmer colors for breadcrumbs
                     let visuals = ui.visuals_mut();
-                    visuals.widgets.inactive.fg_stroke.color = breadcrumb_text_color;
-                    item_bread_crumbs_ui(ctx, viewport, ui, item);
-                    ui.set_style(previous_style);
+                    visuals.widgets.noninteractive.weak_bg_fill = Color32::TRANSPARENT;
+                    visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+                    visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
+                    visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
+
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                }
+
+                item_bread_crumbs_ui(ctx, viewport, ui, item);
+                {
+                    let visuals = ui.visuals_mut();
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.text_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.text_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.text_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.text_color_on_primary_hovered;
                 }
 
                 // Then the full name of the main item:
@@ -209,7 +216,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        icon.as_button_with_label(ui.tokens(), label)
+        egui::Button::image_and_text(icon.as_image(), label).image_tint_follows_text_color(true)
     } else {
         egui::Button::new(label)
     };
@@ -254,7 +261,7 @@ pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
         icons::BREADCRUMBS_SEPARATOR
             .as_image()
-            .tint(ui.tokens().breadcrumb_separator_color),
+            .tint(ui.tokens().icon_color_on_primary),
     );
 }
 

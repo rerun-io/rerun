@@ -455,14 +455,13 @@ mod tests {
 
     use ahash::HashSet;
     use re_chunk::RowId;
-    use re_entity_db::EntityDb;
     use re_log_types::{
-        StoreId, StoreKind, TimePoint,
+        StoreKind, TimePoint,
         example_components::{MyLabel, MyPoint, MyPoints},
     };
     use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
     use re_viewer_context::{
-        IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, StoreContext,
+        IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
         VisualizableEntities, test_context::TestContext,
     };
 
@@ -472,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_component_overrides() {
-        let mut test_ctx = TestContext::default();
+        let mut test_ctx = TestContext::new();
         let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
@@ -483,8 +482,8 @@ mod tests {
                     .map(Into::into)
                     .collect();
             for entity_path in &entity_paths {
-                let chunk = Chunk::builder(entity_path.clone())
-                    .with_component_batches(
+                test_ctx.log_entity(entity_path.clone(), |builder| {
+                    builder.with_component_batches(
                         RowId::new(),
                         TimePoint::default(),
                         [(
@@ -492,13 +491,7 @@ mod tests {
                             &[MyPoint::new(1.0, 2.0)] as _,
                         )],
                     )
-                    .build()
-                    .unwrap();
-
-                test_ctx
-                    .recording_store
-                    .add_chunk(&Arc::new(chunk))
-                    .unwrap();
+                });
             }
 
             // All of them are visualizable with some arbitrary visualizer.
@@ -527,13 +520,6 @@ mod tests {
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
-        let resolver = DataQueryPropertyResolver::new(
-            &view,
-            &test_ctx.view_class_registry,
-            &maybe_visualizable_entities,
-            &visualizable_entities,
-            &indicated_entities_per_visualizer,
-        );
 
         struct Scenario {
             blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
@@ -671,8 +657,19 @@ mod tests {
             },
         ) in scenarios.into_iter().enumerate()
         {
+            let blueprint_store = test_ctx.active_blueprint();
+
             // Reset blueprint store for each scenario.
-            test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+            {
+                let blueprint_entities = blueprint_store
+                    .entity_paths()
+                    .iter()
+                    .map(|path| (*path).clone())
+                    .collect::<Vec<_>>();
+                for entity_path in blueprint_entities {
+                    blueprint_store.drop_entity_path(&entity_path);
+                }
+            };
 
             let mut add_to_blueprint =
                 |path: &EntityPath, archetype: &dyn re_types_core::AsComponents| {
@@ -680,10 +677,8 @@ mod tests {
                         .with_archetype(RowId::new(), TimePoint::default(), archetype)
                         .build()
                         .unwrap();
-                    test_ctx
-                        .blueprint_store
-                        .add_chunk(&Arc::new(chunk))
-                        .unwrap();
+
+                    blueprint_store.add_chunk(&Arc::new(chunk)).unwrap();
                 };
 
             // log override components as instructed.
@@ -692,6 +687,13 @@ mod tests {
             }
 
             // Set up a store query and update the overrides.
+            let resolver = DataQueryPropertyResolver::new(
+                &view,
+                &test_ctx.view_class_registry,
+                &maybe_visualizable_entities,
+                &visualizable_entities,
+                &indicated_entities_per_visualizer,
+            );
             let query_result =
                 update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
 
@@ -756,24 +758,17 @@ mod tests {
         visualizable_entities: &PerVisualizer<VisualizableEntities>,
         resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {
-        let store_ctx = StoreContext {
-            app_id: re_log_types::ApplicationId::unknown(),
-            blueprint: &test_ctx.blueprint_store,
-            default_blueprint: None,
-            recording: &test_ctx.recording_store,
-            caches: &Default::default(),
-            should_enable_heuristics: false,
-        };
-
-        let mut query_result = view.contents.execute_query(
-            &store_ctx,
-            &test_ctx.view_class_registry,
-            &test_ctx.blueprint_query,
-            visualizable_entities,
-        );
-        let mut view_states = ViewStates::default();
+        let mut result = None;
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
+            let mut query_result = view.contents.execute_query(
+                ctx.store_context,
+                &test_ctx.view_class_registry,
+                &test_ctx.blueprint_query,
+                visualizable_entities,
+            );
+            let mut view_states = ViewStates::default();
+
             resolver.update_overrides(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
@@ -782,8 +777,10 @@ mod tests {
                 &mut query_result,
                 &mut view_states,
             );
+
+            result = Some(query_result.clone());
         });
 
-        query_result
+        result.expect("result should be set with a processed query result")
     }
 }

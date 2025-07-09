@@ -900,20 +900,16 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
             component_type,
         } = value;
 
-        let mut descriptor = Self::partial(component.ok_or(missing_field!(
+        let component = component.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
             "component"
-        ))?);
+        ))?;
 
-        if let Some(archetype) = archetype {
-            descriptor = descriptor.with_archetype(archetype.into());
-        }
-
-        if let Some(component_type) = component_type {
-            descriptor = descriptor.with_component_type(component_type.into());
-        }
-
-        Ok(descriptor)
+        Ok(ComponentDescriptor {
+            archetype: archetype.map(Into::into),
+            component: component.into(),
+            component_type: component_type.map(Into::into),
+        })
     }
 }
 

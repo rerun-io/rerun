@@ -47,7 +47,7 @@ def log_readme() -> None:
 def blueprint() -> rrb.BlueprintLike:
     return rrb.Horizontal(
         rrb.TextDocumentView(origin="readme"),
-        rrb.Spatial3DView(origin="/", contents="", name="root entity"),
+        rrb.Spatial3DView(origin="/", contents="/**", name="root entity"),
         column_shares=[2, 1],
     )
 

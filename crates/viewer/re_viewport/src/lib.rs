@@ -2,12 +2,14 @@
 //!
 //! This crate provides the central panel that contains all views.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod system_execution;
 mod view_highlights;
 mod viewport_ui;
+
+#[cfg(feature = "testing")]
+pub mod test_context_ext;
 
 pub use self::viewport_ui::ViewportUi;
 

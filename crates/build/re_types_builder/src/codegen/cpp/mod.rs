@@ -674,8 +674,7 @@ impl QuotedObject {
                 name_and_parameters: quote! { columns(const Collection<uint32_t>& lengths_) },
             },
             definition_body: {
-                // Plus 1 for the indicator column.
-                let num_fields = quote_integer(obj.fields.len() + 1);
+                let num_fields = quote_integer(obj.fields.len());
                 let push_back_columns = obj.fields.iter().map(|field| {
                     let field_ident = field_name_ident(field);
                     quote! {
@@ -689,10 +688,6 @@ impl QuotedObject {
                     std::vector<ComponentColumn> columns;
                     columns.reserve(#num_fields);
                     #(#push_back_columns)*
-                    columns.push_back(
-                        ComponentColumn::from_indicators<#archetype_type_ident>(static_cast<uint32_t>(lengths_.size()))
-                            .value_or_throw()
-                    );
                     return columns;
                 }
             },
@@ -785,7 +780,7 @@ impl QuotedObject {
         //   -> this means that there's no non-move constructors/assignments
         // * we really want to make sure that the object is movable, therefore creating a move ctor
         //   -> this means that there's no implicit move assignment.
-        // Therefore, we have to define all five move/copy  constructors/assignments.
+        // Therefore, we have to define all five move/copy constructors/assignments.
         let hpp = quote! {
             #hpp_includes
 
@@ -1845,7 +1840,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         quote!(archetypes)
     };
 
-    let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
+    let num_fields = quote_integer(obj.fields.len());
     let push_batches = obj.fields.iter().map(|field| {
         let field_name_ident = field_name_ident(field);
 
@@ -1871,11 +1866,6 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
-            {
-                auto result = ComponentBatch::from_indicator<#type_ident>();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return rerun::take_ownership(std::move(cells));

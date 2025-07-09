@@ -30,10 +30,7 @@ impl AnyValues {
     #[inline]
     pub fn with_field(mut self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
         let field = field.as_ref();
-        let component = self
-            .archetype_name
-            .map(|archetype_name| archetype_name.with_field(field))
-            .unwrap_or_else(|| field.into());
+        let component = field.into();
 
         self.batches.insert(
             component,
@@ -70,11 +67,7 @@ impl AnyValues {
         loggable: impl IntoIterator<Item = impl Into<L>>,
     ) -> Self {
         let field = field.as_ref();
-        let component = self
-            .archetype_name
-            .map(|archetype_name| archetype_name.with_field(field))
-            .unwrap_or_else(|| field.into());
-
+        let component = field.into();
         try_serialize_field(
             ComponentDescriptor {
                 archetype: self.archetype_name,

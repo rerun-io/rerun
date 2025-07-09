@@ -35,7 +35,7 @@ impl ChunkListMode {
     ) -> Option<()> {
         let all_timelines = chunk_store.timelines();
         let all_entities = chunk_store.all_entities_sorted();
-        let all_components = chunk_store.all_components();
+        let all_components = chunk_store.all_components_sorted();
 
         let current_timeline = match self {
             Self::All => all_timelines.values().next().copied()?,

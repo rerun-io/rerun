@@ -183,7 +183,7 @@ pub fn test_all_components_ui_as_list_items_narrow() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
-        SnapshotOptions::default().output_path("tests/snapshots/all_components_list_item_narrow");
+        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_narrow");
 
     let results = test_cases
         .iter()
@@ -207,7 +207,7 @@ pub fn test_all_components_ui_as_list_items_wide() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options =
-        SnapshotOptions::default().output_path("tests/snapshots/all_components_list_item_wide");
+        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_wide");
 
     let results = test_cases
         .iter()
@@ -271,7 +271,7 @@ fn test_single_component_ui_as_list_item(
         });
 
     harness.run();
-    harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
+    harness.try_snapshot_options(format!("{test_case}"), _snapshot_options)
 }
 
 // ---
@@ -393,7 +393,7 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
 // TODO(ab): It would be nice to generalise this utility. However, TestContext current lives in
 // re_viewer_context, which cannot depend on re_component_ui.
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     test_context.component_ui_registry = create_component_ui_registry();
     test_context
 }

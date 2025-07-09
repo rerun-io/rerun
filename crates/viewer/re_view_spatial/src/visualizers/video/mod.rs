@@ -55,7 +55,7 @@ fn visualize_video_frame_texture(
     let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
     let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
 
-    if decoder_delay_state.should_rerequest_frame() {
+    if decoder_delay_state.should_request_more_frames() {
         // Keep polling for a fresh texture
         ctx.egui_ctx().request_repaint();
     }

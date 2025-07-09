@@ -103,21 +103,30 @@ impl Report {
     }
 
     /// This outputs all errors and warnings to stderr and panics if there were any errors.
-    pub fn finalize(&self) {
+    pub fn finalize(&self, warnings_as_errors: bool) {
         use colored::Colorize as _;
 
-        let mut errored = false;
+        let mut any_errors = false;
 
         while let Ok(warn) = self.warnings.try_recv() {
-            eprintln!("{} {}", "Warning: ".yellow().bold(), warn);
+            if warnings_as_errors {
+                any_errors = true;
+                eprintln!(
+                    "{} {}",
+                    "Error (warnings as errors enabled): ".red().bold(),
+                    warn
+                );
+            } else {
+                eprintln!("{} {}", "Warning: ".yellow().bold(), warn);
+            }
         }
 
         while let Ok(err) = self.errors.try_recv() {
-            errored = true;
+            any_errors = true;
             eprintln!("{} {}", "Error: ".red().bold(), err);
         }
 
-        if errored {
+        if any_errors {
             println!("Some errors occurred.");
             std::process::exit(1);
         }

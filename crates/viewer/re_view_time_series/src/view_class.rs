@@ -283,6 +283,7 @@ impl ViewClass for TimeSeriesView {
         // If there's other entities that have the right indicator & didn't match the above,
         // spawn a time series view for each child of the root that has any entities with the right indicator.
         let mut child_of_root_entities = HashSet::default();
+        #[expect(clippy::iter_over_hash_type)]
         for entity in indicated_entities.iter() {
             if let Some(child_of_root) = entity.iter().next() {
                 child_of_root_entities.insert(child_of_root);
@@ -544,13 +545,12 @@ impl ViewClass for TimeSeriesView {
             hovered_plot_item,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
-                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
-                let timeline = *time_ctrl_write.timeline();
-                time_ctrl_write.set_timeline_and_time(
-                    timeline,
-                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
-                );
-                time_ctrl_write.pause();
+                if let Some(pointer) = plot_ui.pointer_coordinate() {
+                    let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
+                    let timeline = *time_ctrl_write.timeline();
+                    time_ctrl_write.set_timeline_and_time(timeline, pointer.x as i64 + time_offset);
+                    time_ctrl_write.pause();
+                }
             }
 
             plot_double_clicked = plot_ui.response().double_clicked();

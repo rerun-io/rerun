@@ -265,6 +265,7 @@ fn add_series_runs(
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
             let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
+            #[allow(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
             all_series.push(prev_series);
 

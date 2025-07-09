@@ -1,14 +1,14 @@
 use std::hash::Hash;
 
 use egui::{
-    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
 
 use crate::alert::Alert;
 use crate::{
-    DesignTokens, Icon, LabelStyle, icons,
+    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
     list_item::{self, LabelContent},
 };
 
@@ -175,16 +175,16 @@ pub trait UiExt {
 
     fn re_checkbox(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(selected, text, false)
+        self.checkbox_indeterminate(checked, text, false)
     }
 
     #[allow(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
         indeterminate: bool,
     ) -> egui::Response {
@@ -194,7 +194,7 @@ pub trait UiExt {
                 ui.visuals_mut().widgets.active.expansion = 0.0;
                 ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                egui::Checkbox::new(selected, text)
+                egui::Checkbox::new(checked, text)
                     .indeterminate(indeterminate)
                     .ui(ui)
             })
@@ -280,57 +280,28 @@ pub trait UiExt {
         &self,
         popup_id: egui::Id,
         widget_response: &egui::Response,
-        vertical_offset: f32,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
-        let ui = self.ui();
-
-        if !ui.memory_mut(|mem| {
-            let is_open = mem.is_popup_open(popup_id);
-            if is_open {
-                mem.keep_popup_open(popup_id);
-            }
-            is_open
-        }) {
-            return None;
-        }
-
-        let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
-        let pivot = Align2::LEFT_TOP;
-
         let mut ret = None;
-        egui::Area::new(popup_id)
-            .order(egui::Order::Foreground)
-            .constrain(true)
-            .fixed_pos(pos)
-            .pivot(pivot)
-            .show(ui.ctx(), |ui| {
-                let frame = egui::Frame {
-                    fill: ui.visuals().panel_fill,
-                    ..Default::default()
-                };
-                let frame_margin = frame.total_margin();
-                frame.show(ui, |ui| {
-                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-                        ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                        crate::list_item::list_item_scope(ui, popup_id, |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame {
-                                    //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8, 0),
-                                    ..Default::default()
-                                }
-                                .show(ui, |ui| ret = Some(add_contents(ui)))
-                            })
+        egui::Popup::from_response(widget_response)
+            .id(popup_id)
+            .frame(egui::Frame::default())
+            .open_memory(None)
+            .gap(4.0)
+            .layout(egui::Layout::top_down_justified(egui::Align::LEFT))
+            .show(|ui| {
+                ui.set_width(widget_response.rect.width());
+                let frame = ui.tokens().popup_frame(ui.style());
+                frame.show(ui, |ui| {
+                    crate::list_item::list_item_scope(ui, popup_id, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            ret = Some(add_contents(ui));
                         })
                     })
                 })
             });
 
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
-            ui.memory_mut(|mem| mem.close_popup(popup_id));
-        }
         ret
     }
 
@@ -754,8 +725,16 @@ pub trait UiExt {
             );
 
             // TODO(emilk, andreas): change color and size on hover
-            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, image_rect);
+            let icon_tint = if selected {
+                if response.hovered() {
+                    ui.tokens().icon_color_on_primary_hovered
+                } else {
+                    ui.tokens().icon_color_on_primary
+                }
+            } else {
+                visuals.fg_stroke.color
+            };
+            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
 
             // Draw text next to the icon.
             let mut text_rect = rect;
@@ -1232,6 +1211,38 @@ pub trait UiExt {
         } else {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
+    }
+
+    /// Display some UI that may optionally include extras (see [`crate::ContextExt::show_extras`]).
+    ///
+    /// This assumes that the content will change based on whether extras are shown or not, so it
+    /// takes care of triggering a sizing pass and repaint as required.
+    ///
+    /// The closure is passed a `bool` indicating whether extras are shown or not.
+    fn with_optional_extras<R>(&mut self, content: impl FnOnce(&mut egui::Ui, bool) -> R) -> R {
+        let ui = self.ui_mut();
+
+        let show_extras = ui.ctx().show_extras();
+
+        let content_changed = ui.data_mut(|data| {
+            let stored_show_extras = data
+                .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
+            if *stored_show_extras != show_extras {
+                *stored_show_extras = show_extras;
+                true
+            } else {
+                false
+            }
+        });
+
+        let mut builder = egui::UiBuilder::new();
+        if content_changed {
+            builder = builder.sizing_pass();
+            ui.ctx().request_repaint();
+        }
+
+        ui.scope_builder(builder, |ui| content(ui, show_extras))
+            .inner
     }
 }
 

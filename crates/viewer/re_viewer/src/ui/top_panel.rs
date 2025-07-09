@@ -152,7 +152,9 @@ fn top_bar_ui(
         if let Some(wgpu) = frame.wgpu_render_state() {
             let info = wgpu.adapter.get_info();
             if info.device_type == wgpu::DeviceType::Cpu {
-                // TODO(#4304): replace with a panel showing recent log messages
+                // TODO(emilk): we could consider logging this as a warning instead,
+                // and relying on the notification panel to show it.
+                // However, this let's us customize the message a bit more, with links etc.
                 ui.hyperlink_to(
                     egui::RichText::new("⚠ Software rasterizer ⚠")
                         .small()
@@ -387,7 +389,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
     }
 
-    re_ui::notifications::notification_toggle_button(ui, &mut app.notifications);
+    app.notifications.notification_toggle_button(ui);
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)

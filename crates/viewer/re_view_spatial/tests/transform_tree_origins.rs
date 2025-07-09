@@ -2,11 +2,11 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::{SpatialView3D, SpatialViewState};
 use re_viewer_context::{
-    RecommendedView, ViewClass as _, ViewId,
-    test_context::{HarnessExt as _, TestContext},
+    RecommendedView, ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions,
+    test_context::TestContext,
 };
+use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 // This test is very similar to the transform_hierarchy snippet!
 // We're testing different origins and see if we get the expected results.
@@ -155,12 +155,7 @@ pub fn test_transform_tree_origins() {
 }
 
 fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     // Make sure we can draw stuff in the hover tables.
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
@@ -198,40 +193,31 @@ fn run_view_ui_and_save_snapshot(
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(SpatialView3D::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
                     // Show axis at the origin to help with orientation.
                     // TODO(#10028): this should be a blueprint property, not a state.
-                    view_state
-                        .as_any_mut()
-                        .downcast_mut::<SpatialViewState>()
-                        .expect("view state is not of correct type")
-                        .state_3d
-                        .show_axes = true;
+                    {
+                        let view_class = ctx
+                            .view_class_registry()
+                            .get_class_or_log_error(SpatialView3D::identifier());
+                        let mut view_states = test_context.view_states.lock();
+                        let view_state = view_states.get_mut_or_create(view_id, view_class);
+                        view_state
+                            .as_any_mut()
+                            .downcast_mut::<SpatialViewState>()
+                            .expect("view state is not of correct type")
+                            .state_3d
+                            .show_axes = true;
+                    }
 
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run view ui");
+                    test_context.ui_for_single_view(ui, ctx, view_id);
                 });
 
                 test_context.handle_system_commands();
             });
         });
 
-    harness.snapshot_with_broken_pixels(name, num_pixels_allowed_to_deviate);
+    harness.snapshot_options(
+        name,
+        &SnapshotOptions::new().failed_pixel_count_threshold(num_pixels_allowed_to_deviate),
+    );
 }

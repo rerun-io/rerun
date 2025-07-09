@@ -1,5 +1,7 @@
 //! Support crate for context menu and actions.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use egui::Popup;
 use once_cell::sync::OnceCell;
 

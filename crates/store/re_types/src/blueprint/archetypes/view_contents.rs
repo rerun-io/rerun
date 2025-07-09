@@ -175,10 +175,7 @@ impl ::re_types_core::AsComponents for ViewContents {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.query.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.query.clone()).flatten().collect()
     }
 }
 

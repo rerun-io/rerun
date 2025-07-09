@@ -167,6 +167,11 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
 
+# Compile and run the rerun viewer, with performance telemetry.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
+
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
 
@@ -177,6 +182,11 @@ rerun-build-release = "cargo build --package rerun-cli --release --no-default-fe
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+
+# Compile and run the rerun viewer in release, with performance telemetry.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
@@ -420,6 +430,12 @@ py-build = "pixi run -e py py-build-common"
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
+# Dedicated alias for building the python bindings for the `py` environment, with performance telemetry.
+py-build-perf-debug = "pixi run -e py py-build-common --features perf_telemetry"
+
+# Dedicated alias for building the python bindings in release mode for the `py` environment, with performance telemetry.
+py-build-perf = "pixi run -e py py-build-common-release --features perf_telemetry"
+
 py-check-signatures = "python scripts/ci/python_check_signatures.py"
 
 # Helper alias to run the python interpreter in the context of the python environment
@@ -462,6 +478,15 @@ rerun-from-path = "rerun"
 
 # Dedicated alias for building the python bindings for the `examples` environment.
 py-build-examples = "pixi run -e examples py-build-common"
+
+# Dedicated alias for building the python bindings for the `examples` environment, with perf telemetry.
+py-build-perf-debug-examples = "pixi run -e examples py-build-common --features perf_telemetry"
+
+# Dedicated alias for building the python bindings for the `examples` environment, in release.
+py-build-release-examples = "pixi run -e examples py-build-common-release"
+
+# Dedicated alias for building the python bindings for the `examples` environment, in release, with perf telemetry.
+py-build-perf-examples = "pixi run -e examples py-build-common-release --features perf_telemetry"
 
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
@@ -540,12 +565,13 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
 aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
-clang-tools = "16.0.6.*"          # clang-format
 clang = "16.0.6.*"
+clang-tools = "16.0.6.*"          # clang-format
 cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 fd-find = ">=10.1.0"              # Used by `cpp-fmt` to find C++ files
+ffmpeg = ">=7.1.0,<8"             # Needed for consistent results on tests that use ffmpeg to render video.
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"

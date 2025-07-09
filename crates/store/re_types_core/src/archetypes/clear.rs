@@ -189,8 +189,7 @@ impl crate::AsComponents for Clear {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use crate::Archetype as _;
-        [Some(Self::indicator()), self.is_recursive.clone()]
-            .into_iter()
+        std::iter::once(self.is_recursive.clone())
             .flatten()
             .collect()
     }
@@ -247,12 +246,7 @@ impl Clear {
             .is_recursive
             .map(|is_recursive| is_recursive.partitioned(_lengths.clone()))
             .transpose()?];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([crate::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

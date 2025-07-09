@@ -92,7 +92,7 @@ jobs:
           pixi-version: v0.41.4
 
       - name: Codegen check
-        run: pixi run codegen --force --check
+        run: pixi run codegen --force --check --warnings-as-errors
 
       - name: Codegen out-of-sync (protos)
         run: pixi run codegen-protos-check

@@ -116,6 +116,11 @@ service FrontendService {
 
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
+
+  // -- Utilities --
+
+  // Maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
 }
 
 message VersionRequest {}
@@ -218,6 +223,16 @@ message QueryDatasetRequest {
   // ```
   bool select_all_entity_paths = 7;
 
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 8;
 
@@ -260,6 +275,16 @@ message GetChunksRequest {
   // ```
   bool select_all_entity_paths = 6;
 
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
+
   // If set, static data will be excluded from the results.
   bool exclude_static_data = 7;
 
@@ -289,4 +314,11 @@ message ScanTableRequest {
 
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  bool build_scalar_indexes = 2;
+  bool compact_fragments = 3;
 }

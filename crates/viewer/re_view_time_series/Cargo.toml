@@ -42,5 +42,4 @@ smallvec.workspace = true
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport.workspace = true
-re_viewport_blueprint = { workspace = true, features = ["testing"] }
+re_viewport = { workspace = true, features = ["testing"] }

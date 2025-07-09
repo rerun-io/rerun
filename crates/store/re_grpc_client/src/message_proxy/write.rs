@@ -18,6 +18,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use tonic::transport::Endpoint;
 
+use crate::TonicStatusError;
+
 enum Cmd {
     LogMsg(LogMsg),
     Flush(oneshot::Sender<()>),
@@ -47,7 +49,7 @@ pub enum ClientConnectionFailure {
     #[error("Failed to encode message")]
     FailedToEncodeMessage,
 
-    #[error("Failed to send messages")]
+    #[error("Failed to send messages: {0}")]
     FailedToSendMessages(tonic::Code),
 }
 
@@ -280,12 +282,15 @@ async fn message_proxy_client(
         }
     };
 
-    let disconnect_result = if let Err(err) = client.write_messages(stream).await {
-        re_log::error!("Write messages call failed: {err}");
+    let disconnect_result = if let Err(status) = client.write_messages(stream).await {
+        re_log::error!(
+            "Write messages call failed: {}",
+            TonicStatusError(status.clone())
+        );
 
         // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.
-        if err.code() != tonic::Code::Ok && err.code() != tonic::Code::Unknown {
-            Err(ClientConnectionFailure::FailedToSendMessages(err.code()))
+        if status.code() != tonic::Code::Ok && status.code() != tonic::Code::Unknown {
+            Err(ClientConnectionFailure::FailedToSendMessages(status.code()))
         } else {
             Ok(())
         }

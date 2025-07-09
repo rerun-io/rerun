@@ -238,18 +238,8 @@ impl Query {
                         || selected_time_columns.contains(&desc.timeline_name())
                 }
 
-                ColumnDescriptor::Component(desc) => {
-                    // Check against both the full name and short name, as the user might have used
-                    // the latter in the blueprint API.
-                    //
-                    // TODO(grtlr): this means that if the user chooses `"/foo/bar:Points3D:positions"`, it will
-                    // select both `rerun.archetype.Points3D` and `Points3D`, should both of these
-                    // exist.
-                    selected_component_columns
-                        .contains(&desc.column_name(re_sorbet::BatchType::Dataframe))
-                        || selected_component_columns
-                            .contains(&desc.column_name_qualified(re_sorbet::BatchType::Dataframe))
-                }
+                ColumnDescriptor::Component(desc) => selected_component_columns
+                    .contains(&desc.column_name(re_sorbet::BatchType::Dataframe)),
             })
             .cloned()
             .map(ColumnSelector::from)
@@ -317,7 +307,7 @@ mod test {
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
     fn test_latest_at_enabled() {
-        let mut test_context = TestContext::default();
+        let mut test_context = TestContext::new();
 
         let view_id = ViewId::random();
 
