@@ -715,6 +715,9 @@ impl DesignTokens {
     pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>, table_style: TableStyle) {
         // Make sure buttons don't visually overflow:
         body.ui_mut().spacing_mut().interact_size.y = self.table_content_height(table_style);
+
+        // No extra spacing between items in the table body - we bake that into the row height.
+        body.ui_mut().spacing_mut().item_spacing.y = 0.0;
     }
 
     /// Layout area to allocate for the collapsing triangle.
