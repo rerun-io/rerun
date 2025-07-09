@@ -16,7 +16,7 @@ You can configure these thresholds using the following environment variables:
 
 Sets the duration of the periodic tick that triggers the time threshold, in seconds.
 
-Defaults to `RERUN_FLUSH_TICK_SECS=0.15` (150ms).
+Defaults to `RERUN_FLUSH_TICK_SECS=0.20` (200ms).
 
 #### RERUN_FLUSH_NUM_BYTES
 
