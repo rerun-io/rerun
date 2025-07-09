@@ -24,6 +24,7 @@ fn multiline_view_line_strip_3d(
     use egui_extras::Column;
 
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
@@ -48,8 +49,8 @@ fn multiline_view_line_strip_3d(
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
-            let row_height = tokens.deprecated_table_line_height();
+            tokens.setup_table_body(&mut body, table_style);
+            let row_height = tokens.table_row_height(table_style);
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {
@@ -88,6 +89,7 @@ fn multiline_view_line_strip_2d(
     use egui_extras::Column;
 
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
@@ -109,8 +111,8 @@ fn multiline_view_line_strip_2d(
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
-            let row_height = tokens.deprecated_table_line_height();
+            tokens.setup_table_body(&mut body, table_style);
+            let row_height = tokens.table_row_height(table_style);
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {

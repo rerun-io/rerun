@@ -44,6 +44,7 @@ pub(crate) fn dataframe_ui(
     re_tracing::profile_function!();
 
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     let selected_columns = query_handle
         .selected_contents()
@@ -70,6 +71,7 @@ pub(crate) fn dataframe_ui(
 
     let mut table_delegate = DataframeTableDelegate {
         ctx,
+        table_style,
         query_handle,
         selected_columns: &selected_columns,
         header_entity_paths,
@@ -81,7 +83,7 @@ pub(crate) fn dataframe_ui(
             ui.ctx().clone(),
             ui.make_persistent_id(row_expansion_id_salt),
             expanded_rows_cache,
-            tokens.table_line_height(),
+            tokens.table_row_height(table_style),
         ),
         hide_column_actions: vec![],
     };
@@ -200,6 +202,7 @@ impl RowsDisplayData {
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
 struct DataframeTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    table_style: re_ui::TableStyle,
     query_handle: &'a QueryHandle<StorageEngineArcReadGuard>,
     selected_columns: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
@@ -243,10 +246,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        let table_style = self.table_style;
         ui.set_truncate_style();
 
         if cell.row_nr == 0 {
-            header_ui(ui, false, |ui| {
+            header_ui(ui, table_style, false, |ui| {
                 if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
                     //TODO(ab): factor this into a helper as soon as we use it elsewhere
                     let text = entity_path.to_string();
@@ -317,7 +321,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 }),
             };
 
-            header_ui(ui, connected_to_next_cell, |ui| {
+            header_ui(ui, table_style, connected_to_next_cell, |ui| {
                 let header_content = |ui: &mut egui::Ui| {
                     let text = egui::RichText::new(
                         if let ColumnDescriptor::Component(component) = column {
@@ -409,6 +413,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
         re_tracing::profile_function!();
 
+        let table_style = self.table_style;
+
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
         let display_data = match &self.display_data {
@@ -497,7 +503,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 };
 
                 // Draw the cell content with some margin.
-                cell_ui(ui, false, |ui| {
+                cell_ui(ui, table_style, false, |ui| {
                     line_ui(
                         ui,
                         expanded_rows,
@@ -510,7 +516,13 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 });
             };
 
-            split_ui_vertically(ui, &mut self.expanded_rows, instance_indices, line_content);
+            split_ui_vertically(
+                ui,
+                &mut self.expanded_rows,
+                table_style,
+                instance_indices,
+                row_content,
+            );
         }
     }
 
@@ -519,7 +531,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        self.ctx.tokens().table_line_height()
+        self.ctx.tokens().table_row_height(self.table_style)
     }
 }
 
@@ -772,6 +784,7 @@ fn cell_with_hover_button_ui(
 fn split_ui_vertically<Item, Ctx>(
     ui: &mut egui::Ui,
     context: &mut Ctx,
+    table_style: re_ui::TableStyle,
     line_data: impl Iterator<Item = Item>,
     line_content_ui: impl Fn(&mut egui::Ui, &mut Ctx, usize, Item),
 ) {

@@ -196,6 +196,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
 fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
     re_tracing::profile_function!();
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     egui_extras::TableBuilder::new(ui)
         .auto_shrink([false, true])
@@ -231,10 +232,10 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body, table_style);
 
             body.rows(
-                tokens.deprecated_table_line_height(),
+                tokens.table_row_height(table_style),
                 video_descr.samples.num_elements(),
                 |mut row| {
                     let sample_idx = row.index() + video_descr.samples.min_index();
