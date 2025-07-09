@@ -179,17 +179,16 @@ impl SeriesPoints {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [SeriesPoints::descriptor_markers()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [SeriesPoints::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesPoints::descriptor_colors(),
-            SeriesPoints::descriptor_markers(),
             SeriesPoints::descriptor_names(),
             SeriesPoints::descriptor_visible_series(),
             SeriesPoints::descriptor_marker_sizes(),
@@ -199,9 +198,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            SeriesPoints::descriptor_markers(),
             SeriesPoints::descriptor_indicator(),
             SeriesPoints::descriptor_colors(),
-            SeriesPoints::descriptor_markers(),
             SeriesPoints::descriptor_names(),
             SeriesPoints::descriptor_visible_series(),
             SeriesPoints::descriptor_marker_sizes(),
@@ -209,7 +208,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl SeriesPoints {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
+    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 6usize;
 }
 
