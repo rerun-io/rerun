@@ -11,7 +11,7 @@ use crate::{
     video::{DecoderDelayState, VideoPlayerError, chunk_decoder::update_video_texture_with_frame},
 };
 
-struct PlayerConfiguration {
+pub struct PlayerConfiguration {
     /// Don't report hickups lasting shorter than this.
     ///
     /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
