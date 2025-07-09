@@ -596,7 +596,7 @@ impl DesignTokens {
         }
     }
 
-    /// Use in cases when we want to make sure we fit a lot of information on screen without wasting vertical space.
+    /// The total row height, including margin/spacing.
     pub fn table_row_height(&self, table_style: TableStyle) -> f32 {
         match table_style {
             TableStyle::Dense => 20.0,
@@ -607,7 +607,7 @@ impl DesignTokens {
         }
     }
 
-    /// Line height - margin
+    /// The max height of the content.
     pub fn table_content_height(&self, table_style: TableStyle) -> f32 {
         self.table_row_height(table_style) - self.table_cell_margin(table_style).sum().y
     }
