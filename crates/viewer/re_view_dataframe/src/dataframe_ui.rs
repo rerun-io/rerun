@@ -470,19 +470,19 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
         let is_row_odd = self.expanded_rows.is_row_odd(cell.row_nr);
 
-        // Iterate over the top line (the summary, thus the `None`), and all additional lines.
-        // Note: we must iterate over all lines regardless of the actual number of instances so that
+        // Iterate over the top row (the summary, thus the `None`), and all additional rows.
+        // Note: we must iterate over all rows regardless of the actual number of instances so that
         // the zebra stripes are properly drawn.
         let instance_indices = std::iter::once(None).chain((0..additional_lines).map(Option::Some));
 
         {
-            re_tracing::profile_scope!("lines");
+            re_tracing::profile_scope!("rows");
 
-            // how the line is drawn
-            let line_content = |ui: &mut egui::Ui,
-                                expanded_rows: &mut ExpandedRows<'_>,
-                                line_index: usize,
-                                instance_index: Option<u64>| {
+            // how the row is drawn
+            let row_content = |ui: &mut egui::Ui,
+                               expanded_rows: &mut ExpandedRows<'_>,
+                               line_index: usize,
+                               instance_index: Option<u64>| {
                 // Draw the alternating background color.
                 let is_line_odd = is_row_odd ^ (line_index % 2 == 1);
                 if is_line_odd {
@@ -535,7 +535,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 }
 
-/// Draw a single line in a table.
+/// Draw a single row in a table.
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
 /// necessary. The actual data drawing is delegated to the `data_content` closure.
@@ -552,26 +552,26 @@ fn line_ui(
 
     let row_expansion = expanded_rows.additional_lines_for_row(cell.row_nr);
 
-    /// What kinds of lines might we encounter here?
+    /// What kinds of rows might we encounter here?
     enum SubcellKind {
-        /// Summary line with content that as zero or one instances, so cannot be expanded.
+        /// Summary row with content that as zero or one instances, so cannot be expanded.
         Summary,
 
-        /// Summary line with >1 instances, so can be expanded.
+        /// Summary row with >1 instances, so can be expanded.
         SummaryWithExpand,
 
         /// A particular instance
         Instance,
 
-        /// There are more instances than available lines, so this is a summary of how many
+        /// There are more instances than available rows, so this is a summary of how many
         /// there are left.
         MoreInstancesSummary { remaining_instances: u64 },
 
-        /// Not enough instances to fill this line.
+        /// Not enough instances to fill this row.
         Blank,
     }
 
-    // The truth table that determines what kind of line we are dealing with.
+    // The truth table that determines what kind of row we are dealing with.
     let subcell_kind = match instance_index {
         // First row with >1 instances.
         None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
@@ -579,7 +579,7 @@ fn line_ui(
         // First row with 0 or 1 instances.
         None => SubcellKind::Summary,
 
-        // Last line and possibly too many instances to display.
+        // Last row and possibly too many instances to display.
         Some(instance_index)
             if { line_index as u64 == row_expansion && instance_index < instance_count } =>
         {
@@ -587,7 +587,7 @@ fn line_ui(
                 .saturating_sub(instance_index)
                 .saturating_sub(1);
             if remaining > 0 {
-                // +1 is because the "X more…" line takes one instance spot
+                // +1 is because the "X more…" row takes one instance spot
                 SubcellKind::MoreInstancesSummary {
                     remaining_instances: remaining + 1,
                 }
@@ -596,10 +596,10 @@ fn line_ui(
             }
         }
 
-        // Some line for which an instance exists.
+        // Some row for which an instance exists.
         Some(instance_index) if { instance_index < instance_count } => SubcellKind::Instance,
 
-        // Some line for which no instance exists.
+        // Some row for which no instance exists.
         Some(_) => SubcellKind::Blank,
     };
 
@@ -776,11 +776,11 @@ fn cell_with_hover_button_ui(
     }
 }
 
-/// Helper to draw individual lines into an expanded cell in a table.
+/// Helper to draw individual rows into an expanded cell in a table.
 ///
 /// `context`: whatever mutable context is necessary for the `line_content_ui`
-/// `line_data`: the data to be displayed in each line
-/// `line_content_ui`: the function to draw the content of each line
+/// `line_data`: the data to be displayed in each row
+/// `line_content_ui`: the function to draw the content of each row
 fn split_ui_vertically<Item, Ctx>(
     ui: &mut egui::Ui,
     context: &mut Ctx,
@@ -798,33 +798,33 @@ fn split_ui_vertically<Item, Ctx>(
     let visible_y_range = ui.clip_rect().y_range();
     let total_y_range = ui.max_rect().y_range();
 
-    let line_height = tokens.table_line_height();
+    let row_height = tokens.table_row_height(table_style);
 
     // Note: converting float to unsigned ints implicitly saturate negative values to 0
-    let start_row = ((visible_y_range.min - total_y_range.min) / line_height).floor() as usize;
+    let start_row = ((visible_y_range.min - total_y_range.min) / row_height).floor() as usize;
 
-    let end_row = ((visible_y_range.max - total_y_range.min) / line_height).ceil() as usize;
+    let end_row = ((visible_y_range.max - total_y_range.min) / row_height).ceil() as usize;
 
     let ui_left_top = ui.cursor().min;
-    let row_size = egui::vec2(ui.available_width(), line_height);
+    let row_size = egui::vec2(ui.available_width(), row_height);
 
     for (line_index, item_data) in line_data
         .enumerate()
         .skip(start_row)
         .take(end_row.saturating_sub(start_row))
     {
-        let line_rect = egui::Rect::from_min_size(
-            ui_left_top + egui::Vec2::DOWN * (line_index as f32 * line_height),
+        let row_rect = egui::Rect::from_min_size(
+            ui_left_top + egui::Vec2::DOWN * (line_index as f32 * row_height),
             row_size,
         );
 
-        // During animation, there may be more lines than can possibly fit. If so, no point in
+        // During animation, there may be more rows than can possibly fit. If so, no point in
         // continuing to draw them.
-        if !ui.max_rect().intersects(line_rect) {
+        if !ui.max_rect().intersects(row_rect) {
             return;
         }
 
-        ui.scope_builder(egui::UiBuilder::new().max_rect(line_rect), |ui| {
+        ui.scope_builder(egui::UiBuilder::new().max_rect(row_rect), |ui| {
             line_content_ui(ui, context, line_index, item_data);
         });
     }
