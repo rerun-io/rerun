@@ -20,8 +20,6 @@ interface WidgetModel {
 
   _url?: string;
   _panel_states?: PanelStates;
-  _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
-  _recording_id?: string;
 
   _fallback_token?: string;
 }
@@ -38,7 +36,6 @@ class ViewerWidget {
 
   constructor(model: AnyModel<WidgetModel>) {
     this.url = model.get("_url");
-    model.on("change:_url", this.on_change_url);
 
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
@@ -104,12 +101,6 @@ class ViewerWidget {
     }
   };
 
-  on_change_url = (_: unknown, new_url?: Opt<string>) => {
-    if (this.url) this.viewer.close(this.url);
-    if (new_url) this.viewer.open(new_url);
-    this.url = new_url;
-  };
-
   on_change_panel_states = (
     _: unknown,
     new_panel_states?: Opt<PanelStates>,
@@ -141,6 +132,10 @@ class ViewerWidget {
       }
       case "recording_id": {
         this.set_recording_id(msg.recording_id ?? null)
+        break;
+      }
+      case "partition_url": {
+        this.set_partition_url(msg.partition_url ?? null)
         break;
       }
       default: {
@@ -188,7 +183,15 @@ class ViewerWidget {
 
     this.viewer.set_active_recording_id(recording_id);
   };
+
+  set_partition_url(partition_url: string | null){
+    if (this.url) this.viewer.close(this.url);
+    if (partition_url) this.viewer.open(partition_url);
+    this.url = partition_url;
+  };
 }
+
+
 
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
@@ -212,5 +215,6 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
 
   return wrapper as any;
 }
+
 
 export default { render: error_boundary(render) };

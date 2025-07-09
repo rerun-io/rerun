@@ -3,8 +3,11 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
+use pyo3::Bound;
+use pyo3::types::PyAnyMethods as _;
 use pyo3::{
-    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods,
+    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
+    exceptions::PyValueError, pyclass, pymethods,
 };
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
@@ -161,20 +164,84 @@ impl PyDatasetEntry {
     }
 
     /// Return the URL for the given partition.
-    fn partition_url(self_: PyRef<'_, Self>, partition_id: String) -> String {
+    ///
+    /// Parameters
+    /// ----------
+    /// partition_id: str
+    ///     The ID of the partition to get the URL for.
+    ///
+    /// timeline: str | None
+    ///     The name of the timeline to display.
+    ///
+    /// start: int | datetime | None
+    ///     The start time for the partition.
+    ///     Integer for ticks, or datetime/nanoseconds for timestamps.
+    ///
+    /// end: int | datetime | None
+    ///     The end time for the partition.
+    ///     Integer for ticks, or datetime/nanoseconds for timestamps.
+    ///
+    /// Examples
+    /// --------
+    /// # With ticks
+    /// >>> start_tick, end_time = 0, 10
+    /// >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    ///
+    /// # With timestamps
+    /// >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+    /// >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     The URL for the given partition.
+    ///
+    #[pyo3(signature = (partition_id, timeline=None, start=None, end=None))]
+    fn partition_url(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        partition_id: String,
+        timeline: Option<&str>,
+        start: Option<Bound<'_, PyAny>>,
+        end: Option<Bound<'_, PyAny>>,
+    ) -> PyResult<String> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
 
-        re_uri::DatasetDataUri {
+        // Timeline with default name and no limits overrides blueprint timeline settings
+        // only override if timeline is selected
+        if timeline.is_none() && (start.is_some() || end.is_some()) {
+            return Err(PyValueError::new_err(
+                "If `start` or `end` is specified, `timeline` must also be specified.",
+            ));
+        }
+
+        // Convert Python objects to i64
+        let start_i64 = start
+            .as_ref()
+            .map(|s| py_object_to_i64(py, s))
+            .transpose()?;
+        let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
+
+        let time_range: Option<re_uri::TimeRange> = timeline.map(|name| re_uri::TimeRange {
+            timeline: re_chunk::Timeline::new_timestamp(name),
+            min: start_i64
+                .map(|start| start.try_into().expect("start time must be valid"))
+                .unwrap_or(re_log_types::NonMinI64::MIN),
+            max: end_i64
+                .map(|end| end.try_into().expect("end time must be valid"))
+                .unwrap_or(re_log_types::NonMinI64::MAX),
+        });
+        Ok(re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
 
-            //TODO(ab): add support for these two
-            time_range: None,
+            time_range,
+            //TODO(ab): add support for this
             fragment: Default::default(),
         }
-        .to_string()
+        .to_string())
     }
 
     /// Register a RRD URI to the dataset and wait for completion.
@@ -666,4 +733,43 @@ impl PyDatasetEntry {
             Ok(PySchema { schema })
         })
     }
+}
+
+/// Helper function to convert a Python object to i64.
+///
+/// This function attempts to convert various Python types to i64, including:
+/// - Python int
+/// - numpy datetime64 (via timestamp conversion)
+/// - Any object with an `__int__` method
+/// - Any object that can be converted to int via Python's `int()` function
+fn py_object_to_i64(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<i64> {
+    // First try direct extraction as i64
+    if let Ok(value) = obj.extract::<i64>() {
+        return Ok(value);
+    }
+
+    // Try to extract as Python int first
+    if let Ok(value) = obj.extract::<i32>() {
+        return Ok(value as i64);
+    }
+
+    // Check if it's a numpy datetime64 and try to get timestamp
+    if obj.hasattr("timestamp")? {
+        let timestamp = obj.call_method0("timestamp")?;
+        if let Ok(ts_float) = timestamp.extract::<f64>() {
+            // Convert seconds to nanoseconds (assuming timestamp is in seconds)
+            return Ok((ts_float * 1_000_000_000.0) as i64);
+        }
+    }
+
+    // Try calling __int__ method if it exists
+    if obj.hasattr("__int__")? {
+        let int_result = obj.call_method0("__int__")?;
+        return int_result.extract::<i64>();
+    }
+
+    // As a last resort, try to convert via Python's int() function
+    let int_builtin = py.import("builtins")?.getattr("int")?;
+    let converted = int_builtin.call1((obj,))?;
+    converted.extract::<i64>()
 }
