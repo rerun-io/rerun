@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
 import argparse
+import os
 import platform
 import subprocess
 
@@ -99,7 +99,7 @@ def stream_video_to_rerun(input: av.container.InputContainer, output: av.video.V
 def main() -> None:
     # Flush aggressively so we can visualize the feed in real-time.
     # See <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
-    os.environ["RERUN_FLUSH_TICK_SECS"] = "0.008" # 8ms
+    os.environ["RERUN_FLUSH_TICK_SECS"] = "0.008"  # 8ms
 
     parser = argparse.ArgumentParser(description="Streams compressed video from camera to Rerun.")
     parser.add_argument(

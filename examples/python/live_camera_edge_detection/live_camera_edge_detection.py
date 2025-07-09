@@ -8,8 +8,8 @@ Runs the opencv canny edge detector on the image stream.
 from __future__ import annotations
 
 import argparse
-
 import os
+
 import cv2
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
@@ -57,7 +57,7 @@ def run_canny(num_frames: int | None) -> None:
 def main() -> None:
     # Flush aggressively so we can visualize the feed in real-time.
     # See <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
-    os.environ["RERUN_FLUSH_TICK_SECS"] = "0.008" # 8ms
+    os.environ["RERUN_FLUSH_TICK_SECS"] = "0.008"  # 8ms
 
     parser = argparse.ArgumentParser(description="Streams a local system camera and runs the canny edge detector.")
     parser.add_argument(
