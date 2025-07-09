@@ -253,7 +253,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 // --- Init ---
-/// Flush and then cleanup any orphaned recordings
+/// Flush and then cleanup any orphaned recordings.
 #[pyfunction]
 fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
     // Start by clearing the current global data recording. Otherwise this holds
