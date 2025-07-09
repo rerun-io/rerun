@@ -1,6 +1,8 @@
 mod chunk_decoder;
 mod player;
 
+pub use player::PlayerConfiguration;
+
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
@@ -79,7 +81,7 @@ pub enum DecoderDelayState {
     /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
     ///
     /// The tolerance value used for this is the sum of
-    /// [`player::PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
+    /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
     /// [`re_video::AsyncDecoder::min_num_samples_to_enqueue_ahead`].
     UpToDateToleratedEdgeOfLiveStream,
 
@@ -87,7 +89,7 @@ pub enum DecoderDelayState {
     ///
     /// I.e. the video texture is not the most recently requested frame, but it's quite close.
     ///
-    /// The tolerance value used for this is [`player::PlayerConfiguration::tolerated_output_delay_in_num_frames`].
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
     UpToDateWithinTolerance,
 
     /// The decoder is catching up after a long seek.
@@ -95,7 +97,7 @@ pub enum DecoderDelayState {
     /// The video texture is no longer updated until the decoder has caught up.
     /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
     ///
-    /// The tolerance value used for this is [`player::PlayerConfiguration::tolerated_output_delay_in_num_frames`].
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
     Behind,
 }
 

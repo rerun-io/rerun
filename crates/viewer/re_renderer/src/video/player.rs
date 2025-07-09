@@ -20,7 +20,7 @@ pub struct PlayerConfiguration {
     /// Same with showing a spinner: if we show it too fast, it is annoying.
     ///
     /// This is wallclock time and independent of how fast a video is being played back.
-    decoding_grace_delay_before_reporting: Duration,
+    pub decoding_grace_delay_before_reporting: Duration,
 
     /// Number of frames we allow to lag behind before no longer updating the output texture.
     ///
@@ -33,11 +33,11 @@ pub struct PlayerConfiguration {
     /// * use a wall clock time based tolerance:
     ///   -> any seek operation that leads to waiting for the decoder to catch up,
     ///      would cause us to show in-progress frames until the tolerance is hit
-    tolerated_output_delay_in_num_frames: usize,
+    pub tolerated_output_delay_in_num_frames: usize,
 
     /// If we haven't seen new samples in this amount of time, we assume the video has ended
     /// and signal the end of the video to the decoder.
-    time_until_video_assumed_ended: Duration,
+    pub time_until_video_assumed_ended: Duration,
 }
 
 impl Default for PlayerConfiguration {
