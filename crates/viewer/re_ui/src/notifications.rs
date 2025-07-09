@@ -188,7 +188,10 @@ impl NotificationUi {
                 egui_ctx.memory_mut(|mem| mem.close_popup(notification_panel_popup_id()));
             }
         }
+    }
 
+    /// Show floating toast notifications of recent log messages.
+    pub fn show_toasts(&mut self, egui_ctx: &egui::Context) {
         self.toasts.show(egui_ctx, &mut self.notifications[..]);
     }
 }
