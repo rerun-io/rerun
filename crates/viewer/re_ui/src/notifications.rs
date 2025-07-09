@@ -149,13 +149,8 @@ impl NotificationUi {
 
         let mut is_visible = false;
 
-        egui::Popup::from_response(&button_response)
+        egui::Popup::from_toggle_button_response(&button_response)
             .id(popup_id)
-            .open_memory(
-                button_response
-                    .clicked()
-                    .then_some(egui::SetOpenCommand::Toggle),
-            )
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
