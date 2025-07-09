@@ -146,7 +146,7 @@ impl Default for ChunkBatcherConfig {
 impl ChunkBatcherConfig {
     /// Default configuration, applicable to most use cases.
     pub const DEFAULT: Self = Self {
-        flush_tick: Duration::from_millis(150),
+        flush_tick: Duration::from_millis(200),
         flush_num_bytes: 1024 * 1024, // 1 MiB
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
