@@ -145,11 +145,6 @@ impl NotificationUi {
             ui.painter().circle_filled(pos, radius, color);
         }
 
-        let frame = egui::Frame::window(ui.style())
-            .fill(ui.tokens().notification_panel_background_color)
-            .corner_radius(8)
-            .inner_margin(8.0);
-
         let gap = 2.0;
 
         let mut is_visible = false;
@@ -162,7 +157,7 @@ impl NotificationUi {
                     .then_some(egui::SetOpenCommand::Toggle),
             )
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-            .frame(frame)
+            .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
             .anchor(egui::PopupAnchor::Position(egui::pos2(
                 ui.ctx().screen_rect().right() - gap,
