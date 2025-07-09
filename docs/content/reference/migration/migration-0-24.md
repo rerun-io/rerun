@@ -4,9 +4,9 @@ order: 986
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
-## Micro-batcher default flushing duration increased from 8ms to 150ms
+## Micro-batcher default flushing duration increased from 8ms to 200ms
 
-`RERUN_FLUSH_TICK_SECS` now defaults to 150ms when left unspecified, instead of 8ms.
+`RERUN_FLUSH_TICK_SECS` now defaults to 200ms when left unspecified, instead of 8ms.
 
 You can learn more about micro-batching in our [dedicated documentation page](../sdk/micro-batching.md).
 
