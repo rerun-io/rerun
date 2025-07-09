@@ -17,7 +17,8 @@ impl ContextMenuAction for CopyEntityPathToClipboard {
             | Item::StoreId(_)
             | Item::Container(_)
             | Item::View(_)
-            | Item::RedapEntry(_)
+            | Item::RedapDatasetEntry(_)
+            | Item::RedapTableEntry(_)
             | Item::RedapServer(_) => false,
             Item::DataResult(..) | Item::InstancePath(_) | Item::ComponentPath(_) => true,
         }

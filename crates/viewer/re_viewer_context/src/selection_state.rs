@@ -274,7 +274,8 @@ impl ItemCollection {
                 Item::View(_) => None,
                 // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
-                Item::RedapEntry(_) => None,
+                Item::RedapDatasetEntry(_) => None,
+                Item::RedapTableEntry(_) => None,
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
@@ -508,7 +509,8 @@ impl ApplicationSelectionState {
                 | Item::StoreId(_)
                 | Item::View(_)
                 | Item::Container(_)
-                | Item::RedapEntry(_)
+                | Item::RedapDatasetEntry(_)
+                | Item::RedapTableEntry(_)
                 | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
@@ -518,7 +520,8 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapDatasetEntry(_)
+                    | Item::RedapTableEntry(_)
                     | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
@@ -542,7 +545,8 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapDatasetEntry(_)
+                    | Item::RedapTableEntry(_)
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
@@ -563,7 +567,8 @@ impl ApplicationSelectionState {
                     | Item::ComponentPath(_)
                     | Item::View(_)
                     | Item::Container(_)
-                    | Item::RedapEntry(_)
+                    | Item::RedapDatasetEntry(_)
+                    | Item::RedapTableEntry(_)
                     | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)

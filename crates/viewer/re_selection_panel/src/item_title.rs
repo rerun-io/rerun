@@ -71,8 +71,11 @@ impl ItemTitle {
                 }
             }
 
-            // TODO(lucasmerlin): Icon? How do get the actual title? Should RedapServers be part of ViewerContext?
-            Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+            // TODO(#10566): There should be an `EntryName` in this `Item` arm.
+            Item::RedapDatasetEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+
+            // TODO(#10566): There should be an `EntryName` in this `Item` arm.
+            Item::RedapTableEntry(entry) => Self::new(entry.to_string(), &icons::TABLE),
 
             // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),

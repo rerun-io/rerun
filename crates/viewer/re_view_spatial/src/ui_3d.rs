@@ -552,7 +552,8 @@ impl SpatialView3D {
                 | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::Container(_)
-                | Item::RedapEntry(_)
+                | Item::RedapDatasetEntry(_)
+                | Item::RedapTableEntry(_)
                 | Item::RedapServer(_)
                 | Item::TableId(_) => None,
 

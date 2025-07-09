@@ -134,7 +134,9 @@ impl AppState {
         // make sure the server exists
         self.add_redap_server(command_sender, uri.origin.clone());
 
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapDatasetEntry(
+            uri.entry_id,
+        )));
     }
 
     /// Currently selected section of time, if any.

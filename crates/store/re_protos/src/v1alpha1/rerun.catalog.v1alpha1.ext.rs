@@ -375,6 +375,57 @@ impl TryFrom<crate::catalog::v1alpha1::DeleteEntryRequest> for re_log_types::Ent
     }
 }
 
+// --- ReadTableEntryRequest ---
+
+impl TryFrom<crate::catalog::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::ReadTableEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(value
+            .id
+            .ok_or(missing_field!(
+                crate::catalog::v1alpha1::ReadTableEntryRequest,
+                "id"
+            ))?
+            .try_into()?)
+    }
+}
+
+// --- ReadTableEntryResponse ---
+
+#[derive(Debug, Clone)]
+pub struct ReadTableEntryResponse {
+    pub table_entry: TableEntry,
+}
+
+impl From<ReadTableEntryResponse> for crate::catalog::v1alpha1::ReadTableEntryResponse {
+    fn from(value: ReadTableEntryResponse) -> Self {
+        Self {
+            table: Some(value.table_entry.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::catalog::v1alpha1::ReadTableEntryResponse> for ReadTableEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::ReadTableEntryResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table_entry: value
+                .table
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::ReadTableEntryResponse,
+                    "table_entry"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
 // --- RegisterTableRequest ---
 
 #[derive(Debug, Clone)]
