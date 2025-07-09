@@ -1,6 +1,7 @@
+use std::task::Poll;
+
 use ahash::HashMap;
 use itertools::Itertools as _;
-use std::task::Poll;
 
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
@@ -9,10 +10,7 @@ use re_grpc_client::{ConnectionError, ConnectionRegistryHandle, StreamError};
 use re_log_encoding::codec::CodecError;
 use re_log_types::{ApplicationId, EntryId, natural_ordering};
 use re_protos::TypeConversionError;
-use re_protos::catalog::v1alpha1::{
-    EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
-    ext::{DatasetEntry, EntryDetails},
-};
+use re_protos::catalog::v1alpha1::{EntryFilter, ext::DatasetEntry};
 use re_sorbet::SorbetError;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
@@ -24,6 +22,7 @@ use re_viewer_context::{
 
 use crate::context::Context;
 
+#[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
     #[error(transparent)]
@@ -43,9 +42,6 @@ pub enum EntryError {
 
     #[error(transparent)]
     SorbetError(#[from] SorbetError),
-
-    #[error("Field `{0}` not set")]
-    FieldNotSet(&'static str),
 }
 
 impl EntryError {
@@ -85,11 +81,9 @@ impl Dataset {
 }
 
 /// All the entries of a server.
+// TODO(ab): we currently load the ENTIRE list of datasets. We will need to be more granular
+// about this in the future.
 pub struct Entries {
-    //TODO(ab): in the future, there will be more kinds of entries
-
-    // TODO(ab): we currently load the ENTIRE list of datasets, including their partition tables. We
-    // will need to be more granular about this in the future.
     datasets: RequestedObject<Result<HashMap<EntryId, Dataset>, EntryError>>,
 }
 
@@ -323,48 +317,26 @@ async fn fetch_dataset_entries(
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
-        .inner()
-        .find_entries(FindEntriesRequest {
-            filter: Some(EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: Some(re_protos::catalog::v1alpha1::EntryKind::Dataset.into()),
-            }),
+        .find_entries(EntryFilter {
+            id: None,
+            name: None,
+            entry_kind: Some(re_protos::catalog::v1alpha1::EntryKind::Dataset.into()),
         })
-        .await?
-        .into_inner()
-        .entries;
+        .await?;
+
+    let futures = entries.into_iter().map(|entry_details| {
+        let mut client = client.clone();
+        async move { client.read_dataset_entry(entry_details.id).await }
+    });
 
     let mut datasets = HashMap::default();
-
-    let mut futures = vec![];
-    for entry_details in entries {
-        let mut client = client.clone();
-        let entry_details = EntryDetails::try_from(entry_details)?;
-
-        futures.push(async move {
-            client
-                .inner()
-                .read_dataset_entry(ReadDatasetEntryRequest {
-                    id: Some(entry_details.id.into()),
-                })
-                .await
-        });
-    }
-
-    for result in futures::future::join_all(futures).await {
-        let dataset_entry = result?
-            .into_inner()
-            .dataset
-            .ok_or(EntryError::FieldNotSet("dataset"))?
-            .try_into()?;
-
-        let entry = Dataset {
-            dataset_entry,
+    for dataset_entry in futures::future::join_all(futures).await {
+        let dataset = Dataset {
+            dataset_entry: dataset_entry?,
             origin: origin.clone(),
         };
 
-        datasets.insert(entry.id(), entry);
+        datasets.insert(dataset.id(), dataset);
     }
 
     Ok(datasets)
