@@ -653,6 +653,14 @@ impl DesignTokens {
         frame
     }
 
+    /// Something that provides contrast vs the background
+    pub fn popup_frame(&self, style: &egui::Style) -> egui::Frame {
+        egui::Frame::window(style)
+            .fill(self.notification_panel_background_color)
+            .corner_radius(8)
+            .inner_margin(8.0)
+    }
+
     pub fn bottom_panel_margin(&self) -> egui::Margin {
         self.top_bar_margin()
     }

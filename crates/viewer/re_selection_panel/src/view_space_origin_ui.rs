@@ -208,7 +208,7 @@ fn view_space_origin_widget_editing_ui(
         }
     };
 
-    ui.list_item_popup(popup_id, &output.response, 4.0, suggestions_ui);
+    ui.list_item_popup(popup_id, &output.response, suggestions_ui);
 
     if control_flow.is_continue() && !ui.memory(|mem| mem.is_popup_open(popup_id)) {
         control_flow = ControlFlow::Break(None);

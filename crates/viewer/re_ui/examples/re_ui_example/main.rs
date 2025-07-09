@@ -462,7 +462,7 @@ impl ExampleApp {
                 &mut self.show_left_panel,
             );
 
-            notifications::notification_toggle_button(ui, &mut self.notifications);
+            self.notifications.notification_toggle_button(ui);
         });
     }
 }
