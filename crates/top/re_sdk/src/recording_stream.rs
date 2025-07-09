@@ -816,11 +816,7 @@ impl RecordingStream {
     pub fn ref_count(&self) -> usize {
         match &self.inner {
             Either::Left(strong) => Arc::strong_count(strong),
-            Either::Right(weak) => weak
-                .upgrade()
-                .map_or(0, |this: Arc<Option<RecordingStreamInner>>| {
-                    Arc::strong_count(&this)
-                }),
+            Either::Right(weak) => weak.strong_count(),
         }
     }
 }
