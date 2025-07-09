@@ -172,7 +172,12 @@ pub trait AsyncDecoder: Send + Sync {
     /// Called after submitting the last chunk.
     ///
     /// Should flush all pending frames.
-    /// The next submitted chunk is guaranteed to be a key frame.
+    /// If new chunks are submitted after this, the decoder has to be reset.
+    ///
+    /// Implementation note:
+    /// As of writing there's two decoders that have requirements on what happens for new frames after `end_of_video`
+    /// * WebCodec: The next submitted chunk has to be a key frame.
+    /// * FFmpeg-executable: We've shut down stdin, thus we need to restart the process. Doing this without the full context of `reset` is not possible right now.
     fn end_of_video(&mut self) -> Result<()> {
         Ok(())
     }

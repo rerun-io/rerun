@@ -488,8 +488,10 @@ impl VideoPlayer {
                 self.reset(video_description)?;
             }
         }
-        // Previously signaled the end of the video, but encountering new frames now.
-        else if self.signaled_end_of_video && last_enqueued.sample_idx < requested.sample_idx {
+        // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
+        else if self.signaled_end_of_video
+            && last_enqueued.sample_idx + 1 < video_description.samples.next_index()
+        {
             self.reset(video_description)?;
         }
 
