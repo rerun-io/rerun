@@ -304,7 +304,7 @@ fn table_ui(
         .auto_shrink([false; 2]) // expand to take up the whole View
         .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the view!
         .max_scroll_height(f32::INFINITY) // Fill up whole height
-        .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
