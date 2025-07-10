@@ -255,13 +255,19 @@ impl ConnectionHandle {
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
+        cleanup_before: Option<jiff::Timestamp>,
     ) -> PyResult<()> {
         wait_for_future(
             py,
             async {
                 self.client()
                     .await?
-                    .do_maintenance(dataset_id, build_scalar_indexes, compact_fragments)
+                    .do_maintenance(
+                        dataset_id,
+                        build_scalar_indexes,
+                        compact_fragments,
+                        cleanup_before,
+                    )
                     .await
                     .map_err(to_py_err)
             }

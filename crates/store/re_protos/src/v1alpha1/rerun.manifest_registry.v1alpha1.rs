@@ -908,6 +908,8 @@ pub struct DoMaintenanceRequest {
     pub build_scalar_indexes: bool,
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
+    #[prost(message, optional, tag = "4")]
+    pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
 }
 impl ::prost::Name for DoMaintenanceRequest {
     const NAME: &'static str = "DoMaintenanceRequest";

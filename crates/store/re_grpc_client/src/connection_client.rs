@@ -1,4 +1,4 @@
-use re_protos::frontend::v1alpha1::DoMaintenanceRequest;
+use re_protos::frontend::v1alpha1::ext::DoMaintenanceRequest;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
@@ -300,13 +300,18 @@ where
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
+        cleanup_before: Option<jiff::Timestamp>,
     ) -> Result<(), StreamError> {
         self.inner()
-            .do_maintenance(tonic::Request::new(DoMaintenanceRequest {
-                dataset_id: Some(dataset_id.into()),
-                build_scalar_indexes,
-                compact_fragments,
-            }))
+            .do_maintenance(tonic::Request::new(
+                DoMaintenanceRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    build_scalar_indexes,
+                    compact_fragments,
+                    cleanup_before,
+                }
+                .into(),
+            ))
             .await?;
 
         Ok(())

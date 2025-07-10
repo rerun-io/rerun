@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package rerun.manifest_registry.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
@@ -558,6 +559,7 @@ message DoMaintenanceRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
   bool build_scalar_indexes = 2;
   bool compact_fragments = 3;
+  google.protobuf.Timestamp cleanup_before = 4;
 }
 
 message DoMaintenanceResponse {
