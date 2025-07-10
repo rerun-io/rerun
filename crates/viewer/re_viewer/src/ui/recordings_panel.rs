@@ -117,7 +117,7 @@ fn recording_list_ui(
     if ctx.storage_context.tables.is_empty()
         && servers.is_empty()
         && local_recordings.is_empty()
-        && welcome_screen_state.hide
+        && welcome_screen_state.hide_examples
     {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -163,7 +163,7 @@ fn recording_list_ui(
     if (ctx
         .app_options()
         .include_rerun_examples_button_in_recordings_panel
-        && !welcome_screen_state.hide)
+        && !welcome_screen_state.hide_examples)
         || !example_recordings.is_empty()
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
