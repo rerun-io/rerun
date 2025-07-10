@@ -231,7 +231,7 @@ impl Server {
                     re_log::warn_once!(
                         "Encountered unexpected indicator column name: {}",
                         desc.column_name(BatchType::Dataframe)
-                    )
+                    );
                 }
                 !is_indicator
             } else {
