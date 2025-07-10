@@ -456,6 +456,32 @@ impl ChunkStore {
     fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
+        {
+            // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
+            // on its own.
+
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = self.config;
+
+            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+
+            let total_rows = (chunk.num_rows()) as u64;
+            let is_below_rows_threshold = if chunk.is_time_sorted() {
+                total_rows <= chunk_max_rows
+            } else {
+                total_rows <= chunk_max_rows_if_unsorted
+            };
+
+            if !(is_below_bytes_threshold && is_below_rows_threshold) {
+                return None;
+            }
+        }
+
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
