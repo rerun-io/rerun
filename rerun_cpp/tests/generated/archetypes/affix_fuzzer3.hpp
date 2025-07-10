@@ -27,7 +27,6 @@
 #include <rerun/collection.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/component_column.hpp>
-#include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 #include <vector>
@@ -71,11 +70,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> fuzz2018;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.testing.components.AffixFuzzer3Indicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.testing.archetypes.AffixFuzzer3";
 

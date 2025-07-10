@@ -57,7 +57,6 @@ fn schema() -> anyhow::Result<()> {
         // indicator plays a special role here, because it has the archetype field set to
         // `None`. Also, indicators will be removed soon anyways.
         vec![
-            MyPoints::descriptor_indicator(),
             MyPoints::descriptor_colors(),
             MyPoints::descriptor_labels(),
             MyPoints::descriptor_points(),

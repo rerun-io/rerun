@@ -309,16 +309,6 @@ impl AffixFuzzer1 {
             component_type: Some("rerun.testing.components.AffixFuzzer22".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.testing.components.AffixFuzzer1Indicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 22usize]> =
@@ -349,13 +339,13 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 22usize]
         ]
     });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [AffixFuzzer1::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 23usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 22usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             AffixFuzzer1::descriptor_fuzz1001(),
@@ -380,21 +370,15 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 23usize]> =
             AffixFuzzer1::descriptor_fuzz1020(),
             AffixFuzzer1::descriptor_fuzz1021(),
             AffixFuzzer1::descriptor_fuzz1022(),
-            AffixFuzzer1::descriptor_indicator(),
         ]
     });
 
 impl AffixFuzzer1 {
-    /// The total number of components in the archetype: 22 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 23usize;
+    /// The total number of components in the archetype: 22 required, 0 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 22usize;
 }
 
-/// Indicator component for the [`AffixFuzzer1`] [`::re_types_core::Archetype`]
-pub type AffixFuzzer1Indicator = ::re_types_core::GenericIndicatorComponent<AffixFuzzer1>;
-
 impl ::re_types_core::Archetype for AffixFuzzer1 {
-    type Indicator = AffixFuzzer1Indicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.testing.archetypes.AffixFuzzer1".into()
@@ -403,14 +387,6 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     #[inline]
     fn display_name() -> &'static str {
         "Affix fuzzer 1"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        AffixFuzzer1Indicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

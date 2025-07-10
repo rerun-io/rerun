@@ -106,54 +106,37 @@ impl GeoLineStrings {
             component_type: Some("rerun.components.Color".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.GeoLineStringsIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GeoLineStrings::descriptor_line_strings()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoLineStrings::descriptor_radii(),
             GeoLineStrings::descriptor_colors(),
-            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoLineStrings::descriptor_line_strings(),
             GeoLineStrings::descriptor_radii(),
             GeoLineStrings::descriptor_colors(),
-            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
 impl GeoLineStrings {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`GeoLineStrings`] [`::re_types_core::Archetype`]
-pub type GeoLineStringsIndicator = ::re_types_core::GenericIndicatorComponent<GeoLineStrings>;
-
 impl ::re_types_core::Archetype for GeoLineStrings {
-    type Indicator = GeoLineStringsIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GeoLineStrings".into()
@@ -162,14 +145,6 @@ impl ::re_types_core::Archetype for GeoLineStrings {
     #[inline]
     fn display_name() -> &'static str {
         "Geo line strings"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GeoLineStringsIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

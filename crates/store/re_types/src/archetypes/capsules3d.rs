@@ -257,16 +257,6 @@ impl Capsules3D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.Capsules3DIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
@@ -277,12 +267,11 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Capsules3D::descriptor_translations(),
             Capsules3D::descriptor_colors(),
-            Capsules3D::descriptor_indicator(),
         ]
     });
 
@@ -299,14 +288,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 12usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 11usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Capsules3D::descriptor_lengths(),
             Capsules3D::descriptor_radii(),
             Capsules3D::descriptor_translations(),
             Capsules3D::descriptor_colors(),
-            Capsules3D::descriptor_indicator(),
             Capsules3D::descriptor_rotation_axis_angles(),
             Capsules3D::descriptor_quaternions(),
             Capsules3D::descriptor_line_radii(),
@@ -318,16 +306,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 12usize]> =
     });
 
 impl Capsules3D {
-    /// The total number of components in the archetype: 2 required, 3 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 12usize;
+    /// The total number of components in the archetype: 2 required, 2 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 11usize;
 }
 
-/// Indicator component for the [`Capsules3D`] [`::re_types_core::Archetype`]
-pub type Capsules3DIndicator = ::re_types_core::GenericIndicatorComponent<Capsules3D>;
-
 impl ::re_types_core::Archetype for Capsules3D {
-    type Indicator = Capsules3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Capsules3D".into()
@@ -336,14 +319,6 @@ impl ::re_types_core::Archetype for Capsules3D {
     #[inline]
     fn display_name() -> &'static str {
         "Capsules 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Capsules3DIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

@@ -23,7 +23,6 @@ from rerun_bindings.types import (
 )
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor
-from ._log import IndicatorComponentBatch
 from ._send_columns import TimeColumnLike, send_columns
 from .recording_stream import RecordingStream
 
@@ -76,13 +75,7 @@ class RawComponentBatchLike(ComponentColumn):
 
 
 def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
-    """
-    Coerce a single pyarrow `RecordBatch` to Rerun structure.
-
-    If this `RecordBatch` came from a call to [`RecordingView.view`][rerun.dataframe.RecordingView.view], you
-    will want to make sure the `view` call includes `include_indicator_columns = True` or else the
-    viewer will not know about the archetypes in the data.
-    """
+    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 
     indexes = []
     data: defaultdict[str, list[Any]] = defaultdict(list)
@@ -102,9 +95,6 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
             data[entity_path].append(RawComponentBatchLike(metadata, batch.column(col.name)))
             if SORBET_ARCHETYPE_NAME in metadata:
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
-    for entity_path, archetype_set in archetypes.items():
-        for archetype in archetype_set:
-            data[entity_path].append(IndicatorComponentBatch(archetype))
 
     for entity_path, columns in data.items():
         send_columns(

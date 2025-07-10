@@ -43,7 +43,6 @@ from ._image_encoded import (
 )
 from ._log import (
     AsComponents as AsComponents,
-    IndicatorComponentBatch as IndicatorComponentBatch,
     escape_entity_path_part as escape_entity_path_part,
     log as log,
     log_file_from_contents as log_file_from_contents,

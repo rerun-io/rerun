@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/graph_edge.hpp"
 #include "../components/graph_type.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -54,11 +53,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> graph_type;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.GraphEdgesIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphEdges";
 

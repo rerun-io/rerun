@@ -167,23 +167,13 @@ impl SeriesPoints {
             component_type: Some("rerun.components.MarkerSize".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.SeriesPointsIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [SeriesPoints::descriptor_markers()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [SeriesPoints::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -195,11 +185,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SeriesPoints::descriptor_markers(),
-            SeriesPoints::descriptor_indicator(),
             SeriesPoints::descriptor_colors(),
             SeriesPoints::descriptor_names(),
             SeriesPoints::descriptor_visible_series(),
@@ -208,16 +197,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl SeriesPoints {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`SeriesPoints`] [`::re_types_core::Archetype`]
-pub type SeriesPointsIndicator = ::re_types_core::GenericIndicatorComponent<SeriesPoints>;
-
 impl ::re_types_core::Archetype for SeriesPoints {
-    type Indicator = SeriesPointsIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.SeriesPoints".into()
@@ -226,14 +210,6 @@ impl ::re_types_core::Archetype for SeriesPoints {
     #[inline]
     fn display_name() -> &'static str {
         "Series points"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        SeriesPointsIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

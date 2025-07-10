@@ -458,7 +458,6 @@ impl QuotedObject {
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
-        hpp_includes.insert_rerun("indicator_component.hpp");
 
         let field_declarations = obj
             .fields
@@ -741,11 +740,6 @@ impl QuotedObject {
             .iter()
             .map(|m| m.to_cpp_tokens(&quote!(#archetype_type_ident)));
 
-        let indicator_comment = quote_doc_comment(
-            "Indicator component, used to identify the archetype when converting to a list of components.",
-        );
-        let indicator_component_fqname =
-            format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecated_notice = quote_deprecated_notice(obj);
         let name_doc_string =
@@ -792,12 +786,6 @@ impl QuotedObject {
                     #(#field_declarations;)*
 
                 public:
-                    static constexpr const char IndicatorComponentType[] = #indicator_component_fqname;
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                    #indicator_comment
-                    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
-
                     #NEWLINE_TOKEN
                     #name_doc_string
                     static constexpr const char ArchetypeName[] = #archetype_name;
