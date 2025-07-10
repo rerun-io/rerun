@@ -101,6 +101,7 @@ These changes are reflected in various parts of the Rerun viewer:
 * In `v0.23`, the LeRobot dataloader logged incomplete `ComponentDescriptors` for robot observations and actions. To fix this, load the dataset in `v0.24` and resave your episodes to `.rrd` (`v0.24` now supports saving all selected recordings).
 * Overriding visualizers to reinterpret data (e.g. show a point-cloud for mesh vertices) is no longer possible, since visualizers now match for <archetype>:<field> instead of component type name. This will be addressed in the future with blueprint-driven overrides that will allow to remap data to arbitrary archetypes.
 * `VisualizerOverrides` are now limited to time series views, and _stop to be supported for general views_, such as the spatial views.
+* The `markers` component on `SeriesPoints` is now marked as _required_, to avoid accidentally logging an archetype without any associated data. In Python, when no component is supplied we automatically set the `markers` shape to `Circle` to avoid breaking user code.
 
 ## Dataframe API: `View.select_static` is deprecated
 

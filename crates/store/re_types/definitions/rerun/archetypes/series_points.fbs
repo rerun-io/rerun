@@ -17,6 +17,11 @@ table SeriesPoints (
 ) {
   // --- Required ---
 
+  /// What shape to use to represent the point
+  ///
+  /// May change over time.
+  markers: [rerun.components.MarkerShape] ("attr.rerun.component_required", nullable, order: 2000);
+
   // --- Optional ---
 
   // TODO(#8368, #9334): Once it's trivial to override how scalars for a plot are sourced,
@@ -31,11 +36,6 @@ table SeriesPoints (
   ///
   /// May change over time, but can cause discontinuities in the line.
   colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 1000);
-
-  /// What shape to use to represent the point
-  ///
-  /// May change over time.
-  markers: [rerun.components.MarkerShape] ("attr.rerun.component_optional", nullable, order: 2000);
 
   /// Display name of the series.
   ///
