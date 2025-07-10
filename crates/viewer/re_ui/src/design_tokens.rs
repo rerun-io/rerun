@@ -36,13 +36,11 @@ impl AlertVisuals {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum TableStyle {
     /// Used for presenting a lot of information to the user
-    /// without wasting vertical space,
-    /// like when showing log output.
+    /// without wasting vertical space, like when showing log output.
     #[default]
     Dense,
 
-    /// Used when we want more margins and spacing,
-    /// e.g. in the catalog view.
+    /// Used when we want to fit big, clickable buttons in the table cells.
     Spacious,
 }
 
