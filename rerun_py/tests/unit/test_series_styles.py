@@ -37,7 +37,6 @@ def test_line_series() -> None:
 
 def test_point_series() -> None:
     inputs = [
-        SeriesPoints(),
         SeriesPoints(colors=[255, 0, 0]),
         SeriesPoints(colors=0xFF0000FF),
         SeriesPoints(marker_sizes=2),
@@ -56,6 +55,10 @@ def test_point_series() -> None:
             assert input.markers == MarkerShapeBatch._converter([MarkerShape.Diamond])
         if input.names is not None:
             assert input.names == NameBatch._converter([Name("my plot")])
+
+    # By default we set `markers` to circle.
+    input = SeriesPoints()
+    assert input.markers == MarkerShapeBatch._converter([MarkerShape.Circle])
 
 
 if __name__ == "__main__":
