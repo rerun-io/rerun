@@ -168,3 +168,23 @@ impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequ
         }
     }
 }
+
+impl TryFrom<crate::frontend::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::frontend::v1alpha1::DoMaintenanceRequest,
+    ) -> Result<Self, Self::Error> {
+        let cleanup_before = value
+            .cleanup_before
+            .map(|ts| jiff::Timestamp::new(ts.seconds, ts.nanos))
+            .transpose()?;
+
+        Ok(Self {
+            dataset_id: value.dataset_id,
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before,
+        })
+    }
+}
