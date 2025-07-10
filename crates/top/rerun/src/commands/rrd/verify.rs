@@ -124,6 +124,9 @@ impl Verifier {
             .is_indicator_component()
         {
             // Lacks reflection and data
+            anyhow::bail!(
+                "Indicators are deprecated and should be removed on ingestion in re_sorbet."
+            );
         } else {
             // Verify data
             let component_reflection = self
