@@ -190,23 +190,13 @@ impl VideoFrameReference {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.VideoFrameReferenceIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_timestamp()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -216,28 +206,21 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             VideoFrameReference::descriptor_timestamp(),
-            VideoFrameReference::descriptor_indicator(),
             VideoFrameReference::descriptor_video_reference(),
             VideoFrameReference::descriptor_draw_order(),
         ]
     });
 
 impl VideoFrameReference {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`VideoFrameReference`] [`::re_types_core::Archetype`]
-pub type VideoFrameReferenceIndicator =
-    ::re_types_core::GenericIndicatorComponent<VideoFrameReference>;
-
 impl ::re_types_core::Archetype for VideoFrameReference {
-    type Indicator = VideoFrameReferenceIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.VideoFrameReference".into()
@@ -246,14 +229,6 @@ impl ::re_types_core::Archetype for VideoFrameReference {
     #[inline]
     fn display_name() -> &'static str {
         "Video frame reference"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        VideoFrameReferenceIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

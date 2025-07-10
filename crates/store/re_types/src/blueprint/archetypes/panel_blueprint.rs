@@ -40,46 +40,26 @@ impl PanelBlueprint {
             component_type: Some("rerun.blueprint.components.PanelState".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_state()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            PanelBlueprint::descriptor_indicator(),
-            PanelBlueprint::descriptor_state(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_state()]);
 
 impl PanelBlueprint {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`PanelBlueprint`] [`::re_types_core::Archetype`]
-pub type PanelBlueprintIndicator = ::re_types_core::GenericIndicatorComponent<PanelBlueprint>;
-
 impl ::re_types_core::Archetype for PanelBlueprint {
-    type Indicator = PanelBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PanelBlueprint".into()
@@ -88,14 +68,6 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "Panel blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        PanelBlueprintIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

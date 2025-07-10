@@ -254,27 +254,16 @@ impl Mesh3D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.Mesh3DIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Mesh3D::descriptor_vertex_positions()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Mesh3D::descriptor_triangle_indices(),
             Mesh3D::descriptor_vertex_normals(),
-            Mesh3D::descriptor_indicator(),
         ]
     });
 
@@ -290,13 +279,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Mesh3D::descriptor_vertex_positions(),
             Mesh3D::descriptor_triangle_indices(),
             Mesh3D::descriptor_vertex_normals(),
-            Mesh3D::descriptor_indicator(),
             Mesh3D::descriptor_vertex_colors(),
             Mesh3D::descriptor_vertex_texcoords(),
             Mesh3D::descriptor_albedo_factor(),
@@ -307,16 +295,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
     });
 
 impl Mesh3D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 10usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
-/// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
-pub type Mesh3DIndicator = ::re_types_core::GenericIndicatorComponent<Mesh3D>;
-
 impl ::re_types_core::Archetype for Mesh3D {
-    type Indicator = Mesh3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Mesh3D".into()
@@ -325,14 +308,6 @@ impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn display_name() -> &'static str {
         "Mesh 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Mesh3DIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

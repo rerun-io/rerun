@@ -93,23 +93,13 @@ impl ViewBlueprint {
             component_type: Some("rerun.components.Visible".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_class_identifier()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -120,11 +110,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ViewBlueprint::descriptor_class_identifier(),
-            ViewBlueprint::descriptor_indicator(),
             ViewBlueprint::descriptor_display_name(),
             ViewBlueprint::descriptor_space_origin(),
             ViewBlueprint::descriptor_visible(),
@@ -132,16 +121,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     });
 
 impl ViewBlueprint {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`ViewBlueprint`] [`::re_types_core::Archetype`]
-pub type ViewBlueprintIndicator = ::re_types_core::GenericIndicatorComponent<ViewBlueprint>;
-
 impl ::re_types_core::Archetype for ViewBlueprint {
-    type Indicator = ViewBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ViewBlueprint".into()
@@ -150,14 +134,6 @@ impl ::re_types_core::Archetype for ViewBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "View blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ViewBlueprintIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

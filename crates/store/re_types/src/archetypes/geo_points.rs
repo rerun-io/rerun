@@ -114,55 +114,38 @@ impl GeoPoints {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.GeoPointsIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GeoPoints::descriptor_positions()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoPoints::descriptor_radii(),
             GeoPoints::descriptor_colors(),
-            GeoPoints::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GeoPoints::descriptor_class_ids()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoPoints::descriptor_positions(),
             GeoPoints::descriptor_radii(),
             GeoPoints::descriptor_colors(),
-            GeoPoints::descriptor_indicator(),
             GeoPoints::descriptor_class_ids(),
         ]
     });
 
 impl GeoPoints {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`GeoPoints`] [`::re_types_core::Archetype`]
-pub type GeoPointsIndicator = ::re_types_core::GenericIndicatorComponent<GeoPoints>;
-
 impl ::re_types_core::Archetype for GeoPoints {
-    type Indicator = GeoPointsIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GeoPoints".into()
@@ -171,14 +154,6 @@ impl ::re_types_core::Archetype for GeoPoints {
     #[inline]
     fn display_name() -> &'static str {
         "Geo points"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GeoPointsIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

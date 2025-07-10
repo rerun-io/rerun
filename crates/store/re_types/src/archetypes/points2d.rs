@@ -240,29 +240,13 @@ impl Points2D {
             component_type: Some("rerun.components.KeypointId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.Points2DIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Points2D::descriptor_positions()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Points2D::descriptor_radii(),
-            Points2D::descriptor_colors(),
-            Points2D::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [Points2D::descriptor_radii(), Points2D::descriptor_colors()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -275,13 +259,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Points2D::descriptor_positions(),
             Points2D::descriptor_radii(),
             Points2D::descriptor_colors(),
-            Points2D::descriptor_indicator(),
             Points2D::descriptor_labels(),
             Points2D::descriptor_show_labels(),
             Points2D::descriptor_draw_order(),
@@ -291,16 +274,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     });
 
 impl Points2D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`Points2D`] [`::re_types_core::Archetype`]
-pub type Points2DIndicator = ::re_types_core::GenericIndicatorComponent<Points2D>;
-
 impl ::re_types_core::Archetype for Points2D {
-    type Indicator = Points2DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Points2D".into()
@@ -309,14 +287,6 @@ impl ::re_types_core::Archetype for Points2D {
     #[inline]
     fn display_name() -> &'static str {
         "Points 2D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Points2DIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]
