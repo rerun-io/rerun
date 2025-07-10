@@ -54,14 +54,6 @@ impl MyPoints {
         }
     }
 
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.MyPointsIndicator".into(),
-            component_type: None,
-        }
-    }
-
     pub fn update_fields() -> Self {
         Self::default()
     }
@@ -97,17 +89,6 @@ impl MyPoints {
 }
 
 impl re_types_core::Archetype for MyPoints {
-    type Indicator = re_types_core::GenericIndicatorComponent<Self>;
-
-    fn indicator() -> SerializedComponentBatch {
-        use re_types_core::ComponentBatch as _;
-        // These is no such thing as failing to serialized an indicator.
-        #[allow(clippy::unwrap_used)]
-        Self::Indicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
-    }
-
     fn name() -> re_types_core::ArchetypeName {
         "example.MyPoints".into()
     }
@@ -121,21 +102,14 @@ impl re_types_core::Archetype for MyPoints {
     }
 
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
-        vec![
-            Self::descriptor_indicator(),
-            Self::descriptor_colors(),
-            Self::descriptor_labels(),
-        ]
-        .into()
+        vec![Self::descriptor_colors(), Self::descriptor_labels()].into()
     }
 }
 
 impl ::re_types_core::AsComponents for MyPoints {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.colors.clone(),
             self.labels.clone(),
             self.points.clone(),

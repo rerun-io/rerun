@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentType, DeserializationResult, SerializationResult,
-    SerializedComponentBatch,
-};
+use crate::{ComponentDescriptor, ComponentType, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Component, Loggable};
@@ -20,25 +17,6 @@ use crate::{Component, Loggable};
 /// E.g. consider the `crate::archetypes::Points3D` archetype, which represents the set of
 /// components to consider when working with a 3D point cloud within Rerun.
 pub trait Archetype {
-    /// The associated indicator component, whose presence indicates that the high-level
-    /// archetype-based APIs were used to log the data.
-    ///
-    /// ## Internal representation
-    ///
-    /// Indicator components are always unit-length null arrays.
-    /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
-    /// `rerun.components.Points3DIndicator`.
-    ///
-    /// Since null arrays aren't actually arrays and we don't actually have any data to shuffle
-    /// around per-se, we can't implement the usual [`Loggable`] traits.
-    /// For this reason, indicator components directly implement [`ComponentBatch`] instead, and
-    /// bypass the entire iterator machinery.
-    //
-    // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
-    // pretty much always `A::Indicator`, but defaults are unstable.
-    // type Indicator: ComponentBatch = A::Indicator;
-    type Indicator: 'static + ComponentBatch + Default;
-
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
 
@@ -46,11 +24,6 @@ pub trait Archetype {
     fn display_name() -> &'static str;
 
     // ---
-
-    /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
-    ///
-    /// This allows for associating arbitrary indicator components with arbitrary data.
-    fn indicator() -> SerializedComponentBatch;
 
     /// Returns all component descriptors that _must_ be provided by the user when constructing this archetype.
     fn required_components() -> std::borrow::Cow<'static, [ComponentDescriptor]>;
