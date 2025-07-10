@@ -28,6 +28,20 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.components().is_empty() {
+            // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
+            // chunk that went through the Sorbet migration process, and ended up with zero
+            // component columns.
+            //
+            // When that happens, the election process in the compactor will get confused, and then not
+            // only that weird empty Chunk will end up being stored, but it will also prevent the
+            // election from making progress and therefore prevent Chunks that are in dire need of
+            // compaction from being compacted.
+            //
+            // The solution is simple: just drop it.
+            return Ok(vec![]);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
