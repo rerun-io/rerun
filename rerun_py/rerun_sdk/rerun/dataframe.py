@@ -75,9 +75,7 @@ class RawComponentBatchLike(ComponentColumn):
 
 
 def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
-    """
-    Coerce a single pyarrow `RecordBatch` to Rerun structure.
-    """
+    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 
     indexes = []
     data: defaultdict[str, list[Any]] = defaultdict(list)
