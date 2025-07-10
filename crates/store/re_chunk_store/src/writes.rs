@@ -5,7 +5,7 @@ use arrow::array::Array as _;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, EntityPath, RowId};
+use re_chunk::{Chunk, EntityPath, LatestAtQuery, RowId};
 
 use crate::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
@@ -28,6 +28,11 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.components().is_empty() {
+            // TODO: can happen because of migrations (e.g. Indicator)
+            return Ok(vec![]);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
@@ -442,6 +447,30 @@ impl ChunkStore {
     fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
+        {
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = self.config;
+
+            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+
+            let total_rows = (chunk.num_rows()) as u64;
+            let is_below_rows_threshold = if chunk.is_time_sorted() {
+                total_rows <= chunk_max_rows
+            } else {
+                total_rows <= chunk_max_rows_if_unsorted
+            };
+
+            if !(is_below_bytes_threshold && is_below_rows_threshold) {
+                // TODO: explain
+                return None;
+            }
+        }
+
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
@@ -479,7 +508,12 @@ impl ChunkStore {
                     })
             };
 
+        // TODO: the actual good solution would be to use proper queries... maybe
+
         let mut candidates: HashMap<ChunkId, u64> = HashMap::default();
+
+        let mut num_total = 0u64;
+        let mut num_concatenable = 0u64;
 
         let temporal_chunk_ids_per_timeline = self
             .temporal_chunk_ids_per_entity_per_component
@@ -499,16 +533,96 @@ impl ChunkStore {
                     continue;
                 };
 
+                // for chunk_id in self.chunks_per_chunk_id.keys().copied() {
+                //     if check_if_chunk_below_threshold(self, chunk_id) {
+                //         *candidates.entry(chunk_id).or_default() += 1;
+                //     }
+                // }
+                //
+                // continue;
+                //
+                // for chunk in self.latest_at_relevant_chunks(
+                //     &LatestAtQuery::new(timeline, time_range.min().dec()),
+                //     chunk.entity_path(),
+                //     &component_desc,
+                // ) {
+                //     if check_if_chunk_below_threshold(self, chunk.id()) {
+                //         *candidates.entry(chunk.id()).or_default() += 1;
+                //     }
+                // }
+                //
+                // for chunk in self.latest_at_relevant_chunks(
+                //     &LatestAtQuery::new(timeline, time_range.max().inc()),
+                //     chunk.entity_path(),
+                //     &component_desc,
+                // ) {
+                //     if check_if_chunk_below_threshold(self, chunk.id()) {
+                //         *candidates.entry(chunk.id()).or_default() += 1;
+                //     }
+                // }
+                //
+                // continue;
+
+                // TODO: no overlap seems weird?
                 {
+                    // TODO: the following does not properly take care of all the hard things (full overlap, etc)
+                    // should we just do a query instead?
+
+                    // for (_data_time, chunk_id_set) in temporal_chunk_ids_per_time
+                    //     .per_start_time
+                    //     .range(time_range.min()..=time_range.max())
+                    // {
+                    //     for &chunk_id in chunk_id_set {
+                    //         if check_if_chunk_below_threshold(self, chunk_id) {
+                    //             // TODO: what we really want is for the number of points to be
+                    //             // relative to the overlap or something
+                    //             *candidates.entry(chunk_id).or_default() += 1;
+                    //         }
+                    //     }
+                    // }
+                    //
+                    // for (_data_time, chunk_id_set) in temporal_chunk_ids_per_time
+                    //     .per_end_time
+                    //     .range(time_range.min()..=time_range.max())
+                    // {
+                    //     for &chunk_id in chunk_id_set {
+                    //         if check_if_chunk_below_threshold(self, chunk_id) {
+                    //             // TODO: what we really want is for the number of points to be
+                    //             // relative to the overlap or something
+                    //             *candidates.entry(chunk_id).or_default() += 1;
+                    //         }
+                    //     }
+                    // }
+                    //
+                    // continue; // TODO
+
                     // Direct neighbors (before): 1 point each.
                     if let Some((_data_time, chunk_id_set)) = temporal_chunk_ids_per_time
                         .per_start_time
                         .range(..time_range.min())
                         .next_back()
                     {
+                        num_total += chunk_id_set.len() as u64;
                         for &chunk_id in chunk_id_set {
                             if check_if_chunk_below_threshold(self, chunk_id) {
-                                *candidates.entry(chunk_id).or_default() += 1;
+                                num_concatenable += 1;
+                                let points = self.chunks_per_chunk_id.get(&chunk_id).map_or(
+                                    0,
+                                    |candidate| {
+                                        candidate
+                                            .time_range_per_component()
+                                            .get(&timeline)
+                                            .and_then(|per_component| {
+                                                per_component.get(&component_desc)
+                                            })
+                                            .map_or(0, |candidate_time_range| {
+                                                candidate_time_range
+                                                    .intersection(time_range)
+                                                    .map_or(0, |tr| tr.abs_length())
+                                            })
+                                    },
+                                );
+                                *candidates.entry(chunk_id).or_default() += 1 + points;
                             }
                         }
                     }
@@ -519,12 +633,32 @@ impl ChunkStore {
                         .range(time_range.max().inc()..)
                         .next()
                     {
+                        num_total += chunk_id_set.len() as u64;
                         for &chunk_id in chunk_id_set {
+                            num_concatenable += 1;
                             if check_if_chunk_below_threshold(self, chunk_id) {
-                                *candidates.entry(chunk_id).or_default() += 1;
+                                let points = self.chunks_per_chunk_id.get(&chunk_id).map_or(
+                                    0,
+                                    |candidate| {
+                                        candidate
+                                            .time_range_per_component()
+                                            .get(&timeline)
+                                            .and_then(|per_component| {
+                                                per_component.get(&component_desc)
+                                            })
+                                            .map_or(0, |candidate_time_range| {
+                                                candidate_time_range
+                                                    .intersection(time_range)
+                                                    .map_or(0, |tr| tr.abs_length())
+                                            })
+                                    },
+                                );
+                                *candidates.entry(chunk_id).or_default() += 1 + points;
                             }
                         }
                     }
+
+                    continue;
 
                     let chunk_id_set = temporal_chunk_ids_per_time
                         .per_start_time
@@ -540,11 +674,26 @@ impl ChunkStore {
             }
         }
 
+        // TODO
+        // if num_total > 0 && num_concatenable < num_total {
+        //     eprintln!("{num_total} total of which {num_concatenable} are concatenable");
+        // }
+        //
+        // dbg!((num_total, chunk.entity_path(), chunk.num_rows(),));
+        // if num_total == 0 && chunk.num_rows() == 1 {
+        //     dbg!((chunk, chunk.time_range_per_component()));
+        //     arrow::util::pretty::print_batches(&[chunk.to_record_batch().unwrap()]).unwrap();
+        // }
+
         debug_assert!(!candidates.contains_key(&chunk.id()));
 
         let mut candidates = candidates.into_iter().collect_vec();
-        candidates.sort_by_key(|(_chunk_id, points)| *points);
-        candidates.reverse();
+        {
+            // TODO: that seems really overkill tho
+            re_tracing::profile_scope!("sort_candidates");
+            candidates.sort_by_key(|(_chunk_id, points)| *points);
+            candidates.reverse();
+        }
 
         candidates
             .into_iter()
