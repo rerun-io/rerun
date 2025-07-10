@@ -1,28 +1,25 @@
-use re_protos::frontend::v1alpha1::ext::DoMaintenanceRequest;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
     catalog::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest,
         ext::{
-            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails, LanceTable,
-            ProviderDetails as _, ReadDatasetEntryResponse, RegisterTableResponse, TableEntry,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
+            ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
     },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
-    external::prost::bytes::Bytes,
     frontend::v1alpha1::{
-        DoMaintenanceRequest,
         ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
         frontend_service_client::FrontendServiceClient,
     },
@@ -297,28 +294,6 @@ where
         .collect()
     }
 
-    /// Register a foreign Lance table to a new table entry in the catalog.
-    //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
-    pub async fn register_table(
-        &mut self,
-        name: String,
-        url: url::Url,
-    ) -> Result<TableEntry, StreamError> {
-        let request = re_protos::catalog::v1alpha1::ext::RegisterTableRequest {
-            name,
-            provider_details: LanceTable { table_url: url }.try_as_any()?,
-        };
-
-        let response: RegisterTableResponse = self
-            .inner()
-            .register_table(tonic::Request::new(request.into()))
-            .await?
-            .into_inner()
-            .try_into()?;
-
-        Ok(response.table_entry)
-    }
-
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
@@ -328,7 +303,7 @@ where
     ) -> Result<(), StreamError> {
         self.inner()
             .do_maintenance(tonic::Request::new(
-                DoMaintenanceRequest {
+                re_protos::frontend::v1alpha1::ext::DoMaintenanceRequest {
                     dataset_id: Some(dataset_id.into()),
                     build_scalar_indexes,
                     compact_fragments,
