@@ -84,7 +84,6 @@ impl Dataset {
 pub struct Table {
     pub table_entry: TableEntry,
 
-    #[expect(dead_code)]
     pub origin: re_uri::Origin,
 }
 

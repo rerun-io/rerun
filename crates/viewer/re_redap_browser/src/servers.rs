@@ -207,6 +207,7 @@ impl Server {
             dataset.name(),
         )
         .title(dataset.name())
+        .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -264,6 +265,7 @@ impl Server {
             table.name(),
         )
         .title(table.name())
+        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
         .show(viewer_ctx, &self.runtime, ui);
     }
 
