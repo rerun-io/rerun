@@ -314,14 +314,6 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         });
 
     for seek_location in VideoTestSeekLocation::ALL {
-        if codec == VideoCodec::H264
-            && seek_location == VideoTestSeekLocation::BeyondEnd
-            && video_type == VideoType::VideoStream
-        {
-            // TODO(#8073): H264 decoder never finishes for the last few frames for video streams.
-            continue;
-        }
-
         desired_seek_ns.set(seek_location.get_time_ns(&frame_timestamps_nanos));
 
         // Video decoding happens in a different thread, so it's important that we give it time

@@ -151,8 +151,16 @@ impl VideoSampleDecoder {
     ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
 
+        // Latest-at semantics means that if `pts` doesn't land on the exact PTS of a decode frame we have,
+        // we provide the next *older* frame.
+        let latest_at_pts = decoder_output
+            .frames_by_pts
+            .range(..=pts)
+            .next_back()
+            .map_or(pts, |(k, v)| *k);
+
         // Keep everything at or after the given PTS.
-        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&pts);
+        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&latest_at_pts);
 
         if !decoder_output.frames_by_pts.is_empty() {
             Some(parking_lot::MutexGuard::map(

@@ -11,28 +11,44 @@ use crate::{
     video::{DecoderDelayState, VideoPlayerError, chunk_decoder::update_video_texture_with_frame},
 };
 
-/// Don't report hickups lasting shorter than this.
-///
-/// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
-/// transient errors without flickering.
-///
-/// Same with showing a spinner: if we show it too fast, it is annoying.
-///
-/// This is wallclock time and independent of how fast a video is being played back.
-const DECODING_GRACE_DELAY_BEFORE_REPORTING: Duration = Duration::from_millis(400);
+pub struct PlayerConfiguration {
+    /// Don't report hickups lasting shorter than this.
+    ///
+    /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
+    /// transient errors without flickering.
+    ///
+    /// Same with showing a spinner: if we show it too fast, it is annoying.
+    ///
+    /// This is wallclock time and independent of how fast a video is being played back.
+    pub decoding_grace_delay_before_reporting: Duration,
 
-/// Number of frames we allow to lag behind before no longer updating the output texture.
-///
-/// This a number of frames on the presentation timeline and independent of
-/// sample order for decoding purposes.
-///
-/// Discarded alternatives:
-/// * use video time based tolerance:
-///   -> makes it depend on playback speed whether we hit the threshold or not
-/// * use a wall clock time based tolerance:
-///   -> any seek operation that leads to waiting for the decoder to catch up,
-///      would cause us to show in-progress frames until the tolerance is hit
-const TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES: usize = 3;
+    /// Number of frames we allow to lag behind before no longer updating the output texture.
+    ///
+    /// This a number of frames on the presentation timeline and independent of
+    /// sample order for decoding purposes.
+    ///
+    /// Discarded alternatives:
+    /// * use video time based tolerance:
+    ///   -> makes it depend on playback speed whether we hit the threshold or not
+    /// * use a wall clock time based tolerance:
+    ///   -> any seek operation that leads to waiting for the decoder to catch up,
+    ///      would cause us to show in-progress frames until the tolerance is hit
+    pub tolerated_output_delay_in_num_frames: usize,
+
+    /// If we haven't seen new samples in this amount of time, we assume the video has ended
+    /// and signal the end of the video to the decoder.
+    pub time_until_video_assumed_ended: Duration,
+}
+
+impl Default for PlayerConfiguration {
+    fn default() -> Self {
+        Self {
+            decoding_grace_delay_before_reporting: Duration::from_millis(400),
+            tolerated_output_delay_in_num_frames: 3,
+            time_until_video_assumed_ended: Duration::from_millis(250),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct TimedDecodingError {
@@ -77,6 +93,9 @@ pub struct VideoPlayer {
     last_requested: Option<SampleAndGopIndex>,
     last_enqueued: Option<SampleAndGopIndex>,
 
+    /// Whether we've signaled the end of the video to the decoder since the last decoder reset.
+    signaled_end_of_video: bool,
+
     /// Last error that was encountered during decoding.
     ///
     /// Only fully reset after a successful decode.
@@ -87,6 +106,8 @@ pub struct VideoPlayer {
 
     /// Tracks whether we're waiting for the decoder to catch up or not.
     decoder_delay_state: DecoderDelayState,
+
+    config: PlayerConfiguration,
 }
 
 impl re_byte_size::SizeBytes for VideoPlayer {
@@ -147,10 +168,14 @@ impl VideoPlayer {
             last_requested: None,
             last_enqueued: None,
 
+            signaled_end_of_video: false,
+
             last_error: None,
 
             last_time_caught_up: None,
             decoder_delay_state: DecoderDelayState::UpToDate,
+
+            config: PlayerConfiguration::default(),
         })
     }
 
@@ -194,8 +219,7 @@ impl VideoPlayer {
             .sample_decoder
             .latest_decoded_frame_at_and_drop_earlier_frames(requested_sample_pts)
         {
-            self.decoder_delay_state = update_decoder_delay_state(
-                self.decoder_delay_state,
+            self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
                 requested_sample,
                 decoded_frame.info.presentation_timestamp,
@@ -225,8 +249,7 @@ impl VideoPlayer {
             self.decoder_delay_state = if let Some(last_decoded_pts) =
                 current_frame_info.map(|info| info.presentation_timestamp)
             {
-                update_decoder_delay_state(
-                    self.decoder_delay_state,
+                self.determine_new_decoder_delay_state(
                     video_description,
                     requested_sample,
                     last_decoded_pts,
@@ -243,13 +266,16 @@ impl VideoPlayer {
                 false
             }
 
+            // Haven't caught up, but intentionally don't show a spinner.
+            DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => false,
+
             DecoderDelayState::UpToDateWithinTolerance | DecoderDelayState::Behind => {
                 // Might we be pending because of an error?
                 if let Some(last_error) = self.last_error.as_ref() {
                     // If we've been in this error state for a while now, report the error.
                     // (sometimes errors are very transient and we recover from them quickly)
                     if last_error.time_of_first_error.elapsed()
-                        > DECODING_GRACE_DELAY_BEFORE_REPORTING
+                        > self.config.decoding_grace_delay_before_reporting
                     {
                         // Report the error only if we have been in an error state for a certain amount of time.
                         // Don't immediately report the error, since we might immediately recover from it.
@@ -260,7 +286,8 @@ impl VideoPlayer {
 
                 self.video_texture.texture.is_none()
                     || self.last_time_caught_up.is_none_or(|last_time_caught_up| {
-                        last_time_caught_up.elapsed() > DECODING_GRACE_DELAY_BEFORE_REPORTING
+                        last_time_caught_up.elapsed()
+                            > self.config.decoding_grace_delay_before_reporting
                     })
             }
         };
@@ -353,7 +380,6 @@ impl VideoPlayer {
             // Check if the last enqueued gop is actually fully enqueued. If not, enqueue its remaining samples.
             // This happens regularly in live video streams.
             if last_enqueued.sample_idx + 1 < last_enqueued_gop.sample_range.end {
-                // Enqueue all remaining samples of the current GOP.
                 self.enqueue_samples_of_gop(
                     video_description,
                     last_enqueued.gop_idx,
@@ -367,6 +393,18 @@ impl VideoPlayer {
 
         self.last_requested = Some(requested);
 
+        // If this is a potentially live stream, signal the end of the video after a certain amount of time.
+        // This helps decoders to flush out any pending frames.
+        // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
+        if video_description
+            .last_time_updated_samples
+            .is_some_and(|last_time_updated_samples| {
+                last_time_updated_samples.elapsed() > self.config.time_until_video_assumed_ended
+            })
+        {
+            self.signal_end_of_video_if_not_already_signaled()?;
+        }
+
         Ok(())
     }
 
@@ -378,6 +416,16 @@ impl VideoPlayer {
     ) -> Result<(), VideoPlayerError> {
         // If we haven't decoded anything at all yet, reset the decoder.
         let Some(last_requested) = self.last_requested else {
+            return self.reset(video_description);
+        };
+
+        let Some(last_enqueued) = self.last_enqueued else {
+            // If we hit this we already requested a frame, but haven't enqueued any samples yet.
+            // That's a weird state to be in, better reset!
+            debug_assert!(
+                false,
+                "We already requested a frame, but haven't enqueued any samples yet."
+            );
             return self.reset(video_description);
         };
 
@@ -437,6 +485,10 @@ impl VideoPlayer {
                 self.reset(video_description)?;
             }
         }
+        // Previously signaled the end of the video, but encountering new frames now.
+        else if self.signaled_end_of_video && last_enqueued.sample_idx < requested.sample_idx {
+            self.reset(video_description)?;
+        }
 
         Ok(())
     }
@@ -488,12 +540,17 @@ impl VideoPlayer {
         if gop_idx + 1 == video_description.gops.next_index()
             && video_description.duration.is_some()
         {
-            // Last GOP - there is nothing more to decode,
-            // so flush out any pending frames:
-            // See https://github.com/rerun-io/rerun/issues/8073
-            self.sample_decoder.end_of_video()?;
+            self.signal_end_of_video_if_not_already_signaled()?;
         }
 
+        Ok(())
+    }
+
+    fn signal_end_of_video_if_not_already_signaled(&mut self) -> Result<(), VideoPlayerError> {
+        if !self.signaled_end_of_video {
+            self.sample_decoder.end_of_video()?;
+            self.signaled_end_of_video = true;
+        }
         Ok(())
     }
 
@@ -505,42 +562,70 @@ impl VideoPlayer {
         self.sample_decoder.reset(video_descr)?;
         self.last_requested = None;
         self.last_enqueued = None;
+        self.signaled_end_of_video = false;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
-}
 
-/// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
-#[must_use]
-fn update_decoder_delay_state(
-    previous_decoder_delay_state: DecoderDelayState,
-    video_description: &re_video::VideoDataDescription,
-    requested_sample: Option<&re_video::SampleMetadata>,
-    last_decoded_frame_pts: Time,
-) -> DecoderDelayState {
-    let up_to_date =
-        requested_sample.is_some_and(|s| s.presentation_timestamp == last_decoded_frame_pts);
+    /// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.
+    #[must_use]
+    fn determine_new_decoder_delay_state(
+        &self,
+        video_description: &re_video::VideoDataDescription,
+        requested_sample: Option<&re_video::SampleMetadata>,
+        last_decoded_frame_pts: Time,
+    ) -> DecoderDelayState {
+        let Some(requested_sample) = requested_sample else {
+            // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
+            // We're technically not catching up, but we may as well behave as if we are.
+            return DecoderDelayState::Behind;
+        };
 
-    match previous_decoder_delay_state {
-        DecoderDelayState::UpToDate | DecoderDelayState::UpToDateWithinTolerance => {
-            if up_to_date {
-                DecoderDelayState::UpToDate
-            } else if is_significantly_behind(
-                video_description,
-                requested_sample,
-                last_decoded_frame_pts,
+        if requested_sample.presentation_timestamp == last_decoded_frame_pts {
+            return DecoderDelayState::UpToDate;
+        }
+
+        // If we're streaming in live video, we're a bit more relaxed about what counts as "catching up" for newly incoming frames:
+        // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
+        // * some decoders need a certain amount of samples in the queue to produce a frame.
+        //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
+        let recently_updated_video = video_description
+            .last_time_updated_samples
+            .is_some_and(|t| t.elapsed() < self.config.time_until_video_assumed_ended);
+        if recently_updated_video {
+            let min_num_samples_to_enqueue_ahead =
+                self.sample_decoder.min_num_samples_to_enqueue_ahead();
+            let allowed_delay =
+                min_num_samples_to_enqueue_ahead + self.config.tolerated_output_delay_in_num_frames;
+
+            let sample_idx_end = video_description.samples.next_index();
+            for (_, sample) in video_description.samples.iter_index_range_clamped(
+                &(sample_idx_end.saturating_sub(allowed_delay)..sample_idx_end),
             ) {
-                DecoderDelayState::Behind
-            } else {
-                DecoderDelayState::UpToDateWithinTolerance
+                if sample.presentation_timestamp == last_decoded_frame_pts {
+                    return DecoderDelayState::UpToDateToleratedEdgeOfLiveStream;
+                }
             }
         }
 
-        DecoderDelayState::Behind => {
-            // Only exit behind state if we caught up to the requested frame.
-            if up_to_date {
-                DecoderDelayState::UpToDate
-            } else {
+        match self.decoder_delay_state {
+            DecoderDelayState::UpToDate
+            | DecoderDelayState::UpToDateWithinTolerance
+            | DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => {
+                if is_significantly_behind(
+                    video_description,
+                    requested_sample,
+                    last_decoded_frame_pts,
+                    self.config.tolerated_output_delay_in_num_frames,
+                ) {
+                    DecoderDelayState::Behind
+                } else {
+                    DecoderDelayState::UpToDateWithinTolerance
+                }
+            }
+
+            DecoderDelayState::Behind => {
+                // Only exit behind state if we caught up to the requested frame.
                 DecoderDelayState::Behind
             }
         }
@@ -550,14 +635,11 @@ fn update_decoder_delay_state(
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
 fn is_significantly_behind(
     video_description: &re_video::VideoDataDescription,
-    requested_sample: Option<&re_video::SampleMetadata>,
+    requested_sample: &re_video::SampleMetadata,
     decoded_frame_pts: Time,
+    tolerated_output_delay_in_num_frames: usize,
 ) -> bool {
-    let Some(requested_pts) = requested_sample.map(|s| s.presentation_timestamp) else {
-        // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
-        // We're technically not catching up, but we may as well behave as if we are.
-        return true;
-    };
+    let requested_pts = requested_sample.presentation_timestamp;
 
     if decoded_frame_pts == requested_pts {
         // Decoder caught up with request!
@@ -580,7 +662,7 @@ fn is_significantly_behind(
     // we have to successively use `latest_sample_index_at_presentation_timestamp`:
     // Start at the desired sample and walk backwards from there until we find the sample for the actually produced frame.
     let mut num_frames_behind = 0;
-    let mut sample = requested_sample;
+    let mut sample = Some(requested_sample);
     loop {
         let Some(current_sample) = sample else {
             // Sample doesn't exist anymore. This should only happen if the video is being GC'ed from the back.
@@ -594,7 +676,7 @@ fn is_significantly_behind(
         }
 
         num_frames_behind += 1;
-        if num_frames_behind > TOLERATED_OUTPUT_DELAY_IN_NUM_FRAMES {
+        if num_frames_behind > tolerated_output_delay_in_num_frames {
             return true;
         }
 

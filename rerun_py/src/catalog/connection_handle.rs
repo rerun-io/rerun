@@ -169,6 +169,26 @@ impl ConnectionHandle {
         )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn register_table(
+        &self,
+        py: Python<'_>,
+        name: String,
+        url: url::Url,
+    ) -> PyResult<TableEntry> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .register_table(name, url)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
     // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {

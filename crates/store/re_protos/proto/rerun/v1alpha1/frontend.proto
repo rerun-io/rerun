@@ -105,6 +105,9 @@ service FrontendService {
   // --- Table Apis ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
+  // Register a foreign table as a new table entry in the catalog.
+  rpc RegisterTable(rerun.catalog.v1alpha1.RegisterTableRequest) returns (rerun.catalog.v1alpha1.RegisterTableResponse) {}
+
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 

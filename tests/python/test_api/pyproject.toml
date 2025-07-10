@@ -1,13 +1,7 @@
 [project]
 name = "test_api"
 version = "0.1.0"
-dependencies = [
-  "numpy",
-  "opencv-python",
-  "rerun-sdk",
-  "scipy",
-
-]
+dependencies = ["numpy", "opencv-python", "rerun-sdk", "scipy"]
 
 [project.scripts]
 test_api = "test_api:main"
