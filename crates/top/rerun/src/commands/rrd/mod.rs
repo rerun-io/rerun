@@ -3,6 +3,7 @@ mod filter;
 mod merge_compact;
 mod migrate;
 mod print;
+mod stats;
 mod verify;
 
 use self::{
@@ -11,6 +12,7 @@ use self::{
     merge_compact::{CompactCommand, MergeCommand},
     migrate::MigrateCommand,
     print::PrintCommand,
+    stats::StatsCommand,
     verify::VerifyCommand,
 };
 
@@ -77,6 +79,13 @@ pub enum RrdCommands {
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
 
+    /// Compute important statistics for one or more .rrd/.rbl files/streams.
+    ///
+    /// Reads from standard input if no paths are specified.
+    ///
+    /// Example: `rerun rrd stats /my/recordings/*.rrd`
+    Stats(StatsCommand),
+
     /// Verify the that the .rrd file can be loaded and correctly interpreted.
     ///
     /// Can be used to ensure that the current Rerun version can load the data.
@@ -96,6 +105,7 @@ impl RrdCommands {
             Self::Merge(cmd) => cmd.run(),
             Self::Migrate(cmd) => cmd.run(),
             Self::Print(cmd) => cmd.run(),
+            Self::Stats(cmd) => cmd.run(),
             Self::Verify(cmd) => cmd.run(),
         }
     }
