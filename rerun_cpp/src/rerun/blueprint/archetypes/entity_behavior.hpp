@@ -8,7 +8,6 @@
 #include "../../component_column.hpp"
 #include "../../components/interactive.hpp"
 #include "../../components/visible.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -38,11 +37,6 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> visible;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.blueprint.components.EntityBehaviorIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.EntityBehavior";
 
