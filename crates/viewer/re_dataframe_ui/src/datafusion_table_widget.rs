@@ -107,6 +107,9 @@ pub struct DataFusionTableWidget<'a> {
     //TODO(ab): for now, this is the only way to have the column visibility/order menu
     title: Option<String>,
 
+    /// If provided, this will add a "copy URL" button next to the title (which must be provided).
+    url: Option<String>,
+
     /// User-provided closure to provide column blueprint.
     column_blueprint_fn: ColumnBlueprintFn<'a>,
 
@@ -132,6 +135,7 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref: table_ref.into(),
 
             title: None,
+            url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
         }
@@ -139,6 +143,12 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+
+        self
+    }
+
+    pub fn url(mut self, url: impl Into<String>) -> Self {
+        self.url = Some(url.into());
 
         self
     }
@@ -211,6 +221,7 @@ impl<'a> DataFusionTableWidget<'a> {
             session_ctx,
             table_ref,
             title,
+            url,
             column_blueprint_fn,
             initial_blueprint,
         } = self;
@@ -327,7 +338,7 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, &mut table_config, &title);
+            title_ui(ui, &mut table_config, &title, url.as_ref());
         }
 
         apply_table_style_fixes(ui.style_mut());
@@ -503,7 +514,7 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
+fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url: Option<&String>) {
     Frame::new()
         .inner_margin(Margin {
             top: 16,
@@ -516,6 +527,15 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
                 ui,
                 |ui| {
                     ui.heading(RichText::new(title).strong());
+                    if let Some(url) = url {
+                        if ui
+                            .small_icon_button(&re_ui::icons::COPY, "Copy URL")
+                            .on_hover_text(url)
+                            .clicked()
+                        {
+                            ui.ctx().copy_text(url.clone());
+                        }
+                    }
                 },
                 |ui| {
                     table_config.button_ui(ui);

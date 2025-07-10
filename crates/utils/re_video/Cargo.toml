@@ -57,6 +57,7 @@ parking_lot.workspace = true
 poll-promise.workspace = true
 re_mp4.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 ffmpeg-sidecar = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }

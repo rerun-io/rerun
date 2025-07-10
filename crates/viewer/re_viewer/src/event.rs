@@ -6,6 +6,7 @@
 // NOTE: Any changes to the type definitions in this file must be replicated in:
 // - rerun_js/web-viewer/index.ts (ViewerEvent)
 // - rerun_py/rerun_sdk/rerun/event.py (ViewerEvent)
+// Important: The event names defined here are transformed to `snake_case` on the JS side.
 
 use std::rc::Rc;
 

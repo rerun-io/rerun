@@ -12,6 +12,7 @@ use std::{collections::BTreeMap, ops::Range};
 use bit_vec::BitVec;
 use itertools::Itertools as _;
 use re_span::Span;
+use web_time::Instant;
 
 use super::{Time, Timescale};
 
@@ -165,6 +166,14 @@ pub struct VideoDataDescription {
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
 
+    /// If this is potentially a live stream, then when was the last time, we added/removed samples from this data description.
+    ///
+    /// This is used solely as a heuristic input for how the player schedules work to decoders.
+    /// For static video data this is expected to be `None`.
+    /// For live streams, even those that stopped, this is expected to be wallclock time of when a sample was
+    /// added do this datastructure. *Not* when the sample was first recorded.
+    pub last_time_updated_samples: Option<Instant>,
+
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
@@ -182,6 +191,7 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
             samples,
             samples_statistics,
             mp4_tracks,
+            last_time_updated_samples: _,
         } = self;
 
         gops.heap_size_bytes()

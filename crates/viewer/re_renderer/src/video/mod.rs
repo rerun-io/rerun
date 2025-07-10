@@ -1,6 +1,8 @@
 mod chunk_decoder;
 mod player;
 
+pub use player::PlayerConfiguration;
+
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
@@ -68,15 +70,34 @@ pub enum DecoderDelayState {
     /// The decoder is caught up with the most recent requested frame.
     UpToDate,
 
+    /// We're not up to date, but we're close enough to the newest content of a live stream that we're ok.
+    ///
+    /// The leading edge of livestreams is treated specially since we don't want to show the waiting indicator
+    /// as readily.
+    /// Furthermore, it mitigates problems with some decoders not emitting the last few frames until
+    /// we signal the end of the video (after which we have to restart the decoder).
+    ///
+    /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
+    ///
+    /// The tolerance value used for this is the sum of
+    /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
+    /// [`re_video::AsyncDecoder::min_num_samples_to_enqueue_ahead`].
+    UpToDateToleratedEdgeOfLiveStream,
+
     /// The decoder is caught up within a certain tolerance.
     ///
     /// I.e. the video texture is not the most recently requested frame, but it's quite close.
+    ///
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
     UpToDateWithinTolerance,
 
     /// The decoder is catching up after a long seek.
     ///
     /// The video texture is no longer updated until the decoder has caught up.
     /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
+    ///
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
     Behind,
 }
 
@@ -86,7 +107,12 @@ impl DecoderDelayState {
     pub fn should_request_more_frames(&self) -> bool {
         match self {
             Self::UpToDate => false,
-            Self::UpToDateWithinTolerance | Self::Behind => true,
+
+            // Everything that isn't up-to-date means that we have to request more frames
+            // since the frame that is displayed right now is the one that was requested.
+            Self::UpToDateWithinTolerance
+            | Self::Behind
+            | Self::UpToDateToleratedEdgeOfLiveStream => true,
         }
     }
 }

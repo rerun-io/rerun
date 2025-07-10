@@ -13,9 +13,11 @@ The underlying data needs to be logged to the same entity-path using [`archetype
 Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 
 ## Fields
+### Required
+* `markers`: [`MarkerShape`](../components/marker_shape.md)
+
 ### Optional
 * `colors`: [`Color`](../components/color.md)
-* `markers`: [`MarkerShape`](../components/marker_shape.md)
 * `names`: [`Name`](../components/name.md)
 * `visible_series`: [`SeriesVisible`](../components/series_visible.md)
 * `marker_sizes`: [`MarkerSize`](../components/marker_size.md)

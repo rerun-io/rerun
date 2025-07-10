@@ -126,6 +126,8 @@ export interface AppOptions extends WebViewerOptions {
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
+// Important: The event names defined here are `snake_case` versions
+// of their `PascalCase` counterparts on the Rust side.
 /** An event produced in the Viewer. */
 export type ViewerEvent =
   | PlayEvent
@@ -351,7 +353,7 @@ export class WebViewer {
       // for notebooks/gradio, we can avoid a whole layer
       // of serde by sending over the raw json directly,
       // which will be deserialized in Python instead
-      this.#_dispatch_raw_event(event_json);
+      this.#dispatch_raw_event(event_json);
 
       // for JS users, we dispatch the parsed event
       let event: ViewerEvent = JSON.parse(event_json);
@@ -384,10 +386,9 @@ export class WebViewer {
     return;
   }
 
-  #_raw_events: Set<(event_json: string) => void> = new Set();
-
-  #_dispatch_raw_event(event_json: string) {
-    for (const callback of this.#_raw_events) {
+  #raw_events: Set<(event_json: string) => void> = new Set();
+  #dispatch_raw_event(event_json: string) {
+    for (const callback of this.#raw_events) {
       callback(event_json);
     }
   }
@@ -399,8 +400,8 @@ export class WebViewer {
   //
   // Do not change this without searching for grepping for usage!
   private _on_raw_event(callback: (event: string) => void): () => void {
-    this.#_raw_events.add(callback);
-    return () => this.#_raw_events.delete(callback);
+    this.#raw_events.add(callback);
+    return () => this.#raw_events.delete(callback);
   }
 
   #event_map: Map<

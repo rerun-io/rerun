@@ -20,7 +20,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries};
+use crate::entries::{Dataset, Entries, EntryRef, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 use crate::tables_session_context::TablesSessionContext;
 
@@ -87,8 +87,8 @@ impl Server {
         self.tables_session_ctx.on_frame_start();
     }
 
-    fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
-        self.entries.find_dataset(entry_id)
+    fn find_entry(&self, entry_id: EntryId) -> Option<EntryRef<'_>> {
+        self.entries.find_entry(entry_id)
     }
 
     fn title_ui(
@@ -207,6 +207,7 @@ impl Server {
             dataset.name(),
         )
         .title(dataset.name())
+        .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
@@ -255,6 +256,16 @@ impl Server {
             self.origin.clone(),
             dataset.id(),
         )
+        .show(viewer_ctx, &self.runtime, ui);
+    }
+
+    fn table_entry_ui(&self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table: &Table) {
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.ctx.clone(),
+            table.name(),
+        )
+        .title(table.name())
+        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
         .show(viewer_ctx, &self.runtime, ui);
     }
 
@@ -553,10 +564,18 @@ impl RedapServers {
         active_entry: EntryId,
     ) {
         for server in self.servers.values() {
-            if let Some(dataset) = server.find_dataset(active_entry) {
-                server.dataset_entry_ui(viewer_ctx, ui, dataset);
+            match server.find_entry(active_entry) {
+                Some(EntryRef::Dataset(dataset)) => {
+                    server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                    return;
+                }
+                Some(EntryRef::Table(table)) => {
+                    server.table_entry_ui(viewer_ctx, ui, table);
 
-                return;
+                    return;
+                }
+
+                None => {}
             }
         }
     }

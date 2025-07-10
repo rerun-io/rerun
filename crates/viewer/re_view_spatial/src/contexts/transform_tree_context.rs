@@ -3,11 +3,7 @@ use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
-use re_types::{
-    Archetype as _, ArchetypeName, ComponentDescriptorSet,
-    archetypes::{self, InstancePoses3D, Transform3D},
-    components::ImagePlaneDistance,
-};
+use re_types::{ArchetypeName, archetypes, components::ImagePlaneDistance};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
@@ -157,14 +153,6 @@ impl Default for TransformTreeContext {
 }
 
 impl ViewContextSystem for TransformTreeContext {
-    fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
-        vec![
-            Transform3D::all_components().iter().cloned().collect(),
-            InstancePoses3D::all_components().iter().cloned().collect(),
-            std::iter::once(archetypes::Pinhole::descriptor_image_from_camera()).collect(),
-        ]
-    }
-
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///

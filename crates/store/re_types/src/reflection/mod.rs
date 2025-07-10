@@ -2176,7 +2176,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Markers", component_type :
                     "rerun.components.MarkerShape".into(), docstring_md :
                     "What shape to use to represent the point\n\nMay change over time.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    is_required : true, }, ArchetypeFieldReflection { name : "names",
                     display_name : "Names", component_type : "rerun.components.Name"
                     .into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",

@@ -17,11 +17,12 @@ rr.log("trig/cos", rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)"), stati
 
 # NOTE: `SeriesLines` and `SeriesPoints` can both be logged without any associated data
 #       (all fields are optional). In `v0.24` we removed indicators, which now results in
-#       no data logged at all, when no fields are specified. Therefore we log a circle shape
-#       here. More information: https://github.com/rerun-io/rerun/issues/10512
+#       no data logged at all, when no fields are specified. Therefore, we log a circle shape
+#       as a marker if no arguments are supplied.
+#       More information: https://github.com/rerun-io/rerun/issues/10512
 
 # Log scattered points under a different root so that they show in a different plot by default.
-rr.log("scatter/lcg", rr.SeriesPoints(markers="circle"), static=True)
+rr.log("scatter/lcg", rr.SeriesPoints(), static=True)
 
 # Log the data on a timeline called "step".
 for t in range(int(tau * 2 * 100.0)):

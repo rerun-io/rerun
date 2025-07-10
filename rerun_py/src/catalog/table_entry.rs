@@ -21,6 +21,7 @@ use crate::{
 /// A table entry in the catalog.
 ///
 /// Note: this object acts as a table provider for DataFusion.
+//TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
 #[pyclass(name = "TableEntry", extends=PyEntry)]
 #[derive(Default)]
 pub struct PyTableEntry {
