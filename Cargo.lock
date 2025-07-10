@@ -8208,6 +8208,7 @@ dependencies = [
  "serde",
  "thiserror 1.0.65",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "web-time",
 ]

@@ -220,8 +220,6 @@ impl AsyncDecoder for WebVideoDecoder {
         if let Some(duration) = video_chunk.duration {
             let duration_micros = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
             web_chunk.set_duration(duration_micros);
-        } else {
-            web_chunk.set_duration(1.0 / 30.0 * 1000.0 * 1000.0);
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
