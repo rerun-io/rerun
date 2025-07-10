@@ -3,7 +3,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_types::{ComponentDescriptorSet, Loggable as _, archetypes, components::DrawOrder};
+use re_types::{
+    Archetype as _, ComponentDescriptorSet, Loggable as _, archetypes, components::DrawOrder,
+};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
@@ -26,22 +28,21 @@ impl IdentifiedViewSystem for EntityDepthOffsets {
 
 impl ViewContextSystem for EntityDepthOffsets {
     fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
-        vec![
-            [
-                archetypes::Arrows2D::descriptor_indicator(),
-                archetypes::Boxes2D::descriptor_indicator(),
-                archetypes::DepthImage::descriptor_indicator(),
-                archetypes::EncodedImage::descriptor_indicator(),
-                archetypes::Image::descriptor_indicator(),
-                archetypes::LineStrips2D::descriptor_indicator(),
-                archetypes::Points2D::descriptor_indicator(),
-                archetypes::SegmentationImage::descriptor_indicator(),
-                archetypes::VideoFrameReference::descriptor_indicator(),
-                archetypes::VideoStream::descriptor_indicator(),
-            ]
-            .into_iter()
-            .collect(),
+        [
+            archetypes::Arrows3D::required_components(),
+            archetypes::Boxes2D::required_components(),
+            archetypes::DepthImage::required_components(),
+            archetypes::EncodedImage::required_components(),
+            archetypes::Image::required_components(),
+            archetypes::LineStrips2D::required_components(),
+            archetypes::Points2D::required_components(),
+            archetypes::SegmentationImage::required_components(),
+            archetypes::VideoFrameReference::required_components(),
+            archetypes::VideoStream::required_components(),
         ]
+        .into_iter()
+        .map(|descrs| descrs.iter().cloned().collect())
+        .collect()
     }
 
     fn execute(
