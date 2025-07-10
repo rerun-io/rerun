@@ -19,7 +19,7 @@ namespace fs = std::filesystem;
 
 struct BadComponent {};
 
-const std::shared_ptr<arrow::Array>& null_arrow_array() {
+const std::shared_ptr<arrow::Array> null_arrow_array() {
     const std::shared_ptr<arrow::Array> null_array = std::make_shared<arrow::NullArray>(1);
     return null_array;
 }
