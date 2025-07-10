@@ -17,6 +17,9 @@ service CatalogService {
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
+  // Register a foreign table as a new table entry in the catalog.
+  rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
+
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 }
 
@@ -43,9 +46,13 @@ message DeleteEntryResponse {}
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
-  // The name is a short human-readable string
-  // TODO(jleibs): Define valid name constraints
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
   optional string name = 1;
+
+  //TODO(ab): add IfExistingBehavior?
 }
 
 message CreateDatasetEntryResponse {
@@ -75,6 +82,29 @@ message UpdateDatasetEntryRequest {
 message UpdateDatasetEntryResponse {
   // The updated dataset entry
   DatasetEntry dataset = 1;
+}
+
+// RegisterTable
+
+message RegisterTableRequest {
+  // Name of the table entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - rerun.catalog.v1alpha1.LanceTable
+  google.protobuf.Any provider_details = 2;
+
+  //TODO(ab): add IfExistingBehavior?
+}
+
+message RegisterTableResponse {
+  // Details about the table that was created and registered.
+  TableEntry table_entry = 1;
 }
 
 // ReadTableEntry
@@ -117,8 +147,7 @@ message EntryDetails {
   // The EntryId is immutable
   rerun.common.v1alpha1.EntryId id = 1;
 
-  // The name is a short human-readable string
-  // TODO(jleibs): Define valid name constraints
+  // The name of this entry.
   optional string name = 2;
 
   // The kind of entry
@@ -152,11 +181,11 @@ message DatasetEntry {
 message TableEntry {
   EntryDetails details = 1;
 
-  // The known schema of this table
-  rerun.common.v1alpha1.Schema schema = 2;
-
   // Details specific to the table-provider
   google.protobuf.Any provider_details = 3;
+
+  reserved 2;
+  reserved "schema";
 }
 
 enum SystemTableKind {
@@ -170,4 +199,10 @@ enum SystemTableKind {
 
 message SystemTable {
   SystemTableKind kind = 1;
+}
+
+// A foreign table stored as a Lance table.
+message LanceTable {
+  // The URL of the Lance table.
+  string table_url = 1;
 }
