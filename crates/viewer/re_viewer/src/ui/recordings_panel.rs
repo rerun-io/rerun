@@ -57,20 +57,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         .collect();
 
     for source in ctx.connected_receivers.sources() {
-        let string = match source.as_ref() {
-            // We only show things we know are very-soon-to-be recordings:
-            SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
-            SmartChannelSource::RedapGrpcStream { uri, .. } => format!("Loading {uri}…"),
-
-            SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::MessageProxy { .. }
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::Stdin => {
-                // These show up in the top panel - see `top_panel.rs`.
-                continue;
-            }
+        let Some(string) = source.loading_string() else {
+            continue;
         };
 
         // Only show if we don't have a recording for this source,

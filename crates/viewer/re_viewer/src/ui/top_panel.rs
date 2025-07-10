@@ -279,7 +279,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
     }
 
     fn source_label(ui: &mut egui::Ui, source: &SmartChannelSource) -> egui::Response {
-        let response = ui.label(status_string(source));
+        let response = ui.label(source.status_string());
 
         let tooltip = match source {
             SmartChannelSource::File(_)
@@ -299,34 +299,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             response.on_hover_text(tooltip)
         } else {
             response
-        }
-    }
-
-    fn status_string(source: &SmartChannelSource) -> String {
-        match source {
-            re_smart_channel::SmartChannelSource::File(path) => {
-                format!("Loading {}…", path.display())
-            }
-            re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
-            re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => {
-                format!("Waiting for data on {url}…")
-            }
-            re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
-                format!("Waiting for data on {uri}…")
-            }
-            re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
-                format!(
-                    "Waiting for data on {}…",
-                    uri.clone().without_query_and_fragment()
-                )
-            }
-            re_smart_channel::SmartChannelSource::RrdWebEventListener
-            | re_smart_channel::SmartChannelSource::JsChannel { .. } => {
-                "Waiting for logging data…".to_owned()
-            }
-            re_smart_channel::SmartChannelSource::Sdk => {
-                "Waiting for logging data from SDK".to_owned()
-            }
         }
     }
 }
