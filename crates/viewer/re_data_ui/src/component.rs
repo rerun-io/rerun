@@ -162,6 +162,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         } else if ui_layout.is_single_line() {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
+            let table_style = re_ui::TableStyle::Dense;
             ui_layout
                 .table(ui)
                 .resizable(false)
@@ -178,8 +179,8 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     });
                 })
                 .body(|mut body| {
-                    tokens.setup_table_body(&mut body);
-                    let row_height = tokens.deprecated_table_line_height();
+                    tokens.setup_table_body(&mut body, table_style);
+                    let row_height = tokens.table_row_height(table_style);
                     body.rows(row_height, num_displayed_rows, |mut row| {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
