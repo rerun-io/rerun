@@ -464,6 +464,16 @@ def test_dataframe_static(any_value_static_recording: rr.dataframe.Recording) ->
     assert table.column(2).to_pylist()[0] is not None
 
 
+def test_dataframe_static_only(any_value_static_recording: rr.dataframe.Recording) -> None:
+    view = any_value_static_recording.view(index=None, contents="/**")
+
+    table = view.select_static().read_all()
+
+    assert table.column(0).to_pylist()[0] is not None
+    assert table.column(1).to_pylist()[0] is not None
+    assert table.column(2).to_pylist()[0] is not None
+
+
 def test_dataframe_index_no_default(any_value_static_recording: rr.dataframe.Recording) -> None:
     """We specifically want index to not default None. This must be explicitly set to indicate a static query."""
     with pytest.raises(TypeError, match="missing 1 required keyword argument"):
