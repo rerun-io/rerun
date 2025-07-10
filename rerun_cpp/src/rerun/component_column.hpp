@@ -67,19 +67,6 @@ namespace rerun {
             );
         }
 
-        /// Creates a new component column with a given number of archetype indicators for a given archetype type.
-        template <typename Archetype>
-        static Result<ComponentColumn> from_indicators(uint32_t num_indicators) {
-            auto component_batch_result = ComponentBatch::from_indicator<Archetype>();
-            if (component_batch_result.is_err()) {
-                return component_batch_result.error;
-            }
-            return ComponentColumn::from_batch_with_lengths(
-                component_batch_result.value,
-                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(num_indicators, 0))
-            );
-        }
-
         /// Creates a new component batch partition from a batch and a collection of run lengths.
         ///
         /// \param batch A batch of components which is about to be partitioned.

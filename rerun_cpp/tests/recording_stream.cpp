@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 
+#include <arrow/array/array_base.h>
 #include <arrow/buffer.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -17,6 +18,11 @@ namespace fs = std::filesystem;
 #define TEST_TAG "[recording_stream]"
 
 struct BadComponent {};
+
+const std::shared_ptr<arrow::Array>& null_arrow_array() {
+    static const std::shared_ptr<arrow::Array> null_array = std::make_shared<arrow::NullArray>(1);
+    return null_array;
+}
 
 template <>
 struct rerun::Loggable<BadComponent> {
@@ -191,7 +197,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1};
+                            batch1
+                        };
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
@@ -200,29 +207,29 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
                 THEN("several archetypes can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                     stream.log_static(
                         "log_archetype-splat",
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF)),
-                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
-                        ).with_colors(rerun::Color(0xFF0000FF))
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF)),
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
+                            .with_colors(rerun::Color(0xFF0000FF))
                     );
                 }
 
@@ -439,7 +446,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             AND_GIVEN("a cell with an invalid component type") {
                 rerun::ComponentBatch cell = {};
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
-                cell.array = rerun::components::indicator_arrow_array();
+                cell.array = null_arrow_array();
 
                 THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
                     CHECK(

@@ -2,7 +2,6 @@
 
 #include "collection.hpp"
 #include "component_batch.hpp"
-#include "indicator_component.hpp"
 #include "loggable.hpp"
 
 namespace rerun {
