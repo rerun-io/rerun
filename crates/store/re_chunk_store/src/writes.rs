@@ -566,14 +566,15 @@ impl ChunkStore {
                         }
                     }
 
-                    let chunk_id_set = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .get(&time_range.min());
-
                     // Shared start times: 2 points each.
-                    for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
-                        if check_if_chunk_below_threshold(self, chunk_id) {
-                            *candidates.entry(chunk_id).or_default() += 2;
+                    {
+                        let chunk_id_set = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get(&time_range.min());
+                        for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
+                            if check_if_chunk_below_threshold(self, chunk_id) {
+                                *candidates.entry(chunk_id).or_default() += 2;
+                            }
                         }
                     }
                 }
@@ -583,8 +584,11 @@ impl ChunkStore {
         debug_assert!(!candidates.contains_key(&chunk.id()));
 
         let mut candidates = candidates.into_iter().collect_vec();
-        candidates.sort_by_key(|(_chunk_id, points)| *points);
-        candidates.reverse();
+        {
+            re_tracing::profile_scope!("sort_candidates");
+            candidates.sort_by_key(|(_chunk_id, points)| *points);
+            candidates.reverse();
+        }
 
         candidates
             .into_iter()
