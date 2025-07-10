@@ -181,11 +181,14 @@ impl AsyncDecoder for WebVideoDecoder {
         // > Let timestamp and duration be the timestamp and duration from the EncodedVideoChunk associated with output.
         //
         // However, in practice, the timestamps received are often off by more than can be just explained with
-        // the wasm->js->wasm transition (which is bound to mess with accuracy) and the fact that
+        // the wasm->js->wasm transition (which is bound to mess with accuracy a little bit) and the fact that
         // WebCodec specifies timestamps to be internally represented as i64.
         // In chrome this is likely related to this bug:
         // https://issues.chromium.org/issues/40925070
         // (comments describe that decoders may mess with the timestamps)
+        //
+        // Timestamps are never fully made up: if we add a large offset and remove it on receive again,
+        // we will never fall below that offset, i.e. it is passed through.
         //
         // Therefore we make a best-effort attempt:
         // * use whole numbered microseconds since first frame
