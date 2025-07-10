@@ -3,7 +3,7 @@ use std::io::{IsTerminal as _, Write as _};
 use anyhow::Context as _;
 use itertools::Either;
 
-use re_chunk_store::ChunkStoreConfig;
+use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk::StoreKind;
@@ -47,7 +47,9 @@ impl MergeCommand {
         // (e.g. by recompacting it differently), so make sure to disable all these features.
         let store_config = ChunkStoreConfig::ALL_DISABLED;
 
+        let num_passes = 0;
         merge_and_compact(
+            num_passes,
             *continue_on_error,
             &store_config,
             path_to_input_rrds,
@@ -87,6 +89,14 @@ pub struct CompactCommand {
     #[arg(long = "max-rows-if-unsorted")]
     max_rows_if_unsorted: Option<u64>,
 
+    /// Configures the number of extra compaction passes to run on the data.
+    ///
+    /// The more passes, the better the compaction quality.
+    ///
+    /// If the data reaches optimal compaction, the computation will stop immediately in any case.
+    #[arg(long = "num-pass", default_value_t = 50)]
+    num_passes: u32,
+
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = false)]
     continue_on_error: bool,
@@ -100,6 +110,7 @@ impl CompactCommand {
             max_bytes,
             max_rows,
             max_rows_if_unsorted,
+            num_passes,
             continue_on_error,
         } = self;
 
@@ -126,6 +137,7 @@ impl CompactCommand {
         }
 
         merge_and_compact(
+            *num_passes,
             *continue_on_error,
             &store_config,
             path_to_input_rrds,
@@ -135,6 +147,7 @@ impl CompactCommand {
 }
 
 fn merge_and_compact(
+    num_passes: u32,
     continue_on_error: bool,
     store_config: &ChunkStoreConfig,
     path_to_input_rrds: &[String],
@@ -161,12 +174,14 @@ fn merge_and_compact(
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
 
     re_log::info!("processing input…");
+    let mut num_chunks_before = 0u64;
     let mut last_checkpoint = std::time::Instant::now();
     for (msg_nr, (_source, res)) in rx.iter().enumerate() {
         let mut is_success = true;
 
         match res {
             Ok(msg) => {
+                num_chunks_before += matches!(msg, re_log_types::LogMsg::ArrowMsg(_, _)) as u64;
                 if let Err(err) = entity_dbs
                     .entry(msg.store_id().clone())
                     .or_insert_with(|| {
@@ -205,6 +220,54 @@ fn merge_and_compact(
         }
     }
 
+    let mut pass = 0;
+    while pass < num_passes {
+        re_log::info!(pass, "running extra compaction pass…");
+
+        let now = std::time::Instant::now();
+
+        let num_chunks_before = entity_dbs
+            .values()
+            .map(|db| db.storage_engine().store().num_chunks() as u64)
+            .sum::<u64>();
+        let mut num_chunks_after = 0;
+        entity_dbs = entity_dbs
+            .into_iter()
+            .map(|(store_id, db)| {
+                // Safety: we are the only owners of that data, it's fine.
+                #[expect(unsafe_code)]
+                let engine = unsafe { db.storage_engine_raw() };
+
+                let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
+                for chunk in engine.read().store().iter_chunks() {
+                    store.insert_chunk(chunk)?;
+                }
+
+                num_chunks_after += store.num_chunks() as u64;
+                *engine.write().store() = store;
+
+                Ok::<_, ChunkStoreError>((store_id, db))
+            })
+            .collect::<Result<_, _>>()?;
+
+        let num_chunks_reduction = format!(
+            "-{:3.3}%",
+            100.0 - num_chunks_after as f64 / (num_chunks_before as f64 + f64::EPSILON) * 100.0
+        );
+
+        re_log::info!(
+            pass, num_chunks_before, num_chunks_after, num_chunks_reduction, time=?now.elapsed(),
+            "extra compaction pass completed",
+        );
+
+        if num_chunks_before == num_chunks_after {
+            re_log::info!(pass, time=?now.elapsed(), "cannot possibly improve further, stopping early");
+            break;
+        }
+
+        pass += 1;
+    }
+
     let mut rrd_out = if let Some(path) = path_to_output_rrd {
         Either::Left(std::io::BufWriter::new(
             std::fs::File::create(path).with_context(|| format!("{path:?}"))?,
@@ -219,10 +282,14 @@ fn merge_and_compact(
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
+    let mut num_chunks_after = 0u64;
     let messages_rrd = entity_dbs
         .values()
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
-        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
+        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */))
+        .inspect(|msg| {
+            num_chunks_after += matches!(msg, Ok(re_log_types::LogMsg::ArrowMsg(_, _))) as u64;
+        });
 
     // TODO(cmc): encoding options should match the original.
     let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
@@ -247,6 +314,10 @@ fn merge_and_compact(
     rrd_out.flush().context("couldn't flush output")?;
 
     let rrds_in_size = rx_size_bytes.recv().ok();
+    let num_chunks_reduction = format!(
+        "-{:3.3}%",
+        100.0 - num_chunks_after as f64 / (num_chunks_before as f64 + f64::EPSILON) * 100.0
+    );
     let size_reduction = if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
         format!(
             "-{:3.3}%",
@@ -257,11 +328,14 @@ fn merge_and_compact(
     };
 
     re_log::info!(
-        dst_size_bytes = %file_size_to_string(Some(rrd_out_size)),
-        time = ?now.elapsed(),
-        size_reduction,
         srcs = ?path_to_input_rrds,
+        time = ?now.elapsed(),
+        num_chunks_before,
+        num_chunks_after,
+        num_chunks_reduction,
         srcs_size_bytes = %file_size_to_string(rrds_in_size),
+        dst_size_bytes = %file_size_to_string(Some(rrd_out_size)),
+        size_reduction,
         "merge/compaction finished"
     );
 
