@@ -411,7 +411,7 @@ trait ContextMenuAction {
     /// Process a single redap server.
     fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
 
-    /// Process a single reda entry (dataset or table).
+    /// Process a single redap entry (dataset or table).
     fn process_redap_entry(
         &self,
         _ctx: &ContextMenuContext<'_>,
