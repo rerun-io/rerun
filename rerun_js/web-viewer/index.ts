@@ -126,6 +126,8 @@ export interface AppOptions extends WebViewerOptions {
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
+// Important: The event names defined here are `snake_case` versions
+// of their `PascalCase` counterparts on the Rust side.
 /** An event produced in the Viewer. */
 export type ViewerEvent =
   | PlayEvent
