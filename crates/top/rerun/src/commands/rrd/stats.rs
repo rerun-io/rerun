@@ -39,6 +39,8 @@ impl StatsCommand {
 
         let (rx, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
+        re_log::info!("processing input…");
+        let mut last_checkpoint = std::time::Instant::now();
         for (_source, res) in rx {
             let mut is_success = true;
 
@@ -84,7 +86,20 @@ impl StatsCommand {
                     "one or more IO and/or decoding failures in the input stream (check logs)"
                 )
             }
+
+            let check_in_interval = 10_000;
+            if (num_chunks + 1) % check_in_interval == 0 {
+                let chunks_per_sec =
+                    check_in_interval as f64 / last_checkpoint.elapsed().as_secs_f64();
+                last_checkpoint = std::time::Instant::now();
+                re_log::info!(
+                    "processed {num_chunks} chunks so far, current speed is {chunks_per_sec:.2} chunk/s"
+                );
+                re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
+            }
         }
+
+        re_log::info!("computing stats…");
 
         println!("Overview");
         println!("----------");

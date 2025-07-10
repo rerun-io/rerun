@@ -160,7 +160,7 @@ fn merge_and_compact(
 
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
 
-    eprintln!("Processing input…");
+    re_log::info!("processing input…");
     let mut last_checkpoint = std::time::Instant::now();
     for (msg_nr, (_source, res)) in rx.iter().enumerate() {
         let mut is_success = true;
@@ -198,8 +198,8 @@ fn merge_and_compact(
         if (msg_nr + 1) % check_in_interval == 0 {
             let msg_per_second = check_in_interval as f64 / last_checkpoint.elapsed().as_secs_f64();
             last_checkpoint = std::time::Instant::now();
-            eprintln!(
-                "Processed {msg_nr} messages so far, current speed is {msg_per_second:.2} msg/s"
+            re_log::info!(
+                "processed {msg_nr} messages so far, current speed is {msg_per_second:.2} msg/s"
             );
             re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
         }
@@ -213,7 +213,7 @@ fn merge_and_compact(
         Either::Right(std::io::BufWriter::new(std::io::stdout().lock()))
     };
 
-    eprintln!("Preparing output…");
+    re_log::info!("preparing output…");
     let messages_rbl = entity_dbs
         .values()
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
@@ -233,7 +233,7 @@ fn merge_and_compact(
         .and_then(|info| info.store_version)
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
-    eprintln!("Encoding…");
+    re_log::info!("encoding…");
     let rrd_out_size = re_log_encoding::encoder::encode(
         version,
         encoding_options,
