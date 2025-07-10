@@ -279,7 +279,25 @@ impl AsyncDecoder for WebVideoDecoder {
         //
         // Note that the next frame after a flush has to be a key frame.
         // This is already part of the contract for `AsyncDecoder::end_of_video`.
-        let _ignored = self.decoder.flush();
+        let flush_promise = self.decoder.flush();
+
+        // If we don't handle potential flush errors, we'll get a lot of spam in the console.
+        wasm_bindgen_futures::spawn_local(async move {
+            let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
+            if let Err(flush_error) = flush_result {
+                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>() {
+                    if dom_exception.code() == web_sys::DomException::ABORT_ERR {
+                        // Video decoder got closed, that's fine.
+                        return;
+                    }
+                }
+
+                re_log::debug!(
+                    "Failed to flush video: {}",
+                    js_error_to_string(&flush_error)
+                );
+            }
+        });
 
         Ok(())
     }
