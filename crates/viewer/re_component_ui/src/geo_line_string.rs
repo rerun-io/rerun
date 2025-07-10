@@ -21,6 +21,8 @@ fn multiline_view_geo_line_string(
 ) -> egui::Response {
     use egui_extras::Column;
 
+    let table_style = re_ui::TableStyle::Dense;
+
     let tokens = ui.tokens();
 
     // TODO(andreas): Editing this would be nice!
@@ -41,8 +43,8 @@ fn multiline_view_geo_line_string(
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
-            let row_height = tokens.deprecated_table_line_height();
+            tokens.setup_table_body(&mut body, table_style);
+            let row_height = tokens.table_row_height(table_style);
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {

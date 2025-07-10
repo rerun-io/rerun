@@ -186,7 +186,9 @@ fn class_description_ui(
 
     let use_collapsible = ui_layout == UiLayout::SelectionPanel;
 
-    let row_height = tokens.deprecated_table_line_height();
+    let table_style = re_ui::TableStyle::Dense;
+
+    let row_height = tokens.table_row_height(table_style);
     if !class.keypoint_annotations.is_empty() {
         ui.maybe_collapsing_header(
             use_collapsible,
@@ -230,7 +232,7 @@ fn class_description_ui(
                         });
                     })
                     .body(|mut body| {
-                        tokens.setup_table_body(&mut body);
+                        tokens.setup_table_body(&mut body, table_style);
 
                         // TODO(jleibs): Helper to do this with caching somewhere
                         let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
@@ -277,7 +279,8 @@ fn annotation_info_table_ui(
     re_tracing::profile_function!();
 
     let tokens = ui.tokens();
-    let row_height = tokens.deprecated_table_line_height();
+    let table_style = re_ui::TableStyle::Dense;
+    let row_height = tokens.table_row_height(table_style);
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
@@ -304,7 +307,7 @@ fn annotation_info_table_ui(
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body, table_style);
 
             body.rows(row_height, annotation_infos.len(), |mut row| {
                 let info = &annotation_infos[row.index()];
@@ -344,7 +347,7 @@ fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
     let tokens = ui.tokens();
     let size = egui::Vec2::splat(
         tokens
-            .deprecated_table_line_height()
+            .table_row_height(re_ui::TableStyle::Dense)
             .at_most(ui.available_height()),
     );
 

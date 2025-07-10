@@ -33,6 +33,17 @@ impl AlertVisuals {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum TableStyle {
+    /// Used for presenting a lot of information to the user
+    /// without wasting vertical space, like when showing log output.
+    #[default]
+    Dense,
+
+    /// Used when we want to fit big, clickable buttons in the table cells.
+    Spacious,
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -576,24 +587,27 @@ impl DesignTokens {
         4.0
     }
 
-    pub fn table_cell_margin(&self) -> Margin {
-        Margin::symmetric(8, 6)
+    pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
+        match table_style {
+            TableStyle::Dense => Margin::symmetric(8, 2),
+            TableStyle::Spacious => Margin::symmetric(8, 6),
+        }
     }
 
-    pub fn table_line_height(&self) -> f32 {
-        // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
-        // and the cell margin
-        32.0
+    /// The total row height, including margin/spacing.
+    pub fn table_row_height(&self, table_style: TableStyle) -> f32 {
+        match table_style {
+            TableStyle::Dense => 20.0,
+
+            // Should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+            // and the cell margin.
+            TableStyle::Spacious => 32.0,
+        }
     }
 
-    /// Line height - margin
-    pub fn table_content_height(&self) -> f32 {
-        self.table_line_height() - self.table_cell_margin().sum().y
-    }
-
-    // TODO(lucasmerlin): Update all tables to the new design
-    pub fn deprecated_table_line_height(&self) -> f32 {
-        20.0
+    /// The max height of the content.
+    pub fn table_content_height(&self, table_style: TableStyle) -> f32 {
+        self.table_row_height(table_style) - self.table_cell_margin(table_style).sum().y
     }
 
     pub fn table_header_height(&self) -> f32 {
@@ -696,9 +710,12 @@ impl DesignTokens {
 
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
-    pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>) {
+    pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>, table_style: TableStyle) {
         // Make sure buttons don't visually overflow:
-        body.ui_mut().spacing_mut().interact_size.y = self.table_line_height();
+        body.ui_mut().spacing_mut().interact_size.y = self.table_content_height(table_style);
+
+        // No extra spacing between items in the table body - we bake that into the row height.
+        body.ui_mut().spacing_mut().item_spacing.y = 0.0;
     }
 
     /// Layout area to allocate for the collapsing triangle.
