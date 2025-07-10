@@ -114,7 +114,7 @@ pub(crate) fn dataframe_ui(
                     groups: header_groups,
                 },
                 // This one has extra space for the archetype name
-                egui_table::HeaderRow::new(tokens.table_header_height() + 10.0),
+                egui_table::HeaderRow::new(tokens.table_header_height() + 8.0),
             ])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);

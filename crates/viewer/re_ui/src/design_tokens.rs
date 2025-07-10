@@ -610,6 +610,10 @@ impl DesignTokens {
         self.table_row_height(table_style) - self.table_cell_margin(table_style).sum().y
     }
 
+    pub fn header_cell_margin(&self, _table_style: TableStyle) -> Margin {
+        Margin::symmetric(8, 6)
+    }
+
     pub fn table_header_height(&self) -> f32 {
         32.0
     }
