@@ -30,7 +30,7 @@ pub use self::{
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,
-    design_tokens::DesignTokens,
+    design_tokens::{DesignTokens, TableStyle},
     help::*,
     hot_reload_design_tokens::design_tokens_of,
     icon_text::*,

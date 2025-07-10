@@ -151,8 +151,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     #
     # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
 
-    _width = traitlets.Int(allow_none=True).tag(sync=True)
-    _height = traitlets.Int(allow_none=True).tag(sync=True)
+    _width = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
+    _height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
 
     # TODO(nick): This traitlet is only used for initialization
     # we should figure out how to pass directly and remove it
@@ -175,8 +175,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"],
+        height: int | Literal["auto"],
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,

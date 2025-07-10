@@ -36,11 +36,12 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     label: &'static str,
 ) {
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
     let (left_clicked, right_clicked) = egui::Sides::new()
-        .height(tokens.deprecated_table_line_height())
+        .height(tokens.table_row_height(table_style))
         .show(
             ui,
             |ui| {

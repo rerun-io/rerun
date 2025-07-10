@@ -283,6 +283,7 @@ fn table_ui(
     scroll_to_row: Option<usize>,
 ) {
     let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     let timelines = state
         .filters
@@ -304,7 +305,7 @@ fn table_ui(
         .auto_shrink([false; 2]) // expand to take up the whole View
         .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the view!
         .max_scroll_height(f32::INFINITY) // Fill up whole height
-        .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
@@ -352,13 +353,15 @@ fn table_ui(
             });
         })
         .body(|mut body| {
-            tokens.setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body, table_style);
 
             body_clip_rect = Some(body.max_rect());
 
             let query = ctx.current_query();
 
-            let row_heights = entries.iter().map(|te| calc_row_height(tokens, te));
+            let row_heights = entries
+                .iter()
+                .map(|te| calc_row_height(tokens, table_style, te));
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
 
@@ -443,11 +446,11 @@ fn table_ui(
     }
 }
 
-fn calc_row_height(tokens: &DesignTokens, entry: &Entry) -> f32 {
+fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {
     // Simple, fast, ugly, and functional
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
-    num_rows as f32 * tokens.table_line_height()
+    num_rows as f32 * tokens.table_row_height(table_style)
 }
 
 #[test]
