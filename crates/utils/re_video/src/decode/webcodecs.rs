@@ -376,8 +376,8 @@ fn init_video_decoder(
                     (None, None) => {
                         // This unfortunately happens every now and then for our video stream demo.
                         re_log::debug_once!("WebCodec decoded video frame for which we didn't have any corresponding frame info.
-                                This happens when the decoder emits more frames than we expected.
-                                This is due to interpolation in the decoder or if a video sample corresponds to more than one video frame which Rerun doesn't support."
+This happens when the decoder emits more frames than we expected which can occur if the sample
+contains more frames than expected (invalid input data) or the decoder interpolates frames unexpectedly."
                             );
                         return;
                     }

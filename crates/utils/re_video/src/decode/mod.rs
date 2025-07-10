@@ -172,7 +172,8 @@ pub trait AsyncDecoder: Send + Sync {
     /// Called after submitting the last chunk.
     ///
     /// Should flush all pending frames.
-    /// If new chunks are submitted after this, the decoder has to be reset.
+    /// If you plan on sending more chunks after calling `end_of_video`,
+    /// you MUST call [`Self::reset`] FIRST.
     ///
     /// Implementation note:
     /// As of writing there's two decoders that have requirements on what happens for new frames after `end_of_video`
