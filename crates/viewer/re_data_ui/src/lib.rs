@@ -44,7 +44,6 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
 ) -> ArchetypeComponentMap {
     let mut map = iter
         .into_iter()
-        .filter(|d| !d.is_indicator_component())
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
             acc.entry(descriptor.archetype)
                 .or_default()

@@ -85,12 +85,6 @@ impl ComponentDescriptor {
         self.sanity_check();
         self.component.as_str()
     }
-
-    /// Is this an indicator component for an archetype?
-    // TODO(#8129): Remove when we remove tagging.
-    pub fn is_indicator_component(&self) -> bool {
-        self.component.ends_with("Indicator")
-    }
 }
 
 impl re_byte_size::SizeBytes for ComponentDescriptor {

@@ -456,7 +456,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     component_type: None,
                                     store_datatype: ArrowDataType::Null,
                                     is_static: false,
-                                    is_indicator: false,
                                     is_tombstone: false,
                                     is_semantically_empty: false,
                                 }),

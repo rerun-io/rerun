@@ -199,10 +199,6 @@ fn visualizer_components(
     .values()
     .flatten()
     {
-        if component_descr.is_indicator_component() {
-            continue;
-        }
-
         // TODO(andreas): What about annotation context?
 
         // Query all the sources for our value.

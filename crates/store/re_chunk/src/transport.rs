@@ -107,7 +107,6 @@ impl Chunk {
                         // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
                         // TODO(#8744): figure out what to do here
                         is_static: false,
-                        is_indicator: false,
                         is_tombstone: false,
                         is_semantically_empty: false,
                     };

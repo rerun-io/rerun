@@ -167,10 +167,6 @@ impl PyRecording {
     ///     Whether to include columns that are semantically empty, by default `False`.
     ///
     ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-    /// include_indicator_columns : bool, optional
-    ///     Whether to include indicator columns, by default `False`.
-    ///
-    ///     Indicator columns are components used to represent the presence of an archetype within an entity.
     /// include_tombstone_columns : bool, optional
     ///     Whether to include tombstone columns, by default `False`.
     ///
@@ -199,7 +195,6 @@ impl PyRecording {
         index,
         contents,
         include_semantically_empty_columns = false,
-        include_indicator_columns = false,
         include_tombstone_columns = false,
     ))]
     fn view(
@@ -207,7 +202,6 @@ impl PyRecording {
         index: Option<&str>,
         contents: Bound<'_, PyAny>,
         include_semantically_empty_columns: bool,
-        include_indicator_columns: bool,
         include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
         let static_only = index.is_none();
@@ -226,7 +220,6 @@ impl PyRecording {
         let query = QueryExpression {
             view_contents: Some(contents),
             include_semantically_empty_columns,
-            include_indicator_columns,
             include_tombstone_columns,
             include_static_columns: if static_only {
                 StaticColumnSelection::StaticOnly

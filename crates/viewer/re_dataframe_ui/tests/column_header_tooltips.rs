@@ -87,7 +87,6 @@ fn test_fields() -> Vec<(Field, &'static str)> {
         archetype: Some(ArchetypeName::new("ArchetypeName")),
         component: ComponentIdentifier::from("component_identifier"),
         is_static: false,
-        is_indicator: false,
         is_tombstone: false,
         is_semantically_empty: false,
     };
