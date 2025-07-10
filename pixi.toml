@@ -675,7 +675,13 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
 rerun-sdk = { path = "rerun_py", editable = true }
-rerun-notebook = { path = "rerun_notebook", editable = true }
+
+# The same applies to the notebook.
+# However, in order to build rerun-notebook and thus to even activate environments with the
+# python-dev environment you first have to build `js-build-base`.
+# This in itself is a usability problem, but since Pixi may want to upgrade or setup these environments
+# when running the `js-build-base` task itself, it makes bootstrapping impossible without manual intervention.
+#rerun-notebook = { path = "rerun_notebook", editable = true }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
