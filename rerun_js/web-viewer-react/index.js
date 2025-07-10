@@ -43,7 +43,7 @@ export default class WebViewer extends React.Component {
   componentDidMount() {
     startViewer(
       this.#handle,
-      /** @type {HTMLDivElement} */(this.#parent.current),
+      /** @type {HTMLDivElement} */ (this.#parent.current),
       () => this.props,
     );
   }
@@ -65,7 +65,7 @@ export default class WebViewer extends React.Component {
       this.#handle = new rerun.WebViewer();
       startViewer(
         this.#handle,
-        /** @type {HTMLDivElement} */(this.#parent.current),
+        /** @type {HTMLDivElement} */ (this.#parent.current),
         () => this.props,
       );
     } else {
