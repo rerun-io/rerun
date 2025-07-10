@@ -93,7 +93,7 @@ These changes are reflected in various parts of the Rerun viewer:
 * The selection panel UI comes with a revamped display of archetypes that uses the new syntax to show the `ComponentDescriptor` for each component.
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
-* Indicator components have been removed entirely.
+* Indicator components have been removed entirely. The viewer now instead decides which views & visualizers to activate based on archetype information of components.
 
 ### Limitations & breaking changes
 
