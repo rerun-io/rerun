@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::{ComponentDescriptor, ComponentType, DeserializationResult, SerializationResult};
+use crate::{ComponentDescriptor, DeserializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Component, Loggable};
@@ -187,86 +185,5 @@ impl re_byte_size::SizeBytes for ComponentIdentifier {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
-    }
-}
-
-// ---
-
-/// A generic [indicator component] that can be specialized for any [`Archetype`].
-///
-/// ```ignore
-/// type MyArchetypeIndicator = GenericIndicatorComponent<MyArchetype>;
-/// ```
-///
-/// [indicator component]: [`Archetype::Indicator`]
-#[derive(Debug, Clone, Copy)]
-pub struct GenericIndicatorComponent<A: Archetype> {
-    _phantom: std::marker::PhantomData<A>,
-}
-
-impl<A: Archetype> GenericIndicatorComponent<A> {
-    pub const DEFAULT: Self = Self {
-        _phantom: std::marker::PhantomData::<A>,
-    };
-
-    /// Create an array of indicator components of this type with the given length.
-    ///
-    /// This can be useful when sending columns of indicators with
-    /// `rerun::RecordingStream::send_columns`.
-    #[inline]
-    pub fn new_array(len: usize) -> GenericIndicatorComponentArray<A> {
-        GenericIndicatorComponentArray {
-            len,
-            _phantom: std::marker::PhantomData::<A>,
-        }
-    }
-}
-
-impl<A: Archetype> Default for GenericIndicatorComponent<A> {
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
-
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
-    #[inline]
-    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
-        Ok(Arc::new(arrow::array::NullArray::new(1)))
-    }
-}
-
-/// A generic [indicator component] array of a given length.
-///
-/// This can be useful when sending columns of indicators with
-/// `rerun::RecordingStream::send_columns`.
-///
-/// To create this type, call [`GenericIndicatorComponent::new_array`].
-///
-/// [indicator component]: [`Archetype::Indicator`]
-#[derive(Debug, Clone, Copy)]
-pub struct GenericIndicatorComponentArray<A: Archetype> {
-    len: usize,
-    _phantom: std::marker::PhantomData<A>,
-}
-
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
-    #[inline]
-    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
-        Ok(Arc::new(arrow::array::NullArray::new(self.len)))
-    }
-}
-
-// ---
-
-/// An arbitrary named [indicator component].
-///
-/// [indicator component]: [`Archetype::Indicator`]
-#[derive(Debug, Clone, Copy)]
-pub struct NamedIndicatorComponent(pub ComponentType);
-
-impl crate::ComponentBatch for NamedIndicatorComponent {
-    #[inline]
-    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
-        Ok(Arc::new(arrow::array::NullArray::new(1)))
     }
 }
