@@ -19,9 +19,12 @@ namespace fs = std::filesystem;
 
 struct BadComponent {};
 
-const std::shared_ptr<arrow::Array> null_arrow_array() {
-    const std::shared_ptr<arrow::Array> null_array = std::make_shared<arrow::NullArray>(1);
-    return null_array;
+// Not making this static makes lsan_suppressions.supp miss this.
+// Output of use counter for this shared_ptr indicates that we're not leaking the shared ptr itself.
+// If we do leak it, it's very unclear how that would be happening - somewhere in the FFI transition?
+// But then why would it not show up for anything else? More likely a false positive.
+static std::shared_ptr<arrow::Array> null_arrow_array() {
+    return std::make_shared<arrow::NullArray>(1);
 }
 
 template <>
