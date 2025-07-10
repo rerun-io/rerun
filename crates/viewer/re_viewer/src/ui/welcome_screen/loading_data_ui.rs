@@ -37,7 +37,11 @@ pub fn loading_text_for_data_sources(log_sources: &[Arc<SmartChannelSource>]) ->
                 return Some(format!("Connecting to {url} …"));
             }
 
-            SmartChannelSource::RrdWebEventListener | SmartChannelSource::JsChannel { .. } => {
+            SmartChannelSource::RrdWebEventListener => {
+                // Waiting on notebook data.
+            }
+
+            SmartChannelSource::JsChannel { .. } => {
                 return Some("Loading…".to_owned());
             }
 
