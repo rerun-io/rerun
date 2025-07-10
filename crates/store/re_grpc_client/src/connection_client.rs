@@ -11,8 +11,9 @@ use re_protos::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest,
         ext::{
-            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
-            ReadDatasetEntryResponse, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails, LanceTable,
+            ProviderDetails as _, ReadDatasetEntryResponse, RegisterTableResponse, TableEntry,
+            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
         },
     },
     common::v1alpha1::{
@@ -292,6 +293,28 @@ where
             })
         })
         .collect()
+    }
+
+    /// Register a foreign Lance table to a new table entry in the catalog.
+    //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
+    pub async fn register_table(
+        &mut self,
+        name: String,
+        url: url::Url,
+    ) -> Result<TableEntry, StreamError> {
+        let request = re_protos::catalog::v1alpha1::ext::RegisterTableRequest {
+            name,
+            provider_details: LanceTable { table_url: url }.try_as_any()?,
+        };
+
+        let response: RegisterTableResponse = self
+            .inner()
+            .register_table(tonic::Request::new(request.into()))
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.table_entry)
     }
 
     pub async fn do_maintenance(
