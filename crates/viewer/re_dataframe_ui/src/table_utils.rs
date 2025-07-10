@@ -45,7 +45,7 @@ pub fn header_ui<R>(
         .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
     let response = Frame::new()
-        .inner_margin(ui.tokens().table_cell_margin(table_style))
+        .inner_margin(ui.tokens().header_cell_margin(table_style))
         .show(ui, content);
 
     if !connected_to_next_cell {
