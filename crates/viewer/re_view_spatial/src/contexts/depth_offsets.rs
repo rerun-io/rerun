@@ -3,9 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_types::{
-    Archetype as _, ComponentDescriptorSet, Loggable as _, archetypes, components::DrawOrder,
-};
+use re_types::{Loggable as _, components::DrawOrder};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
@@ -27,24 +25,6 @@ impl IdentifiedViewSystem for EntityDepthOffsets {
 }
 
 impl ViewContextSystem for EntityDepthOffsets {
-    fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
-        [
-            archetypes::Arrows3D::required_components(),
-            archetypes::Boxes2D::required_components(),
-            archetypes::DepthImage::required_components(),
-            archetypes::EncodedImage::required_components(),
-            archetypes::Image::required_components(),
-            archetypes::LineStrips2D::required_components(),
-            archetypes::Points2D::required_components(),
-            archetypes::SegmentationImage::required_components(),
-            archetypes::VideoFrameReference::required_components(),
-            archetypes::VideoStream::required_components(),
-        ]
-        .into_iter()
-        .map(|descrs| descrs.iter().cloned().collect())
-        .collect()
-    }
-
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
