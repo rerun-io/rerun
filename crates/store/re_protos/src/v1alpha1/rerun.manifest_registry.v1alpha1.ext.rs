@@ -765,3 +765,17 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DoMaintenanceRequest> for DoMai
         })
     }
 }
+
+impl From<DoMaintenanceRequest> for crate::manifest_registry::v1alpha1::DoMaintenanceRequest {
+    fn from(value: DoMaintenanceRequest) -> Self {
+        Self {
+            entry: Some(value.entry.into()),
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
+                seconds: ts.as_second(),
+                nanos: ts.subsec_nanosecond(),
+            }),
+        }
+    }
+}
