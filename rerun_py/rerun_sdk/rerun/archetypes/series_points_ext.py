@@ -48,6 +48,7 @@ class SeriesPointsExt:
 
             May change over time.
 
+            If no other components are set, a default `MarkerShape.Circle` will be logged.
         """
 
         # You can define your own __init__ function as a member of SeriesPointsExt in series_points_ext.py
