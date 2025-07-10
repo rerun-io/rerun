@@ -382,7 +382,9 @@ trait ContextMenuAction {
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapEntry(entry_id) => self.process_redap_entry(ctx, entry_id),
+                Item::RedapEntry(entry_id) => {
+                    self.process_redap_entry(ctx, entry_id);
+                }
             }
         }
     }
@@ -409,7 +411,7 @@ trait ContextMenuAction {
     /// Process a single redap server.
     fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
 
-    /// Process a single redap entry.
+    /// Process a single redap entry (dataset or table).
     fn process_redap_entry(
         &self,
         _ctx: &ContextMenuContext<'_>,
