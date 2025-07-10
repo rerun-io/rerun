@@ -58,8 +58,10 @@ impl ::prost::Name for DeleteEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetEntryRequest {
-    /// The name is a short human-readable string
-    /// TODO(jleibs): Define valid name constraints
+    /// Name of the dataset entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
     #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
 }
@@ -155,8 +157,10 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterTableRequest {
-    /// The name is a short human-readable string
-    /// TODO(jleibs): Define valid name constraints
+    /// Name of the table entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
@@ -247,8 +251,7 @@ pub struct EntryDetails {
     /// The EntryId is immutable
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// The name is a short human-readable string
-    /// TODO(jleibs): Define valid name constraints
+    /// The name of this entry.
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
     /// The kind of entry

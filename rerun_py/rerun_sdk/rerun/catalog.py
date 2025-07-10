@@ -118,7 +118,19 @@ class CatalogClient:
         return self._raw_client.create_dataset(name)
 
     def register_table(self, name: str, url: str) -> TableEntry:
-        """Registers a foreign Lance table (identified by its URL) as a new table entry with the given name."""
+        """
+        Registers a foreign Lance table (identified by its URL) as a new table entry with the given name.
+
+        Parameters
+        ----------
+        name
+            The name of the table entry to create. It must be unique within all entries in the catalog. An exception
+            will be raised if an entry with the same name already exists.
+
+        url
+            The URL of the Lance table to register.
+
+        """
         return self._raw_client.register_table(name, url)
 
     @property

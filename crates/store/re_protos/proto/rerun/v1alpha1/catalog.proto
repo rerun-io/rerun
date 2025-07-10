@@ -46,8 +46,10 @@ message DeleteEntryResponse {}
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
-  // The name is a short human-readable string
-  // TODO(jleibs): Define valid name constraints
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
   optional string name = 1;
 
   //TODO(ab): add IfExistingBehavior?
@@ -85,8 +87,10 @@ message UpdateDatasetEntryResponse {
 // RegisterTable
 
 message RegisterTableRequest {
-  // The name is a short human-readable string
-  // TODO(jleibs): Define valid name constraints
+  // Name of the table entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
   string name = 1;
 
   // Information about the table to register.
@@ -143,8 +147,7 @@ message EntryDetails {
   // The EntryId is immutable
   rerun.common.v1alpha1.EntryId id = 1;
 
-  // The name is a short human-readable string
-  // TODO(jleibs): Define valid name constraints
+  // The name of this entry.
   optional string name = 2;
 
   // The kind of entry
