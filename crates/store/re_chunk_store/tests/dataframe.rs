@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{StringArray, UInt32Array};
+
 use re_chunk::{Chunk, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, QueryExpression, StaticColumnSelection, TimeInt,
@@ -11,8 +12,8 @@ use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
 use re_sorbet::ChunkColumnDescriptors;
+use re_types::AnyValues;
 use re_types::AsComponents as _;
-use re_types::{AnyValues, ComponentDescriptor};
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.
@@ -177,8 +178,6 @@ fn schema_static_columns() -> anyhow::Result<()> {
 
     store.insert_chunk(&Arc::new(chunk1))?;
 
-    // Both
-
     let query = QueryExpression {
         view_contents: None,
         include_semantically_empty_columns: false,
@@ -194,58 +193,48 @@ fn schema_static_columns() -> anyhow::Result<()> {
         selection: None,
     };
 
-    let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
-
-    assert_eq!(
-        components
+    // Both
+    {
+        let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
+        let both_static_and_non_static = components
             .iter()
-            .map(|column| (column.component_descriptor(), column.is_static))
-            .collect::<Vec<_>>(),
-        vec![
-            (ComponentDescriptor::partial("baz"), true),
-            (ComponentDescriptor::partial("foo"), true),
-            (ComponentDescriptor::partial("yak"), true),
-            (MyPoints::descriptor_points(), false),
-        ]
-    );
+            .map(|column| (column.component_descriptor().component))
+            .collect::<Vec<_>>();
+
+        insta::assert_debug_snapshot!(both_static_and_non_static);
+    }
 
     // Static
+    {
+        let query = QueryExpression {
+            include_static_columns: StaticColumnSelection::StaticOnly,
+            ..query.clone()
+        };
 
-    let query = QueryExpression {
-        include_static_columns: StaticColumnSelection::StaticOnly,
-        ..query
-    };
-
-    let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
-
-    assert_eq!(
-        components
+        let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
+        let static_only = components
             .iter()
-            .map(|column| (column.component_descriptor(), column.is_static))
-            .collect::<Vec<_>>(),
-        vec![
-            (ComponentDescriptor::partial("baz"), true),
-            (ComponentDescriptor::partial("foo"), true),
-            (ComponentDescriptor::partial("yak"), true),
-        ]
-    );
+            .map(|column| (column.component_descriptor().component))
+            .collect::<Vec<_>>();
+
+        insta::assert_debug_snapshot!(static_only);
+    }
 
     // Non-static
+    {
+        let query = QueryExpression {
+            include_static_columns: StaticColumnSelection::NonStaticOnly,
+            ..query
+        };
 
-    let query = QueryExpression {
-        include_static_columns: StaticColumnSelection::NonStaticOnly,
-        ..query
-    };
-
-    let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
-
-    assert_eq!(
-        components
+        let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
+        let non_static_only = components
             .iter()
-            .map(|column| (column.component_descriptor(), column.is_static))
-            .collect::<Vec<_>>(),
-        vec![(MyPoints::descriptor_points(), false),]
-    );
+            .map(|column| (column.component_descriptor().component))
+            .collect::<Vec<_>>();
+
+        insta::assert_debug_snapshot!(non_static_only);
+    }
 
     Ok(())
 }
