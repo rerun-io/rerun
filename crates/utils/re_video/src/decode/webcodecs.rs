@@ -258,6 +258,12 @@ impl AsyncDecoder for WebVideoDecoder {
             self.decoder = init_video_decoder(self.on_output.clone(), output_callback_rx)?;
         };
 
+        // For all we know, the first frame timestamp may have changed.
+        self.first_frame_pts = video_descr
+            .samples
+            .front()
+            .map_or(Time::ZERO, |s| s.presentation_timestamp);
+
         let encoding_details = video_descr
             .encoding_details
             .as_ref()
