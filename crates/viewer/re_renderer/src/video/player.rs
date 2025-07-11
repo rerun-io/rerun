@@ -592,9 +592,9 @@ impl VideoPlayer {
 
             let sample_idx_end = video_description.samples.next_index();
             for (_, sample) in video_description.samples.iter_index_range_clamped(
-                &(sample_idx_end.saturating_sub(allowed_delay)..sample_idx_end),
+                &(sample_idx_end.saturating_sub(allowed_delay + 1)..sample_idx_end),
             ) {
-                if sample.presentation_timestamp == last_decoded_frame_pts {
+                if sample.presentation_timestamp <= last_decoded_frame_pts {
                     return DecoderDelayState::UpToDateToleratedEdgeOfLiveStream;
                 }
             }
