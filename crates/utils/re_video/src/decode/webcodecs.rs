@@ -359,9 +359,7 @@ fn init_video_decoder(
                         web_timestamp_us,
                         frame_info,
                     }) => {
-                        let infos = pending_frame_infos
-                            .entry(web_timestamp_us)
-                            .or_insert(smallvec::SmallVec::default());
+                        let infos = pending_frame_infos.entry(web_timestamp_us).or_default();
                         infos.push(frame_info);
                     }
 
