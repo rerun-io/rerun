@@ -144,10 +144,11 @@ re_memory.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
-re_tracing.workspace = true
+re_tracing = { workspace = true, features = ["server"] }
 re_uri.workspace = true
 re_video.workspace = true
 
+ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 camino.workspace = true

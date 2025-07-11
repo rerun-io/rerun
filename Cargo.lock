@@ -8854,6 +8854,7 @@ dependencies = [
 name = "rerun"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "camino",

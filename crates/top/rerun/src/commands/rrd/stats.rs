@@ -1,7 +1,7 @@
+use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
 
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
-use re_viewer::external::egui::ahash::{HashMap, HashMapExt as _};
 
 use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
 
@@ -40,15 +40,17 @@ impl StatsCommand {
         let (rx, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         re_log::info!("processing input…");
+        let mut num_msgs = 0;
         let mut last_checkpoint = std::time::Instant::now();
         for (_source, res) in rx {
             let mut is_success = true;
 
             match res {
                 Ok(msg) => {
-                    num_chunks += 1;
+                    num_msgs += 1;
                     match compute_stats(&msg) {
                         Ok(Some(stats)) => {
+                            num_chunks += 1;
                             *num_chunks_per_entity.entry(stats.entity_path).or_default() += 1;
                             for index in stats.indexes {
                                 *num_chunks_per_index.entry(index).or_default() += 1;
@@ -88,12 +90,12 @@ impl StatsCommand {
             }
 
             let check_in_interval = 10_000;
-            if (num_chunks + 1) % check_in_interval == 0 {
-                let chunks_per_sec =
+            if (num_msgs + 1) % check_in_interval == 0 {
+                let msgs_per_sec =
                     check_in_interval as f64 / last_checkpoint.elapsed().as_secs_f64();
                 last_checkpoint = std::time::Instant::now();
                 re_log::info!(
-                    "processed {num_chunks} chunks so far, current speed is {chunks_per_sec:.2} chunk/s"
+                    "processed {num_msgs} messages so far, current speed is {msgs_per_sec:.2} msg/s"
                 );
                 re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
             }
