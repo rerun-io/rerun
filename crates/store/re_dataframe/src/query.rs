@@ -1333,12 +1333,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
+    use arrow::array::{StringArray, UInt32Array};
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
 
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
+        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, ResolvedTimeRange, TimeInt,
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
@@ -1347,6 +1348,7 @@ mod tests {
     };
     use re_query::StorageEngine;
     use re_sorbet::ComponentColumnSelector;
+    use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_types_core::components;
 
     use crate::{QueryCache, QueryEngine};
@@ -2300,6 +2302,62 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn query_static_any_values() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = ChunkStore::new_handle(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        let any_values = AnyValues::default()
+            .with_field("yak", Arc::new(StringArray::from(vec!["yuk"])))
+            .with_field("foo", Arc::new(StringArray::from(vec!["bar"])))
+            .with_field("baz", Arc::new(UInt32Array::from(vec![42u32])));
+
+        let entity_path = EntityPath::from("test");
+
+        let chunk0 = Chunk::builder(entity_path.clone())
+            .with_serialized_batches(
+                RowId::new(),
+                TimePoint::default(),
+                any_values.as_serialized_batches(),
+            )
+            .build()?;
+
+        store.write().insert_chunk(&Arc::new(chunk0))?;
+
+        let engine = QueryEngine::from_store(store);
+
+        let query_expr = QueryExpression {
+            view_contents: None,
+            include_semantically_empty_columns: false,
+            include_indicator_columns: false,
+            include_tombstone_columns: false,
+            include_static_columns: re_chunk_store::StaticColumnSelection::Both,
+            filtered_index: None,
+            filtered_index_range: None,
+            filtered_index_values: None,
+            using_index_values: None,
+            filtered_is_not_null: None,
+            sparse_fill_strategy: re_chunk_store::SparseFillStrategy::None,
+            selection: None,
+        };
+
+        let query_handle = engine.query(query_expr);
+
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
+        )?;
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
+
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
