@@ -1,4 +1,5 @@
 mod compare;
+mod concat;
 mod filter;
 mod merge_compact;
 mod migrate;
@@ -7,6 +8,7 @@ mod verify;
 
 use self::{
     compare::CompareCommand,
+    concat::ConcatCommand,
     filter::FilterCommand,
     merge_compact::{CompactCommand, MergeCommand},
     migrate::MigrateCommand,
@@ -22,6 +24,11 @@ use clap::Subcommand;
 /// Manipulate the contents of .rrd and .rbl files.
 #[derive(Debug, Clone, Subcommand)]
 pub enum RrdCommands {
+    /// Concatenates the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
+    ///
+    // TODO: need to figure out how to handle blueprints.
+    Concat(ConcatCommand),
+
     /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
     ///
     /// Reads from standard input if no paths are specified.
@@ -86,6 +93,7 @@ pub enum RrdCommands {
 impl RrdCommands {
     pub fn run(&self) -> anyhow::Result<()> {
         match self {
+            Self::Concat(cmd) => cmd.run(),
             Self::Compare(cmd) => {
                 cmd.run()
                     // Print current directory, this can be useful for debugging issues with relative paths.
