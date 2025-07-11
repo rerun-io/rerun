@@ -11173,8 +11173,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.42.0"
-source = "git+https://github.com/rerun-io/walkers?branch=antoine%2Fegui-0.32#8038714d5273c8d640548ef1f78bc11f1762a717"
+version = "0.43.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1959f265e0ea31bfb2293639cb6a61fc656c63cee8b93f4db5db03ba2691e555"
 dependencies = [
  "egui",
  "egui_extras",
