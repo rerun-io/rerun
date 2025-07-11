@@ -8184,6 +8184,7 @@ dependencies = [
 name = "re_video"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "bit-vec",
  "cfg_aliases",
  "criterion",
@@ -8206,6 +8207,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "serde",
+ "smallvec",
  "thiserror 1.0.65",
  "wasm-bindgen",
  "wasm-bindgen-futures",
