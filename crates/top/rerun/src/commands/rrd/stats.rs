@@ -45,12 +45,53 @@ impl StatsCommand {
         let mut ipc_schema_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
         let mut ipc_data_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
 
-        let (rx, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
+        let (rx_raw, _) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
+
+        let (tx_uncompressed, rx_uncompressed) = crossbeam::channel::bounded(100);
+        let decompress_thread_handle = std::thread::Builder::new()
+            .name("decompress".to_owned())
+            .spawn(move || {
+                for (_source, res) in rx_raw {
+                    let Ok(Msg::ArrowMsg(mut msg)) = res else {
+                        tx_uncompressed.send(res)?;
+                        continue;
+                    };
+
+                    let mut uncompressed = Vec::new();
+
+                    const COMPRESSION_NONE: i32 =
+                        re_protos::log_msg::v1alpha1::Compression::None as _;
+                    const COMPRESSION_LZ4: i32 =
+                        re_protos::log_msg::v1alpha1::Compression::Lz4 as _;
+
+                    match msg.compression {
+                        COMPRESSION_NONE => {}
+
+                        COMPRESSION_LZ4 => {
+                            uncompressed.resize(msg.uncompressed_size as _, 0);
+                            re_log_encoding::external::lz4_flex::block::decompress_into(
+                                &msg.payload,
+                                &mut uncompressed,
+                            )?;
+                            msg.payload = uncompressed.into();
+                            msg.compression = COMPRESSION_NONE;
+                        }
+
+                        huh => anyhow::bail!("unknown Compression: {huh}"),
+                    };
+
+                    tx_uncompressed.send(Ok(
+                        re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg),
+                    ))?;
+                }
+
+                Ok(())
+            })?;
 
         re_log::info!("processing input…");
         let mut num_msgs = 0;
         let mut last_checkpoint = std::time::Instant::now();
-        for (_source, res) in rx {
+        for res in rx_uncompressed {
             let mut is_success = true;
 
             match res {
@@ -116,6 +157,10 @@ impl StatsCommand {
                 re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
             }
         }
+
+        decompress_thread_handle
+            .join()
+            .expect("couldn't join thread")?;
 
         re_log::info!("computing stats…");
 
@@ -306,31 +351,11 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
         let re_protos::log_msg::v1alpha1::ArrowMsg {
             store_id: _,
             chunk_id: _,
-            compression,
+            compression: _,
             uncompressed_size,
             encoding: _,
             payload,
         } = arrow_msg;
-
-        let mut uncompressed = Vec::new();
-
-        const COMPRESSION_NONE: i32 = re_protos::log_msg::v1alpha1::Compression::None as _;
-        const COMPRESSION_LZ4: i32 = re_protos::log_msg::v1alpha1::Compression::Lz4 as _;
-
-        let payload = match *compression {
-            COMPRESSION_NONE => payload,
-
-            COMPRESSION_LZ4 => {
-                uncompressed.resize(*uncompressed_size as _, 0);
-                re_log_encoding::external::lz4_flex::block::decompress_into(
-                    payload,
-                    &mut uncompressed,
-                )?;
-                uncompressed.as_slice()
-            }
-
-            huh => anyhow::bail!("unknown Compression: {huh}"),
-        };
 
         let ipc_schema_size_bytes = {
             // NOTE: This is based on the implementation of `arrow::ipc::convert::try_schema_from_ipc_buffer`.
