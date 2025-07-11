@@ -356,16 +356,20 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        if self
-            .chunk_ids_per_min_row_id
-            .insert(row_id_range.0, chunk.id())
-            .is_some()
-        {
-            re_log::warn!(
-                chunk_id = %chunk.id(),
-                row_id = %row_id_range.0,
-                "detected duplicated RowId in the data, this will lead to undefined behavior"
-            );
+        // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
+        // with another one, which might or might not have modified the range.
+        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min) {
+            if self
+                .chunk_ids_per_min_row_id
+                .insert(min_row_id, chunk.id())
+                .is_some()
+            {
+                re_log::warn!(
+                    chunk_id = %chunk.id(),
+                    row_id = %row_id_range.0,
+                    "detected duplicated RowId in the data, this will lead to undefined behavior"
+                );
+            }
         }
 
         for (name, columns) in chunk.timelines() {
