@@ -359,10 +359,19 @@ impl ::prost::Name for ScanTableResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Create the acceleration structures for temporal queries.
+    ///
+    /// This will recreate all scalar indexes from scratch everytime.
+    ///
+    /// TODO(cmc): support incremental scalar indexing & index compaction
     #[prost(bool, tag = "2")]
     pub build_scalar_indexes: bool,
+    /// Compact the underlying Lance fragments, for all Rerun Manifests.
+    ///
+    /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
+    /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
 }
@@ -1021,7 +1030,7 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Maintenance operations: scalar index creation, compaction, etc.
+        /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         pub async fn do_maintenance(
             &mut self,
             request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
@@ -1305,7 +1314,7 @@ pub mod frontend_service_server {
                 super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
             >,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
-        /// Maintenance operations: scalar index creation, compaction, etc.
+        /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         async fn do_maintenance(
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
