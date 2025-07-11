@@ -356,10 +356,17 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        self.chunk_ids_per_min_row_id
-            .entry(row_id_range.0)
-            .or_default()
-            .push(chunk.id());
+        if self
+            .chunk_ids_per_min_row_id
+            .insert(row_id_range.0, chunk.id())
+            .is_some()
+        {
+            re_log::warn!(
+                chunk_id = %chunk.id(),
+                row_id = %row_id_range.0,
+                "detected duplicated RowId in the data, this will lead to undefined behavior"
+            );
+        }
 
         for (name, columns) in chunk.timelines() {
             let new_typ = columns.timeline().typ();
@@ -635,10 +642,14 @@ impl ChunkStore {
                 .into_values()
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_static_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_static_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_static_chunk_ids.into_iter()
         };
@@ -663,10 +674,14 @@ impl ChunkStore {
                 })
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_temporal_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_temporal_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_temporal_chunk_ids.into_iter()
         };

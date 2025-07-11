@@ -427,10 +427,7 @@ pub struct ChunkStore {
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
-    ///
-    /// This is a map of vecs instead of individual [`ChunkId`] in order to better support
-    /// duplicated [`RowId`]s.
-    pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, Vec<ChunkId>>,
+    pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentDescriptor`].
     ///
@@ -549,7 +546,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
-        for chunk_id in chunk_id_per_min_row_id.values().flatten() {
+        for chunk_id in chunk_id_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
