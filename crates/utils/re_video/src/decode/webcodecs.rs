@@ -120,7 +120,7 @@ static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
 static IS_FIREFOX: Lazy<bool> = Lazy::new(|| {
     web_sys::window()
         .and_then(|w| w.navigator().user_agent().ok())
-        .map_or(false, |ua| ua.to_lowercase().contains("firefox"))
+        .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
 });
 
 impl Drop for WebVideoDecoder {
