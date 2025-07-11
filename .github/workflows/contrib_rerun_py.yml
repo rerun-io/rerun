@@ -23,8 +23,8 @@ env:
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 
   # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
-  # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-  RUSTFLAGS: --cfg=web_sys_unstable_apis
+  # RUSTFLAGS: --cfg=web_sys_unstable_apis --cfg=getrandom_backend="wasm_js" --deny warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --cfg=getrandom_backend="wasm_js"
 
   RUSTDOCFLAGS: --deny warnings
 

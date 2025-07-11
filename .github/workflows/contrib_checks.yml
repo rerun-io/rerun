@@ -20,7 +20,7 @@ env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --cfg=getrandom_backend="wasm_js" --deny warnings
 
   RUSTDOCFLAGS: --deny warnings
 
