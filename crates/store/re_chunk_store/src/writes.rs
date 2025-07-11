@@ -28,6 +28,20 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.components().is_empty() {
+            // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
+            // chunk that went through the Sorbet migration process, and ended up with zero
+            // component columns.
+            //
+            // When that happens, the election process in the compactor will get confused, and then not
+            // only that weird empty Chunk will end up being stored, but it will also prevent the
+            // election from making progress and therefore prevent Chunks that are in dire need of
+            // compaction from being compacted.
+            //
+            // The solution is simple: just drop it.
+            return Ok(vec![]);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
@@ -442,6 +456,32 @@ impl ChunkStore {
     fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
+        {
+            // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
+            // on its own.
+
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = self.config;
+
+            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+
+            let total_rows = (chunk.num_rows()) as u64;
+            let is_below_rows_threshold = if chunk.is_time_sorted() {
+                total_rows <= chunk_max_rows
+            } else {
+                total_rows <= chunk_max_rows_if_unsorted
+            };
+
+            if !(is_below_bytes_threshold && is_below_rows_threshold) {
+                return None;
+            }
+        }
+
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
@@ -526,14 +566,15 @@ impl ChunkStore {
                         }
                     }
 
-                    let chunk_id_set = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .get(&time_range.min());
-
                     // Shared start times: 2 points each.
-                    for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
-                        if check_if_chunk_below_threshold(self, chunk_id) {
-                            *candidates.entry(chunk_id).or_default() += 2;
+                    {
+                        let chunk_id_set = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get(&time_range.min());
+                        for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
+                            if check_if_chunk_below_threshold(self, chunk_id) {
+                                *candidates.entry(chunk_id).or_default() += 2;
+                            }
                         }
                     }
                 }
@@ -543,8 +584,11 @@ impl ChunkStore {
         debug_assert!(!candidates.contains_key(&chunk.id()));
 
         let mut candidates = candidates.into_iter().collect_vec();
-        candidates.sort_by_key(|(_chunk_id, points)| *points);
-        candidates.reverse();
+        {
+            re_tracing::profile_scope!("sort_candidates");
+            candidates.sort_by_key(|(_chunk_id, points)| *points);
+            candidates.reverse();
+        }
 
         candidates
             .into_iter()

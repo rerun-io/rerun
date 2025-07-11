@@ -583,6 +583,17 @@ impl ChunkStore {
                                 }
                             }
 
+                            {
+                                let min_row_ids_removed = chunk_ids.iter().filter_map(|chunk_id| {
+                                    self.chunks_per_chunk_id
+                                        .get(chunk_id)
+                                        .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                                });
+                                for row_id in min_row_ids_removed {
+                                    self.chunk_ids_per_min_row_id.remove(&row_id);
+                                }
+                            }
+
                             chunk_ids_removed.extend(chunk_ids);
                         }
 
@@ -679,14 +690,6 @@ impl ChunkStore {
             {
                 temporal_chunk_ids_per_timeline_componentless.remove_entry();
             }
-        }
-
-        {
-            re_tracing::profile_scope!("retain");
-            self.chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !chunk_ids_removed.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
         }
 
         {
