@@ -904,10 +904,19 @@ impl ::prost::Name for FetchChunkManifestResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    /// Create the acceleration structures for temporal queries.
+    ///
+    /// This will recreate all scalar indexes from scratch everytime.
+    ///
+    /// TODO(cmc): support incremental scalar indexing & index compaction
     #[prost(bool, tag = "2")]
     pub build_scalar_indexes: bool,
+    /// Compact the underlying Lance fragments, for all Rerun Manifests.
+    ///
+    /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
+    /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
 }
