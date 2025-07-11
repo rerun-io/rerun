@@ -1,7 +1,7 @@
 use std::{collections::hash_map::Entry, sync::Arc};
 
 use ahash::HashMap;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::Sender;
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
 use re_mp4::StsdBoxContent;
@@ -113,9 +113,26 @@ unsafe impl Send for WebVideoFrame {}
 #[allow(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
+static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
+    web_sys::window().is_some_and(|w| w.has_own_property(&wasm_bindgen::JsValue::from("safari")))
+});
+
+static IS_FIREFOX: Lazy<bool> = Lazy::new(|| {
+    web_sys::window()
+        .and_then(|w| w.navigator().user_agent().ok())
+        .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
+});
+
 impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
         re_log::debug!("Dropping WebVideoDecoder");
+        if *IS_FIREFOX {
+            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `close` on a video decoder.
+            // It would be nice to at least call `reset` instead, but that _also_ tends to crash the tab.
+            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
+            return;
+        }
+
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
                 if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR {
@@ -147,8 +164,7 @@ impl WebVideoDecoder {
         // For details on how we treat timestamps, see submit_chunk.
         let timescale = video_descr.timescale.unwrap_or(Timescale::new(30));
 
-        let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
-        let decoder = init_video_decoder(on_output.clone(), output_callback_rx)?;
+        let (decoder, output_callback_tx) = init_video_decoder(on_output.clone())?;
 
         let first_frame_pts = video_descr
             .samples
@@ -249,14 +265,20 @@ impl AsyncDecoder for WebVideoDecoder {
             .send(OutputCallbackMessage::Reset)
             .ok();
 
-        if let Err(_err) = self.decoder.reset() {
-            // At least on Firefox, it can happen that reset on a previous error fails.
+        if *IS_FIREFOX {
+            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `reset` on a video decoder.
+            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
+            let (decoder, output_callback_tx) = init_video_decoder(self.on_output.clone())?;
+            self.decoder = decoder;
+            self.output_callback_tx = output_callback_tx;
+        } else if let Err(_err) = self.decoder.reset() {
+            // It can happen that reset fails after a previously encountered error.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
+            let (decoder, output_callback_tx) = init_video_decoder(self.on_output.clone())?;
+            self.decoder = decoder;
             self.output_callback_tx = output_callback_tx;
-            self.decoder = init_video_decoder(self.on_output.clone(), output_callback_rx)?;
-        };
+        }
 
         // For all we know, the first frame timestamp may have changed.
         self.first_frame_pts = video_descr
@@ -333,14 +355,11 @@ impl AsyncDecoder for WebVideoDecoder {
     }
 }
 
-static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
-    web_sys::window().is_some_and(|w| w.has_own_property(&wasm_bindgen::JsValue::from("safari")))
-});
-
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
-    output_callback_rx: Receiver<OutputCallbackMessage>,
-) -> Result<web_sys::VideoDecoder, WebError> {
+) -> Result<(web_sys::VideoDecoder, Sender<OutputCallbackMessage>), WebError> {
+    let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
+
     let on_output = {
         let on_output = on_output_callback.clone();
 
@@ -440,8 +459,10 @@ fn init_video_decoder(
         unreachable!()
     };
 
-    web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
-        .map_err(|err| WebError::DecoderSetupFailure(js_error_to_string(&err)))
+    let decoder = web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
+        .map_err(|err| WebError::DecoderSetupFailure(js_error_to_string(&err)))?;
+
+    Ok((decoder, output_callback_tx))
 }
 
 fn js_video_decoder_config(
