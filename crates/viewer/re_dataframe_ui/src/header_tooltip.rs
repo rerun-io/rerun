@@ -52,7 +52,6 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, col
                 archetype,
                 component,
                 is_static: _,
-                is_indicator: _,
                 is_tombstone: _,
                 is_semantically_empty: _,
             } = desc;
@@ -132,7 +131,6 @@ fn extras_column_descriptor_ui(
         ColumnDescriptorRef::Component(desc) => {
             // TODO(#10315): these are sometimes inaccurate.
             header_property_ui(ui, "Is static", desc.is_static.to_string());
-            header_property_ui(ui, "Is indicator", desc.is_indicator.to_string());
             header_property_ui(ui, "Is tombstone", desc.is_tombstone.to_string());
             header_property_ui(ui, "Is empty", desc.is_semantically_empty.to_string());
         }

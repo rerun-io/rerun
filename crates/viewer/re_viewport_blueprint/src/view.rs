@@ -713,11 +713,6 @@ mod tests {
                         "Scenario {i}"
                     );
 
-                    if component_descr.is_indicator_component() {
-                        // Ignore indicators for overrides.
-                        continue;
-                    }
-
                     assert!(
                         expected_overrides.remove(component_descr),
                         "Scenario {i}: expected override for {component_descr} at {override_path:?} but got none"

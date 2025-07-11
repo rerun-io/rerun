@@ -66,7 +66,6 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: false,
             });
 
             descriptors.push(descriptor);
@@ -85,7 +84,6 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: false,
             });
 
             let data = ListArray::new(
@@ -111,7 +109,6 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: false,
             });
 
             let data = ListArray::new(
@@ -144,7 +141,6 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: false,
             });
 
             descriptors.push(descriptor);

@@ -133,16 +133,6 @@ impl SegmentationImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.SegmentationImageIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
@@ -153,8 +143,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [SegmentationImage::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -164,28 +154,22 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             SegmentationImage::descriptor_buffer(),
             SegmentationImage::descriptor_format(),
-            SegmentationImage::descriptor_indicator(),
             SegmentationImage::descriptor_opacity(),
             SegmentationImage::descriptor_draw_order(),
         ]
     });
 
 impl SegmentationImage {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
-pub type SegmentationImageIndicator = ::re_types_core::GenericIndicatorComponent<SegmentationImage>;
-
 impl ::re_types_core::Archetype for SegmentationImage {
-    type Indicator = SegmentationImageIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.SegmentationImage".into()
@@ -194,14 +178,6 @@ impl ::re_types_core::Archetype for SegmentationImage {
     #[inline]
     fn display_name() -> &'static str {
         "Segmentation image"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        SegmentationImageIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

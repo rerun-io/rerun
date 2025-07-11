@@ -109,48 +109,32 @@ impl TextLog {
             component_type: Some("rerun.components.Color".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.TextLogIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextLog::descriptor_text()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level(), TextLog::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextLog::descriptor_color()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             TextLog::descriptor_text(),
             TextLog::descriptor_level(),
-            TextLog::descriptor_indicator(),
             TextLog::descriptor_color(),
         ]
     });
 
 impl TextLog {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`TextLog`] [`::re_types_core::Archetype`]
-pub type TextLogIndicator = ::re_types_core::GenericIndicatorComponent<TextLog>;
-
 impl ::re_types_core::Archetype for TextLog {
-    type Indicator = TextLogIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.TextLog".into()
@@ -159,14 +143,6 @@ impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn display_name() -> &'static str {
         "Text log"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TextLogIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

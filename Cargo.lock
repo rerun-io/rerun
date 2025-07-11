@@ -7261,6 +7261,7 @@ dependencies = [
  "re_query",
  "re_sorbet",
  "re_tracing",
+ "re_types",
  "re_types_core",
  "similar-asserts",
  "tokio",
@@ -8854,6 +8855,7 @@ dependencies = [
 name = "rerun"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "camino",
@@ -8889,6 +8891,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_perf_telemetry",
+ "re_protos",
  "re_sdk",
  "re_smart_channel",
  "re_sorbet",

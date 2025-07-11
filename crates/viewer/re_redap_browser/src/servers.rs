@@ -222,10 +222,18 @@ impl Server {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
                 // Property column, just hide indicator components
-                //TODO(#8129): remove this when we no longer have indicator components
-                !desc
+                // TODO(grtlr): Indicators are gone, but since servers might still
+                // have this column we keep this check for now.
+                let is_indicator = desc
                     .column_name(BatchType::Dataframe)
-                    .ends_with("Indicator")
+                    .ends_with("Indicator");
+                if is_indicator {
+                    re_log::warn_once!(
+                        "Encountered unexpected indicator column name: {}",
+                        desc.column_name(BatchType::Dataframe)
+                    );
+                }
+                !is_indicator
             } else {
                 matches!(
                     desc.display_name().as_str(),

@@ -223,9 +223,6 @@ impl PyRecordingView {
         // This is a static selection, so we clear the filtered index
         query_expression.filtered_index = None;
 
-        //TODO(#10327): this should not be necessary!
-        query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
-
         // If no columns provided, select all static columns
         let static_columns = Self::select_args(args, columns)
             .transpose()

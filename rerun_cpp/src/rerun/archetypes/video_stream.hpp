@@ -9,7 +9,6 @@
 #include "../components/draw_order.hpp"
 #include "../components/video_codec.hpp"
 #include "../components/video_sample.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -65,11 +64,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.VideoStreamIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoStream";
 

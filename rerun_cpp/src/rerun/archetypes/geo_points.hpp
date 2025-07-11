@@ -10,7 +10,6 @@
 #include "../components/color.hpp"
 #include "../components/lat_lon.hpp"
 #include "../components/radius.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -59,11 +58,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.GeoPointsIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GeoPoints";
 

@@ -177,7 +177,6 @@ fn test_schema_over_ipc() {
             is_static: true,
             is_tombstone: false,
             is_semantically_empty: false,
-            is_indicator: true,
         }),
     ];
 

@@ -146,23 +146,13 @@ impl GraphNodes {
             component_type: Some("rerun.components.Radius".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.GraphNodesIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_node_ids()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -175,11 +165,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GraphNodes::descriptor_node_ids(),
-            GraphNodes::descriptor_indicator(),
             GraphNodes::descriptor_positions(),
             GraphNodes::descriptor_colors(),
             GraphNodes::descriptor_labels(),
@@ -189,16 +178,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     });
 
 impl GraphNodes {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
-/// Indicator component for the [`GraphNodes`] [`::re_types_core::Archetype`]
-pub type GraphNodesIndicator = ::re_types_core::GenericIndicatorComponent<GraphNodes>;
-
 impl ::re_types_core::Archetype for GraphNodes {
-    type Indicator = GraphNodesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GraphNodes".into()
@@ -207,14 +191,6 @@ impl ::re_types_core::Archetype for GraphNodes {
     #[inline]
     fn display_name() -> &'static str {
         "Graph nodes"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GraphNodesIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

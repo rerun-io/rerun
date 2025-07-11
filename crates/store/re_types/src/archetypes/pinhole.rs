@@ -189,28 +189,13 @@ impl Pinhole {
             component_type: Some("rerun.components.ImagePlaneDistance".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.PinholeIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Pinhole::descriptor_image_from_camera()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Pinhole::descriptor_resolution(),
-            Pinhole::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Pinhole::descriptor_resolution()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -220,28 +205,22 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_image_from_camera(),
             Pinhole::descriptor_resolution(),
-            Pinhole::descriptor_indicator(),
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
         ]
     });
 
 impl Pinhole {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`Pinhole`] [`::re_types_core::Archetype`]
-pub type PinholeIndicator = ::re_types_core::GenericIndicatorComponent<Pinhole>;
-
 impl ::re_types_core::Archetype for Pinhole {
-    type Indicator = PinholeIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Pinhole".into()
@@ -250,14 +229,6 @@ impl ::re_types_core::Archetype for Pinhole {
     #[inline]
     fn display_name() -> &'static str {
         "Pinhole"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        PinholeIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

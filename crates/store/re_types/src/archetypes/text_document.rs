@@ -127,47 +127,31 @@ impl TextDocument {
             component_type: Some("rerun.components.MediaType".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.TextDocumentIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextDocument::descriptor_text()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextDocument::descriptor_media_type()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             TextDocument::descriptor_text(),
-            TextDocument::descriptor_indicator(),
             TextDocument::descriptor_media_type(),
         ]
     });
 
 impl TextDocument {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`TextDocument`] [`::re_types_core::Archetype`]
-pub type TextDocumentIndicator = ::re_types_core::GenericIndicatorComponent<TextDocument>;
-
 impl ::re_types_core::Archetype for TextDocument {
-    type Indicator = TextDocumentIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.TextDocument".into()
@@ -176,14 +160,6 @@ impl ::re_types_core::Archetype for TextDocument {
     #[inline]
     fn display_name() -> &'static str {
         "Text document"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TextDocumentIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

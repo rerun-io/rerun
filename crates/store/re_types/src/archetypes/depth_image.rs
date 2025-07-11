@@ -200,16 +200,6 @@ impl DepthImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.DepthImageIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
@@ -220,8 +210,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [DepthImage::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -234,12 +224,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             DepthImage::descriptor_buffer(),
             DepthImage::descriptor_format(),
-            DepthImage::descriptor_indicator(),
             DepthImage::descriptor_meter(),
             DepthImage::descriptor_colormap(),
             DepthImage::descriptor_depth_range(),
@@ -249,16 +238,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
-/// Indicator component for the [`DepthImage`] [`::re_types_core::Archetype`]
-pub type DepthImageIndicator = ::re_types_core::GenericIndicatorComponent<DepthImage>;
-
 impl ::re_types_core::Archetype for DepthImage {
-    type Indicator = DepthImageIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.DepthImage".into()
@@ -267,14 +251,6 @@ impl ::re_types_core::Archetype for DepthImage {
     #[inline]
     fn display_name() -> &'static str {
         "Depth image"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        DepthImageIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

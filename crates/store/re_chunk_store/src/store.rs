@@ -286,9 +286,6 @@ pub struct ColumnMetadata {
     /// Whether this column represents static data.
     pub is_static: bool,
 
-    /// Whether this column represents an indicator component.
-    pub is_indicator: bool,
-
     /// Whether this column represents a `Clear`-related component.
     ///
     /// `Clear`: [`re_types_core::archetypes::Clear`]
@@ -693,8 +690,6 @@ impl ChunkStore {
             .get(entity_path)
             .is_some_and(|per_descr| per_descr.get(component_descr).is_some());
 
-        let is_indicator = component_descr.is_indicator_component();
-
         use re_types_core::Archetype as _;
         let is_tombstone = re_types_core::archetypes::Clear::all_components()
             .iter()
@@ -702,7 +697,6 @@ impl ChunkStore {
 
         Some(ColumnMetadata {
             is_static,
-            is_indicator,
             is_tombstone,
             is_semantically_empty: *is_semantically_empty,
         })

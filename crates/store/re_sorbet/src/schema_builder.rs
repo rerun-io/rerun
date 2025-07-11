@@ -88,14 +88,12 @@ impl SchemaBuilder {
                                 component: _,
 
                                 is_static,
-                                is_indicator,
                                 is_tombstone,
                                 is_semantically_empty,
                             } = component_column_descriptor;
 
                             *is_static = metadata.is_static;
                             *is_semantically_empty = metadata.is_semantically_empty;
-                            *is_indicator = component_descriptor.is_indicator_component();
                             *is_tombstone = re_types_core::archetypes::Clear::all_components()
                                 .iter()
                                 .any(|descr| descr == &component_descriptor);

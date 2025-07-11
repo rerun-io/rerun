@@ -179,29 +179,13 @@ impl Boxes2D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.Boxes2DIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Boxes2D::descriptor_half_sizes()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Boxes2D::descriptor_centers(),
-            Boxes2D::descriptor_colors(),
-            Boxes2D::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [Boxes2D::descriptor_centers(), Boxes2D::descriptor_colors()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -214,13 +198,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Boxes2D::descriptor_half_sizes(),
             Boxes2D::descriptor_centers(),
             Boxes2D::descriptor_colors(),
-            Boxes2D::descriptor_indicator(),
             Boxes2D::descriptor_radii(),
             Boxes2D::descriptor_labels(),
             Boxes2D::descriptor_show_labels(),
@@ -230,16 +213,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     });
 
 impl Boxes2D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`Boxes2D`] [`::re_types_core::Archetype`]
-pub type Boxes2DIndicator = ::re_types_core::GenericIndicatorComponent<Boxes2D>;
-
 impl ::re_types_core::Archetype for Boxes2D {
-    type Indicator = Boxes2DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Boxes2D".into()
@@ -248,14 +226,6 @@ impl ::re_types_core::Archetype for Boxes2D {
     #[inline]
     fn display_name() -> &'static str {
         "Boxes 2D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Boxes2DIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

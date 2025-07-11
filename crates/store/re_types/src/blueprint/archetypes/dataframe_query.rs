@@ -104,23 +104,13 @@ impl DataframeQuery {
             component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.DataframeQueryIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [DataframeQuery::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -133,10 +123,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            DataframeQuery::descriptor_indicator(),
             DataframeQuery::descriptor_timeline(),
             DataframeQuery::descriptor_filter_by_range(),
             DataframeQuery::descriptor_filter_is_not_null(),
@@ -146,16 +135,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl DataframeQuery {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`DataframeQuery`] [`::re_types_core::Archetype`]
-pub type DataframeQueryIndicator = ::re_types_core::GenericIndicatorComponent<DataframeQuery>;
-
 impl ::re_types_core::Archetype for DataframeQuery {
-    type Indicator = DataframeQueryIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.DataframeQuery".into()
@@ -164,14 +148,6 @@ impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn display_name() -> &'static str {
         "Dataframe query"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        DataframeQueryIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]
