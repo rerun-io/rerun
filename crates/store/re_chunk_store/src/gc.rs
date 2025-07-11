@@ -284,7 +284,6 @@ impl ChunkStore {
             for chunk_id in self
                 .chunk_ids_per_min_row_id
                 .values()
-                .flatten()
                 .filter(|chunk_id| !protected_chunk_ids.contains(chunk_id))
             {
                 if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
@@ -373,10 +372,8 @@ impl ChunkStore {
             if !chunk_ids_dangling.is_empty() {
                 re_tracing::profile_scope!("dangling");
 
-                chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                    chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
-                    !chunk_ids.is_empty()
-                });
+                chunk_ids_per_min_row_id
+                    .retain(|_row_id, chunk_id| !chunk_ids_dangling.contains(chunk_id));
 
                 // Component-less indices
                 for temporal_chunk_ids_per_timeline in temporal_chunk_ids_per_entity.values_mut() {
@@ -583,17 +580,6 @@ impl ChunkStore {
                                 }
                             }
 
-                            {
-                                let min_row_ids_removed = chunk_ids.iter().filter_map(|chunk_id| {
-                                    self.chunks_per_chunk_id
-                                        .get(chunk_id)
-                                        .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
-                                });
-                                for row_id in min_row_ids_removed {
-                                    self.chunk_ids_per_min_row_id.remove(&row_id);
-                                }
-                            }
-
                             chunk_ids_removed.extend(chunk_ids);
                         }
 
@@ -689,6 +675,22 @@ impl ChunkStore {
                 .is_empty()
             {
                 temporal_chunk_ids_per_timeline_componentless.remove_entry();
+            }
+        }
+
+        {
+            let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
+                self.chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+            });
+            for row_id in min_row_ids_removed {
+                if self.chunk_ids_per_min_row_id.remove(&row_id).is_none() {
+                    re_log::warn!(
+                        %row_id,
+                        "Row ID marked for removal was not found, there's bug in the Chunk Store"
+                    );
+                }
             }
         }
 
