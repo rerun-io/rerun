@@ -92,7 +92,7 @@ import pyarrow as pa
 os.environ["RERUN_NOTEBOOK_ASSET"] = "inline"
 
 # Create and display the viewer
-viewer = rr.notebook.Viewer(width=1024, height=350)
+viewer = rr.notebook.Viewer(width="auto", height="auto")
 viewer.display()
 
 # Send table directly to the inline viewer
