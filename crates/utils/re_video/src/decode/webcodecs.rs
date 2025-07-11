@@ -397,7 +397,13 @@ fn init_video_decoder(
             match pending_frame_infos.entry(web_timestamp_us) {
                 Entry::Occupied(mut entry) => {
                     let infos = entry.get_mut();
-                    debug_assert!(!infos.is_empty(), "Frame info lists should never be empty.");
+                    if infos.is_empty() {
+                        entry.remove();
+                        re_log::error_once!(
+                            "No more frame infos for timestamp {web_timestamp_us}. This is an implementation bug."
+                        );
+                        return;
+                    }
 
                     // If there's several frame infos for the same timestamp,
                     // use the oldest one.
