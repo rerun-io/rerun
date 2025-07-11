@@ -188,13 +188,11 @@ fn visualized_components_by_archetype(
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
-                if !descr.is_indicator_component() {
-                    re_log::warn_once!(
-                        "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
-                        id,
-                        descr
-                    );
-                }
+                re_log::warn_once!(
+                    "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
+                    id,
+                    descr
+                );
                 continue;
             };
 

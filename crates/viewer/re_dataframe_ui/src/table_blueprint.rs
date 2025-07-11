@@ -180,7 +180,6 @@ fn test_default_column_display_name() {
                 component_type: Some("rerun.components.Timestamp".into()),
                 archetype: Some("rerun.archetypes.RecordingInfo".into()),
                 is_static: false,
-                is_indicator: false,
                 is_tombstone: false,
                 is_semantically_empty: false
             },
@@ -198,7 +197,6 @@ fn test_default_column_display_name() {
                 archetype: None,
                 component: "building".into(),
                 is_static: false,
-                is_indicator: false,
                 is_tombstone: false,
                 is_semantically_empty: false
             },

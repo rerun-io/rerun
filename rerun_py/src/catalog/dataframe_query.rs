@@ -45,7 +45,6 @@ impl PyDataframeQueryView {
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
-        include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
@@ -68,7 +67,6 @@ impl PyDataframeQueryView {
             query_expression: QueryExpression {
                 view_contents: Some(view_contents),
                 include_semantically_empty_columns,
-                include_indicator_columns,
                 include_tombstone_columns,
                 include_static_columns: if static_only {
                     re_chunk_store::StaticColumnSelection::StaticOnly
