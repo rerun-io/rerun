@@ -91,46 +91,26 @@ impl Clear {
             component_type: Some("rerun.components.ClearIsRecursive".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.ClearIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Clear::descriptor_is_recursive()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Clear::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Clear::descriptor_is_recursive(),
-            Clear::descriptor_indicator(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Clear::descriptor_is_recursive()]);
 
 impl Clear {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`Clear`] [`crate::Archetype`]
-pub type ClearIndicator = crate::GenericIndicatorComponent<Clear>;
-
 impl crate::Archetype for Clear {
-    type Indicator = ClearIndicator;
-
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Clear".into()
@@ -139,14 +119,6 @@ impl crate::Archetype for Clear {
     #[inline]
     fn display_name() -> &'static str {
         "Clear"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ClearIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

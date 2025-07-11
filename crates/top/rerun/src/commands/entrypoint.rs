@@ -600,6 +600,9 @@ where
         return Ok(0);
     }
 
+    #[cfg(feature = "native_viewer")]
+    let profiler = run_profiler(&args);
+
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
@@ -675,6 +678,8 @@ where
             call_source,
             args,
             tokio_runtime.handle(),
+            #[cfg(feature = "native_viewer")]
+            profiler,
         )
     };
 
@@ -703,12 +708,10 @@ fn run_impl(
     call_source: CallSource,
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
+    #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_grpc_client::ConnectionRegistry::new();
-
-    #[cfg(feature = "native_viewer")]
-    let profiler = run_profiler(&args);
 
     #[cfg(feature = "server")]
     let mut is_another_server_running = false;

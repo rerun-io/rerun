@@ -205,27 +205,16 @@ impl LineStrips2D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.LineStrips2DIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [LineStrips2D::descriptor_strips()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             LineStrips2D::descriptor_radii(),
             LineStrips2D::descriptor_colors(),
-            LineStrips2D::descriptor_indicator(),
         ]
     });
 
@@ -239,13 +228,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             LineStrips2D::descriptor_strips(),
             LineStrips2D::descriptor_radii(),
             LineStrips2D::descriptor_colors(),
-            LineStrips2D::descriptor_indicator(),
             LineStrips2D::descriptor_labels(),
             LineStrips2D::descriptor_show_labels(),
             LineStrips2D::descriptor_draw_order(),
@@ -254,16 +242,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     });
 
 impl LineStrips2D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
-/// Indicator component for the [`LineStrips2D`] [`::re_types_core::Archetype`]
-pub type LineStrips2DIndicator = ::re_types_core::GenericIndicatorComponent<LineStrips2D>;
-
 impl ::re_types_core::Archetype for LineStrips2D {
-    type Indicator = LineStrips2DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.LineStrips2D".into()
@@ -272,14 +255,6 @@ impl ::re_types_core::Archetype for LineStrips2D {
     #[inline]
     fn display_name() -> &'static str {
         "Line strips 2D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        LineStrips2DIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

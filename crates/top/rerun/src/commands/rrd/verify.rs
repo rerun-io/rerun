@@ -119,11 +119,11 @@ impl Verifier {
             return Ok(());
         }
 
-        if column_descriptor
-            .component_descriptor()
-            .is_indicator_component()
-        {
+        if component.starts_with("rerun.components.") && component.ends_with("Indicator") {
             // Lacks reflection and data
+            anyhow::bail!(
+                "Indicators are deprecated and should be removed on ingestion in re_sorbet."
+            );
         } else {
             // Verify data
             let component_reflection = self

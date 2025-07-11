@@ -65,23 +65,13 @@ impl EntityBehavior {
             component_type: Some("rerun.components.Visible".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.EntityBehaviorIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [EntityBehavior::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -91,26 +81,20 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            EntityBehavior::descriptor_indicator(),
             EntityBehavior::descriptor_interactive(),
             EntityBehavior::descriptor_visible(),
         ]
     });
 
 impl EntityBehavior {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`EntityBehavior`] [`::re_types_core::Archetype`]
-pub type EntityBehaviorIndicator = ::re_types_core::GenericIndicatorComponent<EntityBehavior>;
-
 impl ::re_types_core::Archetype for EntityBehavior {
-    type Indicator = EntityBehaviorIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.EntityBehavior".into()
@@ -119,14 +103,6 @@ impl ::re_types_core::Archetype for EntityBehavior {
     #[inline]
     fn display_name() -> &'static str {
         "Entity behavior"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        EntityBehaviorIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

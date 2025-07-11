@@ -1145,47 +1145,14 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 }
             }
         })
-        .chain(std::iter::once({
-            let indicator_component_type = format!(
-                "{}Indicator",
-                obj.fqname.replace("archetypes", "components")
-            );
-
-            let doc = "Returns the [`ComponentDescriptor`] for the associated indicator component.";
-
-            quote! {
-                #[doc = #doc]
-                #[inline]
-                pub fn descriptor_indicator() -> ComponentDescriptor {
-                    ComponentDescriptor {
-                        archetype: None,
-                        component: #indicator_component_type.into(),
-                        component_type: None,
-                    }
-                }
-            }
-        }))
         .collect_vec();
-
-    let archetype_name = format_ident!("{}", obj.name);
-    let indicator_name = format!("{}Indicator", obj.name);
-
-    let quoted_indicator_name = format_ident!("{indicator_name}");
-    let quoted_indicator_doc =
-        format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
 
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
-    let (mut num_recommended_descriptors, mut recommended_descriptors) =
+    let (num_recommended_descriptors, recommended_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
     let (num_optional_descriptors, optional_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
-
-    num_recommended_descriptors += 1;
-    recommended_descriptors = quote! {
-        #recommended_descriptors
-        #archetype_name::descriptor_indicator(),
-    };
 
     let num_components_docstring = quote_doc_line(&format!(
         "The total number of components in the archetype: {num_required_descriptors} required, {num_recommended_descriptors} recommended, {num_optional_descriptors} optional"
@@ -1260,12 +1227,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             pub const NUM_COMPONENTS: usize = #num_all_descriptors;
         }
 
-        #[doc = #quoted_indicator_doc]
-        pub type #quoted_indicator_name = ::re_types_core::GenericIndicatorComponent<#name>;
-
         impl ::re_types_core::Archetype for #name {
-            type Indicator = #quoted_indicator_name;
-
             #[inline]
             fn name() -> ::re_types_core::ArchetypeName {
                 #fqname.into()
@@ -1274,12 +1236,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #[inline]
             fn display_name() -> &'static str {
                 #display_name
-            }
-
-            #[inline]
-            fn indicator() -> SerializedComponentBatch {
-                #[allow(clippy::unwrap_used)] // There is no such thing as failing to serialize an indicator.
-                #quoted_indicator_name::DEFAULT.serialized(Self::descriptor_indicator()).unwrap()
             }
 
             #[inline]

@@ -569,7 +569,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         let chunks =
             PendingRow::many_into_chunks(acc.entity_path.clone(), chunk_max_rows_if_unsorted, rows);
         for chunk in chunks {
-            let mut chunk = match chunk {
+            let chunk = match chunk {
                 Ok(chunk) => chunk,
                 Err(err) => {
                     re_log::error!(%err, "corrupt chunk detected, dropping");
@@ -580,17 +580,13 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
             // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
             // as long the batching thread is alive… which is where we currently are.
 
-            // TODO(#8129): Remove the indicator logic completely.
-            let split_indicators = chunk.split_indicators();
             if !chunk.components.is_empty() {
                 // make sure the chunk didn't contain *only* indicators!
                 tx_chunk.send(chunk).ok();
             } else {
-                re_log::warn_once!("Dropping chunk without components:\n{chunk}");
-            }
-            if let Some(split_indicators) = split_indicators {
                 re_log::warn_once!(
-                    "Dropping unexpected chunk with indicators:\n{split_indicators}"
+                    "Dropping chunk without components. Entity path: {}",
+                    chunk.entity_path()
                 );
             }
         }
@@ -621,20 +617,18 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
 
                 match cmd {
-                    Command::AppendChunk(mut chunk) => {
+                    Command::AppendChunk(chunk) => {
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
 
-                        // TODO(#8129): Remove the indicator logic completely.
-                        let split_indicators = chunk.split_indicators();
                         if !chunk.components.is_empty() {
                             // make sure the chunk didn't contain *only* indicators!
                             tx_chunk.send(chunk).ok();
                         } else {
-                            re_log::warn_once!("Dropping chunk without components:\n{chunk}");
-                        }
-                        if let Some(split_indicators) = split_indicators {
-                            re_log::warn_once!("Dropping unexpected chunk with indicators:\n{split_indicators}");
+                            re_log::warn_once!(
+                                "Dropping chunk without components. Entity path: {}",
+                                chunk.entity_path()
+                            );
                         }
                     },
                     Command::AppendRow(entity_path, row) => {

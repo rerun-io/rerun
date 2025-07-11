@@ -95,23 +95,13 @@ impl TensorSliceSelection {
             component_type: Some("rerun.blueprint.components.TensorDimensionIndexSlider".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [TensorSliceSelection::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -123,10 +113,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            TensorSliceSelection::descriptor_indicator(),
             TensorSliceSelection::descriptor_width(),
             TensorSliceSelection::descriptor_height(),
             TensorSliceSelection::descriptor_indices(),
@@ -135,17 +124,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     });
 
 impl TensorSliceSelection {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`TensorSliceSelection`] [`::re_types_core::Archetype`]
-pub type TensorSliceSelectionIndicator =
-    ::re_types_core::GenericIndicatorComponent<TensorSliceSelection>;
-
 impl ::re_types_core::Archetype for TensorSliceSelection {
-    type Indicator = TensorSliceSelectionIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.TensorSliceSelection".into()
@@ -154,14 +137,6 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
     #[inline]
     fn display_name() -> &'static str {
         "Tensor slice selection"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TensorSliceSelectionIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

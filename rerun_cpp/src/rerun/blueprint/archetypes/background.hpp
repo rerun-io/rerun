@@ -8,7 +8,6 @@
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/color.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -29,11 +28,6 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.blueprint.components.BackgroundIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.Background";
 

@@ -115,28 +115,13 @@ impl EncodedImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.EncodedImageIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_blob()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            EncodedImage::descriptor_media_type(),
-            EncodedImage::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_media_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -146,28 +131,22 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             EncodedImage::descriptor_blob(),
             EncodedImage::descriptor_media_type(),
-            EncodedImage::descriptor_indicator(),
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
         ]
     });
 
 impl EncodedImage {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`EncodedImage`] [`::re_types_core::Archetype`]
-pub type EncodedImageIndicator = ::re_types_core::GenericIndicatorComponent<EncodedImage>;
-
 impl ::re_types_core::Archetype for EncodedImage {
-    type Indicator = EncodedImageIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.EncodedImage".into()
@@ -176,14 +155,6 @@ impl ::re_types_core::Archetype for EncodedImage {
     #[inline]
     fn display_name() -> &'static str {
         "Encoded image"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        EncodedImageIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

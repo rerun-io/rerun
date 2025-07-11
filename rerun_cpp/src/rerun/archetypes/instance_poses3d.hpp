@@ -11,7 +11,6 @@
 #include "../components/pose_scale3d.hpp"
 #include "../components/pose_transform_mat3x3.hpp"
 #include "../components/pose_translation3d.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -93,11 +92,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> mat3x3;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.InstancePoses3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.InstancePoses3D";
 

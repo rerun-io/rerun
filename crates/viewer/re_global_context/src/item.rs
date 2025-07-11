@@ -35,7 +35,9 @@ pub enum Item {
     /// An entity or instance in the context of a view's data results.
     DataResult(ViewId, InstancePath),
 
-    /// A dataset or table.
+    /// A table or dataset entry stored in a Redap server.
+    // TODO(ab): this should probably be split into separate variant, and made more consistent with
+    // `AppId` and `TableId`.
     RedapEntry(EntryId),
 
     /// A Redap server.
@@ -143,7 +145,9 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapEntry(entry_id) => write!(f, "{entry_id}"),
+            Self::RedapEntry(entry_id) => {
+                write!(f, "{entry_id}")
+            }
             Self::RedapServer(server) => write!(f, "{server}"),
         }
     }

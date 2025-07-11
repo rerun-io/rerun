@@ -7,7 +7,6 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/clear_is_recursive.hpp"
-#include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
@@ -87,10 +86,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> is_recursive;
 
       public:
-        static constexpr const char IndicatorComponentType[] = "rerun.components.ClearIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Clear";
 

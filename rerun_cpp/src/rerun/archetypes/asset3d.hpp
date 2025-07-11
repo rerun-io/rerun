@@ -9,7 +9,6 @@
 #include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -74,10 +73,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> albedo_factor;
 
       public:
-        static constexpr const char IndicatorComponentType[] = "rerun.components.Asset3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Asset3D";
 

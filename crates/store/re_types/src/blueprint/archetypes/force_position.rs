@@ -72,23 +72,13 @@ impl ForcePosition {
             component_type: Some("rerun.components.Position2D".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.ForcePositionIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ForcePosition::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -99,10 +89,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ForcePosition::descriptor_indicator(),
             ForcePosition::descriptor_enabled(),
             ForcePosition::descriptor_strength(),
             ForcePosition::descriptor_position(),
@@ -110,16 +99,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     });
 
 impl ForcePosition {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`ForcePosition`] [`::re_types_core::Archetype`]
-pub type ForcePositionIndicator = ::re_types_core::GenericIndicatorComponent<ForcePosition>;
-
 impl ::re_types_core::Archetype for ForcePosition {
-    type Indicator = ForcePositionIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ForcePosition".into()
@@ -128,14 +112,6 @@ impl ::re_types_core::Archetype for ForcePosition {
     #[inline]
     fn display_name() -> &'static str {
         "Force position"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ForcePositionIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

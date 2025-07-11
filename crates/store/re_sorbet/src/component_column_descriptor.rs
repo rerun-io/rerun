@@ -51,12 +51,6 @@ pub struct ComponentColumnDescriptor {
     //TODO(#10315): fix this footgun
     pub is_static: bool,
 
-    /// Whether this column represents an indicator component.
-    ///
-    /// *IMPORTANT*: this is not always accurate, see [`crate::ChunkBatch::chunk_schema`].
-    //TODO(#10315): fix this footgun
-    pub is_indicator: bool,
-
     /// Whether this column represents a [`Clear`]-related components.
     ///
     /// [`Clear`]: re_types_core::archetypes::Clear
@@ -89,7 +83,6 @@ impl Ord for ComponentColumnDescriptor {
             component_type,
             store_datatype: _,
             is_static: _,
-            is_indicator: _,
             is_tombstone: _,
             is_semantically_empty: _,
         } = self;
@@ -113,7 +106,6 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             component_type: _,
             store_datatype: _,
             is_static,
-            is_indicator: _,
             is_tombstone: _,
             is_semantically_empty: _,
         } = self;
@@ -202,7 +194,6 @@ impl ComponentColumnDescriptor {
             component_type,
             store_datatype: _,
             is_static,
-            is_indicator,
             is_tombstone,
             is_semantically_empty,
         } = self;
@@ -238,9 +229,6 @@ impl ComponentColumnDescriptor {
 
         if *is_static {
             metadata.insert("rerun:is_static".to_owned(), "true".to_owned());
-        }
-        if *is_indicator {
-            metadata.insert("rerun:is_indicator".to_owned(), "true".to_owned());
         }
         if *is_tombstone {
             metadata.insert("rerun:is_tombstone".to_owned(), "true".to_owned());
@@ -327,7 +315,6 @@ impl ComponentColumnDescriptor {
             component,
             component_type: field.get_opt("rerun:component_type").map(Into::into),
             is_static: field.get_bool("rerun:is_static"),
-            is_indicator: field.get_bool("rerun:is_indicator"),
             is_tombstone: field.get_bool("rerun:is_tombstone"),
             is_semantically_empty: field.get_bool("rerun:is_semantically_empty"),
         };

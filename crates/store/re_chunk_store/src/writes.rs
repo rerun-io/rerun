@@ -28,6 +28,20 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.components().is_empty() {
+            // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
+            // chunk that went through the Sorbet migration process, and ended up with zero
+            // component columns.
+            //
+            // When that happens, the election process in the compactor will get confused, and then not
+            // only that weird empty Chunk will end up being stored, but it will also prevent the
+            // election from making progress and therefore prevent Chunks that are in dire need of
+            // compaction from being compacted.
+            //
+            // The solution is simple: just drop it.
+            return Ok(vec![]);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
@@ -56,15 +70,6 @@ impl ChunkStore {
             re_tracing::profile_scope!("static");
 
             let row_id_range_per_component = chunk.row_id_range_per_component();
-
-            if chunk.num_components() == 0 {
-                // A static chunk without any components would be dangling from the start.
-                // Our dangling logic retrieves relevant chunks by component descriptors,
-                // so it would never be able to find it. So we never add that chunk in the
-                // first place.
-                re_log::debug_once!("Ignoring static chunk without component.");
-                return Ok(Vec::new());
-            }
 
             let mut overwritten_chunk_ids = HashMap::default();
 
@@ -342,10 +347,21 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        self.chunk_ids_per_min_row_id
-            .entry(row_id_range.0)
-            .or_default()
-            .push(chunk.id());
+        // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
+        // with another one, which might or might not have modified the range.
+        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min) {
+            if self
+                .chunk_ids_per_min_row_id
+                .insert(min_row_id, chunk.id())
+                .is_some()
+            {
+                re_log::warn!(
+                    chunk_id = %chunk.id(),
+                    row_id = %row_id_range.0,
+                    "detected duplicated RowId in the data, this will lead to undefined behavior"
+                );
+            }
+        }
 
         for (name, columns) in chunk.timelines() {
             let new_typ = columns.timeline().typ();
@@ -442,6 +458,32 @@ impl ChunkStore {
     fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
+        {
+            // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
+            // on its own.
+
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = self.config;
+
+            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+
+            let total_rows = (chunk.num_rows()) as u64;
+            let is_below_rows_threshold = if chunk.is_time_sorted() {
+                total_rows <= chunk_max_rows
+            } else {
+                total_rows <= chunk_max_rows_if_unsorted
+            };
+
+            if !(is_below_bytes_threshold && is_below_rows_threshold) {
+                return None;
+            }
+        }
+
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
@@ -526,14 +568,15 @@ impl ChunkStore {
                         }
                     }
 
-                    let chunk_id_set = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .get(&time_range.min());
-
                     // Shared start times: 2 points each.
-                    for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
-                        if check_if_chunk_below_threshold(self, chunk_id) {
-                            *candidates.entry(chunk_id).or_default() += 2;
+                    {
+                        let chunk_id_set = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get(&time_range.min());
+                        for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
+                            if check_if_chunk_below_threshold(self, chunk_id) {
+                                *candidates.entry(chunk_id).or_default() += 2;
+                            }
                         }
                     }
                 }
@@ -543,8 +586,11 @@ impl ChunkStore {
         debug_assert!(!candidates.contains_key(&chunk.id()));
 
         let mut candidates = candidates.into_iter().collect_vec();
-        candidates.sort_by_key(|(_chunk_id, points)| *points);
-        candidates.reverse();
+        {
+            re_tracing::profile_scope!("sort_candidates");
+            candidates.sort_by_key(|(_chunk_id, points)| *points);
+            candidates.reverse();
+        }
 
         candidates
             .into_iter()
@@ -591,10 +637,14 @@ impl ChunkStore {
                 .into_values()
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_static_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_static_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_static_chunk_ids.into_iter()
         };
@@ -619,10 +669,14 @@ impl ChunkStore {
                 })
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_temporal_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_temporal_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_temporal_chunk_ids.into_iter()
         };
@@ -909,11 +963,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
         {
             let entity_path = EntityPath::from("/frame-nr-row-no-components");
@@ -923,11 +973,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
         {
             let entity_path = EntityPath::from("/both-log-frame-row-no-components");
@@ -937,11 +983,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
 
         Ok(())

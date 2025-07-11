@@ -10,7 +10,6 @@
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cmath>
@@ -128,10 +127,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> image_plane_distance;
 
       public:
-        static constexpr const char IndicatorComponentType[] = "rerun.components.PinholeIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Pinhole";
 

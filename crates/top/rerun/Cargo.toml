@@ -134,19 +134,21 @@ re_capabilities.workspace = true
 re_chunk.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
-re_format_arrow.workspace = true
 re_format.workspace = true
+re_format_arrow.workspace = true
 re_grpc_client.workspace = true
+re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
-re_log.workspace = true
 re_memory.workspace = true
+re_protos.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
-re_tracing.workspace = true
+re_tracing = { workspace = true, features = ["server"] }
 re_uri.workspace = true
 re_video.workspace = true
 
+ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 camino.workspace = true

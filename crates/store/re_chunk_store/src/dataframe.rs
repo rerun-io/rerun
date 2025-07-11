@@ -163,14 +163,6 @@ pub struct QueryExpression {
     /// `view_contents`: [`QueryExpression::view_contents`]
     pub include_semantically_empty_columns: bool,
 
-    /// Whether the `view_contents` should ignore columns corresponding to indicator components.
-    ///
-    /// Indicator components are marker components, generally automatically inserted by Rerun, that
-    /// helps keep track of the original context in which a piece of data was logged/sent.
-    ///
-    /// `view_contents`: [`QueryExpression::view_contents`]
-    pub include_indicator_columns: bool,
-
     /// Whether the `view_contents` should ignore columns corresponding to `Clear`-related components.
     ///
     /// `view_contents`: [`QueryExpression::view_contents`]
@@ -354,7 +346,6 @@ impl ChunkStore {
             .map(|((entity_path, component_descr), (metadata, datatype))| {
                 let ColumnMetadata {
                     is_static,
-                    is_indicator,
                     is_tombstone,
                     is_semantically_empty,
                 } = metadata;
@@ -376,7 +367,6 @@ impl ChunkStore {
                     component: component_descr.component,
                     component_type: component_descr.component_type,
                     is_static,
-                    is_indicator,
                     is_tombstone,
                     is_semantically_empty,
                 }
@@ -431,7 +421,6 @@ impl ChunkStore {
             archetype: None,
             component: selector.component.as_str().into(),
             is_static: false,
-            is_indicator: false,
             is_tombstone: false,
             is_semantically_empty: false,
         };
@@ -452,13 +441,11 @@ impl ChunkStore {
 
         if let Some(ColumnMetadata {
             is_static,
-            is_indicator,
             is_tombstone,
             is_semantically_empty,
         }) = self.lookup_column_metadata(&selector.entity_path, component_descr)
         {
             result.is_static = is_static;
-            result.is_indicator = is_indicator;
             result.is_tombstone = is_tombstone;
             result.is_semantically_empty = is_semantically_empty;
         };
@@ -477,7 +464,6 @@ impl ChunkStore {
         let QueryExpression {
             view_contents,
             include_semantically_empty_columns,
-            include_indicator_columns,
             include_tombstone_columns,
             include_static_columns,
             filtered_index: _,
@@ -505,8 +491,6 @@ impl ChunkStore {
             let passes_semantically_empty_check =
                 || *include_semantically_empty_columns || !column.is_semantically_empty;
 
-            let passes_indicator_check = || *include_indicator_columns || !column.is_indicator;
-
             let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
 
             let passes_static_check = || match include_static_columns {
@@ -517,7 +501,6 @@ impl ChunkStore {
 
             is_part_of_view_contents()
                 && passes_semantically_empty_check()
-                && passes_indicator_check()
                 && passes_tombstone_check()
                 && passes_static_check()
         };

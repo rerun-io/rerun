@@ -14,7 +14,6 @@
 #include "../components/transform_mat3x3.hpp"
 #include "../components/transform_relation.hpp"
 #include "../components/translation3d.hpp"
-#include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "../rotation3d.hpp"
@@ -326,11 +325,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> axis_length;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.Transform3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Transform3D";
 

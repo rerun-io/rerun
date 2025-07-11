@@ -9,11 +9,12 @@ use re_protos::{
     TypeConversionError,
     catalog::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
-        ReadDatasetEntryRequest,
+        ReadDatasetEntryRequest, ReadTableEntryRequest,
         ext::{
             CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails, LanceTable,
-            ProviderDetails as _, ReadDatasetEntryResponse, RegisterTableResponse, TableEntry,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            ProviderDetails as _, ReadDatasetEntryResponse, ReadTableEntryResponse,
+            RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse,
         },
     },
     common::v1alpha1::{
@@ -152,6 +153,20 @@ where
             .try_into()?;
 
         Ok(response.dataset_entry)
+    }
+
+    /// Get information on a table entry.
+    pub async fn read_table_entry(&mut self, entry_id: EntryId) -> Result<TableEntry, StreamError> {
+        let response: ReadTableEntryResponse = self
+            .inner()
+            .read_table_entry(ReadTableEntryRequest {
+                id: Some(entry_id.into()),
+            })
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.table_entry)
     }
 
     /// Get a list of partition IDs for the given dataset entry ID.

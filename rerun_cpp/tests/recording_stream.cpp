@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 
+#include <arrow/array/array_base.h>
 #include <arrow/buffer.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -17,6 +18,14 @@ namespace fs = std::filesystem;
 #define TEST_TAG "[recording_stream]"
 
 struct BadComponent {};
+
+// Not making this static makes lsan_suppressions.supp miss this.
+// Output of use counter for this shared_ptr indicates that we're not leaking the shared ptr itself.
+// If we do leak it, it's very unclear how that would be happening - somewhere in the FFI transition?
+// But then why would it not show up for anything else? More likely a false positive.
+static std::shared_ptr<arrow::Array> null_arrow_array() {
+    return std::make_shared<arrow::NullArray>(1);
+}
 
 template <>
 struct rerun::Loggable<BadComponent> {
@@ -439,7 +448,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             AND_GIVEN("a cell with an invalid component type") {
                 rerun::ComponentBatch cell = {};
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
-                cell.array = rerun::components::indicator_arrow_array();
+                cell.array = null_arrow_array();
 
                 THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
                     CHECK(

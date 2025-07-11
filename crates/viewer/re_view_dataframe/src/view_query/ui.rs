@@ -236,13 +236,11 @@ impl Query {
         // Filter component
         //
 
-        let mut all_components = ctx
+        let all_components = ctx
             .recording_engine()
             .store()
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
-
-        all_components.retain(|descr| !descr.is_indicator_component());
 
         // The list of suggested components is built as follows:
         // - consider all component descriptors that have an archetype
@@ -260,10 +258,9 @@ impl Query {
                     })
                 })
                 .flat_map(|(archetype, archetype_reflection)| {
-                    archetype_reflection.required_fields().filter_map(|field| {
-                        let descr = field.component_descriptor(*archetype);
-                        (!descr.is_indicator_component()).then_some(descr)
-                    })
+                    archetype_reflection
+                        .required_fields()
+                        .map(|field| field.component_descriptor(*archetype))
                 })
                 .filter_map(|c| all_components.contains(&c).then_some(c.component))
                 .collect::<ComponentIdentifierSet>()
