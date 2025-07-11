@@ -8,6 +8,7 @@ use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
+use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
 // ----------------------------------------------------------------------------
 
@@ -84,6 +85,12 @@ impl<W: std::io::Write> DroppableEncoder<W> {
         self.encoder.append(message)
     }
 
+    /// Returns the size in bytes of the encoded data.
+    #[inline]
+    pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
+        self.encoder.append_proto(message)
+    }
+
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         if !self.is_finished {
@@ -151,6 +158,23 @@ impl<W: std::io::Write> Encoder<W> {
         match self.serializer {
             Serializer::Protobuf => {
                 encoder::encode(&mut self.scratch, message, self.compression)?;
+
+                self.write
+                    .write_all(&self.scratch)
+                    .map(|_| self.scratch.len() as _)
+                    .map_err(EncodeError::Write)
+            }
+        }
+    }
+
+    /// Returns the size in bytes of the encoded data.
+    pub fn append_proto(&mut self, message: LogMsgProto) -> Result<u64, EncodeError> {
+        re_tracing::profile_function!();
+
+        self.scratch.clear();
+        match self.serializer {
+            Serializer::Protobuf => {
+                encoder::encode_proto(&mut self.scratch, message)?;
 
                 self.write
                     .write_all(&self.scratch)

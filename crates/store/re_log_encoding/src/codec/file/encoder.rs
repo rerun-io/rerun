@@ -3,6 +3,7 @@ use crate::Compression;
 use crate::codec::arrow::encode_arrow;
 use crate::encoder::EncodeError;
 use re_log_types::LogMsg;
+use re_protos::log_msg::v1alpha1 as proto;
 
 pub(crate) fn encode(
     buf: &mut Vec<u8>,
@@ -11,7 +12,7 @@ pub(crate) fn encode(
 ) -> Result<(), EncodeError> {
     use re_protos::external::prost::Message as _;
     use re_protos::log_msg::v1alpha1::{
-        self as proto, ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
+        ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
     };
 
     match message {
@@ -47,6 +48,41 @@ pub(crate) fn encode(
         LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
             let blueprint_activation_command: BlueprintActivationCommand =
                 blueprint_activation_command.clone().into();
+            let header = MessageHeader {
+                kind: MessageKind::BlueprintActivationCommand,
+                len: blueprint_activation_command.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            blueprint_activation_command.encode(buf)?;
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn encode_proto(buf: &mut Vec<u8>, message: proto::LogMsg) -> Result<(), EncodeError> {
+    use re_protos::external::prost::Message as _;
+    use re_protos::log_msg::v1alpha1 as proto;
+
+    // TODO: unwrap
+    match message.msg.unwrap() {
+        proto::log_msg::Msg::SetStoreInfo(set_store_info) => {
+            let header = MessageHeader {
+                kind: MessageKind::SetStoreInfo,
+                len: set_store_info.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            set_store_info.encode(buf)?;
+        }
+        proto::log_msg::Msg::ArrowMsg(arrow_msg) => {
+            let header = MessageHeader {
+                kind: MessageKind::ArrowMsg,
+                len: arrow_msg.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            arrow_msg.encode(buf)?;
+        }
+        proto::log_msg::Msg::BlueprintActivationCommand(blueprint_activation_command) => {
             let header = MessageHeader {
                 kind: MessageKind::BlueprintActivationCommand,
                 len: blueprint_activation_command.encoded_len() as u64,
