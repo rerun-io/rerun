@@ -91,11 +91,21 @@ pub struct CompactCommand {
 
     /// Configures the number of extra compaction passes to run on the data.
     ///
+    /// Compaction in Rerun is an iterative, convergent process: every single pass will improve the
+    /// quality of the compaction (with diminishing returns), until it eventually converges into a
+    /// stable state.
     /// The more passes, the better the compaction quality.
     ///
-    /// If the data reaches optimal compaction, the computation will stop immediately in any case.
+    /// Under the hood, you can think of it as a kind of clustering algorithm: every incoming chunk
+    /// finds the most appropriate chunk to merge into, thereby creating a new cluster, which is
+    /// itself just a bigger chunk. On the next pass, these new clustered chunks will themselves
+    /// look for other clusters to merge into, yielding even bigger clusters, which again are also
+    /// just chunks. And so on and so forth.
+    ///
+    /// If/When the data reaches a stable optimum, the computation will stop immediately, regardless of
+    /// how many passes are left.
     #[arg(long = "num-pass", default_value_t = 50)]
-    num_passes: u32,
+    num_extra_passes: u32,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = false)]
@@ -110,7 +120,7 @@ impl CompactCommand {
             max_bytes,
             max_rows,
             max_rows_if_unsorted,
-            num_passes,
+            num_extra_passes,
             continue_on_error,
         } = self;
 
@@ -137,7 +147,7 @@ impl CompactCommand {
         }
 
         merge_and_compact(
-            *num_passes,
+            *num_extra_passes,
             *continue_on_error,
             &store_config,
             path_to_input_rrds,
@@ -220,8 +230,7 @@ fn merge_and_compact(
         }
     }
 
-    let mut pass = 0;
-    while pass < num_passes {
+    for pass in 0..num_passes {
         re_log::info!(pass, "running extra compaction pass…");
 
         let now = std::time::Instant::now();
@@ -264,8 +273,6 @@ fn merge_and_compact(
             re_log::info!(pass, time=?now.elapsed(), "cannot possibly improve further, stopping early");
             break;
         }
-
-        pass += 1;
     }
 
     let mut rrd_out = if let Some(path) = path_to_output_rrd {

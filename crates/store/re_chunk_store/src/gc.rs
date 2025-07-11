@@ -513,7 +513,6 @@ impl ChunkStore {
         // and slow. Rather we need to surgically remove the superfluous chunks.
 
         let mut chunk_ids_removed = HashSet::default();
-        let mut row_ids_removed = HashSet::default();
 
         // Because we have both a per-component and a component-less index that refer to the same
         // chunks, we must make sure that they get garbage collected in sync.
@@ -584,13 +583,17 @@ impl ChunkStore {
                                 }
                             }
 
-                            // We must keep track of the min Row IDs associated with these chunks too,
-                            // so that we don't have to rely on an O(n**2) `retain` call later.
-                            row_ids_removed.extend(chunk_ids.iter().filter_map(|chunk_id| {
-                                self.chunks_per_chunk_id
-                                    .get(chunk_id)
-                                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
-                            }));
+                            {
+                                let min_row_ids_removed = chunk_ids.iter().filter_map(|chunk_id| {
+                                    self.chunks_per_chunk_id
+                                        .get(chunk_id)
+                                        .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                                });
+                                for row_id in min_row_ids_removed {
+                                    self.chunk_ids_per_min_row_id.remove(&row_id);
+                                }
+                            }
+
                             chunk_ids_removed.extend(chunk_ids);
                         }
 
@@ -686,13 +689,6 @@ impl ChunkStore {
                 .is_empty()
             {
                 temporal_chunk_ids_per_timeline_componentless.remove_entry();
-            }
-        }
-
-        {
-            re_tracing::profile_scope!("retain");
-            for row_id in row_ids_removed {
-                self.chunk_ids_per_min_row_id.remove(&row_id);
             }
         }
 
