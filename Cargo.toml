@@ -164,12 +164,7 @@ egui = { version = "0.32", features = [
 ] }
 egui_commonmark = { version = "0.21", default-features = false }
 egui_dnd = { version = "0.13" }
-egui_extras = { version = "0.32", features = [
-  "http",
-  "image",
-  "serde",
-  "svg",
-] }
+egui_extras = { version = "0.32", features = ["http", "image", "serde", "svg"] }
 egui_kittest = { version = "0.32", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.33" # https://github.com/emilk/egui_plot
 egui_table = "0.4" # https://github.com/rerun-io/egui_table
