@@ -258,6 +258,10 @@ impl RecordingStreamBuilder {
 
     /// Specifies the configuration of the internal data batching mechanism.
     ///
+    /// If not set, the default configuration for the currently active sink will be used.
+    /// Changing the sink at a later point will *not* change the batcher configuration.
+    /// Any environment variables as specified on [`ChunkBatcherConfig`] will always override respective settings.
+    ///
     /// See [`ChunkBatcher`] & [`ChunkBatcherConfig`] for more information.
     #[inline]
     pub fn batcher_config(mut self, config: ChunkBatcherConfig) -> Self {
@@ -288,14 +292,10 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
+        let sink = crate::log_sink::BufferedSink::new();
         let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
-            RecordingStream::new(
-                store_info,
-                properties,
-                batcher_config,
-                Box::new(crate::log_sink::BufferedSink::new()),
-            )
+            RecordingStream::new(store_info, properties, batcher_config, Box::new(sink))
         } else {
             re_log::debug!("Rerun disabled - call to buffered() ignored");
             Ok(RecordingStream::disabled())
@@ -686,7 +686,14 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(self) -> (bool, StoreInfo, Option<RecordingInfo>, ChunkBatcherConfig) {
+    pub fn into_args(
+        self,
+    ) -> (
+        bool,
+        StoreInfo,
+        Option<RecordingInfo>,
+        Option<ChunkBatcherConfig>,
+    ) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -714,15 +721,6 @@ impl RecordingStreamBuilder {
             store_source,
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         };
-
-        let batcher_config =
-            batcher_config.unwrap_or_else(|| match ChunkBatcherConfig::from_env() {
-                Ok(config) => config,
-                Err(err) => {
-                    re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
-                    ChunkBatcherConfig::default()
-                }
-            });
 
         (
             enabled,
@@ -1009,14 +1007,23 @@ impl RecordingStream {
     ///
     /// You can find sinks in [`crate::sink`].
     ///
+    /// If no batcher configuration is provided, the default batcher configuration for the sink will be used.
+    /// Any environment variables as specified in [`ChunkBatcherConfig`] will always override respective settings.
+    ///
     /// See also: [`RecordingStreamBuilder`].
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         store_info: StoreInfo,
         recording_info: Option<RecordingInfo>,
-        batcher_config: ChunkBatcherConfig,
+        batcher_config: Option<ChunkBatcherConfig>,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
+        let batcher_config = batcher_config.unwrap_or_else(|| sink.default_batcher_config());
+        let batcher_config = batcher_config.apply_env().unwrap_or_else(|err| {
+            re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
+            batcher_config
+        });
+
         let sink = (store_info.store_id.kind == StoreKind::Recording)
             .then(forced_sink_path)
             .flatten()

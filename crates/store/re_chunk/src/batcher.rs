@@ -155,6 +155,12 @@ impl ChunkBatcherConfig {
         hooks: BatcherHooks::NONE,
     };
 
+    /// Low-latency configuration, preferred when streaming directly to a viewer.
+    pub const LOW_LATENCY: Self = Self {
+        flush_tick: Duration::from_millis(8), // We want it fast enough for 60 Hz for real time camera feel
+        ..Self::DEFAULT
+    };
+
     /// Always flushes ASAP.
     pub const ALWAYS: Self = Self {
         flush_tick: Duration::MAX,

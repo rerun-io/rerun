@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::Mutex;
+use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
-use re_log_encoding::encoder::encode_as_bytes_local;
-use re_log_encoding::encoder::{EncodeError, local_raw_encoder};
+use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -69,6 +69,11 @@ pub trait LogSink: Send + Sync + 'static {
                 );
             }
         }
+    }
+
+    /// The default batcher configuration used for new (!) [`RecordingStream`]s with this sink.
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        ChunkBatcherConfig::DEFAULT
     }
 
     /// As [`std::any::Any`] for dynamic downcasting.
