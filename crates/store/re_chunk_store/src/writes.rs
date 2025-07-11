@@ -71,15 +71,6 @@ impl ChunkStore {
 
             let row_id_range_per_component = chunk.row_id_range_per_component();
 
-            if chunk.num_components() == 0 {
-                // A static chunk without any components would be dangling from the start.
-                // Our dangling logic retrieves relevant chunks by component descriptors,
-                // so it would never be able to find it. So we never add that chunk in the
-                // first place.
-                re_log::debug_once!("Ignoring static chunk without component.");
-                return Ok(Vec::new());
-            }
-
             let mut overwritten_chunk_ids = HashMap::default();
 
             for (component_desc, list_array) in chunk.components().iter() {
@@ -356,16 +347,20 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        if self
-            .chunk_ids_per_min_row_id
-            .insert(row_id_range.0, chunk.id())
-            .is_some()
-        {
-            re_log::warn!(
-                chunk_id = %chunk.id(),
-                row_id = %row_id_range.0,
-                "detected duplicated RowId in the data, this will lead to undefined behavior"
-            );
+        // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
+        // with another one, which might or might not have modified the range.
+        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min) {
+            if self
+                .chunk_ids_per_min_row_id
+                .insert(min_row_id, chunk.id())
+                .is_some()
+            {
+                re_log::warn!(
+                    chunk_id = %chunk.id(),
+                    row_id = %row_id_range.0,
+                    "detected duplicated RowId in the data, this will lead to undefined behavior"
+                );
+            }
         }
 
         for (name, columns) in chunk.timelines() {
@@ -968,11 +963,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
         {
             let entity_path = EntityPath::from("/frame-nr-row-no-components");
@@ -982,11 +973,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
         {
             let entity_path = EntityPath::from("/both-log-frame-row-no-components");
@@ -996,11 +983,7 @@ mod tests {
             let chunk = Arc::new(chunk);
 
             let events = store.insert_chunk(&chunk)?;
-            assert!(
-                events.len() == 1
-                    && events[0].chunk.id() == chunk.id()
-                    && events[0].kind == ChunkStoreDiffKind::Addition,
-            );
+            assert!(events.is_empty());
         }
 
         Ok(())
