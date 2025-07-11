@@ -356,8 +356,17 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        self.chunk_ids_per_min_row_id
-            .insert(row_id_range.0, chunk.id());
+        if self
+            .chunk_ids_per_min_row_id
+            .insert(row_id_range.0, chunk.id())
+            .is_some()
+        {
+            re_log::warn!(
+                chunk_id = %chunk.id(),
+                row_id = %row_id_range.0,
+                "detected duplicated RowId in the data, this will lead to undefined behavior"
+            );
+        }
 
         for (name, columns) in chunk.timelines() {
             let new_typ = columns.timeline().typ();
