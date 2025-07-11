@@ -598,22 +598,23 @@ typos = ">=1.16.20"
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
+jupyter = ">=1.0"                # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
+parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0"              # For `thumbnails.py`
 pygithub = "==2.6.1"             # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
-types-Deprecated = "==1.2.9.2"   # Type hint stubs
-types-requests = ">=2.31,<3"     # Type hint stubs
 types-decorator = "*"            # Type hint stubs
+types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-pytz = "*"                 # Type hint stubs
-parso = ">=0.8.4, <0.9"
+types-requests = ">=2.31,<3"     # Type hint stubs
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
 maturin = "==1.8.1"
+nodejs = ">=22.0"        # rerun_notebook needs nodejs to build the wheel
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
 pyarrow = "18.0.0.*"
-nodejs = ">=22.0"        # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
@@ -675,7 +676,13 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
 rerun-sdk = { path = "rerun_py", editable = true }
-rerun-notebook = { path = "rerun_notebook", editable = true }
+
+# The same applies to the notebook.
+# However, in order to build rerun-notebook and thus to even activate environments with the
+# python-dev environment you first have to build `js-build-base`.
+# This in itself is a usability problem, but since Pixi may want to upgrade or setup these environments
+# when running the `js-build-base` task itself, it makes bootstrapping impossible without manual intervention.
+#rerun-notebook = { path = "rerun_notebook", editable = true }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
