@@ -80,12 +80,7 @@ impl PyDataframeQueryView {
                 filtered_index_values: None,
                 using_index_values: None,
                 filtered_is_not_null: None,
-                //TODO(#10327): this should not be necessary!
-                sparse_fill_strategy: if static_only {
-                    SparseFillStrategy::LatestAtGlobal
-                } else {
-                    SparseFillStrategy::None
-                },
+                sparse_fill_strategy: SparseFillStrategy::None,
                 selection: None,
             },
             partition_ids: vec![],
