@@ -179,7 +179,6 @@ fn schema_static_columns() -> anyhow::Result<()> {
     let query = QueryExpression {
         view_contents: None,
         include_semantically_empty_columns: false,
-        include_indicator_columns: false,
         include_tombstone_columns: false,
         include_static_columns: StaticColumnSelection::Both,
         filtered_index: None,

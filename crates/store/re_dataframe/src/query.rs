@@ -2337,7 +2337,6 @@ mod tests {
         let query_expr = QueryExpression {
             view_contents: None,
             include_semantically_empty_columns: false,
-            include_indicator_columns: false,
             include_tombstone_columns: false,
             include_static_columns: re_chunk_store::StaticColumnSelection::Both,
             filtered_index: None,
