@@ -118,6 +118,55 @@ impl SmartChannelSource {
             | Self::JsChannel { .. } => None,
         }
     }
+
+    /// Loading text for sources that load data from a specific source (e.g. a file or a URL).
+    ///
+    /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
+    /// For a status string that applies to all sources, see [`Self::status_string`].
+    pub fn loading_string(&self) -> Option<String> {
+        match self {
+            // We only show things we know are very-soon-to-be recordings:
+            Self::File(path) => Some(format!("Loading {}…", path.display())),
+            Self::RrdHttpStream { url, .. } => Some(format!("Loading {url}…")),
+            Self::RedapGrpcStream { uri, .. } => Some(format!("Loading {uri}…")),
+
+            Self::RrdWebEventListener
+            | Self::JsChannel { .. }
+            | Self::MessageProxy { .. }
+            | Self::Sdk
+            | Self::Stdin => {
+                // For all of these esources we're not actively loading data, but rather waiting for data to be sent.
+                // These show up in the top panel - see `top_panel.rs`.
+                None
+            }
+        }
+    }
+
+    /// Status string describing waiting or loading status for a source.
+    pub fn status_string(&self) -> String {
+        match self {
+            Self::File(path) => {
+                format!("Loading {}…", path.display())
+            }
+            Self::Stdin => "Loading stdin…".to_owned(),
+            Self::RrdHttpStream { url, .. } => {
+                format!("Waiting for data on {url}…")
+            }
+            Self::MessageProxy(uri) => {
+                format!("Waiting for data on {uri}…")
+            }
+            Self::RedapGrpcStream { uri, .. } => {
+                format!(
+                    "Waiting for data on {}…",
+                    uri.clone().without_query_and_fragment()
+                )
+            }
+            Self::RrdWebEventListener | Self::JsChannel { .. } => {
+                "Waiting for logging data…".to_owned()
+            }
+            Self::Sdk => "Waiting for logging data from SDK".to_owned(),
+        }
+    }
 }
 
 /// Identifies who/what sent a particular message in a smart channel.

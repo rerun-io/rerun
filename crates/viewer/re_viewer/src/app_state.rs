@@ -111,8 +111,8 @@ impl Default for AppState {
 }
 
 pub(crate) struct WelcomeScreenState {
-    /// The normal welcome screen should be hidden. Show a fallback "no data ui" instead.
-    pub hide: bool,
+    /// The normal examples screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide_examples: bool,
 
     /// The opacity of the welcome screen during fade-in.
     pub opacity: f32,
@@ -648,6 +648,7 @@ impl AppState {
                                         command_sender,
                                         welcome_screen_state,
                                         is_history_enabled,
+                                        &rx_log.sources(),
                                     );
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
