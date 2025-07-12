@@ -280,7 +280,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "emath 0.31.1",
+ "emath",
  "rerun",
 ]
 
@@ -2962,7 +2962,7 @@ checksum = "4a631732d995184114016fab22fc7e3faf73d6841c2d7650395fe251fbcd9285"
 dependencies = [
  "bytemuck",
  "color-hex",
- "emath 0.32.0",
+ "emath",
  "serde",
 ]
 
@@ -3022,7 +3022,7 @@ dependencies = [
  "ahash",
  "backtrace",
  "bitflags 2.9.1",
- "emath 0.32.0",
+ "emath",
  "epaint",
  "log",
  "nohash-hasher",
@@ -3180,7 +3180,7 @@ checksum = "524318041a8ea90c81c738e8985f8ad9e3f9bed636b03c2ff37b218113ed5121"
 dependencies = [
  "ahash",
  "egui",
- "emath 0.32.0",
+ "emath",
 ]
 
 [[package]]
@@ -3228,12 +3228,6 @@ name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
-
-[[package]]
-name = "emath"
-version = "0.31.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e4cadcff7a5353ba72b7fea76bf2122b5ebdbc68e8155aa56dfdea90083fe1b"
 
 [[package]]
 name = "emath"
@@ -3363,7 +3357,7 @@ dependencies = [
  "ahash",
  "bytemuck",
  "ecolor",
- "emath 0.32.0",
+ "emath",
  "epaint_default_fonts",
  "log",
  "nohash-hasher",
@@ -5042,7 +5036,7 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "emath 0.32.0",
+ "emath",
  "glam",
  "rand 0.8.5",
  "re_tracing",
@@ -7520,7 +7514,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "document-features",
- "emath 0.32.0",
+ "emath",
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
@@ -8200,7 +8194,7 @@ dependencies = [
  "document-features",
  "ecolor",
  "egui_plot",
- "emath 0.32.0",
+ "emath",
  "glam",
  "half",
  "image",
@@ -8639,7 +8633,7 @@ dependencies = [
  "egui_kittest",
  "egui_plot",
  "ehttp",
- "emath 0.32.0",
+ "emath",
  "glam",
  "image",
  "itertools 0.14.0",
@@ -8726,7 +8720,7 @@ dependencies = [
  "egui-wgpu",
  "egui_kittest",
  "egui_tiles",
- "emath 0.32.0",
+ "emath",
  "glam",
  "half",
  "home",
