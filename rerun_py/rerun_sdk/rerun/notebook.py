@@ -364,22 +364,41 @@ class Viewer:
 
         self._viewer.set_active_recording(recording_id)
 
-    def set_active_partition_url(
+    def open_url(
         self,
-        *,
         url: str,
     ) -> None:
         """
-        Set the active partition url for the viewer.
+        Open a URL in the viewer.
 
         Parameters
         ----------
         url: str
-            The URL of the partition to set the viewer to.
+            The URL to open.
+
+            Must point to a valid data source.
 
         """
 
-        self._viewer.set_active_partition_url(url)
+        self._viewer.open_url(url)
+
+    def close_url(
+        self,
+        url: str,
+    ) -> None:
+        """
+        Close an open URL in the viewer.
+
+        Does nothing if the URL is not open.
+
+        Parameters
+        ----------
+        url: str
+            The URL to close.
+
+        """
+
+        self._viewer.close_url(url)
 
     @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
     @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")

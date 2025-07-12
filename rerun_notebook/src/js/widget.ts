@@ -133,8 +133,12 @@ class ViewerWidget {
         this.set_recording_id(msg.recording_id ?? null)
         break;
       }
-      case "partition_url": {
-        this.set_partition_url(msg.partition_url ?? null)
+      case "open_url": {
+        this.viewer.open(msg.url)
+        break;
+      }
+      case "close_url": {
+        this.viewer.close(msg.url)
         break;
       }
       default: {
@@ -181,12 +185,6 @@ class ViewerWidget {
     }
 
     this.viewer.set_active_recording_id(recording_id);
-  };
-
-  set_partition_url(partition_url: string | null){
-    if (this.url) this.viewer.close(this.url);
-    if (partition_url) this.viewer.open(partition_url);
-    this.url = partition_url;
   };
 }
 

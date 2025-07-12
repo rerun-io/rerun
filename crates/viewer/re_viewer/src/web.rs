@@ -209,6 +209,8 @@ impl WebHandle {
             app.command_sender.clone(),
         ) {
             app.add_log_receiver(rx);
+            app.egui_ctx
+                .request_repaint_after(std::time::Duration::from_millis(10));
         }
     }
 
@@ -221,6 +223,9 @@ impl WebHandle {
         if let Some(store_hub) = app.store_hub.as_mut() {
             store_hub.remove_recording_by_uri(url);
         }
+
+        app.egui_ctx
+            .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
     /// Open a new channel for streaming data.
