@@ -6,6 +6,7 @@
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/dataframe_query.hpp"
 #include "blueprint/archetypes/entity_behavior.hpp"
+#include "blueprint/archetypes/eye3d.hpp"
 #include "blueprint/archetypes/force_center.hpp"
 #include "blueprint/archetypes/force_collision_radius.hpp"
 #include "blueprint/archetypes/force_link.hpp"

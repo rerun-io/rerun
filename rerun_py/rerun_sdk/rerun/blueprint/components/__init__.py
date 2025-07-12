@@ -12,6 +12,7 @@ from .component_column_selector import ComponentColumnSelector, ComponentColumnS
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .enabled import Enabled, EnabledBatch
+from .eye3d_kind import Eye3DKind, Eye3DKindArrayLike, Eye3DKindBatch, Eye3DKindLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .force_distance import ForceDistance, ForceDistanceBatch
@@ -68,6 +69,10 @@ __all__ = [
     "Corner2DLike",
     "Enabled",
     "EnabledBatch",
+    "Eye3DKind",
+    "Eye3DKindArrayLike",
+    "Eye3DKindBatch",
+    "Eye3DKindLike",
     "FilterByRange",
     "FilterByRangeBatch",
     "FilterIsNotNull",

@@ -21,6 +21,11 @@ Configuration for the 3D line grid.
 * `plane`: In what plane the grid is drawn.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
+### `eye_3d`
+Configuration for the 3D eye
+
+* `kind`: Eye kind
+* `translation_speed`: Translation speed of the eye in the view.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

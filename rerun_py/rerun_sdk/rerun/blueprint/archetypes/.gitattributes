@@ -6,6 +6,7 @@ background.py linguist-generated=true
 container_blueprint.py linguist-generated=true
 dataframe_query.py linguist-generated=true
 entity_behavior.py linguist-generated=true
+eye3d.py linguist-generated=true
 force_center.py linguist-generated=true
 force_collision_radius.py linguist-generated=true
 force_link.py linguist-generated=true
