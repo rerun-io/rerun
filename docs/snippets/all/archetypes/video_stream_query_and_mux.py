@@ -58,9 +58,13 @@ def mux_h264_to_mp4(times: ChunkedArray, samples: ChunkedArray, output_path: str
     output_container = av.open(output_path, mode="w")
     output_stream = output_container.add_stream_from_template(input_stream)
 
+    # Timestamps are made relative to the first timestamp.
+    start_time = times.chunk(0)[0]
+    print(f"Offsetting timestamps with start time: {start_time}")
+
     # Demux and mux packets.
     for packet, time in zip(input_container.demux(input_stream), times):
-        packet.pts = int(time.value)
+        packet.pts = int(time.value - start_time.value)
         packet.dts = packet.pts  # dts == pts since there's no B-frames.
         packet.stream = output_stream
         output_container.mux(packet)
@@ -76,14 +80,14 @@ def main() -> None:
         "-o", "--output", type=str, default="output.mp4", help="Output mp4 file path (default: output.mp4)"
     )
     parser.add_argument(
-        "--video-entity", type=str, default="video_stream", help="Video entity path to query (default: video_stream)"
+        "--entity", type=str, default="video_stream", help="Video entity path to query (default: video_stream)"
     )
     parser.add_argument("--timeline", type=str, default="time", help="Name of the timeline to query (default: time)")
     args = parser.parse_args()
 
     # Load recording data
     print(f"Loading recording from: {args.input_rrd}")
-    times, samples = read_h264_samples_from_rrd(args.input_rrd, args.video_entity, args.timeline)
+    times, samples = read_h264_samples_from_rrd(args.input_rrd, args.entity, args.timeline)
 
     print(f"Creating video file: {args.output}")
     mux_h264_to_mp4(times, samples, args.output)
