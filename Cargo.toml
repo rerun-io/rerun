@@ -149,33 +149,29 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # egui-crates:
-ecolor = "0.31.1"
-eframe = { version = "0.31.1", default-features = false, features = [
+ecolor = "0.32"
+eframe = { version = "0.32", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.31.1", features = [
+egui = { version = "0.32", features = [
   "callstack",
   "color-hex",
   "log",
   "rayon",
 ] }
-egui_commonmark = { version = "0.20.0", default-features = false }
-egui_dnd = { version = "0.12.0" }
-egui_extras = { version = "0.31.1", features = [
-  "http",
-  "image",
-  "serde",
-  "svg",
-] }
-egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
-egui_plot = "0.32.1" # https://github.com/emilk/egui_plot
-egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
-egui_tiles = "0.12.0" # https://github.com/rerun-io/egui_tiles
-egui-wgpu = "0.31.1"
-emath = "0.31.1"
+egui_commonmark = { version = "0.21", default-features = false }
+egui_dnd = { version = "0.13" }
+egui_extras = { version = "0.32", features = ["http", "image", "serde", "svg"] }
+egui_kittest = { version = "0.32", features = ["wgpu", "snapshot", "eframe"] }
+egui_plot = "0.33" # https://github.com/emilk/egui_plot
+egui_table = "0.4" # https://github.com/rerun-io/egui_table
+egui_tiles = "0.13" # https://github.com/rerun-io/egui_tiles
+egui-wgpu = "0.32"
+emath = "0.32"
+walkers = "0.43"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -222,7 +218,7 @@ fjadra = "0.2.1"
 flatbuffers = "25.2.10"
 futures = "0.3"
 futures-util = "0.3"
-getrandom = "0.2"
+getrandom = "0.3"
 glam = { version = "0.30.3", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
@@ -362,7 +358,6 @@ url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
-walkers = "0.36.0"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
@@ -766,13 +761,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
-eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
-egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
-emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+# emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -783,16 +778,16 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/76
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" }
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
-# walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
+#walkers = { git = "https://github.com/rerun-io/walkers", branch = "antoine/egui-0.32" } # https://github.com/podusowski/walkers/pull/345
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
