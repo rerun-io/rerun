@@ -183,6 +183,11 @@ features = [
   "cpp",  # Not implemented
   "rust", # Not implemented
 ]
+"archetypes/video_stream_query_and_mux" = [
+  "py",   # Doesn't produce an rrd file.
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
