@@ -730,3 +730,52 @@ impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::Ind
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct DoMaintenanceRequest {
+    pub entry: crate::common::v1alpha1::ext::DatasetHandle,
+    pub build_scalar_indexes: bool,
+    pub compact_fragments: bool,
+    pub cleanup_before: Option<jiff::Timestamp>,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::DoMaintenanceRequest,
+    ) -> Result<Self, Self::Error> {
+        let cleanup_before = value
+            .cleanup_before
+            .map(|ts| jiff::Timestamp::new(ts.seconds, ts.nanos))
+            .transpose()?;
+
+        Ok(Self {
+            entry: value
+                .entry
+                .ok_or_else(|| {
+                    TypeConversionError::missing_field::<
+                        crate::manifest_registry::v1alpha1::DoMaintenanceRequest,
+                    >("entry")
+                })?
+                .try_into()?,
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before,
+        })
+    }
+}
+
+impl From<DoMaintenanceRequest> for crate::manifest_registry::v1alpha1::DoMaintenanceRequest {
+    fn from(value: DoMaintenanceRequest) -> Self {
+        Self {
+            entry: Some(value.entry.into()),
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
+                seconds: ts.as_second(),
+                nanos: ts.subsec_nanosecond(),
+            }),
+        }
+    }
+}

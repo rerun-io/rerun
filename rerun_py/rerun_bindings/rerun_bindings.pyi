@@ -1362,6 +1362,7 @@ class DatasetEntry(Entry):
         self,
         build_scalar_index: bool = False,
         compact_fragments: bool = False,
+        cleanup_before: Optional[datetime] = None,
     ) -> None:
         """Perform maintenance tasks on the datasets."""
 

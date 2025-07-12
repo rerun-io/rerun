@@ -4,6 +4,7 @@ use tonic::codegen::{Body, StdError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
+use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
     catalog::v1alpha1::{
@@ -20,9 +21,7 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
-    external::prost::bytes::Bytes,
     frontend::v1alpha1::{
-        DoMaintenanceRequest,
         ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
         frontend_service_client::FrontendServiceClient,
     },
@@ -338,13 +337,18 @@ where
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
+        cleanup_before: Option<jiff::Timestamp>,
     ) -> Result<(), StreamError> {
         self.inner()
-            .do_maintenance(tonic::Request::new(DoMaintenanceRequest {
-                dataset_id: Some(dataset_id.into()),
-                build_scalar_indexes,
-                compact_fragments,
-            }))
+            .do_maintenance(tonic::Request::new(
+                re_protos::frontend::v1alpha1::ext::DoMaintenanceRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    build_scalar_indexes,
+                    compact_fragments,
+                    cleanup_before,
+                }
+                .into(),
+            ))
             .await?;
 
         Ok(())

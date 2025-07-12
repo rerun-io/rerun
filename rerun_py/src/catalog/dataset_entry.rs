@@ -690,6 +690,7 @@ impl PyDatasetEntry {
     #[pyo3(signature = (
             build_scalar_index = false,
             compact_fragments = false,
+            cleanup_before = None,
     ))]
     #[instrument(skip_all, err)]
     fn do_maintenance(
@@ -697,12 +698,34 @@ impl PyDatasetEntry {
         py: Python<'_>,
         build_scalar_index: bool,
         compact_fragments: bool,
+        cleanup_before: Option<Bound<'_, PyAny>>,
     ) -> PyResult<()> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.do_maintenance(py, dataset_id, build_scalar_index, compact_fragments)
+        let cleanup_before_nanos = cleanup_before
+            .as_ref()
+            .map(|s| py_object_to_i64(py, s))
+            .transpose()?;
+
+        let cleanup_before = cleanup_before_nanos
+            .map(|ts_nanos| {
+                jiff::Timestamp::from_nanosecond(ts_nanos as i128).map_err(|err| {
+                    PyRuntimeError::new_err(format!(
+                        "failed converting cleanup_before timestamp: {err}"
+                    ))
+                })
+            })
+            .transpose()?;
+
+        connection.do_maintenance(
+            py,
+            dataset_id,
+            build_scalar_index,
+            compact_fragments,
+            cleanup_before,
+        )
     }
 }
 
