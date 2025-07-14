@@ -1,5 +1,218 @@
 # Rerun changelog
 
+## Unreleased
+
+* 📖 [Release blogpost](https://rerun.io/blog/release-0.24#speculative-link)
+* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24#speculative-link)
+
+### ✨ Overview & highlights
+
+#### Tagged components
+
+TODO: explain background briefly
+
+* blueprint defaults
+* no more indicators
+
+TODO: screenshots of ui changes
+
+#### Video Streams
+
+TODO: explain
+TODO: screenshots
+
+#### Light Mode
+
+TODO: explain
+TODO: screenshots 
+
+#### Multi Sink
+
+TODO: explain
+TODO: snippet
+
+#### Other new features in short
+
+* New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#specuatlive-link) archetype
+* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#specuatlive-link) utility for Rust
+* [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
+* [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
+
+### 🔎 Details
+
+TODO(andreas): Update this list before final release.
+
+#### 🪵 Log API
+- Remove deprecated `Scalar`, `SeriesLine`, `SeriesPoint` archetypes [#9892](https://github.com/rerun-io/rerun/pull/9892)
+- Remove untagged `Component::descriptor()` [#10038](https://github.com/rerun-io/rerun/pull/10038)
+- Add `Cylinders3D` archetype [#10139](https://github.com/rerun-io/rerun/pull/10139)
+- Provide `AnyValues` helpers in Rust SDK [#10074](https://github.com/rerun-io/rerun/pull/10074)
+- Rename `ComponentDescriptor` fields and use colons in Sorbet metadata [#10245](https://github.com/rerun-io/rerun/pull/10245)
+- Stop logging indicators and drop them during migration [#10521](https://github.com/rerun-io/rerun/pull/10521)
+- Make `SeriesPoints::markers` component required [#10572](https://github.com/rerun-io/rerun/pull/10572)
+- Remove indicators from codegen, `rerun_py`, and `rerun_cpp` [#10581](https://github.com/rerun-io/rerun/pull/10581)    
+- Removes remnants of indicators from dataframe queries and viewer [#10584](https://github.com/rerun-io/rerun/pull/10584)
+- `rerun rrd stats` [#10593](https://github.com/rerun-io/rerun/pull/10593)
+
+#### 🌊 C++ API
+- (CMake) download arrow inside the rerun build folder instead of general binary folder [#10141](https://github.com/rerun-io/rerun/pull/10141) (thanks [@jzubizarreta](https://github.com/jzubizarreta)!)
+- Fix documentation wording on which arrow-cpp version to use [#10235](https://github.com/rerun-io/rerun/pull/10235)    
+- Disable gRPC server history for Spawn/CLI [#10314](https://github.com/rerun-io/rerun/pull/10314)
+- Add `set_sinks` to C++ `RecordingStream` [#10359](https://github.com/rerun-io/rerun/pull/10359)
+
+#### 🐍 Python API
+- Add `Dataset.register_batch` and wrappers for task ids [#9895](https://github.com/rerun-io/rerun/pull/9895)
+- Introduce `ConnectionRegistry` for centralised redap client and token management [#10078](https://github.com/rerun-io/rerun/pull/10078)
+- Build in `manylinux_2_28` container [#10148](https://github.com/rerun-io/rerun/pull/10148)
+- Add APIs to Dataset to query and update the associated blueprint [#10156](https://github.com/rerun-io/rerun/pull/10156)
+- Support for seconds-since-Epoch numpy arrays for constructing `TimeColumn` [#10168](https://github.com/rerun-io/rerun/pull/10168) (thanks [@MichaelGrupp](https://github.com/MichaelGrupp)!)
+- Fix initializing two recordings with the same recording id causing SDK hangs [#10201](https://github.com/rerun-io/rerun/pull/10201) (thanks [@AhmedMousa-ag](https://github.com/AhmedMousa-ag)!)
+- Improve `rerun_notebook` startup times [#10111](https://github.com/rerun-io/rerun/pull/10111)
+- New dataset API for just retrieving chunk_ids associated with a query [#10261](https://github.com/rerun-io/rerun/pull/10261)
+- Multi-sink / `tee` Python API [#10158](https://github.com/rerun-io/rerun/pull/10158)
+- Rename to `tee` to `set_sinks` [#10312](https://github.com/rerun-io/rerun/pull/10312)
+- Add support for `index=None` to local and remote dataframe APIs and deprecate `select_static` [#10332](https://github.com/rerun-io/rerun/pull/10332)
+- Disable gRPC server history for Spawn/CLI [#10314](https://github.com/rerun-io/rerun/pull/10314)
+- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)
+- Add partition ID to `TimeUpdateEvent` [#10403](https://github.com/rerun-io/rerun/pull/10403)
+- Fix `set_time_ctrl` not doing anything when called twice [#10547](https://github.com/rerun-io/rerun/pull/10547)       
+- Notebook auto-sizing [#10554](https://github.com/rerun-io/rerun/pull/10554)
+- Add `RegisterTable` rpc, `LanceTable` message, and related proto changes [#10538](https://github.com/rerun-io/rerun/pull/10538)
+
+#### 🦀 Rust API
+- Update MSRV to 1.85 [#9798](https://github.com/rerun-io/rerun/pull/9798)
+- Improve `rerun` crate forwarding, removing need to depend on other `re_*` crates for viewer customization [#9825](https://github.com/rerun-io/rerun/pull/9825)
+- Update glam to 0.30, and replace `re_math` with `macaw` [#10119](https://github.com/rerun-io/rerun/pull/10119)        
+- Add `RecordingStream::set_timestamp_nanos_since_epoch` [#10200](https://github.com/rerun-io/rerun/pull/10200)
+- Add `set_sinks` to Rust `RecordingStream` [#10336](https://github.com/rerun-io/rerun/pull/10336)
+- Disable gRPC server history for Spawn/CLI [#10314](https://github.com/rerun-io/rerun/pull/10314)
+- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)
+- Experimental connection status inspection for Rust gRPC connections [#10433](https://github.com/rerun-io/rerun/pull/10433)
+- Implement `From` for more narrow integers and floats for `Float64` [#10463](https://github.com/rerun-io/rerun/pull/10463)
+
+#### 🪳 Bug fixes
+- Fix non-deterministic mesh rendering order [#10117](https://github.com/rerun-io/rerun/pull/10117)
+- LeRobot Dataloader: Mark robot type as optional [#10174](https://github.com/rerun-io/rerun/pull/10174)
+- Fix some actions happening on key _up_ instead of key _down_ [#10232](https://github.com/rerun-io/rerun/pull/10232)   
+- Fix showing too much data for generic blobs of data (arrow `ListArray`s) [#10275](https://github.com/rerun-io/rerun/pull/10275)
+- Make it possible to click the barchart view to select it [#10257](https://github.com/rerun-io/rerun/pull/10257)       
+- Fix integer overflow in `TimeSeriesView` for too large timestamps [#10310](https://github.com/rerun-io/rerun/pull/10310)
+- Fix `SIGBUS` startup crash on some Mac systems [#10334](https://github.com/rerun-io/rerun/pull/10334)
+- Silence harmeless "Unrecognized present mode" warning [#10379](https://github.com/rerun-io/rerun/pull/10379)
+- Fix videos re-decoding on some ui interactions [#10420](https://github.com/rerun-io/rerun/pull/10420)
+- Fix video stuttering on Firefox & Safari when encountering b-frames [#10405](https://github.com/rerun-io/rerun/pull/10405)
+- Fix pixel picking ui width changing rapidly by padding values [#10481](https://github.com/rerun-io/rerun/pull/10481)  
+- Fix: don't always pick `/` as the origin when creating new views [#10514](https://github.com/rerun-io/rerun/pull/10514)
+- Fix tooltips sometimes jumping around on screen [#10527](https://github.com/rerun-io/rerun/pull/10527)
+- Fix spurious decode errors with H.264 on native Viewer [#10539](https://github.com/rerun-io/rerun/pull/10539)
+- Fix H.264 with b-frames not decoding last few frames on native [#10545](https://github.com/rerun-io/rerun/pull/10545) 
+- Fix visible time range documentation on property inheritance [#10618](https://github.com/rerun-io/rerun/pull/10618)   
+
+#### 🌁 Viewer improvements
+- Basic ability to show components that only differ by archetype/field name on same entity [#9877](https://github.com/rerun-io/rerun/pull/9877)
+- Visualizers' data queries take component tags into account [#9887](https://github.com/rerun-io/rerun/pull/9887)       
+- Allow editing existing recording properties, like name [#10003](https://github.com/rerun-io/rerun/pull/10003)
+- Fix issues when combining `InstancePoses3D` with transform properties of `Boxes3D`/`Ellipsoids3D`/`Capsules3D` [#10010](https://github.com/rerun-io/rerun/pull/10010)
+- Replace `tinystl` with `stl_io` to support more stl files [#9997](https://github.com/rerun-io/rerun/pull/9997)        
+- Introduce variant UIs in `re_component_ui` [#10034](https://github.com/rerun-io/rerun/pull/10034)
+- Simple built-in URDF loader [#10105](https://github.com/rerun-io/rerun/pull/10105)
+- New `VideoStream` archetype for loose video samples [#10126](https://github.com/rerun-io/rerun/pull/10126)
+- Enable `VideoStream` H264 on the web [#10189](https://github.com/rerun-io/rerun/pull/10189)
+- Ensure LeRobot Dataloader logs tagged components [#10213](https://github.com/rerun-io/rerun/pull/10213)
+- Support loading ROS paths in URDF loader [#10231](https://github.com/rerun-io/rerun/pull/10231)
+- Move the default plot legend to bottom left instead of right [#10233](https://github.com/rerun-io/rerun/pull/10233)   
+- Add `FillMode` to `Capsules3D` [#10238](https://github.com/rerun-io/rerun/pull/10238)
+- Make plot axis thinner [#10234](https://github.com/rerun-io/rerun/pull/10234)
+- Add a UI Slider to change speed of eye camera in 3D Views [#10085](https://github.com/rerun-io/rerun/pull/10085) (thanks [@jccampagne](https://github.com/jccampagne)!)
+- Delay showing video wait-for-decoder spinner on seeks [#10404](https://github.com/rerun-io/rerun/pull/10404)
+- Rename `RecordingProperties` to `RecordingInfo` [#10411](https://github.com/rerun-io/rerun/pull/10411)
+- Sharper icons on low-dpi screens (which is most of them) [#10508](https://github.com/rerun-io/rerun/pull/10508)       
+- Add tab-bar button to hide a view [#10520](https://github.com/rerun-io/rerun/pull/10520)
+- Improve error message for FFmpeg not found [#10617](https://github.com/rerun-io/rerun/pull/10617)
+
+#### 🚀 Performance improvements
+- Add detailed view of latency [#10173](https://github.com/rerun-io/rerun/pull/10173)
+- Update tower http and tonic dependencies, improving `LogMsg` decode speed [#10209](https://github.com/rerun-io/rerun/pull/10209)
+- Free up memory of inactive recordings [#10537](https://github.com/rerun-io/rerun/pull/10537)
+- Compaction: performance & quality improvements [#10594](https://github.com/rerun-io/rerun/pull/10594)
+
+#### 🧑‍🏫 Examples
+- Fix custom view example not instantiating visualizer by default [#9762](https://github.com/rerun-io/rerun/pull/9762)  
+- Improve custom visualizer example [#9994](https://github.com/rerun-io/rerun/pull/9994)
+- New example: log and animate a URDF file [#10210](https://github.com/rerun-io/rerun/pull/10210)
+- Add Python example snippet for `VideoStream` using `av` to encode numpy images [#10279](https://github.com/rerun-io/rerun/pull/10279)
+- Standalone example for compressed video streams [#10297](https://github.com/rerun-io/rerun/pull/10297)
+
+#### 📚 Docs
+- Fix errors in getting-started/data-in documentation [#10134](https://github.com/rerun-io/rerun/pull/10134) (thanks [@wyfo](https://github.com/wyfo)!)
+- Make Rust getting-started example more idiomatic [#10137](https://github.com/rerun-io/rerun/pull/10137) (thanks [@wyfo](https://github.com/wyfo)!)
+- Show help clicking the `?` as well as by just hovering it [#10160](https://github.com/rerun-io/rerun/pull/10160)      
+- Provide descriptor-aware `AnyValues` example in snippets [#10225](https://github.com/rerun-io/rerun/pull/10225)       
+- Update Video reference manual with information about `VideoStream` [#10423](https://github.com/rerun-io/rerun/pull/10423)
+- Publish JS docs [#10410](https://github.com/rerun-io/rerun/pull/10410)
+- Document changes to `VisualizerOverride` [#10486](https://github.com/rerun-io/rerun/pull/10486)
+- Improve documentation around `AnyValues` and custom data [#10589](https://github.com/rerun-io/rerun/pull/10589)       
+
+#### 🖼 UI improvements
+- Introduce a DataFusion-backed table widget [#9764](https://github.com/rerun-io/rerun/pull/9764)
+- Use `DataFusionTableWidget` for table entries [#9869](https://github.com/rerun-io/rerun/pull/9869)
+- Selection ui now handles different images on the same entity path [#9928](https://github.com/rerun-io/rerun/pull/9928)
+- Add a light mode theme [#9953](https://github.com/rerun-io/rerun/pull/9953)
+- Save all selected recordings [#9968](https://github.com/rerun-io/rerun/pull/9968)
+- Use archetype field name in ui instead of component name [#9983](https://github.com/rerun-io/rerun/pull/9983)
+- Add keyboard navigation to the blueprint and streams tree [#9960](https://github.com/rerun-io/rerun/pull/9960)        
+- Allow selecting multiple recordings [#10004](https://github.com/rerun-io/rerun/pull/10004)
+- Remove `data_based_visualizability_filter` from `BarChart` and `EncodedImage` [#10029](https://github.com/rerun-io/rerun/pull/10029)
+- Add support for variant UIs in the DataFusion table widget and show a button in the partition table recording links [#10035](https://github.com/rerun-io/rerun/pull/10035)
+- Switch icons to .svg [#10055](https://github.com/rerun-io/rerun/pull/10055)
+- Improve button tooltip help text [#10103](https://github.com/rerun-io/rerun/pull/10103)
+- Group components by archetype in the streams panel [#10124](https://github.com/rerun-io/rerun/pull/10124)
+- Group components by archetype in selection panel [#10140](https://github.com/rerun-io/rerun/pull/10140)
+- Zoom X/Y axes individually, in time series and bar chart view [#10159](https://github.com/rerun-io/rerun/pull/10159)  
+- Toggle maximized view with Ctrl+M [#10162](https://github.com/rerun-io/rerun/pull/10162)
+- Add option to link the X-axis of multiple time plots [#10146](https://github.com/rerun-io/rerun/pull/10146)
+- Animate the maximization of a view [#10163](https://github.com/rerun-io/rerun/pull/10163)
+- Group dataframe table by archetype and use new table design [#10149](https://github.com/rerun-io/rerun/pull/10149)    
+- Add "deep inspection" selection ui for the new `VideoStream` archetype [#10239](https://github.com/rerun-io/rerun/pull/10239)
+- Add duration field to the recording UI [#10284](https://github.com/rerun-io/rerun/pull/10284) (thanks [@pweids](https://github.com/pweids)!)
+- Add catalog entry table [#10290](https://github.com/rerun-io/rerun/pull/10290)
+- Highlight help buttons until the user clicks one of them [#10301](https://github.com/rerun-io/rerun/pull/10301)       
+- Highlight redap server list item if active [#10340](https://github.com/rerun-io/rerun/pull/10340)
+- Allow editing connection settings for an existing redap server [#10300](https://github.com/rerun-io/rerun/pull/10300) 
+- Improved menu styling [#10357](https://github.com/rerun-io/rerun/pull/10357)
+- Disambiguate component entries in selection panel [#10368](https://github.com/rerun-io/rerun/pull/10368)
+- Display the partition ID in recording selection panel [#10387](https://github.com/rerun-io/rerun/pull/10387)
+- Show average FPS of selected video [#10479](https://github.com/rerun-io/rerun/pull/10479)
+- Rename the 'Welcome screen' option to 'Rerun examples' [#10503](https://github.com/rerun-io/rerun/pull/10503)
+- Show arrow data in header tooltips and ever more data when alt is down [#10526](https://github.com/rerun-io/rerun/pull/10526)
+- Add support for table entries in the redap browser [#10569](https://github.com/rerun-io/rerun/pull/10569)
+- Add a 'copy entry url' button next to the name of remote datasets and table [#10571](https://github.com/rerun-io/rerun/pull/10571)
+- Show loading screen when starting viewer with a URL [#10587](https://github.com/rerun-io/rerun/pull/10587)
+
+#### 🕸️ Web
+- Support callbacks in React [#10518](https://github.com/rerun-io/rerun/pull/10518)
+
+#### 🧑‍💻 Dev-experience
+- Show stderr output of external dataloaders [#10087](https://github.com/rerun-io/rerun/pull/10087)
+- Dynamically Set Active Partition URL and Select Time Window [#10557](https://github.com/rerun-io/rerun/pull/10557) (thanks [@ntjohnson1](https://github.com/ntjohnson1)!)
+
+#### 🗣 Refactors
+- Add descriptors to all remaining blueprint components [#9908](https://github.com/rerun-io/rerun/pull/9908)
+- Require `ComponentDescriptor` in `ChunkBuilder::with_component_batch*` methods [#10026](https://github.com/rerun-io/rerun/pull/10026)
+- Make `archetype_field_name` mandatory in `ComponentDescriptor` [#10082](https://github.com/rerun-io/rerun/pull/10082) 
+
+#### 📦 Dependencies
+- Update to wgpu 0.25 [#10009](https://github.com/rerun-io/rerun/pull/10009) (thanks [@Vrixyz](https://github.com/Vrixyz)!)
+- Update Arrow and DataFusion dedpendencies [#10195](https://github.com/rerun-io/rerun/pull/10195)
+- Fix copy and cut from notebook cells [#10401](https://github.com/rerun-io/rerun/pull/10401)
+- Update egui to 0.32 [#10604](https://github.com/rerun-io/rerun/pull/10604)
+
+#### 🤷‍ Other
+- Add migration tool for legacy .rrd files [#9816](https://github.com/rerun-io/rerun/pull/9816)
+- Add support for remote dataset blueprints [#10128](https://github.com/rerun-io/rerun/pull/10128)
+- Use new column name in `blueprint::datatypes::ComponentColumnSelector` [#10215](https://github.com/rerun-io/rerun/pull/10215)
+- Support u16/u32/u64 wide Rerun `enum` types in data definition [#10252](https://github.com/rerun-io/rerun/pull/10252) 
+
 
 ## [0.23.4](https://github.com/rerun-io/rerun/compare/0.23.3..0.23.4) - 2025-06-26
 - Fix `rerun rrd migrate` tool [#10350](https://github.com/rerun-io/rerun/pull/10350)
