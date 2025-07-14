@@ -9,7 +9,7 @@ table EyeControls3D (
     /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.
-    /// Defaults to `Orbital`.
+    /// Defaults to orbital.
     kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 1000);
 
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).

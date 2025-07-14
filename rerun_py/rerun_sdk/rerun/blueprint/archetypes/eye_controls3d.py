@@ -44,7 +44,7 @@ class EyeControls3D(Archetype):
             The kind of the eye for the spatial 3D view.
 
             This controls how the eye movement behaves when the user interact with the view.
-            Defaults to `Orbital`.
+            Defaults to orbital.
         translation_speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
@@ -93,7 +93,7 @@ class EyeControls3D(Archetype):
             The kind of the eye for the spatial 3D view.
 
             This controls how the eye movement behaves when the user interact with the view.
-            Defaults to `Orbital`.
+            Defaults to orbital.
         translation_speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
@@ -132,7 +132,7 @@ class EyeControls3D(Archetype):
     # The kind of the eye for the spatial 3D view.
     #
     # This controls how the eye movement behaves when the user interact with the view.
-    # Defaults to `Orbital`.
+    # Defaults to orbital.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

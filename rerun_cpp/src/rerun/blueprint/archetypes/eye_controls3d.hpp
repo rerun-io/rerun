@@ -26,7 +26,7 @@ namespace rerun::blueprint::archetypes {
         /// The kind of the eye for the spatial 3D view.
         ///
         /// This controls how the eye movement behaves when the user interact with the view.
-        /// Defaults to `Orbital`.
+        /// Defaults to orbital.
         std::optional<ComponentBatch> kind;
 
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
@@ -69,7 +69,7 @@ namespace rerun::blueprint::archetypes {
         /// The kind of the eye for the spatial 3D view.
         ///
         /// This controls how the eye movement behaves when the user interact with the view.
-        /// Defaults to `Orbital`.
+        /// Defaults to orbital.
         EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
             kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
             return std::move(*this);

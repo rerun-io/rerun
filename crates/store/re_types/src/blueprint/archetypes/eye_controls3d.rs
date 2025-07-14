@@ -29,7 +29,7 @@ pub struct EyeControls3D {
     /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.
-    /// Defaults to `Orbital`.
+    /// Defaults to orbital.
     pub kind: Option<SerializedComponentBatch>,
 
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
@@ -194,7 +194,7 @@ impl EyeControls3D {
     /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.
-    /// Defaults to `Orbital`.
+    /// Defaults to orbital.
     #[inline]
     pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
         self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);

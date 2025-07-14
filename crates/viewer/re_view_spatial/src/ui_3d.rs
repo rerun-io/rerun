@@ -450,15 +450,13 @@ impl SpatialView3D {
             ctx.blueprint_query,
             query.view_id,
         );
-        let state1 = state.clone();
-        let view_ctx = self.view_context(ctx, query.view_id, &state1);
 
         let view_eye = state.state_3d.update_eye(
             &response,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
-            &view_ctx,
+            &self.view_context(ctx, query.view_id, &state.clone()),
             &eye_property,
         );
         let eye = view_eye.to_eye();
@@ -676,6 +674,8 @@ impl SpatialView3D {
         for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
+
+        let view_ctx = self.view_context(ctx, query.view_id, state);
 
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
