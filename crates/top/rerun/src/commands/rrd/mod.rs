@@ -81,7 +81,12 @@ pub enum RrdCommands {
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
 
-    // TODO: doc
+    /// Manipulates the metadata of log message streams without decoding the payloads.
+    ///
+    /// This can be used to combine multiple .rrd files into a single recording.
+    /// Example: `rerun rrd route --recording-id my_recording /my/recordings/*.rrd > output.rrd`
+    ///
+    /// Note: Because the payload of the messages is never decoded, no migration or verification will performed.
     Route(RouteCommand),
 
     /// Compute important statistics for one or more .rrd/.rbl files/streams.

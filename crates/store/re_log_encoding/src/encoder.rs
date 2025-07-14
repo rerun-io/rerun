@@ -35,6 +35,9 @@ pub enum EncodeError {
 
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
+
+    #[error("Missing field: {0}")]
+    MissingField(&'static str),
 }
 
 // ----------------------------------------------------------------------------

@@ -64,8 +64,7 @@ pub(crate) fn encode_proto(buf: &mut Vec<u8>, message: proto::LogMsg) -> Result<
     use re_protos::external::prost::Message as _;
     use re_protos::log_msg::v1alpha1 as proto;
 
-    // TODO: unwrap
-    match message.msg.unwrap() {
+    match message.msg.ok_or(EncodeError::MissingField("msg"))? {
         proto::log_msg::Msg::SetStoreInfo(set_store_info) => {
             let header = MessageHeader {
                 kind: MessageKind::SetStoreInfo,
