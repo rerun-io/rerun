@@ -65,7 +65,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
             Ok(spatial_view_state) => {
                 let bounding_boxes = &spatial_view_state.bounding_boxes;
                 match spatial_view_state.state_3d.view_eye {
-                    Some(eye) => eye.fallback_speed_for_mode(bounding_boxes) as f64,
+                    Some(eye) => eye.fallback_speed_for_kind(bounding_boxes) as f64,
                     None => 1.0_f64,
                 }
             }

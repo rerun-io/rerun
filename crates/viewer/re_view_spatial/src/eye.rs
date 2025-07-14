@@ -271,7 +271,7 @@ impl ViewEye {
     }
 
     /// Compute the actual speed depending on the [`Eye3DKind`].
-    pub fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
+    pub fn fallback_speed_for_kind(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
         match self.kind {
             Eye3DKind::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
             Eye3DKind::Orbital => self.orbit_radius,
@@ -464,7 +464,7 @@ impl ViewEye {
             Ok(linear_speed) => **linear_speed as f32,
             Err(err) => {
                 re_log::error!("Error while getting linear speed for eye {}", err);
-                self.fallback_speed_for_mode(bounding_boxes)
+                self.fallback_speed_for_kind(bounding_boxes)
             }
         }
     }
@@ -581,7 +581,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
         let speed = match maybe_state {
             Ok(spatial_view_state) => {
                 let bounding_boxes = &spatial_view_state.bounding_boxes;
-                self.fallback_speed_for_mode(bounding_boxes) as f64
+                self.fallback_speed_for_kind(bounding_boxes) as f64
             }
             Err(view_system_execution_error) => {
                 re_log::error!("Error while downcasting {}", view_system_execution_error);
