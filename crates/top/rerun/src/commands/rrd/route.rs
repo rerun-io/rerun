@@ -22,11 +22,11 @@ pub struct RouteCommand {
     #[clap(long = "continue-on-error", default_value_t = false)]
     continue_on_error: bool,
 
-    /// If set, specifies the application id of the resulting recordings.
+    /// If set, specifies the application id of the output.
     #[clap(long = "application-id")]
     application_id: Option<String>,
 
-    /// If set, specifies the recording id of the resulting recordings.
+    /// If set, specifies the recording id of the output.
     ///
     /// When this flag is set and multiple input .rdd files are specified,
     /// blueprint activation commands will be dropped from the resulting
