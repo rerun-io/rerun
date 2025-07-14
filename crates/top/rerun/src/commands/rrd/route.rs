@@ -13,11 +13,11 @@ use crate::commands::{read_raw_rrd_streams_from_file_or_stdin, stdio::InputSourc
 pub struct RouteCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     ///
-    /// The id of the resulting recording is specified by the first input file.
+    /// Blueprints are currently dropped from the input.
     path_to_input_rrds: Vec<String>,
 
     /// Path to write to. Writes to standard output if unspecified.
-    #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
+    #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
     path_to_output_rrd: Option<String>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
@@ -85,7 +85,7 @@ fn process_messages<W: std::io::Write>(
     let mut num_unexpected_msgs = 0;
     let mut num_blueprints_msgs = 0;
 
-    // TODO(grtlr): encoding should match the orginal
+    // TODO(grtlr): encoding should match the original
     let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
     let mut encoder = DroppableEncoder::new(version, options, writer)?;
@@ -146,7 +146,7 @@ fn process_messages<W: std::io::Write>(
     encoder.finish()?;
 
     re_log::info_once!(
-        "Processed {num_total_msgs} messages, dropped {num_blueprints_msgs} blueprints, and encountered {num_unexpected_msgs} unexpected messages."
+        "Processed {num_total_msgs} messages, dropped {num_blueprints_msgs} blueprint messages, and encountered {num_unexpected_msgs} unexpected messages."
     );
     Ok(())
 }
