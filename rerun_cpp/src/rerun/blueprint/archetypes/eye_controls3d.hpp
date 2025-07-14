@@ -31,7 +31,9 @@ namespace rerun::blueprint::archetypes {
 
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
         ///
-        /// Defaults to a scene size dependent value.
+        /// The default depends on the control kind.
+        /// For orbit cameras it is derived from the distance to the the orbit center.
+        /// For first person cameras it is derived from the scene size.
         std::optional<ComponentBatch> translation_speed;
 
       public:
@@ -75,7 +77,9 @@ namespace rerun::blueprint::archetypes {
 
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
         ///
-        /// Defaults to a scene size dependent value.
+        /// The default depends on the control kind.
+        /// For orbit cameras it is derived from the distance to the the orbit center.
+        /// For first person cameras it is derived from the scene size.
         EyeControls3D with_translation_speed(
             const rerun::components::LinearSpeed& _translation_speed
         ) && {

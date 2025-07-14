@@ -48,7 +48,9 @@ class EyeControls3D(Archetype):
         translation_speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
-            Defaults to a scene size dependent value.
+            The default depends on the control kind.
+            For orbit cameras it is derived from the distance to the the orbit center.
+            For first person cameras it is derived from the scene size.
 
         """
 
@@ -95,7 +97,9 @@ class EyeControls3D(Archetype):
         translation_speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
-            Defaults to a scene size dependent value.
+            The default depends on the control kind.
+            For orbit cameras it is derived from the distance to the the orbit center.
+            For first person cameras it is derived from the scene size.
 
         """
 
@@ -139,7 +143,9 @@ class EyeControls3D(Archetype):
     )
     # Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     #
-    # Defaults to a scene size dependent value.
+    # The default depends on the control kind.
+    # For orbit cameras it is derived from the distance to the the orbit center.
+    # For first person cameras it is derived from the scene size.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

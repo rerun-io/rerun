@@ -2479,7 +2479,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "translation_speed", display_name : "Translation speed",
                     component_type : "rerun.components.LinearSpeed".into(), docstring_md
                     :
-                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nDefaults to a scene size dependent value.",
+                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nThe default depends on the control kind.\nFor orbit cameras it is derived from the distance to the the orbit center.\nFor first person cameras it is derived from the scene size.",
                     is_required : false, },
                 ],
             },

@@ -34,7 +34,9 @@ pub struct EyeControls3D {
 
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     ///
-    /// Defaults to a scene size dependent value.
+    /// The default depends on the control kind.
+    /// For orbit cameras it is derived from the distance to the the orbit center.
+    /// For first person cameras it is derived from the scene size.
     pub translation_speed: Option<SerializedComponentBatch>,
 }
 
@@ -201,7 +203,9 @@ impl EyeControls3D {
 
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     ///
-    /// Defaults to a scene size dependent value.
+    /// The default depends on the control kind.
+    /// For orbit cameras it is derived from the distance to the the orbit center.
+    /// For first person cameras it is derived from the scene size.
     #[inline]
     pub fn with_translation_speed(
         mut self,
