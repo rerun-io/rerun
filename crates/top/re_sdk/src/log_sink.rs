@@ -3,10 +3,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::Mutex;
+use re_chunk::{BatcherHooks, ChunkBatcherConfig, external::arrow::array::RecordBatch};
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
-use re_log_encoding::encoder::encode_as_bytes_local;
-use re_log_encoding::encoder::{EncodeError, local_raw_encoder};
-use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
+use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
+use re_log_types::{ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
 
@@ -71,6 +71,11 @@ pub trait LogSink: Send + Sync + 'static {
         }
     }
 
+    /// The default batcher configuration used for new (!) [`RecordingStream`]s with this sink.
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        ChunkBatcherConfig::DEFAULT
+    }
+
     /// As [`std::any::Any`] for dynamic downcasting.
     fn as_any(&self) -> &dyn std::any::Any;
 }
@@ -118,6 +123,64 @@ impl LogSink for MultiSink {
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
         Vec::new()
+    }
+
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        let ChunkBatcherConfig {
+            mut flush_tick,
+            mut flush_num_bytes,
+            mut flush_num_rows,
+            mut chunk_max_rows_if_unsorted,
+            mut max_commands_in_flight,
+            mut max_chunks_in_flight,
+            hooks: _,
+        } = ChunkBatcherConfig::DEFAULT;
+
+        let mut insert_hooks = Vec::new();
+        let mut release_hooks = Vec::new();
+
+        // Use a mix of the existing sinks thus that we flush *less* often.
+        // Prefer less flushing since it leads to better chunks.
+        for sink in self.0.lock().iter() {
+            let config = sink.default_batcher_config();
+
+            flush_tick = flush_tick.max(config.flush_tick);
+            flush_num_bytes = flush_num_bytes.max(config.flush_num_bytes);
+            flush_num_rows = flush_num_rows.max(config.flush_num_rows);
+            chunk_max_rows_if_unsorted =
+                chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
+            max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
+            max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
+
+            insert_hooks.extend(config.hooks.on_insert.into_iter());
+            release_hooks.extend(config.hooks.on_release.into_iter());
+        }
+
+        // Combine all hooks.
+        let hooks = BatcherHooks {
+            on_insert: Some(Arc::new(move |rows| {
+                for hook in &insert_hooks {
+                    hook(rows);
+                }
+            })),
+            on_release: Some(ArrowRecordBatchReleaseCallback::from(
+                move |record_batch: RecordBatch| {
+                    for hook in &release_hooks {
+                        hook(record_batch.clone()); // RecordBatch clones are shallow.
+                    }
+                },
+            )),
+        };
+
+        ChunkBatcherConfig {
+            flush_tick,
+            flush_num_bytes,
+            flush_num_rows,
+            chunk_max_rows_if_unsorted,
+            max_commands_in_flight,
+            max_chunks_in_flight,
+            hooks,
+        }
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -510,6 +573,11 @@ impl LogSink for GrpcSink {
 
     fn flush_blocking(&self) {
         self.client.flush();
+    }
+
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        // The GRPC sink is typically used for live streams.
+        ChunkBatcherConfig::LOW_LATENCY
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

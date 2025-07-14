@@ -14,7 +14,8 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 /// every instance.
 /// It is up to the callback implementer to handle this, if needed.
 //
-// TODO(#6412): probably don't need this anymore.
+// As of writing this is used to handle memory that's shared from Python with the
+// Batcher thread - we need special handling for release of potentially Python owned memory.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct ArrowRecordBatchReleaseCallback(Arc<dyn Fn(ArrowRecordBatch) + Send + Sync>);

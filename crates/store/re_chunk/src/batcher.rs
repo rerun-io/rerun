@@ -55,7 +55,8 @@ pub struct BatcherHooks {
     ///
     /// See [`re_log_types::ArrowRecordBatchReleaseCallback`] for more information.
     //
-    // TODO(#6412): probably don't need this anymore.
+    // As of writing this is used to handle memory that's shared from Python with the
+    // Batcher thread - we need special handling for release of potentially Python owned memory.
     pub on_release: Option<re_log_types::ArrowRecordBatchReleaseCallback>,
 }
 
@@ -146,13 +147,19 @@ impl Default for ChunkBatcherConfig {
 impl ChunkBatcherConfig {
     /// Default configuration, applicable to most use cases.
     pub const DEFAULT: Self = Self {
-        flush_tick: Duration::from_millis(8), // We want it fast enough for 60 Hz for real time camera feel
-        flush_num_bytes: 1024 * 1024,         // 1 MiB
+        flush_tick: Duration::from_millis(200),
+        flush_num_bytes: 1024 * 1024, // 1 MiB
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
         hooks: BatcherHooks::NONE,
+    };
+
+    /// Low-latency configuration, preferred when streaming directly to a viewer.
+    pub const LOW_LATENCY: Self = Self {
+        flush_tick: Duration::from_millis(8), // We want it fast enough for 60 Hz for real time camera feel
+        ..Self::DEFAULT
     };
 
     /// Always flushes ASAP.
