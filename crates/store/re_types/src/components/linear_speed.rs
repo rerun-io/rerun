@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Linear speed, used for translation speed for example.
 #[derive(Clone, Debug)]
 pub struct LinearSpeed(
-    /// Speed value in units of length per units of time.
+    /// Speed value in units of length per unit of time.
     pub crate::datatypes::Float64,
 );
 

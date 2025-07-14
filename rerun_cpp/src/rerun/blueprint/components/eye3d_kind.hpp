@@ -20,13 +20,23 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The type of the 3D eye
+    /// **Component**: The kind of the 3D eye to view a scene in a `views::Spatial3DView`.
+    ///
+    /// This is used to specify how the controls of the view react to user input (such as mouse gestures).
     enum class Eye3DKind : uint8_t {
 
-        /// First person eye
+        /// First person point of view
+        ///
+        /// The camera perspective as if one is seeing it through the eyes of a person.
+        /// The center of rotation is the position of the eye (the camera).
+        /// Dragging the mouse on the spatial 3D view, will rotation the scene as if one is moving
+        /// their head around.
         FirstPerson = 1,
 
-        /// Orbital eye
+        /// Orbital eye.
+        ///
+        /// The center of rotation is located in front of the eye (it is different from the eye
+        /// location itself), as if the eye was orbiting around the scene.
         Orbital = 2,
     };
 } // namespace rerun::blueprint::components

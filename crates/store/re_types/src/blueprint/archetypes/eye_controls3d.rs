@@ -19,15 +19,17 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Eye controls in a spatial 3D view
+/// **Archetype**: The controls for the 3D eye in a spatial 3D view.
+///
+/// This controls, for example, the kind of eye; the translation speed of the eye in 3D space (via the WASDQE keys).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct EyeControls3D {
-    /// Eye kind
+    /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
     pub kind: Option<SerializedComponentBatch>,
 
-    /// Translation speed of the eye in the view.
+    /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
     pub translation_speed: Option<SerializedComponentBatch>,
 }
 
@@ -182,14 +184,14 @@ impl EyeControls3D {
         }
     }
 
-    /// Eye kind
+    /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
     #[inline]
     pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
         self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
         self
     }
 
-    /// Translation speed of the eye in the view.
+    /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
     #[inline]
     pub fn with_translation_speed(
         mut self,

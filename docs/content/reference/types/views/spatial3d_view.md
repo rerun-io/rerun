@@ -24,8 +24,8 @@ Configuration for the 3D line grid.
 ### `eye_controls`
 Configuration for the 3D eye
 
-* `kind`: Eye kind
-* `translation_speed`: Translation speed of the eye in the view.
+* `kind`: The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
+* `translation_speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

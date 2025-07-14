@@ -22,13 +22,29 @@ from enum import Enum
 
 
 class Eye3DKind(Enum):
-    """**Component**: The type of the 3D eye."""
+    """
+    **Component**: The kind of the 3D eye to view a scene in a [`views.Spatial3DView`][rerun.blueprint.views.Spatial3DView].
+
+    This is used to specify how the controls of the view react to user input (such as mouse gestures).
+    """
 
     FirstPerson = 1
-    """First person eye"""
+    """
+    First person point of view
+
+    The camera perspective as if one is seeing it through the eyes of a person.
+    The center of rotation is the position of the eye (the camera).
+    Dragging the mouse on the spatial 3D view, will rotation the scene as if one is moving
+    their head around.
+    """
 
     Orbital = 2
-    """Orbital eye"""
+    """
+    Orbital eye.
+
+    The center of rotation is located in front of the eye (it is different from the eye
+    location itself), as if the eye was orbiting around the scene.
+    """
 
     @classmethod
     def auto(cls, val: str | int | Eye3DKind) -> Eye3DKind:

@@ -16,15 +16,17 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Eye controls in a spatial 3D view
+    /// **Archetype**: The controls for the 3D eye in a spatial 3D view.
+    ///
+    /// This controls, for example, the kind of eye; the translation speed of the eye in 3D space (via the WASDQE keys).
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct EyeControls3D {
-        /// Eye kind
+        /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
         std::optional<ComponentBatch> kind;
 
-        /// Translation speed of the eye in the view.
+        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
         std::optional<ComponentBatch> translation_speed;
 
       public:
@@ -57,13 +59,13 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `EyeControls3D`.
         static EyeControls3D clear_fields();
 
-        /// Eye kind
+        /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
         EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
             kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
             return std::move(*this);
         }
 
-        /// Translation speed of the eye in the view.
+        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
         EyeControls3D with_translation_speed(
             const rerun::components::LinearSpeed& _translation_speed
         ) && {

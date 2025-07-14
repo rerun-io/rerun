@@ -20,14 +20,24 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The type of the 3D eye
+/// **Component**: The kind of the 3D eye to view a scene in a [`views::Spatial3DView`][crate::blueprint::views::Spatial3DView].
+///
+/// This is used to specify how the controls of the view react to user input (such as mouse gestures).
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum Eye3DKind {
-    /// First person eye
+    /// First person point of view
+    ///
+    /// The camera perspective as if one is seeing it through the eyes of a person.
+    /// The center of rotation is the position of the eye (the camera).
+    /// Dragging the mouse on the spatial 3D view, will rotation the scene as if one is moving
+    /// their head around.
     FirstPerson = 1,
 
-    /// Orbital eye
+    /// Orbital eye.
+    ///
+    /// The center of rotation is located in front of the eye (it is different from the eye
+    /// location itself), as if the eye was orbiting around the scene.
     #[default]
     Orbital = 2,
 }
@@ -136,8 +146,12 @@ impl ::re_types_core::reflection::Enum for Eye3DKind {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::FirstPerson => "First person eye",
-            Self::Orbital => "Orbital eye",
+            Self::FirstPerson => {
+                "First person point of view\n\nThe camera perspective as if one is seeing it through the eyes of a person.\nThe center of rotation is the position of the eye (the camera).\nDragging the mouse on the spatial 3D view, will rotation the scene as if one is moving\ntheir head around."
+            }
+            Self::Orbital => {
+                "Orbital eye.\n\nThe center of rotation is located in front of the eye (it is different from the eye\nlocation itself), as if the eye was orbiting around the scene."
+            }
         }
     }
 }

@@ -22,7 +22,9 @@ __all__ = ["EyeControls3D"]
 @define(str=False, repr=False, init=False)
 class EyeControls3D(Archetype):
     """
-    **Archetype**: Eye controls in a spatial 3D view.
+    **Archetype**: The controls for the 3D eye in a spatial 3D view.
+
+    This controls, for example, the kind of eye; the translation speed of the eye in 3D space (via the WASDQE keys).
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -39,9 +41,9 @@ class EyeControls3D(Archetype):
         Parameters
         ----------
         kind:
-            Eye kind
+            The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
         translation_speed:
-            Translation speed of the eye in the view.
+            Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
 
         """
 
@@ -81,9 +83,9 @@ class EyeControls3D(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         kind:
-            Eye kind
+            The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
         translation_speed:
-            Translation speed of the eye in the view.
+            Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
 
         """
 
@@ -113,7 +115,7 @@ class EyeControls3D(Archetype):
         default=None,
         converter=blueprint_components.Eye3DKindBatch._converter,  # type: ignore[misc]
     )
-    # Eye kind
+    # The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -122,7 +124,7 @@ class EyeControls3D(Archetype):
         default=None,
         converter=components.LinearSpeedBatch._converter,  # type: ignore[misc]
     )
-    # Translation speed of the eye in the view.
+    # Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

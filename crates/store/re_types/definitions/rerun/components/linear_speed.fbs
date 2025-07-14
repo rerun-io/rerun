@@ -5,6 +5,6 @@ table LinearSpeed (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "npt.ArrayLike"
 ) {
-  /// Speed value in units of length per units of time.
+  /// Speed value in units of length per unit of time.
   speed: rerun.datatypes.Float64 (order: 100);
 }

@@ -12,7 +12,7 @@
 namespace rerun::components {
     /// **Component**: Linear speed, used for translation speed for example.
     struct LinearSpeed {
-        /// Speed value in units of length per units of time.
+        /// Speed value in units of length per unit of time.
         rerun::datatypes::Float64 speed;
 
       public:

@@ -139,7 +139,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Eye3DKind as Component>::name(),
             ComponentReflection {
-                docstring_md: "The type of the 3D eye",
+                docstring_md: "The kind of the 3D eye to view a scene in a [`views.Spatial3DView`](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThis is used to specify how the controls of the view react to user input (such as mouse gestures).",
                 deprecation_summary: None,
                 custom_placeholder: Some(Eye3DKind::default().to_arrow()?),
                 datatype: Eye3DKind::arrow_datatype(),
@@ -2473,10 +2473,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "kind", display_name : "Kind",
                     component_type : "rerun.blueprint.components.Eye3DKind".into(),
-                    docstring_md : "Eye kind", is_required : false, },
-                    ArchetypeFieldReflection { name : "translation_speed", display_name :
-                    "Translation speed", component_type : "rerun.components.LinearSpeed"
-                    .into(), docstring_md : "Translation speed of the eye in the view.",
+                    docstring_md :
+                    "The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "translation_speed", display_name : "Translation speed",
+                    component_type : "rerun.components.LinearSpeed".into(), docstring_md
+                    :
+                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.",
                     is_required : false, },
                 ],
             },
