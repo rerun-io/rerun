@@ -9,17 +9,20 @@
 
 #### Tagged components
 
-TODO: explain background briefly
+TODO: explain background briefly / end of a journey
+This is simpler!!!
 
-* blueprint defaults
-* no more indicators
-
-TODO: screenshots of ui changes
+* Graphic for datamodel change @gavrelina & @grtlr?
+* better UI - BEFORE/AFTER
+  * no more indicators
+* snippet with 2D & 3D points on same entity (use different colors!)
+* blueprint defaults -> maybe use fillmode as a before/after as an example!
 
 #### Video Streams
 
 TODO: explain
-TODO: screenshots
+TODO: screenshots/videos
+TODO: mention mcap/ros message support
 
 #### Light Mode
 
@@ -31,12 +34,19 @@ TODO: screenshots
 TODO: explain
 TODO: snippet
 
+#### Built-in URDF data loader
+
+You can now log URDF files directly to Rerun!
+
+TODO: screenshot
+
 #### Other new features in short
 
-* New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#specuatlive-link) archetype
-* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#specuatlive-link) utility for Rust
+* New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
+* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
 * [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
 * [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
+* View3D's eye control type & speed can now be changed from blueprint (and as such is persisted over session!) more properties will follow in the future. (thanks to @jccampagne)
 
 ### 🔎 Details
 
