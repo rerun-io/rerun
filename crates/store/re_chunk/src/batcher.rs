@@ -102,7 +102,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -127,15 +127,14 @@ pub struct ChunkBatcherConfig {
     /// Size of the internal channel of commands.
     ///
     /// Unbounded if left unspecified.
+    /// Once a batcher is created, this property cannot be changed.
     pub max_commands_in_flight: Option<u64>,
 
     /// Size of the internal channel of [`Chunk`]s.
     ///
     /// Unbounded if left unspecified.
+    /// Once a batcher is created, this property cannot be changed.
     pub max_chunks_in_flight: Option<u64>,
-
-    /// Callbacks you can install on the [`ChunkBatcher`].
-    pub hooks: BatcherHooks,
 }
 
 impl Default for ChunkBatcherConfig {
@@ -153,7 +152,6 @@ impl ChunkBatcherConfig {
         chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
-        hooks: BatcherHooks::NONE,
     };
 
     /// Low-latency configuration, preferred when streaming directly to a viewer.
@@ -170,7 +168,6 @@ impl ChunkBatcherConfig {
         chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
-        hooks: BatcherHooks::NONE,
     };
 
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
@@ -181,7 +178,6 @@ impl ChunkBatcherConfig {
         chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
-        hooks: BatcherHooks::NONE,
     };
 
     /// Environment variable to configure [`Self::flush_tick`].
@@ -391,6 +387,7 @@ enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
     Flush(Sender<()>),
+    UpdateConfig(ChunkBatcherConfig),
     Shutdown,
 }
 
@@ -408,7 +405,7 @@ impl ChunkBatcher {
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(config: ChunkBatcherConfig) -> ChunkBatcherResult<Self> {
+    pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
         let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
             Some(cap) => crossbeam::channel::bounded(cap as _),
             None => crossbeam::channel::unbounded(),
@@ -425,7 +422,7 @@ impl ChunkBatcher {
                 .name(NAME.into())
                 .spawn({
                     let config = config.clone();
-                    move || batching_thread(config, rx_cmd, tx_chunk)
+                    move || batching_thread(config, hooks, rx_cmd, tx_chunk)
                 })
                 .map_err(|err| ChunkBatcherError::SpawnThread {
                     name: NAME,
@@ -479,6 +476,11 @@ impl ChunkBatcher {
         self.inner.flush_blocking();
     }
 
+    /// Updates the batcher's configuration as far as possible.
+    pub fn update_config(&self, config: ChunkBatcherConfig) {
+        self.inner.update_config(config);
+    }
+
     // --- Subscribe to chunks ---
 
     /// Returns a _shared_ channel in which are sent the batched [`Chunk`]s.
@@ -514,6 +516,10 @@ impl ChunkBatcherInner {
         oneshot.recv().ok();
     }
 
+    fn update_config(&self, config: ChunkBatcherConfig) {
+        self.send_cmd(Command::UpdateConfig(config));
+    }
+
     fn send_cmd(&self, cmd: Command) {
         // NOTE: Internal channels can never be closed outside of the `Drop` impl, this cannot
         // fail.
@@ -522,8 +528,13 @@ impl ChunkBatcherInner {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chunk: Sender<Chunk>) {
-    let rx_tick = crossbeam::channel::tick(config.flush_tick);
+fn batching_thread(
+    mut config: ChunkBatcherConfig,
+    hooks: BatcherHooks,
+    rx_cmd: Receiver<Command>,
+    tx_chunk: Sender<Chunk>,
+) {
+    let mut rx_tick = crossbeam::channel::tick(config.flush_tick);
 
     struct Accumulator {
         latest: Instant,
@@ -643,7 +654,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                             .or_insert_with(|| Accumulator::new(entity_path));
                         do_push_row(acc, row);
 
-                        if let Some(config) = config.hooks.on_insert.as_ref() {
+                        if let Some(config) = hooks.on_insert.as_ref() {
                             config(&acc.pending_rows);
                         }
 
@@ -663,6 +674,18 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                         }
                         drop(oneshot); // signals the oneshot
                     },
+
+                    Command::UpdateConfig(new_config) => {
+                        // Warn if properties changed that we can't change here.
+                        if config.max_commands_in_flight != new_config.max_commands_in_flight ||
+                            config.max_chunks_in_flight != new_config.max_chunks_in_flight {
+                            re_log::warn!("Cannot change max commands/chunks in flight after batcher has been created. Previous max commands/chunks: {:?}/{:?}, new max commands/chunks: {:?}/{:?}",
+                                            config.max_commands_in_flight, config.max_chunks_in_flight, new_config.max_commands_in_flight, new_config.max_chunks_in_flight);
+                        }
+
+                        config = new_config;
+                        rx_tick = crossbeam::channel::tick(config.flush_tick);
+                    }
 
                     Command::Shutdown => break,
                 };
@@ -1046,7 +1069,7 @@ mod tests {
     /// A bunch of rows that don't fit any of the split conditions should end up together.
     #[test]
     fn simple() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");
 
@@ -1155,7 +1178,7 @@ mod tests {
     #[test]
     #[allow(clippy::len_zero)]
     fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");
 
@@ -1267,7 +1290,7 @@ mod tests {
     /// A bunch of rows that don't fit any of the split conditions should end up together.
     #[test]
     fn simple_static() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let static_ = TimePoint::default();
 
@@ -1338,7 +1361,7 @@ mod tests {
     /// A bunch of rows belonging to different entities will end up in different batches.
     #[test]
     fn different_entities() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");
 
@@ -1441,7 +1464,7 @@ mod tests {
     /// A bunch of rows with different sets of timelines will end up in different batches.
     #[test]
     fn different_timelines() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_sequence("frame_nr");
@@ -1554,7 +1577,7 @@ mod tests {
     /// A bunch of rows with different datatypes will end up in different batches.
     #[test]
     fn different_datatypes() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
         let timeline1 = Timeline::new_duration("log_time");
 
@@ -1658,10 +1681,13 @@ mod tests {
     /// threshold, we don't do anything special.
     #[test]
     fn unsorted_timeline_below_threshold() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig {
-            chunk_max_rows_if_unsorted: 1000,
-            ..ChunkBatcherConfig::NEVER
-        })?;
+        let batcher = ChunkBatcher::new(
+            ChunkBatcherConfig {
+                chunk_max_rows_if_unsorted: 1000,
+                ..ChunkBatcherConfig::NEVER
+            },
+            BatcherHooks::NONE,
+        )?;
 
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_duration("frame_nr");
@@ -1762,10 +1788,13 @@ mod tests {
     /// threshold, we split it.
     #[test]
     fn unsorted_timeline_above_threshold() -> anyhow::Result<()> {
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig {
-            chunk_max_rows_if_unsorted: 3,
-            ..ChunkBatcherConfig::NEVER
-        })?;
+        let batcher = ChunkBatcher::new(
+            ChunkBatcherConfig {
+                chunk_max_rows_if_unsorted: 3,
+                ..ChunkBatcherConfig::NEVER
+            },
+            BatcherHooks::NONE,
+        )?;
 
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_duration("frame_nr");

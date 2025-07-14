@@ -3,10 +3,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::Mutex;
-use re_chunk::{BatcherHooks, ChunkBatcherConfig, external::arrow::array::RecordBatch};
+use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
 use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
-use re_log_types::{ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, LogMsg, StoreId};
+use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
 
@@ -133,11 +133,7 @@ impl LogSink for MultiSink {
             mut chunk_max_rows_if_unsorted,
             mut max_commands_in_flight,
             mut max_chunks_in_flight,
-            hooks: _,
         } = ChunkBatcherConfig::DEFAULT;
-
-        let mut insert_hooks = Vec::new();
-        let mut release_hooks = Vec::new();
 
         // Use a mix of the existing sinks thus that we flush *less* often.
         // Prefer less flushing since it leads to better chunks.
@@ -151,26 +147,7 @@ impl LogSink for MultiSink {
                 chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
             max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
             max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
-
-            insert_hooks.extend(config.hooks.on_insert.into_iter());
-            release_hooks.extend(config.hooks.on_release.into_iter());
         }
-
-        // Combine all hooks.
-        let hooks = BatcherHooks {
-            on_insert: Some(Arc::new(move |rows| {
-                for hook in &insert_hooks {
-                    hook(rows);
-                }
-            })),
-            on_release: Some(ArrowRecordBatchReleaseCallback::from(
-                move |record_batch: RecordBatch| {
-                    for hook in &release_hooks {
-                        hook(record_batch.clone()); // RecordBatch clones are shallow.
-                    }
-                },
-            )),
-        };
 
         ChunkBatcherConfig {
             flush_tick,
@@ -179,7 +156,6 @@ impl LogSink for MultiSink {
             chunk_max_rows_if_unsorted,
             max_commands_in_flight,
             max_chunks_in_flight,
-            hooks,
         }
     }
 
