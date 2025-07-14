@@ -7,7 +7,7 @@
 
 ### ✨ Overview & highlights
 
-#### Tagged components
+#### 💽 Tagged components
 
 TODO: explain background briefly / end of a journey
 This is simpler!!!
@@ -18,7 +18,7 @@ This is simpler!!!
 * snippet with 2D & 3D points on same entity (use different colors!)
 * blueprint defaults -> maybe use fillmode as a before/after as an example!
 
-#### Video Streams
+#### 🎥 Video Streams
 
 Rerun previously supported only video assets in the form of MP4,
 so it was not possible to stream live encoded video to Rerun.
@@ -36,14 +36,14 @@ rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264, sample=bytes(pac
 For now only H.264 is supported, but more codecs will follow in the future.
 Learn more on the updated [video reference page](https://rerun.io/docs/reference/video).
 
-#### Light Mode
+#### 😎 Light Mode
 
 Rerun has now finally a light mode.
 
 It defaults to the system setting, but can be adjusted in the settings menu:
 TODO: screenshots 
 
-#### Multi Sink
+#### 🔀 Multi Sink
 
 Previously, the SDK's recording stream could only send to one sink at a time.
 We now expose the ability to set multiple sinks at once, so you can simultaneously
@@ -60,13 +60,13 @@ rr.set_sinks(
 )
 ```
 
-#### Built-in URDF data loader
+#### 🤖 Built-in URDF data loader
 
 You can now log URDF files directly to Rerun using the `log_file` API.
 
 <img width="1303" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
 
-#### Other new features in short
+#### 👀 Other new features in short
 
 * New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
 * [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
