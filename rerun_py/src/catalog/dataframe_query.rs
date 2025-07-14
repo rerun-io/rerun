@@ -45,6 +45,7 @@ impl PyDataframeQueryView {
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
+        include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
@@ -67,6 +68,7 @@ impl PyDataframeQueryView {
             query_expression: QueryExpression {
                 view_contents: Some(view_contents),
                 include_semantically_empty_columns,
+                include_indicator_columns,
                 include_tombstone_columns,
                 include_static_columns: if static_only {
                     re_chunk_store::StaticColumnSelection::StaticOnly
@@ -78,7 +80,12 @@ impl PyDataframeQueryView {
                 filtered_index_values: None,
                 using_index_values: None,
                 filtered_is_not_null: None,
-                sparse_fill_strategy: SparseFillStrategy::None,
+                //TODO(#10327): this should not be necessary!
+                sparse_fill_strategy: if static_only {
+                    SparseFillStrategy::LatestAtGlobal
+                } else {
+                    SparseFillStrategy::None
+                },
                 selection: None,
             },
             partition_ids: vec![],
@@ -486,29 +493,40 @@ impl PyDataframeQueryView {
         // Fetch relevant chunks
         //
 
-        let chunk_stores = connection.get_chunks_for_dataframe_query(
-            py,
-            dataset_id,
-            &self.query_expression,
-            self.partition_ids.as_slice(),
-        )?;
+        // let chunk_stores = connection.get_chunks_for_dataframe_query(
+        //     py,
+        //     dataset_id,
+        //     &self.query_expression,
+        //     self.partition_ids.as_slice(),
+        // )?;
+        //
+        // let query_engines = chunk_stores
+        //     .into_iter()
+        //     .map(|(partition_id, store_handle)| {
+        //         let query_engine = QueryEngine::new(
+        //             store_handle.clone(),
+        //             QueryCache::new_handle(store_handle.clone()),
+        //         );
+        //
+        //         (partition_id, query_engine)
+        //     })
+        //     .collect();
 
-        let query_engines = chunk_stores
-            .into_iter()
-            .map(|(partition_id, store_handle)| {
-                let query_engine = QueryEngine::new(
-                    store_handle.clone(),
-                    QueryCache::new_handle(store_handle.clone()),
-                );
+        wait_for_future(py, async {
+            DataframeQueryTableProvider::new(
+                connection.origin().clone(),
+                connection.connection_registry().clone(),
+                dataset_id,
+                &self.query_expression,
+            )
+            .await
+        })
+        .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
+        .map_err(to_py_err)
 
-                (partition_id, query_engine)
-            })
-            .collect();
-
-        DataframeQueryTableProvider::new(query_engines, &self.query_expression)
-            .map_err(to_py_err)?
-            .try_into()
-            .map_err(to_py_err)
+        // DataframeQueryTableProvider::new(query_engines, &self.query_expression)
+        //     .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
+        //     .map_err(to_py_err)
     }
 }
 
