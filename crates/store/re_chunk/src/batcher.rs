@@ -683,6 +683,8 @@ fn batching_thread(
                                             config.max_commands_in_flight, config.max_chunks_in_flight, new_config.max_commands_in_flight, new_config.max_chunks_in_flight);
                         }
 
+                        re_log::trace!("Updated batcher config: {:?}", new_config);
+
                         config = new_config;
                         rx_tick = crossbeam::channel::tick(config.flush_tick);
                     }
