@@ -182,6 +182,7 @@ impl Query {
         // Filter active?
         //
 
+        let active_before = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
             ui.re_checkbox(&mut active, "Filter rows where column is not null:")
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
@@ -274,13 +275,13 @@ impl Query {
                     .any(|descr| descr.component.as_str() == component_sel.component)
                     .then_some(component_sel.component.into())
             })
-            .or_else(|| suggested_components().first().copied())
-            .unwrap_or_else(|| ComponentIdentifier::from("-"));
+            .or_else(|| suggested_components().first().copied());
 
         //
         // UI for filter entity and component
         //
 
+        let before_filter_component = filter_component;
         ui.add_enabled_ui(active, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
 
@@ -300,12 +301,12 @@ impl Query {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Component").value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
-                        .selected_text(filter_component.as_str())
+                        .selected_text(filter_component.map_or("-", |c| c.as_str()))
                         .show_ui(ui, |ui| {
                             for descr in all_components {
                                 ui.selectable_value(
                                     &mut filter_component,
-                                    descr.component,
+                                    Some(descr.component),
                                     descr.component.as_str(),
                                 );
                             }
@@ -314,16 +315,19 @@ impl Query {
             );
         });
 
-        //
         // Save filter if changed
-        //
-        let filter_is_not_null =
-            components::FilterIsNotNull::new(active, &filter_entity, filter_component.to_string());
+        if (active_before, before_filter_component) != (active, filter_component) {
+            if let Some(filter_component) = filter_component {
+                let filter_is_not_null = components::FilterIsNotNull::new(
+                    active,
+                    &filter_entity,
+                    filter_component.to_string(),
+                );
 
-        if original_filter_is_not_null.is_some()
-            && original_filter_is_not_null.as_ref() != Some(&filter_is_not_null)
-        {
-            self.save_filter_is_not_null(ctx, &filter_is_not_null);
+                if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
+                    self.save_filter_is_not_null(ctx, &filter_is_not_null);
+                }
+            }
         }
 
         Ok(())
