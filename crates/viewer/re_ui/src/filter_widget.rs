@@ -23,7 +23,7 @@ struct InnerState {
 impl Default for InnerState {
     fn default() -> Self {
         let mut random_bytes = [0u8; 8];
-        getrandom::getrandom(&mut random_bytes).expect("Couldn't get random bytes");
+        getrandom::fill(&mut random_bytes).expect("Couldn't get random bytes");
 
         Self {
             filter_query: String::new(),

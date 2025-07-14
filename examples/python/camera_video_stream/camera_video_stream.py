@@ -48,7 +48,7 @@ def setup_camera_input(video_device: str | None = None) -> av.container.InputCon
         return av.open(f"video={video_device}", format="dshow")
     else:
         if video_device is None:
-            video_device = "0"
+            video_device = "/dev/video0"
 
         return av.open(video_device, format="v4l2")
 
