@@ -20,17 +20,27 @@ This is simpler!!!
 
 #### Video Streams
 
-TODO: explain
-TODO: screenshots/videos
-TODO: mention mcap/ros message support
+Rerun previously supported only video assets in the form of MP4,
+so it was not possible to stream live encoded video to Rerun.
+The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream#speculative-link) archetype remedies that!
+
+<img src="https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/1024w.png">
+
+If you already have encoded video frames, it is just as easy as logging images now:
+
+```py
+rr.set_time("time", duration=float(packet.pts * packet.time_base))
+rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264, sample=bytes(packet)))
+```
+
+For now only H.264 is supported, but more codecs will follow in the future.
+Learn more on the updated [video reference page](https://rerun.io/docs/reference/video).
 
 #### Light Mode
 
 Rerun has now finally a light mode.
 
-
 It defaults to the system setting, but can be adjusted in the settings menu:
-TODO: explain
 TODO: screenshots 
 
 #### Multi Sink
