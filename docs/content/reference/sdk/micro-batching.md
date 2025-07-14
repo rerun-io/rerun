@@ -16,7 +16,7 @@ You can configure these thresholds using the following environment variables:
 
 Sets the duration of the periodic tick that triggers the time threshold, in seconds.
 
-Defaults to `RERUN_FLUSH_TICK_SECS=0.2` (200ms) unless the recording stream is created (!) with
+Defaults to `RERUN_FLUSH_TICK_SECS=0.2` (200ms) unless the recording stream uses a
 a networking sink which defaults to `RERUN_FLUSH_TICK_SECS=0.008` (8ms).
 
 #### RERUN_FLUSH_NUM_BYTES
