@@ -4,7 +4,7 @@ use re_types::{
         archetypes::{Background, LineGrid3D},
         components::BackgroundKind,
     },
-    components::{Color, Plane3D, StrokeWidth},
+    components::{Color, LinearSpeed, Plane3D, StrokeWidth},
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
@@ -54,4 +54,20 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);
+impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+        let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+            re_log::error_once!(
+                "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+            );
+            return 1.0.into();
+        };
+        let Some(view_eye) = &view_state.state_3d.view_eye else {
+            // There's no view eye yet. This may happen on startup
+            return 1.0.into();
+        };
+        TypedComponentFallbackProvider::<LinearSpeed>::fallback_for(view_eye, ctx)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D, LinearSpeed]);

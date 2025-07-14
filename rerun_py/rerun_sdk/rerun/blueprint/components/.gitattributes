@@ -12,6 +12,7 @@ component_column_selector.py linguist-generated=true
 container_kind.py linguist-generated=true
 corner2d.py linguist-generated=true
 enabled.py linguist-generated=true
+eye3d_kind.py linguist-generated=true
 filter_by_range.py linguist-generated=true
 filter_is_not_null.py linguist-generated=true
 force_distance.py linguist-generated=true

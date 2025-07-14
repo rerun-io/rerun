@@ -31,6 +31,7 @@ include "./components/latlon.fbs";
 include "./components/length.fbs";
 include "./components/line_strip2d.fbs";
 include "./components/line_strip3d.fbs";
+include "./components/linear_speed.fbs";
 include "./components/magnification_filter.fbs";
 include "./components/marker_shape.fbs";
 include "./components/marker_size.fbs";

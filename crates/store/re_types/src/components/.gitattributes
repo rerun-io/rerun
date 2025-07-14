@@ -30,6 +30,7 @@ lat_lon.rs linguist-generated=true
 length.rs linguist-generated=true
 line_strip2d.rs linguist-generated=true
 line_strip3d.rs linguist-generated=true
+linear_speed.rs linguist-generated=true
 magnification_filter.rs linguist-generated=true
 marker_shape.rs linguist-generated=true
 marker_size.rs linguist-generated=true
