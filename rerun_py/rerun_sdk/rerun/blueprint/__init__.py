@@ -31,7 +31,7 @@ from .api import (
 from .archetypes import (
     Background as Background,
     EntityBehavior as EntityBehavior,
-    Eye3D as Eye3D,
+    EyeControls3D as EyeControls3D,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,
@@ -43,6 +43,7 @@ from .archetypes import (
 from .components import (
     BackgroundKind as BackgroundKind,
     Corner2D as Corner2D,
+    Eye3DKind as Eye3DKind,
     LockRangeDuringZoom as LockRangeDuringZoom,
     MapProvider as MapProvider,
 )
