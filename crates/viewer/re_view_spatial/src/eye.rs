@@ -3,6 +3,7 @@ use glam::{Mat4, Quat, Vec3, vec3};
 
 use macaw::IsoTransform;
 
+use re_log::ResultExt as _;
 use re_types::{
     blueprint::{archetypes::EyeControls3D, components::Eye3DKind},
     components::LinearSpeed,
@@ -11,10 +12,10 @@ use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
-use re_viewer_context::{TypedComponentFallbackProvider, ViewContext};
+use re_viewer_context::{TypedComponentFallbackProvider, ViewContext, ViewStateExt as _};
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
+use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D};
 
 /// An eye in a 3D view.
 ///
@@ -270,14 +271,6 @@ impl ViewEye {
         }
     }
 
-    /// Compute the actual speed depending on the [`Eye3DKind`].
-    pub fn fallback_speed_for_kind(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
-        match self.kind {
-            Eye3DKind::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
-            Eye3DKind::Orbital => self.orbit_radius,
-        }
-    }
-
     /// The local up-axis, if set
     pub fn eye_up(&self) -> Option<Vec3> {
         self.eye_up.try_normalize()
@@ -359,11 +352,18 @@ impl ViewEye {
         &mut self,
         response: &egui::Response,
         drag_threshold: f32,
-        bounding_boxes: &SceneBoundingBoxes,
         view_ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
     ) -> bool {
-        let mut speed = self.linear_speed_from_property(bounding_boxes, view_ctx, eye_property);
+        let mut speed = **eye_property
+            .component_or_fallback::<LinearSpeed>(
+                view_ctx,
+                self,
+                &EyeControls3D::descriptor_translation_speed(),
+            )
+            .unwrap_debug_or_log_error() // Should never fail.
+            .unwrap_or(1.0.into());
+
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
@@ -407,14 +407,14 @@ impl ViewEye {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
                 let pan_speed = 0.001 * speed;
-                let delta_in_view = pan_speed * response.drag_delta();
+                let delta_in_view = pan_speed as f32 * response.drag_delta();
 
                 self.translate(delta_in_view);
             }
         }
 
         if response.hovered() {
-            did_interact |= self.keyboard_navigation(&response.ctx, speed);
+            did_interact |= self.keyboard_navigation(&response.ctx, speed as f32);
         }
 
         if self.kind == Eye3DKind::Orbital {
@@ -446,26 +446,6 @@ impl ViewEye {
         }
 
         did_interact
-    }
-
-    fn linear_speed_from_property(
-        &self,
-        bounding_boxes: &SceneBoundingBoxes,
-        view_ctx: &ViewContext<'_>,
-        eye_property: &ViewProperty,
-    ) -> f32 {
-        let eye_linear_speed = eye_property.component_or_fallback::<LinearSpeed>(
-            view_ctx,
-            self,
-            &EyeControls3D::descriptor_translation_speed(),
-        );
-        match eye_linear_speed {
-            Ok(linear_speed) => **linear_speed as f32,
-            Err(err) => {
-                re_log::error_once!("Error while getting linear speed for eye {}", err);
-                self.fallback_speed_for_kind(bounding_boxes)
-            }
-        }
     }
 
     /// Listen to WSAD and QE to move the eye.
@@ -574,20 +554,18 @@ impl ViewEye {
 // Logic should be similar to `impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D`
 impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
-        let maybe_state = re_viewer_context::ViewStateExt::downcast_ref::<crate::SpatialViewState>(
-            ctx.view_ctx.view_state,
-        );
-        let speed = match maybe_state {
-            Ok(spatial_view_state) => {
-                let bounding_boxes = &spatial_view_state.bounding_boxes;
-                self.fallback_speed_for_kind(bounding_boxes) as f64
+        match self.kind {
+            Eye3DKind::FirstPerson => {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!("Fallback for `LinearSpeed` queried on 3D eye outside the context of a spatial view.");
+                    return 1.0_f64.into();
+                };
+
+                0.1 * view_state.bounding_boxes.current.size().length() as f64
             }
-            Err(view_system_execution_error) => {
-                re_log::error_once!("Error while downcasting {}", view_system_execution_error);
-                1.0_f64
-            }
-        };
-        LinearSpeed(re_types::datatypes::Float64(speed))
+            Eye3DKind::Orbital => self.orbit_radius as f64,
+        }
+        .into()
     }
 }
 

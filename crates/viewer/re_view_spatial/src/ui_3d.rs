@@ -200,13 +200,7 @@ impl View3DState {
             0.0
         };
 
-        if view_eye.update(
-            response,
-            view_eye_drag_threshold,
-            bounding_boxes,
-            view_ctx,
-            eye_property,
-        ) {
+        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
