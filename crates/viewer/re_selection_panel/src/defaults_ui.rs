@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 
 use re_chunk::{ArchetypeName, Chunk, ComponentIdentifier, ComponentType, RowId};
 use re_chunk_store::LatestAtQuery;
-use re_data_ui::{DataUi as _, archetype_label_lit_item_ui};
+use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt;
@@ -124,7 +124,7 @@ fn active_default_ui(
                 // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
                 // so we can just check if the previous archetype name is different from the current one.
                 if let Some(archetype_name) = component_descr.archetype {
-                    archetype_label_lit_item_ui(ui, &Some(archetype_name));
+                    archetype_label_list_item_ui(ui, &Some(archetype_name));
                     previous_archetype_name = Some(archetype_name);
                 }
             }
@@ -309,8 +309,9 @@ fn add_popup_ui(
     for (archetype_name, components) in components_to_show_in_add_menu {
         ui.menu_button(archetype_name.syntax_highlighted(ui.style()), |ui| {
             for entry in components {
+                let descriptor = entry.descriptor(archetype_name);
                 if ui
-                    .button(entry.component.syntax_highlighted(ui.style()))
+                    .button(descriptor.archetype_field_name())
                     .on_hover_ui(|ui| {
                         entry.component_type.data_ui_recording(
                             ctx.viewer_ctx,
@@ -324,7 +325,7 @@ fn add_popup_ui(
                         ctx,
                         defaults_path,
                         &query_context,
-                        entry.descriptor(archetype_name),
+                        descriptor,
                         entry.visualizer_identifier,
                         visualizers,
                     );
