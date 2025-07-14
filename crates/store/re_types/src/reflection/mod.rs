@@ -2475,10 +2475,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_type : "rerun.blueprint.components.Eye3DKind".into(),
                     docstring_md :
                     "The kind of the eye for the spatial 3D view.\n\nThis controls how the eye movement behaves when the user interact with the view.\nDefaults to orbital.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "translation_speed", display_name : "Translation speed",
-                    component_type : "rerun.components.LinearSpeed".into(), docstring_md
-                    :
+                    is_required : false, }, ArchetypeFieldReflection { name : "speed",
+                    display_name : "Speed", component_type :
+                    "rerun.components.LinearSpeed".into(), docstring_md :
                     "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nThe default depends on the control kind.\nFor orbit cameras it is derived from the distance to the orbit center.\nFor first person cameras it is derived from the scene size.",
                     is_required : false, },
                 ],

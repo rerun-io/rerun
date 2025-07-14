@@ -30,10 +30,7 @@ class EyeControls3D(Archetype):
     """
 
     def __init__(
-        self: Any,
-        *,
-        kind: blueprint_components.Eye3DKindLike | None = None,
-        translation_speed: datatypes.Float64Like | None = None,
+        self: Any, *, kind: blueprint_components.Eye3DKindLike | None = None, speed: datatypes.Float64Like | None = None
     ) -> None:
         """
         Create a new instance of the EyeControls3D archetype.
@@ -45,7 +42,7 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
-        translation_speed:
+        speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
             The default depends on the control kind.
@@ -56,7 +53,7 @@ class EyeControls3D(Archetype):
 
         # You can define your own __init__ function as a member of EyeControls3DExt in eye_controls3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(kind=kind, translation_speed=translation_speed)
+            self.__attrs_init__(kind=kind, speed=speed)
             return
         self.__attrs_clear__()
 
@@ -64,7 +61,7 @@ class EyeControls3D(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             kind=None,
-            translation_speed=None,
+            speed=None,
         )
 
     @classmethod
@@ -80,7 +77,7 @@ class EyeControls3D(Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
-        translation_speed: datatypes.Float64Like | None = None,
+        speed: datatypes.Float64Like | None = None,
     ) -> EyeControls3D:
         """
         Update only some specific fields of a `EyeControls3D`.
@@ -94,7 +91,7 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
-        translation_speed:
+        speed:
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
             The default depends on the control kind.
@@ -107,7 +104,7 @@ class EyeControls3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "kind": kind,
-                "translation_speed": translation_speed,
+                "speed": speed,
             }
 
             if clear_unset:
@@ -136,7 +133,7 @@ class EyeControls3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    translation_speed: components.LinearSpeedBatch | None = field(
+    speed: components.LinearSpeedBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=components.LinearSpeedBatch._converter,  # type: ignore[misc]

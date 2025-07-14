@@ -359,7 +359,7 @@ impl ViewEye {
             .component_or_fallback::<LinearSpeed>(
                 view_ctx,
                 self,
-                &EyeControls3D::descriptor_translation_speed(),
+                &EyeControls3D::descriptor_speed(),
             )
             .unwrap_debug_or_log_error() // Should never fail.
             .unwrap_or(1.0.into());

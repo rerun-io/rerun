@@ -17,5 +17,5 @@ table EyeControls3D (
     /// The default depends on the control kind.
     /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
-    translation_speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
+    speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
 }

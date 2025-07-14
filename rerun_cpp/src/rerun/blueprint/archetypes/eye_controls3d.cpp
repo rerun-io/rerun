@@ -11,9 +11,8 @@ namespace rerun::blueprint::archetypes {
         archetype.kind =
             ComponentBatch::empty<rerun::blueprint::components::Eye3DKind>(Descriptor_kind)
                 .value_or_throw();
-        archetype.translation_speed =
-            ComponentBatch::empty<rerun::components::LinearSpeed>(Descriptor_translation_speed)
-                .value_or_throw();
+        archetype.speed = ComponentBatch::empty<rerun::components::LinearSpeed>(Descriptor_speed)
+                              .value_or_throw();
         return archetype;
     }
 
@@ -23,8 +22,8 @@ namespace rerun::blueprint::archetypes {
         if (kind.has_value()) {
             columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
-        if (translation_speed.has_value()) {
-            columns.push_back(translation_speed.value().partitioned(lengths_).value_or_throw());
+        if (speed.has_value()) {
+            columns.push_back(speed.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -33,8 +32,8 @@ namespace rerun::blueprint::archetypes {
         if (kind.has_value()) {
             return columns(std::vector<uint32_t>(kind.value().length(), 1));
         }
-        if (translation_speed.has_value()) {
-            return columns(std::vector<uint32_t>(translation_speed.value().length(), 1));
+        if (speed.has_value()) {
+            return columns(std::vector<uint32_t>(speed.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -53,8 +52,8 @@ namespace rerun {
         if (archetype.kind.has_value()) {
             cells.push_back(archetype.kind.value());
         }
-        if (archetype.translation_speed.has_value()) {
-            cells.push_back(archetype.translation_speed.value());
+        if (archetype.speed.has_value()) {
+            cells.push_back(archetype.speed.value());
         }
 
         return rerun::take_ownership(std::move(cells));

@@ -54,7 +54,7 @@ class Spatial3DView(View):
             # Configure the eye controls.
             eye_controls=rrb.EyeControls3D(
                 kind=rrb.Eye3DKind.FirstPerson,
-                translation_speed=20.0,
+                speed=20.0,
             ),
             # Configure the line grid.
             line_grid=rrb.archetypes.LineGrid3D(

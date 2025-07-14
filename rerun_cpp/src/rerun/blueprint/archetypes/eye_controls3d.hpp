@@ -34,7 +34,7 @@ namespace rerun::blueprint::archetypes {
         /// The default depends on the control kind.
         /// For orbit cameras it is derived from the distance to the orbit center.
         /// For first person cameras it is derived from the scene size.
-        std::optional<ComponentBatch> translation_speed;
+        std::optional<ComponentBatch> speed;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -45,9 +45,9 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "EyeControls3D:kind",
             Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
         );
-        /// `ComponentDescriptor` for the `translation_speed` field.
-        static constexpr auto Descriptor_translation_speed = ComponentDescriptor(
-            ArchetypeName, "EyeControls3D:translation_speed",
+        /// `ComponentDescriptor` for the `speed` field.
+        static constexpr auto Descriptor_speed = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:speed",
             Loggable<rerun::components::LinearSpeed>::ComponentType
         );
 
@@ -80,12 +80,8 @@ namespace rerun::blueprint::archetypes {
         /// The default depends on the control kind.
         /// For orbit cameras it is derived from the distance to the orbit center.
         /// For first person cameras it is derived from the scene size.
-        EyeControls3D with_translation_speed(
-            const rerun::components::LinearSpeed& _translation_speed
-        ) && {
-            translation_speed =
-                ComponentBatch::from_loggable(_translation_speed, Descriptor_translation_speed)
-                    .value_or_throw();
+        EyeControls3D with_speed(const rerun::components::LinearSpeed& _speed) && {
+            speed = ComponentBatch::from_loggable(_speed, Descriptor_speed).value_or_throw();
             return std::move(*this);
         }
 

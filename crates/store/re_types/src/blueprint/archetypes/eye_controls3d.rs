@@ -37,7 +37,7 @@ pub struct EyeControls3D {
     /// The default depends on the control kind.
     /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
-    pub translation_speed: Option<SerializedComponentBatch>,
+    pub speed: Option<SerializedComponentBatch>,
 }
 
 impl EyeControls3D {
@@ -53,14 +53,14 @@ impl EyeControls3D {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::translation_speed`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::speed`].
     ///
     /// The corresponding component is [`crate::components::LinearSpeed`].
     #[inline]
-    pub fn descriptor_translation_speed() -> ComponentDescriptor {
+    pub fn descriptor_speed() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:translation_speed".into(),
+            component: "EyeControls3D:speed".into(),
             component_type: Some("rerun.components.LinearSpeed".into()),
         }
     }
@@ -76,7 +76,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
     once_cell::sync::Lazy::new(|| {
         [
             EyeControls3D::descriptor_kind(),
-            EyeControls3D::descriptor_translation_speed(),
+            EyeControls3D::descriptor_speed(),
         ]
     });
 
@@ -84,7 +84,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             EyeControls3D::descriptor_kind(),
-            EyeControls3D::descriptor_translation_speed(),
+            EyeControls3D::descriptor_speed(),
         ]
     });
 
@@ -134,15 +134,10 @@ impl ::re_types_core::Archetype for EyeControls3D {
         let kind = arrays_by_descr
             .get(&Self::descriptor_kind())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
-        let translation_speed = arrays_by_descr
-            .get(&Self::descriptor_translation_speed())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_translation_speed())
-            });
-        Ok(Self {
-            kind,
-            translation_speed,
-        })
+        let speed = arrays_by_descr
+            .get(&Self::descriptor_speed())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_speed()));
+        Ok(Self { kind, speed })
     }
 }
 
@@ -150,7 +145,7 @@ impl ::re_types_core::AsComponents for EyeControls3D {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.kind.clone(), self.translation_speed.clone()]
+        [self.kind.clone(), self.speed.clone()]
             .into_iter()
             .flatten()
             .collect()
@@ -165,7 +160,7 @@ impl EyeControls3D {
     pub fn new() -> Self {
         Self {
             kind: None,
-            translation_speed: None,
+            speed: None,
         }
     }
 
@@ -184,9 +179,9 @@ impl EyeControls3D {
                 crate::blueprint::components::Eye3DKind::arrow_empty(),
                 Self::descriptor_kind(),
             )),
-            translation_speed: Some(SerializedComponentBatch::new(
+            speed: Some(SerializedComponentBatch::new(
                 crate::components::LinearSpeed::arrow_empty(),
-                Self::descriptor_translation_speed(),
+                Self::descriptor_speed(),
             )),
         }
     }
@@ -207,12 +202,8 @@ impl EyeControls3D {
     /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
     #[inline]
-    pub fn with_translation_speed(
-        mut self,
-        translation_speed: impl Into<crate::components::LinearSpeed>,
-    ) -> Self {
-        self.translation_speed =
-            try_serialize_field(Self::descriptor_translation_speed(), [translation_speed]);
+    pub fn with_speed(mut self, speed: impl Into<crate::components::LinearSpeed>) -> Self {
+        self.speed = try_serialize_field(Self::descriptor_speed(), [speed]);
         self
     }
 }
@@ -220,6 +211,6 @@ impl EyeControls3D {
 impl ::re_byte_size::SizeBytes for EyeControls3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes() + self.translation_speed.heap_size_bytes()
+        self.kind.heap_size_bytes() + self.speed.heap_size_bytes()
     }
 }
