@@ -8,7 +8,7 @@ use re_chunk_store::LatestAtQuery;
 use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
-use re_types_core::reflection::ComponentDescriptorExt;
+use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
