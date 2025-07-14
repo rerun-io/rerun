@@ -169,6 +169,8 @@ By selecting an entity from a view, it is possible to specify which visualizer(s
 
 When selecting a view, it is also possible to specify default values for components of a given type, which is used when no value has been logged:
 
+TODO: update screenshot
+
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/component_defaults/3330f16b246a523f9e9a9d8c3549cdc08660356f/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/component_defaults/3330f16b246a523f9e9a9d8c3549cdc08660356f/480w.png">
