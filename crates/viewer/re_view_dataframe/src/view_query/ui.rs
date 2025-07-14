@@ -6,13 +6,10 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_sorbet::ColumnSelector;
-use re_types::ComponentIdentifier;
 use re_types::blueprint::components;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
-
-type ComponentIdentifierSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 // UI implementation
 impl Query {
@@ -182,7 +179,7 @@ impl Query {
         // Filter active?
         //
 
-        let active_before = active;
+        let before_active = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
             ui.re_checkbox(&mut active, "Filter rows where column is not null:")
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
@@ -243,30 +240,6 @@ impl Query {
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
-        // The list of suggested components is built as follows:
-        // - consider all component descriptors that have an archetype
-        // - for the matching archetypes, take all required components
-        // - keep those that are actually present
-        let suggested_components = || {
-            all_components
-                .iter()
-                .filter_map(|c| {
-                    c.archetype.as_ref().and_then(|archetype| {
-                        ctx.reflection()
-                            .archetypes
-                            .get(archetype)
-                            .map(|archetype_reflection| (archetype, archetype_reflection))
-                    })
-                })
-                .flat_map(|(archetype, archetype_reflection)| {
-                    archetype_reflection
-                        .required_fields()
-                        .map(|field| field.component_descriptor(*archetype))
-                })
-                .filter_map(|c| all_components.contains(&c).then_some(c.component))
-                .collect::<ComponentIdentifierSet>()
-        };
-
         // If the currently saved component, we auto-switch it to a reasonable one.
         let mut filter_component = filter
             .and_then(|component_sel| {
@@ -275,12 +248,13 @@ impl Query {
                     .any(|descr| descr.component.as_str() == component_sel.component)
                     .then_some(component_sel.component.into())
             })
-            .or_else(|| suggested_components().first().copied());
+            .or_else(|| all_components.iter().map(|descr| descr.component).next());
 
         //
         // UI for filter entity and component
         //
 
+        let before_filter_entity = filter_entity.clone();
         let before_filter_component = filter_component;
         ui.add_enabled_ui(active, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
@@ -316,7 +290,11 @@ impl Query {
         });
 
         // Save filter if changed
-        if (active_before, before_filter_component) != (active, filter_component) {
+        if before_active != active
+            || before_filter_entity != filter_entity
+            || before_filter_component != filter_component
+        {
+            // Filters out the placeholder component.
             if let Some(filter_component) = filter_component {
                 let filter_is_not_null = components::FilterIsNotNull::new(
                     active,
