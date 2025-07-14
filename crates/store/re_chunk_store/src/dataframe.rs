@@ -473,6 +473,13 @@ impl ChunkStore {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     pub fn schema_for_query(&self, query: &QueryExpression) -> ChunkColumnDescriptors {
         re_tracing::profile_function!();
+        
+        let filter = Self::create_component_filter_from_query(query);
+
+        self.schema().filter_components(filter)
+    }
+
+    pub fn create_component_filter_from_query(query: &QueryExpression) -> impl Fn(&ComponentColumnDescriptor) -> bool {
 
         let QueryExpression {
             view_contents,
@@ -488,8 +495,8 @@ impl ChunkStore {
             sparse_fill_strategy: _,
             selection: _,
         } = query;
-
-        let filter = |column: &ComponentColumnDescriptor| {
+        
+        let filter = move |column: &ComponentColumnDescriptor| {
             let is_part_of_view_contents = || {
                 view_contents.as_ref().is_none_or(|view_contents| {
                     view_contents
@@ -522,6 +529,6 @@ impl ChunkStore {
                 && passes_static_check()
         };
 
-        self.schema().filter_components(filter)
+        filter
     }
 }

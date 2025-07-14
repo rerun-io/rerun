@@ -7305,6 +7305,7 @@ dependencies = [
 name = "re_datafusion"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "async-stream",
@@ -7320,7 +7321,9 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_sorbet",
  "re_tuid",
+ "re_uri",
  "tokio",
  "tokio-stream",
  "tonic",
