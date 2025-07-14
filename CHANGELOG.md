@@ -26,19 +26,35 @@ TODO: mention mcap/ros message support
 
 #### Light Mode
 
+Rerun has now finally a light mode.
+
+
+It defaults to the system setting, but can be adjusted in the settings menu:
 TODO: explain
 TODO: screenshots 
 
 #### Multi Sink
 
-TODO: explain
-TODO: snippet
+Previously, the SDK's recording stream could only send to one sink at a time.
+We now expose the ability to set multiple sinks at once, so you can simultaneously
+stream to both the Viewer and a file.
+
+In Python this looks like this (but the API is available in C++ & Rust as well!)
+
+```py
+rr.set_sinks(
+    # Connect to a local viewer using the default URL
+    rr.GrpcSink(),
+    # Write data to a `data.rrd` file in the current directory
+    rr.FileSink("data.rrd"),
+)
+```
 
 #### Built-in URDF data loader
 
-You can now log URDF files directly to Rerun!
+You can now log URDF files directly to Rerun using the `log_file` API.
 
-TODO: screenshot
+<img width="1303" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
 
 #### Other new features in short
 
