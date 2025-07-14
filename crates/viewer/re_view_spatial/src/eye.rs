@@ -4,7 +4,7 @@ use glam::{Mat4, Quat, Vec3, vec3};
 use macaw::IsoTransform;
 
 use re_types::{
-    blueprint::{archetypes::Eye3D, components::Eye3DKind},
+    blueprint::{archetypes::EyeControls3D, components::Eye3DKind},
     components::LinearSpeed,
 };
 use re_view::controls::{
@@ -378,7 +378,7 @@ impl ViewEye {
         let kind = eye_property.component_or_fallback::<Eye3DKind>(
             view_ctx,
             self,
-            &Eye3D::descriptor_kind(),
+            &EyeControls3D::descriptor_kind(),
         );
         match kind {
             Ok(Eye3DKind::FirstPerson) => self.set_kind(Eye3DKind::FirstPerson),
@@ -458,7 +458,7 @@ impl ViewEye {
         let eye_linear_speed = eye_property.component_or_fallback::<LinearSpeed>(
             view_ctx,
             self,
-            &Eye3D::descriptor_translation_speed(),
+            &EyeControls3D::descriptor_translation_speed(),
         );
         match eye_linear_speed {
             Ok(linear_speed) => **linear_speed as f32,

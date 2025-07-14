@@ -10,7 +10,7 @@ use re_renderer::{
 };
 use re_types::{
     blueprint::{
-        archetypes::{Background, Eye3D, LineGrid3D},
+        archetypes::{Background, EyeControls3D, LineGrid3D},
         components::GridSpacing,
     },
     components::{ViewCoordinates, Visible},
@@ -449,7 +449,7 @@ impl SpatialView3D {
             return Ok(()); // protect against problems with zero-sized views
         }
 
-        let eye_property = ViewProperty::from_archetype::<Eye3D>(
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.view_id,
