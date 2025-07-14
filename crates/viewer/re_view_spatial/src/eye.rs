@@ -591,10 +591,4 @@ impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
     }
 }
 
-impl TypedComponentFallbackProvider<Eye3DKind> for ViewEye {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Eye3DKind {
-        Eye3DKind::default()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed, Eye3DKind]);
+re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed]);
