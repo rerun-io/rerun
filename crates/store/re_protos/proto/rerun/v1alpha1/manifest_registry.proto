@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package rerun.manifest_registry.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
@@ -556,8 +557,21 @@ message FetchChunkManifestResponse {
 
 message DoMaintenanceRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Create the acceleration structures for temporal queries.
+  //
+  // This will recreate all scalar indexes from scratch everytime.
+  //
+  // TODO(cmc): support incremental scalar indexing & index compaction
   bool build_scalar_indexes = 2;
+
+  // Compact the underlying Lance fragments, for all Rerun Manifests.
+  //
+  // Hardcoded to the default (optimal) settings.
   bool compact_fragments = 3;
+
+  // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  google.protobuf.Timestamp cleanup_before = 4;
 }
 
 message DoMaintenanceResponse {
