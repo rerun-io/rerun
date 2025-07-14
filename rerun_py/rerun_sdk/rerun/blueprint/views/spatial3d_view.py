@@ -96,7 +96,7 @@ class Spatial3DView(View):
         | blueprint_components.BackgroundKindLike
         | None = None,
         line_grid: blueprint_archetypes.LineGrid3D | None = None,
-        eye_3d: blueprint_archetypes.Eye3D | None = None,
+        eye_controls: blueprint_archetypes.EyeControls3D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -141,7 +141,7 @@ class Spatial3DView(View):
             Configuration for the background of the view.
         line_grid:
             Configuration for the 3D line grid.
-        eye_3d:
+        eye_controls:
             Configuration for the 3D eye
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
@@ -162,10 +162,10 @@ class Spatial3DView(View):
                 line_grid = blueprint_archetypes.LineGrid3D(line_grid)
             properties["LineGrid3D"] = line_grid
 
-        if eye_3d is not None:
-            if not isinstance(eye_3d, blueprint_archetypes.Eye3D):
-                eye_3d = blueprint_archetypes.Eye3D(eye_3d)
-            properties["Eye3D"] = eye_3d
+        if eye_controls is not None:
+            if not isinstance(eye_controls, blueprint_archetypes.EyeControls3D):
+                eye_controls = blueprint_archetypes.EyeControls3D(eye_controls)
+            properties["EyeControls3D"] = eye_controls
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

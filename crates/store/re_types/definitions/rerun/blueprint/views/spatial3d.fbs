@@ -13,7 +13,7 @@ table Spatial3DView (
     line_grid: rerun.blueprint.archetypes.LineGrid3D (order: 2000);
 
     /// Configuration for the 3D eye
-    eye_3d: rerun.blueprint.archetypes.Eye3D (order: 3000);
+    eye_controls: rerun.blueprint.archetypes.EyeControls3D (order: 3000);
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///

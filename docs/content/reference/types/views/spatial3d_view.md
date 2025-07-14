@@ -21,7 +21,7 @@ Configuration for the 3D line grid.
 * `plane`: In what plane the grid is drawn.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
-### `eye_3d`
+### `eye_controls`
 Configuration for the 3D eye
 
 * `kind`: Eye kind

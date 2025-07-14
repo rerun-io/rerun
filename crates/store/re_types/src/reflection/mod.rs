@@ -2464,9 +2464,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.Eye3D"),
+            ArchetypeName::new("rerun.blueprint.archetypes.EyeControls3D"),
             ArchetypeReflection {
-                display_name: "Eye 3D",
+                display_name: "Eye controls 3D",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],

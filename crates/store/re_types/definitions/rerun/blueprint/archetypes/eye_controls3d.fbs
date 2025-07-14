@@ -1,7 +1,7 @@
 namespace rerun.blueprint.archetypes;
 
-/// 3D Eye in a spatial 3D view
-table Eye3D (
+/// Eye controls in a spatial 3D view
+table EyeControls3D (
   "attr.rerun.scope": "blueprint"
 ) {
 
