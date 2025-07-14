@@ -5,8 +5,6 @@ order: 650
 
 This section explains the process by which logged data is used to produce a visualization and how it can be customized via the user interface or code.
 
-*Note*: this area is under heavy development and subject to changes in future releases.
-
 ## How are visualizations produced?
 
 <!-- schematics source: https://excalidraw.com/#json=8G274_acK-zYc7Cq2ONf0,GaIabh3FBulcjNx9ZqJrXg -->
@@ -34,9 +32,9 @@ For example, the `SeriesLines` visualizer only exist for time series views—not
 For a given view, each entity's components determine which visualizers are available.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
-This happens because [archetypes](../reference/types/archetypes.md) include an _indicator component_ to capture the intent of the logging code.
-This indicator component in turn triggers the default activation of the associated visualizer.
-(We will see that this process can be influenced by both the user interface and the blueprints.)
+This happens because the components of an [archetypes](../reference/types/archetypes.md) are tagged with the
+archetype's name.
+With a few exceptions, archetypes are directly associated with a single visualizer.
 
 Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
  depends on the actual type of visualizer and view.
@@ -95,13 +93,14 @@ The override is listed above the store and fallback value since it has precedenc
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/1200w.png">
 </picture>
 
-The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities.
+The blueprint may also specify a default value for components of a given archetype, should their value not be logged to the store or overridden for a given view entity.
+This makes it easy to configure visual properties for a potentially large number of entities.
 
 This is how it is achieved with the blueprint API:
 
 snippet: concepts/viscomp-component-default
 
-Here, the `/boxes/2` entity is no longer logged with a color value, but a default color is added to the blueprint. Here is how the user interface represents its visualizer:
+Here, the `/boxes/2` entity is no longer logged with a color value, but a default box color is added to the blueprint. Here is how the user interface represents its visualizer:
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/viscomp-component-default-screenshot-1/5966fde4bdddd5e8ef07c6c0a0576b4a487b644e/full.png" alt="">
@@ -112,6 +111,7 @@ The default color value is displayed above the fallback since it takes precedenc
 
 All component default values are displayed in the selection panel when selecting the corresponding view:
 
+TODO: outdated screenshot
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/480w.png">
@@ -126,7 +126,7 @@ The previous sections showed that visualizers use a variety of sources to determ
 
 1. **Override**: the per-entity override (the highest priority)
 2. **Store**: the value that was logged to the data store (e.g., with the `rr.log()` API)
-3. **Default**: the default value for this component type
+3. **Default**: the default value for this component
 4. **Fallback**: a context-specific fallback value which may depend on the specific visualizer and view type (the lowest priority)
 
 As an illustration, all four values are available for the `/boxes/1` entity of the previous example. Here is how its visualizer is represented in the user interface:
