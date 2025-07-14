@@ -192,7 +192,11 @@ def main() -> None:
         args.resize = tuple(int(x) for x in args.resize.split("x"))
 
     blueprint = rrb.Vertical(
-        rrb.Spatial3DView(name="3D", origin="/"),
+        rrb.Spatial3DView(
+            name="3D",
+            origin="/",
+            line_grid=False,  # There's no clearly defined ground plane.
+        ),
         rrb.Horizontal(
             rrb.TextDocumentView(name="README", origin="/description"),
             rrb.Spatial2DView(name="Camera", origin="/camera/image"),

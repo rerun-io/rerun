@@ -32,6 +32,7 @@ from .archetypes import (
     Background as Background,
     EntityBehavior as EntityBehavior,
     EyeControls3D as EyeControls3D,
+    LineGrid3D as LineGrid3D,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,

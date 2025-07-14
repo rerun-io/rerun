@@ -57,7 +57,7 @@ class Spatial3DView(View):
                 speed=20.0,
             ),
             # Configure the line grid.
-            line_grid=rrb.archetypes.LineGrid3D(
+            line_grid=rrb.LineGrid3D(
                 visible=True,  # The grid is enabled by default, but you can hide it with this property.
                 spacing=0.1,  # Makes the grid more fine-grained.
                 # By default, the plane is inferred from view coordinates setup, but you can set arbitrary planes.
@@ -100,7 +100,7 @@ class Spatial3DView(View):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        line_grid: blueprint_archetypes.LineGrid3D | None = None,
+        line_grid: blueprint_archetypes.LineGrid3D | datatypes.BoolLike | None = None,
         eye_controls: blueprint_archetypes.EyeControls3D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
