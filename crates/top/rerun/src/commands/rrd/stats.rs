@@ -9,6 +9,13 @@ use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct StatsCommand {
+    /// If set, the data will never be decoded.
+    ///
+    /// Statistics will be computed at the transport-level instead, which is more limited in
+    /// terms of what can be computed, but also orders of magnitude faster.
+    #[clap(long = "no-decode", default_value_t = false)]
+    no_decode: bool,
+
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
@@ -20,6 +27,7 @@ pub struct StatsCommand {
 impl StatsCommand {
     pub fn run(&self) -> anyhow::Result<()> {
         let Self {
+            no_decode,
             path_to_input_rrds,
             continue_on_error,
         } = self;
@@ -48,24 +56,32 @@ impl StatsCommand {
             match res {
                 Ok(msg) => {
                     num_msgs += 1;
-                    match compute_stats(&msg) {
+                    match compute_stats(!*no_decode, &msg) {
                         Ok(Some(stats)) => {
                             num_chunks += 1;
-                            *num_chunks_per_entity.entry(stats.entity_path).or_default() += 1;
-                            for index in stats.indexes {
-                                *num_chunks_per_index.entry(index).or_default() += 1;
+
+                            if let Some(stats) = stats.app {
+                                *num_chunks_per_entity.entry(stats.entity_path).or_default() += 1;
+                                for index in stats.indexes {
+                                    *num_chunks_per_index.entry(index).or_default() += 1;
+                                }
+                                for component in stats.components {
+                                    *num_chunks_per_component.entry(component).or_default() += 1;
+                                }
+                                num_rows.push(stats.num_rows);
+                                num_static += (stats.num_indexes == 0) as u64;
+                                num_indexes.push(stats.num_indexes);
+                                num_components.push(stats.num_components);
                             }
-                            for component in stats.components {
-                                *num_chunks_per_component.entry(component).or_default() += 1;
-                            }
-                            num_rows.push(stats.num_rows);
-                            num_static += (stats.num_indexes == 0) as u64;
-                            num_indexes.push(stats.num_indexes);
-                            num_components.push(stats.num_components);
-                            ipc_size_bytes_compressed.push(stats.ipc_size_bytes_compressed);
-                            ipc_size_bytes_uncompressed.push(stats.ipc_size_bytes_uncompressed);
-                            ipc_schema_size_bytes_uncompressed.push(stats.ipc_schema_size_bytes);
-                            ipc_data_size_bytes_uncompressed.push(stats.ipc_data_size_bytes);
+
+                            ipc_size_bytes_compressed
+                                .push(stats.transport.ipc_size_bytes_compressed);
+                            ipc_size_bytes_uncompressed
+                                .push(stats.transport.ipc_size_bytes_uncompressed);
+                            ipc_schema_size_bytes_uncompressed
+                                .push(stats.transport.ipc_schema_size_bytes);
+                            ipc_data_size_bytes_uncompressed
+                                .push(stats.transport.ipc_data_size_bytes);
                         }
 
                         Ok(None) => {}
@@ -106,83 +122,86 @@ impl StatsCommand {
         println!("Overview");
         println!("----------");
 
-        println!(
-            "num_entity_paths = {}",
-            re_format::format_uint(num_chunks_per_entity.len())
-        );
         println!("num_chunks = {}", re_format::format_uint(num_chunks));
 
-        let num_chunks_without_components = num_components.iter().filter(|v| **v == 0).count();
-        println!(
-            "num_chunks_without_components = {} ({:.3}%)",
-            re_format::format_uint(num_chunks_without_components),
-            num_chunks_without_components as f64 / num_chunks as f64 * 100.0,
-        );
+        if !*no_decode {
+            println!(
+                "num_entity_paths = {}",
+                re_format::format_uint(num_chunks_per_entity.len())
+            );
 
-        let num_rows_total = num_rows.iter().copied().sum::<u64>();
-        let num_rows_min = num_rows.iter().copied().min().unwrap_or_default();
-        let num_rows_max = num_rows.iter().copied().max().unwrap_or_default();
-        let num_rows_avg = num_rows_total as f64 / num_rows.len() as f64;
+            let num_chunks_without_components = num_components.iter().filter(|v| **v == 0).count();
+            println!(
+                "num_chunks_without_components = {} ({:.3}%)",
+                re_format::format_uint(num_chunks_without_components),
+                num_chunks_without_components as f64 / num_chunks as f64 * 100.0,
+            );
 
-        println!("num_rows = {}", re_format::format_uint(num_rows_total));
-        println!("num_rows_min = {}", re_format::format_uint(num_rows_min));
-        println!("num_rows_max = {}", re_format::format_uint(num_rows_max));
-        println!("num_rows_avg = {num_rows_avg:.3}");
+            let num_rows_total = num_rows.iter().copied().sum::<u64>();
+            let num_rows_min = num_rows.iter().copied().min().unwrap_or_default();
+            let num_rows_max = num_rows.iter().copied().max().unwrap_or_default();
+            let num_rows_avg = num_rows_total as f64 / num_rows.len() as f64;
 
-        let num_indexes_min = num_indexes.iter().copied().min().unwrap_or_default();
-        let num_indexes_max = num_indexes.iter().copied().max().unwrap_or_default();
-        let num_indexes_avg =
-            num_indexes.iter().copied().sum::<u64>() as f64 / num_indexes.len() as f64;
+            println!("num_rows = {}", re_format::format_uint(num_rows_total));
+            println!("num_rows_min = {}", re_format::format_uint(num_rows_min));
+            println!("num_rows_max = {}", re_format::format_uint(num_rows_max));
+            println!("num_rows_avg = {num_rows_avg:.3}");
 
-        println!("num_static = {}", re_format::format_uint(num_static));
-        println!(
-            "num_indexes_min = {}",
-            re_format::format_uint(num_indexes_min)
-        );
-        println!(
-            "num_indexes_max = {}",
-            re_format::format_uint(num_indexes_max)
-        );
-        println!("num_indexes_avg = {num_indexes_avg:.3}");
+            let num_indexes_min = num_indexes.iter().copied().min().unwrap_or_default();
+            let num_indexes_max = num_indexes.iter().copied().max().unwrap_or_default();
+            let num_indexes_avg =
+                num_indexes.iter().copied().sum::<u64>() as f64 / num_indexes.len() as f64;
 
-        let num_components_min = num_components.iter().copied().min().unwrap_or_default();
-        let num_components_max = num_components.iter().copied().max().unwrap_or_default();
-        let num_components_avg =
-            num_components.iter().copied().sum::<u64>() as f64 / num_components.len() as f64;
+            println!("num_static = {}", re_format::format_uint(num_static));
+            println!(
+                "num_indexes_min = {}",
+                re_format::format_uint(num_indexes_min)
+            );
+            println!(
+                "num_indexes_max = {}",
+                re_format::format_uint(num_indexes_max)
+            );
+            println!("num_indexes_avg = {num_indexes_avg:.3}");
 
-        println!(
-            "num_components_min = {}",
-            re_format::format_uint(num_components_min)
-        );
-        println!(
-            "num_components_max = {}",
-            re_format::format_uint(num_components_max)
-        );
-        println!("num_components_avg = {num_components_avg:.3}");
+            let num_components_min = num_components.iter().copied().min().unwrap_or_default();
+            let num_components_max = num_components.iter().copied().max().unwrap_or_default();
+            let num_components_avg =
+                num_components.iter().copied().sum::<u64>() as f64 / num_components.len() as f64;
 
-        let print_details = |num_chunks_per_xxx: HashMap<String, u64>| {
-            let mut num_chunks_per_xxx = num_chunks_per_xxx.into_iter().collect_vec();
-            num_chunks_per_xxx.sort_by(|(kl, _), (kr, _)| kl.cmp(kr));
+            println!(
+                "num_components_min = {}",
+                re_format::format_uint(num_components_min)
+            );
+            println!(
+                "num_components_max = {}",
+                re_format::format_uint(num_components_max)
+            );
+            println!("num_components_avg = {num_components_avg:.3}");
 
-            for (xxx, num_chunks) in num_chunks_per_xxx {
-                println!("{xxx}: {}", re_format::format_uint(num_chunks));
-            }
-        };
+            let print_details = |num_chunks_per_xxx: HashMap<String, u64>| {
+                let mut num_chunks_per_xxx = num_chunks_per_xxx.into_iter().collect_vec();
+                num_chunks_per_xxx.sort_by(|(kl, _), (kr, _)| kl.cmp(kr));
 
-        println!();
-        println!("Num chunks per entity");
-        println!("---------------------");
-        print_details(num_chunks_per_entity);
+                for (xxx, num_chunks) in num_chunks_per_xxx {
+                    println!("{xxx}: {}", re_format::format_uint(num_chunks));
+                }
+            };
 
-        println!();
-        println!("Num chunks per index");
-        println!("--------------------");
-        print_details(num_chunks_per_index);
+            println!();
+            println!("Num chunks per entity");
+            println!("---------------------");
+            print_details(num_chunks_per_entity);
 
-        println!();
-        println!("Num chunks per component");
-        println!("------------------------");
-        print_details(num_chunks_per_component);
+            println!();
+            println!("Num chunks per index");
+            println!("--------------------");
+            print_details(num_chunks_per_index);
+
+            println!();
+            println!("Num chunks per component");
+            println!("------------------------");
+            print_details(num_chunks_per_component);
+        }
 
         let print_ipc_size_bytes_stats = |mut ipc_size_bytes: Vec<u64>| {
             ipc_size_bytes.sort();
@@ -256,6 +275,22 @@ impl StatsCommand {
 
 #[derive(Clone, Debug)]
 struct ChunkStats {
+    app: Option<ChunkStatsApplication>,
+    transport: ChunkStatsTransport,
+}
+
+#[derive(Clone, Debug)]
+struct ChunkStatsTransport {
+    ipc_size_bytes_compressed: u64,
+    ipc_size_bytes_uncompressed: u64,
+
+    ipc_schema_size_bytes: u64,
+    ipc_data_size_bytes: u64,
+}
+
+#[derive(Clone, Debug)]
+struct ChunkStatsApplication {
+    // TODO(#6572): the fact that the Entity Path is only present at the app layer is a serious problem.
     entity_path: String,
 
     indexes: Vec<String>,
@@ -264,15 +299,9 @@ struct ChunkStats {
     num_rows: u64,
     num_indexes: u64,
     num_components: u64,
-
-    ipc_size_bytes_compressed: u64,
-    ipc_size_bytes_uncompressed: u64,
-
-    ipc_schema_size_bytes: u64,
-    ipc_data_size_bytes: u64,
 }
 
-fn compute_stats(msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
+fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
     if let Msg::ArrowMsg(arrow_msg) = msg {
         let re_protos::log_msg::v1alpha1::ArrowMsg {
             store_id: _,
@@ -332,66 +361,78 @@ fn compute_stats(msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             len as u64
         };
 
-        let decoded = re_log_encoding::protobuf_conversions::arrow_msg_from_proto(arrow_msg)?;
+        let app = if app {
+            let decoded = re_log_encoding::protobuf_conversions::arrow_msg_from_proto(arrow_msg)?;
 
-        let schema = decoded.batch.schema();
+            let schema = decoded.batch.schema();
 
-        let entity_path = {
-            let entity_path = schema.metadata().get("rerun:entity_path");
-            let entity_path = entity_path.or_else(|| schema.metadata().get("rerun.entity_path"));
-            entity_path.map(ToOwned::to_owned).unwrap_or_default()
+            let entity_path = {
+                let entity_path = schema.metadata().get("rerun:entity_path");
+                let entity_path =
+                    entity_path.or_else(|| schema.metadata().get("rerun.entity_path"));
+                entity_path.map(ToOwned::to_owned).unwrap_or_default()
+            };
+
+            // TODO(cmc): shortest and longest range covered per timeline would be welcome addition,
+            // something like the following, but generic:
+            if false {
+                if let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
+                    let log_tick = log_tick
+                        .as_any()
+                        .downcast_ref::<arrow::array::Int64Array>()
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("`log_tick` is not a Int64Array, somehow")
+                        })?;
+                    let _min = log_tick.values().iter().copied().min().unwrap_or_default();
+                    let _max = log_tick.values().iter().copied().max().unwrap_or_default();
+                }
+            }
+
+            let indexes = schema
+                .fields
+                .iter()
+                .filter(|&field| {
+                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("index")
+                        || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("index")
+                })
+                .map(|field| field.name().to_owned())
+                .collect_vec();
+            let num_indexes = indexes.len() as _;
+
+            let components = schema
+                .fields
+                .iter()
+                .filter(|&field| {
+                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("data")
+                        || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("data")
+                })
+                .map(|field| field.name().to_owned())
+                .collect_vec();
+            let num_components = components.len() as _;
+
+            Some(ChunkStatsApplication {
+                entity_path,
+
+                indexes,
+                components,
+
+                num_rows: decoded.batch.num_rows() as _,
+                num_indexes,
+                num_components,
+            })
+        } else {
+            None
         };
 
-        // TODO(cmc): shortest and longest range covered per timeline would be welcome addition,
-        // something like the following, but generic:
-        if false {
-            if let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
-                let log_tick = log_tick
-                    .as_any()
-                    .downcast_ref::<arrow::array::Int64Array>()
-                    .ok_or_else(|| anyhow::anyhow!("`log_tick` is not a Int64Array, somehow"))?;
-                let _min = log_tick.values().iter().copied().min().unwrap_or_default();
-                let _max = log_tick.values().iter().copied().max().unwrap_or_default();
-            }
-        }
-
-        let indexes = schema
-            .fields
-            .iter()
-            .filter(|&field| {
-                field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("index")
-                    || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("index")
-            })
-            .map(|field| field.name().to_owned())
-            .collect_vec();
-        let num_indexes = indexes.len() as _;
-
-        let components = schema
-            .fields
-            .iter()
-            .filter(|&field| {
-                field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("data")
-                    || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("data")
-            })
-            .map(|field| field.name().to_owned())
-            .collect_vec();
-        let num_components = components.len() as _;
-
         return Ok(Some(ChunkStats {
-            entity_path,
+            app,
+            transport: ChunkStatsTransport {
+                ipc_size_bytes_compressed: payload.len() as _,
+                ipc_size_bytes_uncompressed: *uncompressed_size as _,
 
-            indexes,
-            components,
-
-            num_rows: decoded.batch.num_rows() as _,
-            num_indexes,
-            num_components,
-
-            ipc_size_bytes_compressed: payload.len() as _,
-            ipc_size_bytes_uncompressed: *uncompressed_size as _,
-
-            ipc_schema_size_bytes,
-            ipc_data_size_bytes: *uncompressed_size as u64 - ipc_schema_size_bytes,
+                ipc_schema_size_bytes,
+                ipc_data_size_bytes: *uncompressed_size as u64 - ipc_schema_size_bytes,
+            },
         }));
     }
 
