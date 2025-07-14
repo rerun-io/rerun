@@ -87,7 +87,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<LinearSpeed>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
     registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
-    registry.add_singleline_edit_or_view::<Scalar>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
 
     // float min-max components:
