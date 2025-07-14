@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct EyeControls3D {
-    /// The kind of the eye for the spatial 3d view.
+    /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.
     /// Defaults to `Orbital`.
@@ -35,7 +35,7 @@ pub struct EyeControls3D {
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     ///
     /// The default depends on the control kind.
-    /// For orbit cameras it is derived from the distance to the the orbit center.
+    /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
     pub translation_speed: Option<SerializedComponentBatch>,
 }
@@ -191,7 +191,7 @@ impl EyeControls3D {
         }
     }
 
-    /// The kind of the eye for the spatial 3d view.
+    /// The kind of the eye for the spatial 3D view.
     ///
     /// This controls how the eye movement behaves when the user interact with the view.
     /// Defaults to `Orbital`.
@@ -204,7 +204,7 @@ impl EyeControls3D {
     /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     ///
     /// The default depends on the control kind.
-    /// For orbit cameras it is derived from the distance to the the orbit center.
+    /// For orbit cameras it is derived from the distance to the orbit center.
     /// For first person cameras it is derived from the scene size.
     #[inline]
     pub fn with_translation_speed(

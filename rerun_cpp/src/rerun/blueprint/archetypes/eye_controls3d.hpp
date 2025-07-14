@@ -23,7 +23,7 @@ namespace rerun::blueprint::archetypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct EyeControls3D {
-        /// The kind of the eye for the spatial 3d view.
+        /// The kind of the eye for the spatial 3D view.
         ///
         /// This controls how the eye movement behaves when the user interact with the view.
         /// Defaults to `Orbital`.
@@ -32,7 +32,7 @@ namespace rerun::blueprint::archetypes {
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
         ///
         /// The default depends on the control kind.
-        /// For orbit cameras it is derived from the distance to the the orbit center.
+        /// For orbit cameras it is derived from the distance to the orbit center.
         /// For first person cameras it is derived from the scene size.
         std::optional<ComponentBatch> translation_speed;
 
@@ -66,7 +66,7 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `EyeControls3D`.
         static EyeControls3D clear_fields();
 
-        /// The kind of the eye for the spatial 3d view.
+        /// The kind of the eye for the spatial 3D view.
         ///
         /// This controls how the eye movement behaves when the user interact with the view.
         /// Defaults to `Orbital`.
@@ -78,7 +78,7 @@ namespace rerun::blueprint::archetypes {
         /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
         ///
         /// The default depends on the control kind.
-        /// For orbit cameras it is derived from the distance to the the orbit center.
+        /// For orbit cameras it is derived from the distance to the orbit center.
         /// For first person cameras it is derived from the scene size.
         EyeControls3D with_translation_speed(
             const rerun::components::LinearSpeed& _translation_speed

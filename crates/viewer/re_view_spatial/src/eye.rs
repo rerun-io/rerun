@@ -383,7 +383,7 @@ impl ViewEye {
         match kind {
             Ok(kind) => self.set_kind(kind),
             Err(err) => {
-                re_log::error_once!("error while getting eye 3d kind: {}", err);
+                re_log::error_once!("error while getting eye 3D kind: {}", err);
             }
         };
 

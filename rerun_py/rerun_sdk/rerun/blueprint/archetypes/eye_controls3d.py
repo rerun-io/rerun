@@ -41,7 +41,7 @@ class EyeControls3D(Archetype):
         Parameters
         ----------
         kind:
-            The kind of the eye for the spatial 3d view.
+            The kind of the eye for the spatial 3D view.
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to `Orbital`.
@@ -49,7 +49,7 @@ class EyeControls3D(Archetype):
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
             The default depends on the control kind.
-            For orbit cameras it is derived from the distance to the the orbit center.
+            For orbit cameras it is derived from the distance to the orbit center.
             For first person cameras it is derived from the scene size.
 
         """
@@ -90,7 +90,7 @@ class EyeControls3D(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         kind:
-            The kind of the eye for the spatial 3d view.
+            The kind of the eye for the spatial 3D view.
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to `Orbital`.
@@ -98,7 +98,7 @@ class EyeControls3D(Archetype):
             Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 
             The default depends on the control kind.
-            For orbit cameras it is derived from the distance to the the orbit center.
+            For orbit cameras it is derived from the distance to the orbit center.
             For first person cameras it is derived from the scene size.
 
         """
@@ -129,7 +129,7 @@ class EyeControls3D(Archetype):
         default=None,
         converter=blueprint_components.Eye3DKindBatch._converter,  # type: ignore[misc]
     )
-    # The kind of the eye for the spatial 3d view.
+    # The kind of the eye for the spatial 3D view.
     #
     # This controls how the eye movement behaves when the user interact with the view.
     # Defaults to `Orbital`.
@@ -144,7 +144,7 @@ class EyeControls3D(Archetype):
     # Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
     #
     # The default depends on the control kind.
-    # For orbit cameras it is derived from the distance to the the orbit center.
+    # For orbit cameras it is derived from the distance to the orbit center.
     # For first person cameras it is derived from the scene size.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

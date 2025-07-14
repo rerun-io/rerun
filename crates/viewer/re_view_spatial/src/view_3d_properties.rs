@@ -58,7 +58,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
         let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             re_log::error_once!(
-                "Fallback for `LinearSpeed` queried on 3D View outside the context of a spatial view."
+                "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
             );
             return 1.0.into();
         };
