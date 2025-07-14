@@ -18,15 +18,20 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The controls for the 3D eye in a spatial 3D view.
     ///
-    /// This controls, for example, the kind of eye; the translation speed of the eye in 3D space (via the WASDQE keys).
+    /// This configures the camera through which the 3D scene is viewed.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct EyeControls3D {
-        /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
+        /// The kind of the eye for the spatial 3d view.
+        ///
+        /// This controls how the eye movement behaves when the user interact with the view.
+        /// Defaults to `Orbital`.
         std::optional<ComponentBatch> kind;
 
-        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
+        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
+        ///
+        /// Defaults to a scene size dependent value.
         std::optional<ComponentBatch> translation_speed;
 
       public:
@@ -59,13 +64,18 @@ namespace rerun::blueprint::archetypes {
         /// Clear all the fields of a `EyeControls3D`.
         static EyeControls3D clear_fields();
 
-        /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
+        /// The kind of the eye for the spatial 3d view.
+        ///
+        /// This controls how the eye movement behaves when the user interact with the view.
+        /// Defaults to `Orbital`.
         EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
             kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
             return std::move(*this);
         }
 
-        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
+        /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
+        ///
+        /// Defaults to a scene size dependent value.
         EyeControls3D with_translation_speed(
             const rerun::components::LinearSpeed& _translation_speed
         ) && {

@@ -2,15 +2,18 @@ namespace rerun.blueprint.archetypes;
 
 /// The controls for the 3D eye in a spatial 3D view.
 ///
-/// This controls, for example, the kind of eye; the translation speed of the eye in 3D space (via the WASDQE keys).
+/// This configures the camera through which the 3D scene is viewed.
 table EyeControls3D (
-  "attr.rerun.scope": "blueprint"
+    "attr.rerun.scope": "blueprint"
 ) {
+    /// The kind of the eye for the spatial 3d view.
+    ///
+    /// This controls how the eye movement behaves when the user interact with the view.
+    /// Defaults to `Orbital`.
+    kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 1000);
 
-  /// The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.
-  kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 1000);
-
-  /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.
-  translation_speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
-
+    /// Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
+    ///
+    /// Defaults to a scene size dependent value.
+    translation_speed: rerun.components.LinearSpeed ("attr.rerun.component_optional", nullable, order: 2000);
 }

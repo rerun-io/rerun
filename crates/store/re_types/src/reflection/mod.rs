@@ -2474,12 +2474,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "kind", display_name : "Kind",
                     component_type : "rerun.blueprint.components.Eye3DKind".into(),
                     docstring_md :
-                    "The kind of the eye for the spatial 3d view. This controls how the eye movement behaves when the user interact with the view.",
+                    "The kind of the eye for the spatial 3d view.\n\nThis controls how the eye movement behaves when the user interact with the view.\nDefaults to `Orbital`.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "translation_speed", display_name : "Translation speed",
                     component_type : "rerun.components.LinearSpeed".into(), docstring_md
                     :
-                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene). This can be adjusted depending on the size of the scene to move around quickly or more precisely.",
+                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nDefaults to a scene size dependent value.",
                     is_required : false, },
                 ],
             },
