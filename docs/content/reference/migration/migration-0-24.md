@@ -95,6 +95,15 @@ These changes are reflected in various parts of the Rerun viewer:
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
 * Indicator components have been removed entirely. The viewer now instead decides which views & visualizers to activate based on archetype information of components.
 
+#### Blueprint component defaults
+
+Blueprint component defaults were previously applied to component _types_.
+They are now instead, applies to archetype fields, i.e. what is now just called _component_ (e.g. `Points3D:positions`).
+
+In practice this means that component defaults are now limited to a single archetype, making them a lot more useful!
+
+TODO: add screenshot
+
 ### Limitations & breaking changes
 
 * In some cases, it is not possible to migrate previous blueprints, _but only if they were saved from the viewer via the UI_.
