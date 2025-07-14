@@ -119,7 +119,9 @@ impl View3DState {
         view_ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
     ) -> ViewEye {
-        // Has the user interact with the eye?
+        // If the user has not interacted with the eye-camera yet, continue to
+        // interpolate to the new default eye. This gives much better robustness
+        // with scenes that change over time.
         if self.last_eye_interaction.is_none() {
             self.interpolate_to_view_eye(default_eye(
                 &bounding_boxes.current,

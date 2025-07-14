@@ -70,7 +70,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
                 }
             }
             Err(view_system_execution_error) => {
-                re_log::error!("Error while downcasting {}", view_system_execution_error);
+                re_log::error_once!("Error while downcasting {}", view_system_execution_error);
                 1.0_f64
             }
         };

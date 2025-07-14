@@ -381,10 +381,9 @@ impl ViewEye {
             &EyeControls3D::descriptor_kind(),
         );
         match kind {
-            Ok(Eye3DKind::FirstPerson) => self.set_kind(Eye3DKind::FirstPerson),
-            Ok(Eye3DKind::Orbital) => self.set_kind(Eye3DKind::Orbital),
+            Ok(kind) => self.set_kind(kind),
             Err(err) => {
-                re_log::error!("error while getting eye 3d kind: {}", err);
+                re_log::error_once!("error while getting eye 3d kind: {}", err);
             }
         };
 
@@ -463,7 +462,7 @@ impl ViewEye {
         match eye_linear_speed {
             Ok(linear_speed) => **linear_speed as f32,
             Err(err) => {
-                re_log::error!("Error while getting linear speed for eye {}", err);
+                re_log::error_once!("Error while getting linear speed for eye {}", err);
                 self.fallback_speed_for_kind(bounding_boxes)
             }
         }
@@ -584,7 +583,7 @@ impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
                 self.fallback_speed_for_kind(bounding_boxes) as f64
             }
             Err(view_system_execution_error) => {
-                re_log::error!("Error while downcasting {}", view_system_execution_error);
+                re_log::error_once!("Error while downcasting {}", view_system_execution_error);
                 1.0_f64
             }
         };

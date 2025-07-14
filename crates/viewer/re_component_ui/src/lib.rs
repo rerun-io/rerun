@@ -43,7 +43,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
-        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Range1D, Scalar, Scale3D,
+        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Range1D, Scale3D,
         SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
         ValueRange, VideoCodec, Visible,
     },
