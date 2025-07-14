@@ -155,13 +155,6 @@ impl StoreHub {
             store_bundle.blueprint_entry(&Self::welcome_screen_blueprint_id());
         (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
-        let table_stores = if std::env::var("RERUN_EXPERIMENTAL_TABLE").is_ok() {
-            let table_id = TableId::new("test123".to_owned());
-            std::iter::once((table_id, TableStore::dummy())).collect()
-        } else {
-            TableStores::default()
-        };
-
         Self {
             persistence,
             active_recording_or_table: None,
@@ -177,7 +170,7 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
-            table_stores,
+            table_stores: TableStores::default(),
         }
     }
 
