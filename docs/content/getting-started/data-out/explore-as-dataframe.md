@@ -54,8 +54,6 @@ Here is how this view is configured:
 - The rows can further be filtered by time range. In this case, we keep the default "infinite" boundaries, so no filtering is applied.
 - The dataframe view has other advanced features which we are not using here, including filtering rows based on the existence of data for a given column, or filling empty cells with latest-at data.
 
-<!-- TODO(#7499): add link to more information on filter-is-not-null and fill with latest-at -->
-
 Now, let's look at the actual data as represented in the above screenshot. At around frame #140, the jaws are open, and, accordingly, the `jawOpen` signal has values around 0.55. Shortly after, they close again and the signal decreases to below 0.1. Then, the signal becomes empty. This happens in rows corresponding to the period of time when the face cannot be tracked and all the signals are cleared.
 
 
