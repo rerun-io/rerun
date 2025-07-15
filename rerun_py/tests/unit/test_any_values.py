@@ -68,6 +68,10 @@ def test_bad_any_value() -> None:
         non_keyword_arg = 1
         rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
+    with pytest.warns(RerunWarning, match="Inconsistent with previous type provided."):
+        rr.AnyValues(value=1)
+        rr.AnyValues(value="1")
+
 
 def test_none_any_value() -> None:
     with pytest.warns(RerunWarning) as warnings:

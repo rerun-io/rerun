@@ -7,7 +7,7 @@ import numpy as np
 import rerun as rr
 import torch
 
-LOOPS = 10
+LOOPS = 100
 
 
 def simple_loop(shape: Any, callback: Any, data_generator: Any) -> float:
@@ -25,8 +25,8 @@ def simple_loop(shape: Any, callback: Any, data_generator: Any) -> float:
     return total_time
 
 
-def main() -> None:
-    shape = (2000,)
+def main(version: str) -> None:
+    shape = (20000,)
 
     def raw_any(tensor: torch.Tensor):
         return rr.AnyValues(embedding=tensor)
@@ -34,17 +34,22 @@ def main() -> None:
     def numpy_any(tensor: torch.Tensor):
         return rr.AnyValues(embedding=tensor.numpy())
 
-    print("Numpy")
-    numpy = simple_loop(shape, numpy_any, torch.randn)
-    print("Orig")
-    orig = simple_loop(shape, raw_any, torch.randn)
-    print("Actual")
-    actual_numpy = simple_loop(shape, raw_any, np.random.randn)
+    if version == "raw":
+        timing = simple_loop(shape, raw_any, torch.randn)
+    elif version == "to_numpy":
+        timing = simple_loop(shape, numpy_any, torch.randn)
+    elif version == "raw_numpy":
+        timing = simple_loop(shape, raw_any, np.random.randn)
+    else:
+        raise ValueError(f"Unknown version: {version}")
 
-    print(
-        f"Original: {orig:.4f}s, Numpy: {numpy:.4f}s, Actual Numpy: {actual_numpy:.4f}s, Speedup: {orig / numpy:.2f}x"
-    )
+    print(f"{version}:\n\t{timing:.4f}s")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("version", choices=["raw", "to_numpy", "raw_numpy"], help="Version of AnyValues to test")
+    args = parser.parse_args()
+    main(args.version)
