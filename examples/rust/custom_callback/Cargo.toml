@@ -1,6 +1,6 @@
 [package]
 name = "custom_callback"
-version = "0.24.0-alpha.9"
+version = "0.24.0-alpha.10+dev"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
