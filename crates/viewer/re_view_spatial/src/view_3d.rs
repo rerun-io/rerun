@@ -286,7 +286,7 @@ impl ViewClass for SpatialView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         let engine = ctx.recording_engine();
         ctx.recording().tree().visit_children_recursively(|path| {
-            // TODO(#9917): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
+            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
             if !engine
                 .store()
                 .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())

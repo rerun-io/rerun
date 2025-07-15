@@ -46,9 +46,7 @@ A lot is happening here, let's go step by step:
 3. The object returned by `select()` is a [`pyarrow.RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html). This is essentially an iterator that returns the stream of [`pyarrow.RecordBatch`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow-recordbatch)es containing the query data.
 4. Finally, we use the [`pyarrow.RecordBatchReader.read_all()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_all) function to read all record batches as a [`pyarrow.Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table).
 
-**Note**: queries can be further narrowed by filtering rows and/or selecting a subset of the view columns. See the reference documentation for more information.
-
-<!-- TODO(#7499): add a link to the reference documentation -->
+**Note**: queries can be further narrowed by filtering rows and/or selecting a subset of the view columns. See the [reference documentation](https://ref.rerun.io/docs/python/stable/common/dataframe/#rerun.dataframe.RecordingView) for more information.
 
 Let's have a look at the resulting table:
 

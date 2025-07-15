@@ -133,6 +133,4 @@ This can be configured from the viewer's option menu. Alternatively, you can als
 * for the web viewer pass `&video_decoder=prefer_software` as a url parameter
 * for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
 
-TODO(#7532): Some stuttering that can't be mitigated this way has been observed with H.264 video on Linux Firefox v130.0.
-
 For more information about video decoding, see also the reference page on [video](../reference/video.md).

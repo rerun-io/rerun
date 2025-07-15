@@ -2236,8 +2236,6 @@ return pa.array(pa_data, type=data_type)
 {batch_type_imports}
 from typing import cast
 
-# TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-# If we can call iter, it may be that one of the variants implements __iter__.
 if not hasattr(data, "__iter__") or isinstance(data, ({singular_checks})): # type: ignore[arg-type]
     data = [data] # type: ignore[list-item]
 data = cast(Sequence[{name}Like], data) # type: ignore[redundant-cast]
