@@ -34,7 +34,7 @@ use re_protos::frontend::v1alpha1::{
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_sorbet::{ChunkColumnDescriptors, ColumnKind};
+use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind};
 use re_tuid::Tuid;
 use re_uri::Origin;
 use std::any::Any;
@@ -120,6 +120,49 @@ fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
     }
 }
 
+/// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
+/// on the data platform, we will get the schema for all entities and all components. This
+/// method is used to down select from that full schema based on `query_expression`.
+fn compute_schema_for_query(dataset_schema: &Schema, query_expression: &QueryExpression) -> Result<SchemaRef, DataFusionError> {
+    // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
+    // which is row id, then time, then data. We don't need perfect ordering other than that.
+    let mut fields = dataset_schema.fields().iter().map(Arc::clone).collect::<Vec<_>>();
+    fields.sort_by(|a, b| {
+        let Ok(a) = ColumnKind::try_from(a.as_ref()) else {
+            return Ordering::Equal;
+        };
+        let Ok(b) = ColumnKind::try_from(b.as_ref()) else {
+            return Ordering::Equal;
+        };
+
+        match (a, b) {
+            (ColumnKind::RowId, _) => Ordering::Less,
+            (_, ColumnKind::RowId) => Ordering::Greater,
+            (ColumnKind::Index, _) => Ordering::Less,
+            (_, ColumnKind::Index) => Ordering::Greater,
+            _ => Ordering::Equal,
+        }
+    });
+    let fields: arrow::datatypes::Fields = fields.into();
+
+    let column_descriptors = ChunkColumnDescriptors::try_from_arrow_fields(None, &fields)
+        .map_err(|err| exec_datafusion_err!("col desc {err}"))?;
+
+    // Create the actual filter to apply to the column descriptors
+    let filter = ChunkStore::create_component_filter_from_query(query_expression);
+
+    // When we call GetChunks we will not return row_id, so we only select indices and
+    // components from the column descriptors.
+    let filtered_fields = column_descriptors
+        .filter_components(filter)
+        .indices_and_components()
+        .into_iter()
+        .map(|cd| cd.to_arrow_field(BatchType::Dataframe))
+        .collect::<Vec<_>>();
+
+    Ok(Arc::new(Schema::new_with_metadata(filtered_fields, dataset_schema.metadata().clone())))
+}
+
 impl DataframeQueryTableProvider {
     /// Create a table provider for a gRPC query. This function is async
     /// because we need to make gRPC calls to determine the schema at the
@@ -150,46 +193,7 @@ impl DataframeQueryTableProvider {
             .schema()
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
-        // which is row id, then time, then data.
-        let mut fields = schema.fields().iter().map(Arc::clone).collect::<Vec<_>>();
-        // .map(|f| ColumnDescriptor::try_from_arrow_field(None, f))
-        // .collect::<Result<Vec<_>, ColumnError>>()
-        // .map_err(|err| exec_datafusion_err!("{err}"))?;
-        fields.sort_by(|a, b| {
-            let Ok(a) = ColumnKind::try_from(a.as_ref()) else {
-                return Ordering::Equal;
-            };
-            let Ok(b) = ColumnKind::try_from(b.as_ref()) else {
-                return Ordering::Equal;
-            };
-
-            match (a, b) {
-                (ColumnKind::RowId, _) => Ordering::Less,
-                (_, ColumnKind::RowId) => Ordering::Greater,
-                (ColumnKind::Index, _) => Ordering::Less,
-                (_, ColumnKind::Index) => Ordering::Greater,
-                _ => Ordering::Equal,
-            }
-        });
-        let fields: arrow::datatypes::Fields = fields.into();
-
-        // let column_descriptors = ChunkColumnDescriptors::from(fields);
-
-        let column_descriptors = ChunkColumnDescriptors::try_from_arrow_fields(None, &fields)
-            .map_err(|err| exec_datafusion_err!("col desc {err}"))?;
-
-        // TODO(tsaucer) the cunk column descriptors requires the row id but we aren't getting this out of the chunk store
-        // so manually removing it below.
-
-        let filter = ChunkStore::create_component_filter_from_query(query_expression);
-        let filtered_fields = column_descriptors
-            .filter_components(filter)
-            .arrow_fields()
-            .into_iter()
-            .filter(|f| f.name() != "rerun.controls.RowId")
-            .collect::<Vec<_>>();
-        let schema = Schema::new_with_metadata(filtered_fields, schema.metadata().clone());
+        let schema = compute_schema_for_query(&schema, query_expression)?;
 
         let select_all_entity_paths = false;
 
