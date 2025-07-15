@@ -114,8 +114,9 @@ pub use time::{TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentType, DatatypeName, DeserializationError, DeserializationResult, Loggable,
-    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
+    ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
+    Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
+    SerializedComponentColumn,
 };
 
 pub use re_byte_size::SizeBytes;
