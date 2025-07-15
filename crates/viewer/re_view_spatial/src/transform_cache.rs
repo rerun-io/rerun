@@ -1153,7 +1153,7 @@ fn query_and_resolve_pinhole_projection_at_entity(
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#9917): This is confusing and should be cleaned up.
+// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -1179,7 +1179,7 @@ pub fn query_view_coordinates(
 /// at the closest ancestor of the given entity path.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#9917): This is confusing and should be cleaned up.
+// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates_at_closest_ancestor(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
