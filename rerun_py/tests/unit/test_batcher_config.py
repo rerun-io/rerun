@@ -8,7 +8,7 @@ from datetime import timedelta
 import rerun as rr
 
 
-def log_and_get_size(rec: rr.RecordingStream, path) -> int:
+def log_and_get_size(rec: rr.RecordingStream, path: str) -> int:
     """Helper function to log a message and sleep for a short duration."""
     rec.log("/data1", rr.Scalars(1))
     time.sleep(0.1)
@@ -29,10 +29,12 @@ def test_getter_setter() -> None:
     assert config.flush_num_rows == 456
     assert config.chunk_max_rows_if_unsorted == 789
 
-    config.flush_tick = 1
+    # Mypy isn't happy about this, but other linters do not complain.
+    config.flush_tick = 1  # type: ignore[assignment]
     assert config.flush_tick == timedelta(seconds=1)
 
-    config.flush_tick = 2.1
+    # Mypy isn't happy about this, but other linters do not complain.
+    config.flush_tick = 2.1  # type: ignore[assignment]
     assert config.flush_tick == timedelta(seconds=2.1)
 
     config.flush_tick = timedelta(seconds=3.5)
