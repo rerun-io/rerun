@@ -108,10 +108,8 @@ They are now instead, applies to archetype fields, i.e. what is now just called 
 
 In practice this means that component defaults are now limited to a single archetype, making them a lot more useful!
 
-<picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/768w.png">
+<picture>
+  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="">
 </picture>
 
 ### Limitations & breaking changes
