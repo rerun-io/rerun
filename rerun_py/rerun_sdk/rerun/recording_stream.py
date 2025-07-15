@@ -305,7 +305,7 @@ class RecordingStream:
     You can configure the frequency of the batches using the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
-        Flush frequency in seconds (default: `0.05` (50ms)).
+        Flush frequency in seconds (default: `0.2` (200ms)).
     - `RERUN_FLUSH_NUM_BYTES`:
         Flush threshold in bytes (default: `1048576` (1MiB)).
     - `RERUN_FLUSH_NUM_ROWS`:
