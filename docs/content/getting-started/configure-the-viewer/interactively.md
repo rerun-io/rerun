@@ -163,17 +163,17 @@ When using one of the recommended views with this method, the view's origin will
 By selecting an entity from a view, it is possible to specify which visualizer(s) should be enabled, and to override values of specific components:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/visualizers/8ca9926398435e8b4c46eda91267a5454f6a75ba/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizers/8ca9926398435e8b4c46eda91267a5454f6a75ba/480w.png">
+  <img src="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/768w.png">
 </picture>
 
 When selecting a view, it is also possible to specify default values for components of a given type, which is used when no value has been logged:
 
-TODO: update screenshot
-
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/component_defaults/3330f16b246a523f9e9a9d8c3549cdc08660356f/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/component_defaults/3330f16b246a523f9e9a9d8c3549cdc08660356f/480w.png">
+  <img src="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/768w.png">
 </picture>
 
 See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for detailed information and more examples.
