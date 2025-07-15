@@ -71,7 +71,7 @@ This will bring you the Rerun viewer's Welcome screen:
 From there you can chose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="">  
+  <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/1024w.png">
