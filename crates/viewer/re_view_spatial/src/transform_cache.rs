@@ -1207,7 +1207,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{Loggable as _, SerializedComponentBatch, archetypes, datatypes};
+    use re_types::{archetypes, datatypes};
 
     use super::*;
 
