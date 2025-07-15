@@ -1379,6 +1379,9 @@ class TableEntry(Entry):
     def df(self) -> Any:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
+
 class DataframeQueryView:
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
@@ -1583,6 +1586,9 @@ class DataFusionTable:
 
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
+
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
     @property
     def name(self) -> str:
