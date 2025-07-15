@@ -284,11 +284,28 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
 #[derive(Clone)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
+#[derive(FromPyObject)]
+enum DurationLike {
+    Int(i64),
+    Float(f64),
+    Duration(time::Duration),
+}
+
+impl DurationLike {
+    fn into_duration(self) -> time::Duration {
+        match self {
+            DurationLike::Int(i) => time::Duration::from_secs(i as u64),
+            DurationLike::Float(f) => time::Duration::from_secs_f64(f),
+            DurationLike::Duration(d) => d,
+        }
+    }
+}
+
 #[pymethods]
 impl PyChunkBatcherConfig {
     #[new]
     fn new(
-        flush_tick: Option<time::Duration>,
+        flush_tick: Option<DurationLike>,
         flush_num_bytes: Option<u64>,
         flush_num_rows: Option<u64>,
         chunk_max_rows_if_unsorted: Option<u64>,
@@ -296,7 +313,9 @@ impl PyChunkBatcherConfig {
         let default = ChunkBatcherConfig::DEFAULT;
 
         Self(ChunkBatcherConfig {
-            flush_tick: flush_tick.unwrap_or(default.flush_tick),
+            flush_tick: flush_tick
+                .map(DurationLike::into_duration)
+                .unwrap_or(default.flush_tick),
             flush_num_bytes: flush_num_bytes.unwrap_or(default.flush_num_bytes),
             flush_num_rows: flush_num_rows.unwrap_or(default.flush_num_rows),
             chunk_max_rows_if_unsorted: chunk_max_rows_if_unsorted
@@ -311,8 +330,8 @@ impl PyChunkBatcherConfig {
     }
 
     #[setter]
-    fn set_flush_tick(&mut self, flush_tick: Option<time::Duration>) {
-        self.0.flush_tick = flush_tick.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_tick);
+    fn set_flush_tick(&mut self, flush_tick: DurationLike) {
+        self.0.flush_tick = flush_tick.into_duration();
     }
 
     #[getter]
@@ -321,9 +340,8 @@ impl PyChunkBatcherConfig {
     }
 
     #[setter]
-    fn set_flush_num_bytes(&mut self, flush_num_bytes: Option<u64>) {
-        self.0.flush_num_bytes =
-            flush_num_bytes.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_num_bytes);
+    fn set_flush_num_bytes(&mut self, flush_num_bytes: u64) {
+        self.0.flush_num_bytes = flush_num_bytes;
     }
 
     #[getter]
@@ -332,9 +350,8 @@ impl PyChunkBatcherConfig {
     }
 
     #[setter]
-    fn set_flush_num_rows(&mut self, flush_num_rows: Option<u64>) {
-        self.0.flush_num_rows =
-            flush_num_rows.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_num_rows);
+    fn set_flush_num_rows(&mut self, flush_num_rows: u64) {
+        self.0.flush_num_rows = flush_num_rows;
     }
 
     #[getter]
@@ -343,9 +360,8 @@ impl PyChunkBatcherConfig {
     }
 
     #[setter]
-    fn set_chunk_max_rows_if_unsorted(&mut self, chunk_max_rows_if_unsorted: Option<u64>) {
-        self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted
-            .unwrap_or(ChunkBatcherConfig::DEFAULT.chunk_max_rows_if_unsorted);
+    fn set_chunk_max_rows_if_unsorted(&mut self, chunk_max_rows_if_unsorted: u64) {
+        self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted;
     }
 
     #[allow(non_snake_case)]
