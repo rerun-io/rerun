@@ -19,5 +19,5 @@ float64
 
 ## Used by
 
-* [`LinearSpeed`](../components/linear_speed.md)
+* [`LinearSpeed`](../components/linear_speed.md?speculative-link)
 * [`Scalar`](../components/scalar.md)
