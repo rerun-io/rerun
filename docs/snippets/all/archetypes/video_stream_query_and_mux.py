@@ -52,7 +52,6 @@ def mux_h264_to_mp4(times: ChunkedArray, samples: ChunkedArray, output_path: str
     # Setup samples as input container.
     input_container = av.open(sample_bytes, mode="r", format="h264")  # Input is AnnexB H.264 stream.
     input_stream = input_container.streams.video[0]
-    input_stream.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
 
     # Setup output container.
     output_container = av.open(output_path, mode="w")
@@ -64,6 +63,7 @@ def mux_h264_to_mp4(times: ChunkedArray, samples: ChunkedArray, output_path: str
 
     # Demux and mux packets.
     for packet, time in zip(input_container.demux(input_stream), times):
+        packet.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
         packet.pts = int(time.value - start_time.value)
         packet.dts = packet.pts  # dts == pts since there's no B-frames.
         packet.stream = output_stream
