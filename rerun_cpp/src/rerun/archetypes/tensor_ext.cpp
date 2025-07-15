@@ -59,7 +59,7 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
             );
         }
 
-        // TODO(#6832): Right now everything is crammed into a single struct array,
+        // TODO(#9119): Right now everything is crammed into a single struct array,
         // so we have to essentially take this struct apart, come up with a new `names` field and
         // put it back together.
         // See also `tensor_data.cpp`.
