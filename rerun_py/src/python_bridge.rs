@@ -279,11 +279,6 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
     });
 }
 
-/// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(name = "ChunkBatcherConfig")]
-#[derive(Clone)]
-pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
-
 #[derive(FromPyObject)]
 enum DurationLike {
     Int(i64),
@@ -301,9 +296,37 @@ impl DurationLike {
     }
 }
 
+/// Defines the different batching thresholds used within the RecordingStream.
+#[pyclass(name = "ChunkBatcherConfig")]
+#[derive(Clone)]
+pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
+
 #[pymethods]
 impl PyChunkBatcherConfig {
     #[new]
+    #[pyo3(
+        text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
+    )]
+    /// Initialize the chunk batcher onfiguration.
+    ///
+    /// Parameters
+    /// ----------
+    /// flush_tick : Optional[int | float | timedelta], optional
+    ///     Duration of the periodic tick, by default `None`.
+    ///     Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+    ///
+    /// flush_num_bytes : Optional[int], optional
+    ///     Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
+    ///     Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+    ///
+    /// flush_num_rows : Optional[int], optional
+    ///     Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
+    ///     Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+    ///
+    /// chunk_max_rows_if_unsorted : Optional[int], optional
+    ///     Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
+    ///     by default `None`.
+    ///     Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
     fn new(
         flush_tick: Option<DurationLike>,
         flush_num_bytes: Option<u64>,
@@ -325,65 +348,93 @@ impl PyChunkBatcherConfig {
     }
 
     #[getter]
+    /// Duration of the periodic tick.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
     fn get_flush_tick(&self) -> time::Duration {
         self.0.flush_tick
     }
 
     #[setter]
+    /// Duration of the periodic tick.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
     fn set_flush_tick(&mut self, flush_tick: DurationLike) {
         self.0.flush_tick = flush_tick.into_duration();
     }
 
     #[getter]
+    /// Flush if the accumulated payload has a size in bytes equal or greater than this.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
     fn get_flush_num_bytes(&self) -> u64 {
         self.0.flush_num_bytes
     }
 
     #[setter]
+    /// Flush if the accumulated payload has a size in bytes equal or greater than this.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
     fn set_flush_num_bytes(&mut self, flush_num_bytes: u64) {
         self.0.flush_num_bytes = flush_num_bytes;
     }
 
     #[getter]
+    /// Flush if the accumulated payload has a number of rows equal or greater than this.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
     fn get_flush_num_rows(&self) -> u64 {
         self.0.flush_num_rows
     }
 
     #[setter]
+    /// Flush if the accumulated payload has a number of rows equal or greater than this.
+    ///
+    /// Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
     fn set_flush_num_rows(&mut self, flush_num_rows: u64) {
         self.0.flush_num_rows = flush_num_rows;
     }
 
     #[getter]
+    /// Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+    ///
+    /// Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
     fn get_chunk_max_rows_if_unsorted(&self) -> u64 {
         self.0.chunk_max_rows_if_unsorted
     }
 
     #[setter]
+    /// Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+    ///
+    /// Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
     fn set_chunk_max_rows_if_unsorted(&mut self, chunk_max_rows_if_unsorted: u64) {
         self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted;
     }
 
     #[allow(non_snake_case)]
     #[staticmethod]
+    /// Default configuration, applicable to most use cases.
     fn DEFAULT() -> Self {
         Self(ChunkBatcherConfig::DEFAULT)
     }
 
     #[allow(non_snake_case)]
     #[staticmethod]
+    /// Low-latency configuration, preferred when streaming directly to a viewer.
     fn LOW_LATENCY() -> Self {
         Self(ChunkBatcherConfig::LOW_LATENCY)
     }
 
     #[allow(non_snake_case)]
     #[staticmethod]
+    /// Always flushes ASAP.
     fn ALWAYS() -> Self {
         Self(ChunkBatcherConfig::ALWAYS)
     }
 
     #[allow(non_snake_case)]
     #[staticmethod]
+    /// Never flushes unless manually told to (or hitting one the builtin invariants).
     fn NEVER() -> Self {
         Self(ChunkBatcherConfig::NEVER)
     }
