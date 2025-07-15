@@ -1,39 +1,29 @@
-use ahash::HashSet;
-use arrow::array::{
-    Array, FixedSizeBinaryArray, RecordBatch, RecordBatchIterator, RecordBatchReader, StringArray,
-    UInt64Array, new_null_array,
-};
+use arrow::array::{Array, RecordBatch, StringArray, UInt64Array, new_null_array};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
 use datafusion::catalog::Session;
-use datafusion::common::hash_utils::HashValue;
-use datafusion::common::{exec_datafusion_err, exec_err, plan_datafusion_err, plan_err};
+use datafusion::common::hash_utils::HashValue as _;
+use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, TaskContext};
-use datafusion::logical_expr::{Expr, UserDefinedLogicalNode};
+use datafusion::logical_expr::Expr;
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
     EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
-use datafusion::physical_plan::metrics::Time;
-use datafusion::physical_plan::repartition::BatchPartitioner;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{
     catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
 };
-use futures::FutureExt as _;
 use futures_util::{Stream, StreamExt};
-use itertools::Itertools;
 use re_dataframe::external::re_chunk::Chunk;
-use re_dataframe::external::re_chunk_store::{ChunkStore, ComponentColumnDescriptor};
-use re_dataframe::{
-    ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
-};
-use re_grpc_client::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle};
+use re_dataframe::external::re_chunk_store::ChunkStore;
+use re_dataframe::{ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression};
+use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode;
 use re_log_types::external::re_types_core::{ChunkId, Loggable};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -44,14 +34,13 @@ use re_protos::frontend::v1alpha1::{
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_sorbet::{ChunkColumnDescriptors, ColumnDescriptor, ColumnError, ColumnKind, SorbetSchema};
+use re_sorbet::{ChunkColumnDescriptors, ColumnKind};
 use re_tuid::Tuid;
 use re_uri::Origin;
 use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
-use std::hash::{DefaultHasher, Hash as _, Hasher as _};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -75,7 +64,6 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
-    dataset_query: QueryDatasetRequest,
     chunk_request: GetChunksRequest,
 }
 
@@ -89,19 +77,19 @@ impl Debug for DataframeQueryTableProvider {
 }
 
 pub struct DataframePartitionStream {
-    // query_engines: Vec<(String, QueryEngine<StorageEngine>)>,
-    query_expression: QueryExpression,
     projected_schema: SchemaRef,
-    // query_handle: Option<QueryHandle<StorageEngine>>,
-    partition_id: Option<String>,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
     rerun_partition_ids: Vec<String>,
     chunk_tx: Option<Sender<Vec<(Chunk, Option<String>)>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
-    cpu_join_handle: JoinHandle<Result<(), DataFusionError>>,
+
+    /// We must keep a handle on the cpu runtime because the execution plan
+    /// is dropped during streaming. We need this handle to continue to exist
+    /// so that our worker does not shut down unexpectedly.
     cpu_runtime: Arc<CpuRuntime>,
+    cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 }
 
 fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
@@ -164,42 +152,43 @@ impl DataframeQueryTableProvider {
 
         // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
         // which is row id, then time, then data.
-        let mut fields = schema
-            .fields()
-            .iter()
-            .map(Arc::clone)
-            .collect::<Vec<_>>();
-            // .map(|f| ColumnDescriptor::try_from_arrow_field(None, f))
-            // .collect::<Result<Vec<_>, ColumnError>>()
-            // .map_err(|err| exec_datafusion_err!("{err}"))?;
-        fields.sort_by(|a, b|
-                           {
-                               let Ok(a) = ColumnKind::try_from(a.as_ref()) else { return Ordering::Equal };
-                               let Ok(b) = ColumnKind::try_from(b.as_ref()) else { return Ordering::Equal };
+        let mut fields = schema.fields().iter().map(Arc::clone).collect::<Vec<_>>();
+        // .map(|f| ColumnDescriptor::try_from_arrow_field(None, f))
+        // .collect::<Result<Vec<_>, ColumnError>>()
+        // .map_err(|err| exec_datafusion_err!("{err}"))?;
+        fields.sort_by(|a, b| {
+            let Ok(a) = ColumnKind::try_from(a.as_ref()) else {
+                return Ordering::Equal;
+            };
+            let Ok(b) = ColumnKind::try_from(b.as_ref()) else {
+                return Ordering::Equal;
+            };
 
-                               match (a, b) {
-                                   (ColumnKind::RowId, _) => Ordering::Less,
-                                   (_, ColumnKind::RowId) => Ordering::Greater,
-                                   (ColumnKind::Index, _) => Ordering::Less,
-                                   (_, ColumnKind::Index) => Ordering::Greater,
-                                   _ => Ordering::Equal,
-                               }
-                           }
-
-    );
+            match (a, b) {
+                (ColumnKind::RowId, _) => Ordering::Less,
+                (_, ColumnKind::RowId) => Ordering::Greater,
+                (ColumnKind::Index, _) => Ordering::Less,
+                (_, ColumnKind::Index) => Ordering::Greater,
+                _ => Ordering::Equal,
+            }
+        });
         let fields: arrow::datatypes::Fields = fields.into();
 
         // let column_descriptors = ChunkColumnDescriptors::from(fields);
 
-        let column_descriptors =
-            ChunkColumnDescriptors::try_from_arrow_fields(None, &fields)
-                .map_err(|err| exec_datafusion_err!("col desc {err}"))?;
+        let column_descriptors = ChunkColumnDescriptors::try_from_arrow_fields(None, &fields)
+            .map_err(|err| exec_datafusion_err!("col desc {err}"))?;
 
         // TODO(tsaucer) the cunk column descriptors requires the row id but we aren't getting this out of the chunk store
         // so manually removing it below.
 
         let filter = ChunkStore::create_component_filter_from_query(query_expression);
-        let filtered_fields = column_descriptors.filter_components(filter).arrow_fields().into_iter().filter(|f| f.name() != "rerun.controls.RowId").collect::<Vec<_>>();
+        let filtered_fields = column_descriptors
+            .filter_components(filter)
+            .arrow_fields()
+            .into_iter()
+            .filter(|f| f.name() != "rerun.controls.RowId")
+            .collect::<Vec<_>>();
         let schema = Schema::new_with_metadata(filtered_fields, schema.metadata().clone());
 
         let select_all_entity_paths = false;
@@ -304,7 +293,6 @@ impl DataframeQueryTableProvider {
             sort_index: query_expression.filtered_index,
             chunk_info_batches,
             client,
-            dataset_query,
             chunk_request,
         })
     }
@@ -356,6 +344,26 @@ impl Stream for DataframePartitionStream {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
 
+        // If we have any errors on the worker thread, we want to ensure we pass them up
+        // through the stream.
+        if this
+            .cpu_join_handle
+            .as_ref()
+            .map(|h| h.is_finished())
+            .unwrap_or(false)
+        {
+            let join_handle = this.cpu_join_handle.take().unwrap();
+            let cpu_join_result = this.cpu_runtime.handle().block_on(join_handle);
+
+            // let cpu_join_result = cpu_join_result.map_err(|err| exec_datafusion_err!("{err}"))
+            match cpu_join_result {
+                Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
+                Ok(Err(err)) => return Poll::Ready(Some(Err(err))),
+                Ok(Ok(())) => {}
+            }
+        }
+
+        // If this is the first call, we are uninitialized so create the io worker
         if this.io_join_handle.is_none() {
             let io_handle = Handle::current();
 
@@ -375,54 +383,6 @@ impl Stream for DataframePartitionStream {
         this.store_output_channel
             .poll_recv(cx)
             .map(|result| Ok(result).transpose())
-        //
-        // this.update_query_handle();
-        //
-        // if this.query_handle.is_none() {
-        //     return Poll::Ready(None);
-        // }
-        //
-        // let query_schema = Arc::clone(this.query_handle.as_ref().unwrap().schema());
-        // let num_fields = query_schema.fields.len();
-        //
-        // let mut maybe_next_row = this.query_handle.as_ref().and_then(|qh| qh.next_row());
-        // if maybe_next_row.is_none() {
-        //     this.update_query_handle();
-        //     maybe_next_row = this.query_handle.as_ref().and_then(|qh| qh.next_row());
-        // }
-        //
-        // let Some(next_row) = maybe_next_row else {
-        //     return Poll::Ready(None);
-        // };
-        //
-        // if next_row.is_empty() {
-        //     // Should not happen
-        //     return Poll::Ready(None);
-        // }
-        // if num_fields != next_row.len() {
-        //     return Poll::Ready(Some(plan_err!(
-        //         "Unexpected number of columns returned from query"
-        //     )));
-        // }
-        //
-        // let pid_array = Arc::new(StringArray::from(vec![
-        //     this.partition_id.clone();
-        //     next_row[0].len()
-        // ])) as Arc<dyn Array>;
-        //
-        // let mut arrays = Vec::with_capacity(num_fields + 1);
-        // arrays.push(pid_array);
-        // arrays.extend(next_row);
-        //
-        // let batch_schema = Arc::new(prepend_string_column_schema(
-        //     &query_schema,
-        //     DATASET_MANIFEST_ID_FIELD_NAME,
-        // ));
-        //
-        // let batch = RecordBatch::try_new(batch_schema, arrays)?;
-        //
-        // let output_batch = align_record_batch_to_schema(&batch, &this.projected_schema)?;
-        // Poll::Ready(Some(Ok(output_batch)))
     }
 }
 
@@ -624,13 +584,12 @@ impl PartitionStreamExec {
 
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<Vec<(Chunk, Option<String>)>>,
-    mut output_channel: Sender<RecordBatch>,
+    output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
     let mut stores = BTreeMap::default();
 
-    let mut num_chunks = 0;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
         // Clone the stores for mutabillity within the spawned task.
         // Note at the end of this task we return the mutated stores and assign
@@ -641,7 +600,6 @@ async fn chunk_store_cpu_worker_thread(
             num_chunks = chunks_and_partition_ids.len()
         )
         .entered();
-        num_chunks += chunks_and_partition_ids.len();
 
         for chunk_and_partition_id in chunks_and_partition_ids {
             let (chunk, partition_id) = chunk_and_partition_id;
@@ -708,7 +666,6 @@ async fn chunk_store_cpu_worker_thread(
         ));
 
         let batch = RecordBatch::try_new(batch_schema, arrays)?;
-
 
         let output_batch = align_record_batch_to_schema(&batch, &projected_schema)?;
 
@@ -795,14 +752,6 @@ impl ExecutionPlan for PartitionStreamExec {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
-        let partition_data = self.chunk_info[partition].clone();
-        let partition_ids = partition_data
-            .iter()
-            .map(|(id, _, _)| id.to_owned())
-            .unique()
-            .map(PartitionId::from)
-            .collect::<Vec<_>>();
-
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
 
         let rerun_partition_ids = self
@@ -819,22 +768,12 @@ impl ExecutionPlan for PartitionStreamExec {
         let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
-        let cpu_join_handle =
-            self.worker_runtime
-                .handle
-                .spawn(chunk_store_cpu_worker_thread(
-                    chunk_rx,
-                    batches_tx,
-                    query_expression,
-                    projected_schema,
-                ));
+        let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
+            chunk_store_cpu_worker_thread(chunk_rx, batches_tx, query_expression, projected_schema),
+        ));
 
         let stream = DataframePartitionStream {
-            // query_engines,
-            query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),
-            // query_handle: None,
-            partition_id: None,
             store_output_channel: batches_rx,
             client,
             chunk_request,
