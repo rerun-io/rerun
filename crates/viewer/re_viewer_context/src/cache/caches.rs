@@ -101,7 +101,7 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// React to the chunk store's changelog, if needed.
     ///
     /// Useful to e.g. invalidate unreachable data.
-    /// Since caches are created per store, each cache only receives events for a single store.
+    /// Since caches are created per store, each cache consistently receives events only for the same store.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         _ = events;
     }
