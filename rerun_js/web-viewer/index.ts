@@ -134,7 +134,8 @@ export type ViewerEvent =
   | PauseEvent
   | TimeUpdateEvent
   | TimelineChangeEvent
-  | SelectionChangeEvent;
+  | SelectionChangeEvent
+  | RecordingOpenEvent;
 
 /**
  * Properties available on all {@link ViewerEvent} types.
@@ -186,6 +187,34 @@ export type TimelineChangeEvent = ViewerEventBase & {
 export type SelectionChangeEvent = ViewerEventBase & {
   type: "selection_change";
   items: SelectionChangeItem[];
+}
+
+/**
+ * Fired when a new recording is opened in the Viewer.
+ *
+ * For `rrd` file or stream, a recording is considered "open" after
+ * enough information about the recording, such as its ID and source,
+ * is received.
+ *
+ * Contains some basic information about the origin of the recording.
+ */
+export type RecordingOpenEvent = ViewerEventBase & {
+  type: "recording_open";
+
+  /**
+   * Where the recording came from.
+   *
+   * The value should be considered unstable, which is why we don't
+   * list the possible values here.
+   */
+  source: string;
+
+  /**
+   * Version of the SDK used to create this recording.
+   *
+   * Uses semver format.
+   */
+  version?: string;
 }
 
 // A bit of TypeScript metaprogramming to automatically produce a
@@ -361,6 +390,8 @@ export class WebViewer {
         event.type as any,
         event,
       );
+
+      console.log(event_json, event);
     }
 
     this.#handle = new WebHandle_class({

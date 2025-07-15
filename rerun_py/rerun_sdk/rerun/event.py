@@ -96,8 +96,25 @@ class SelectionChangeEvent(ViewerEventBase):
     items: list[SelectionItem]
 
 
+@dataclass
+class RecordingOpenEvent(ViewerEventBase):
+    @property
+    def type(self) -> Literal["recording_open"]:
+        return "recording_open"
+
+    source: str
+    version: str | None
+
+
 # Union type for all possible event types
-ViewerEvent = Union[PlayEvent, PauseEvent, TimeUpdateEvent, TimelineChangeEvent, SelectionChangeEvent]
+ViewerEvent = Union[
+    PlayEvent,
+    PauseEvent,
+    TimeUpdateEvent,
+    TimelineChangeEvent,
+    SelectionChangeEvent,
+    RecordingOpenEvent,
+]
 
 
 def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
@@ -163,6 +180,15 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
             recording_id=recording_id,
             partition_id=partition_id,
             items=items,
+        )
+
+    elif event_type == "recording_open":
+        return RecordingOpenEvent(
+            application_id=app_id,
+            recording_id=recording_id,
+            partition_id=partition_id,
+            source=data["source"],
+            version=data.get("version", None),
         )
 
     else:
