@@ -103,8 +103,9 @@ snippet: concepts/viscomp-component-default
 Here, the `/boxes/2` entity is no longer logged with a color value, but a default box color is added to the blueprint. Here is how the user interface represents its visualizer:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/viscomp-component-default-screenshot-1/5966fde4bdddd5e8ef07c6c0a0576b4a487b644e/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-1/5966fde4bdddd5e8ef07c6c0a0576b4a487b644e/480w.png">
+  <img src="https://static.rerun.io/viscomp-component-default-screenshot-1/240381f22e4f8535e792094df7f042d3843b5284/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-1/240381f22e4f8535e792094df7f042d3843b5284/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-1/240381f22e4f8535e792094df7f042d3843b5284/768w.png">
 </picture>
 
 The default color value is displayed above the fallback since it takes precedence. It can also be edited or removed from the user interface.
@@ -132,8 +133,9 @@ The previous sections showed that visualizers use a variety of sources to determ
 As an illustration, all four values are available for the `/boxes/1` entity of the previous example. Here is how its visualizer is represented in the user interface:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/viscomp-component-value-resolution-screenshot/4ecd7b4be069f5d77d0ea541dc1f47d66a868e2d/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-value-resolution-screenshot/4ecd7b4be069f5d77d0ea541dc1f47d66a868e2d/480w.png">
+  <img src="https://static.rerun.io/viscomp-component-resolution-screenshot/a547f66e3116849ab10de2c329e1a8e63790e912/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-resolution-screenshot/a547f66e3116849ab10de2c329e1a8e63790e912/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-resolution-screenshot/a547f66e3116849ab10de2c329e1a8e63790e912/768w.png">
 </picture>
 
 
