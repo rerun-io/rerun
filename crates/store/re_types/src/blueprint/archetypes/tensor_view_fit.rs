@@ -40,46 +40,26 @@ impl TensorViewFit {
             component_type: Some("rerun.blueprint.components.ViewFit".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.TensorViewFitIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [TensorViewFit::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TensorViewFit::descriptor_scaling()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            TensorViewFit::descriptor_indicator(),
-            TensorViewFit::descriptor_scaling(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TensorViewFit::descriptor_scaling()]);
 
 impl TensorViewFit {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`TensorViewFit`] [`::re_types_core::Archetype`]
-pub type TensorViewFitIndicator = ::re_types_core::GenericIndicatorComponent<TensorViewFit>;
-
 impl ::re_types_core::Archetype for TensorViewFit {
-    type Indicator = TensorViewFitIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.TensorViewFit".into()
@@ -88,14 +68,6 @@ impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn display_name() -> &'static str {
         "Tensor view fit"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TensorViewFitIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

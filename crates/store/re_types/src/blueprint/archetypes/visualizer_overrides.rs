@@ -50,47 +50,26 @@ impl VisualizerOverrides {
             component_type: Some("rerun.blueprint.components.VisualizerOverride".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.blueprint.components.VisualizerOverridesIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VisualizerOverrides::descriptor_ranges()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VisualizerOverrides::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            VisualizerOverrides::descriptor_ranges(),
-            VisualizerOverrides::descriptor_indicator(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualizerOverrides::descriptor_ranges()]);
 
 impl VisualizerOverrides {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`VisualizerOverrides`] [`::re_types_core::Archetype`]
-pub type VisualizerOverridesIndicator =
-    ::re_types_core::GenericIndicatorComponent<VisualizerOverrides>;
-
 impl ::re_types_core::Archetype for VisualizerOverrides {
-    type Indicator = VisualizerOverridesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.VisualizerOverrides".into()
@@ -99,14 +78,6 @@ impl ::re_types_core::Archetype for VisualizerOverrides {
     #[inline]
     fn display_name() -> &'static str {
         "Visualizer overrides"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        VisualizerOverridesIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

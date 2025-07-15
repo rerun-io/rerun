@@ -3,12 +3,19 @@ use glam::{Mat4, Quat, Vec3, vec3};
 
 use macaw::IsoTransform;
 
+use re_log::ResultExt as _;
+use re_types::{
+    blueprint::{archetypes::EyeControls3D, components::Eye3DKind},
+    components::LinearSpeed,
+};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
+use re_viewer_context::{TypedComponentFallbackProvider, ViewContext, ViewStateExt as _};
+use re_viewport_blueprint::ViewProperty;
 
-use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
+use crate::{SpatialViewState, space_camera_3d::SpaceCamera3D};
 
 /// An eye in a 3D view.
 ///
@@ -148,44 +155,23 @@ impl Eye {
     }
 }
 
-// ----------------------------------------------------------------------------
-
-/// The mode of an [`ViewEye`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum EyeMode {
-    FirstPerson,
-
-    #[default]
-    Orbital,
-}
-
-/// The speed of a [`ViewEye`] can be computed automatically or set manually.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-enum CameraTranslationSpeed {
-    /// [`ViewEye`] speed is computed using heuristics (depending on the mode), see [`ViewEye::fallback_speed_for_mode`]
-    Auto,
-
-    /// [`ViewEye`] speed is set to a specific value via the UI (user action), or during interpolation.
-    Override(f32),
-}
-
 /// An eye (camera) in 3D space, controlled by the user.
 ///
 /// This is either a first person camera or an orbital camera,
-/// controlled by [`EyeMode`].
+/// controlled by [`Eye3DKind`].
 /// We combine these two modes in one struct because they share a lot of state and logic.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewEye {
     /// First person or orbital?
-    mode: EyeMode,
+    kind: Eye3DKind,
 
-    /// Center of orbit, or camera position in first person mode.
+    /// Center of orbit, or camera position in first person kind.
     center: Vec3,
 
-    /// Ignored for [`EyeMode::FirstPerson`],
-    /// but kept for if/when the user switches to orbital mode.
+    /// Ignored for [`Eye3DKind::FirstPerson`],
+    /// but kept for if/when the user switches to orbital kind.
     orbit_radius: f32,
 
     /// Rotate to world-space from view-space (RUB).
@@ -205,8 +191,6 @@ pub struct ViewEye {
     /// use it at the moment.
     eye_up: Vec3,
 
-    /// For controlling the eye with WSAD in a smooth way.
-    speed: CameraTranslationSpeed,
     velocity: Vec3,
 }
 
@@ -221,48 +205,47 @@ impl ViewEye {
         eye_up: Vec3,
     ) -> Self {
         Self {
-            mode: EyeMode::Orbital,
+            kind: Eye3DKind::Orbital,
             center: orbit_center,
             orbit_radius,
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
-            speed: CameraTranslationSpeed::Auto,
             velocity: Vec3::ZERO,
         }
     }
 
-    pub fn mode(&self) -> EyeMode {
-        self.mode
+    pub fn kind(&self) -> Eye3DKind {
+        self.kind
     }
 
-    pub fn set_mode(&mut self, new_mode: EyeMode) {
-        if self.mode != new_mode {
+    pub fn set_kind(&mut self, new_kind: Eye3DKind) {
+        if self.kind != new_kind {
             // Keep the same position:
-            match new_mode {
-                EyeMode::FirstPerson => self.center = self.position(),
-                EyeMode::Orbital => {
+            match new_kind {
+                Eye3DKind::FirstPerson => self.center = self.position(),
+                Eye3DKind::Orbital => {
                     self.center = self.position() + self.orbit_radius * self.fwd();
                 }
             }
 
-            self.mode = new_mode;
+            self.kind = new_kind;
         }
     }
 
     /// If in orbit mode, what are we orbiting around?
     pub fn orbit_center(&self) -> Option<Vec3> {
-        match self.mode {
-            EyeMode::FirstPerson => None,
-            EyeMode::Orbital => Some(self.center),
+        match self.kind {
+            Eye3DKind::FirstPerson => None,
+            Eye3DKind::Orbital => Some(self.center),
         }
     }
 
     /// If in orbit mode, how far from the orbit center are we?
     pub fn orbit_radius(&self) -> Option<f32> {
-        match self.mode {
-            EyeMode::FirstPerson => None,
-            EyeMode::Orbital => Some(self.orbit_radius),
+        match self.kind {
+            Eye3DKind::FirstPerson => None,
+            Eye3DKind::Orbital => Some(self.orbit_radius),
         }
     }
 
@@ -273,44 +256,18 @@ impl ViewEye {
         // Temporarily switch to orbital, set the values, and then switch back.
         // This ensures the camera position will be set correctly, even if we
         // were in first-person mode:
-        let old_mode = self.mode();
-        self.set_mode(EyeMode::Orbital);
+        let old_mode = self.kind();
+        self.set_kind(Eye3DKind::Orbital);
         self.center = orbit_center;
         self.orbit_radius = orbit_radius;
-        self.set_mode(old_mode);
+        self.set_kind(old_mode);
     }
 
     /// The world-space position of the eye.
     pub fn position(&self) -> Vec3 {
-        match self.mode {
-            EyeMode::FirstPerson => self.center,
-            EyeMode::Orbital => self.center - self.orbit_radius * self.fwd(),
-        }
-    }
-
-    /// Compute the actual speed depending on the [`EyeMode`].
-    fn fallback_speed_for_mode(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
-        match self.mode {
-            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(),
-            EyeMode::Orbital => self.orbit_radius,
-        }
-    }
-
-    /// Returns the actual speed (float) of [`ViewEye`].
-    pub fn speed(&self, bounding_boxes: &SceneBoundingBoxes) -> f32 {
-        match self.speed {
-            CameraTranslationSpeed::Auto => self.fallback_speed_for_mode(bounding_boxes),
-            CameraTranslationSpeed::Override(speed) => speed,
-        }
-    }
-
-    /// Set the speed to a specific value set by the user via the UI.
-    ///
-    /// `None` resets speed to the default.
-    pub fn set_speed(&mut self, new_speed: Option<f32>) {
-        match new_speed {
-            Some(speed) => self.speed = CameraTranslationSpeed::Override(speed),
-            None => self.speed = CameraTranslationSpeed::Auto,
+        match self.kind {
+            Eye3DKind::FirstPerson => self.center,
+            Eye3DKind::Orbital => self.center - self.orbit_radius * self.fwd(),
         }
     }
 
@@ -331,12 +288,12 @@ impl ViewEye {
 
     /// Create an [`ViewEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
-        match self.mode {
-            EyeMode::FirstPerson => {
+        match self.kind {
+            Eye3DKind::FirstPerson => {
                 self.center = eye.pos_in_world();
             }
 
-            EyeMode::Orbital => {
+            Eye3DKind::Orbital => {
                 // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
                 let distance = eye
                     .forward_in_world()
@@ -349,7 +306,6 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
-        self.speed = CameraTranslationSpeed::Auto;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
@@ -360,7 +316,7 @@ impl ViewEye {
             *other // avoid rounding errors
         } else {
             Self {
-                mode: other.mode,
+                kind: other.kind,
                 center: self.center.lerp(other.center, t),
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
@@ -369,7 +325,6 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                speed: other.speed,
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
@@ -397,9 +352,18 @@ impl ViewEye {
         &mut self,
         response: &egui::Response,
         drag_threshold: f32,
-        bounding_boxes: &SceneBoundingBoxes,
+        view_ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
     ) -> bool {
-        let mut speed = self.speed(bounding_boxes);
+        let mut speed = **eye_property
+            .component_or_fallback::<LinearSpeed>(
+                view_ctx,
+                self,
+                &EyeControls3D::descriptor_speed(),
+            )
+            .unwrap_debug_or_log_error() // Should never fail.
+            .unwrap_or(1.0.into());
+
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
@@ -410,6 +374,18 @@ impl ViewEye {
                 speed *= 0.1;
             }
         });
+
+        let kind = eye_property.component_or_fallback::<Eye3DKind>(
+            view_ctx,
+            self,
+            &EyeControls3D::descriptor_kind(),
+        );
+        match kind {
+            Ok(kind) => self.set_kind(kind),
+            Err(err) => {
+                re_log::error_once!("error while getting eye 3D kind: {}", err);
+            }
+        };
 
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
@@ -431,17 +407,17 @@ impl ViewEye {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
                 let pan_speed = 0.001 * speed;
-                let delta_in_view = pan_speed * response.drag_delta();
+                let delta_in_view = pan_speed as f32 * response.drag_delta();
 
                 self.translate(delta_in_view);
             }
         }
 
         if response.hovered() {
-            did_interact |= self.keyboard_navigation(&response.ctx, speed);
+            did_interact |= self.keyboard_navigation(&response.ctx, speed as f32);
         }
 
-        if self.mode == EyeMode::Orbital {
+        if self.kind == Eye3DKind::Orbital {
             let (zoom_delta, scroll_delta) = if response.hovered() {
                 response
                     .ctx
@@ -574,3 +550,23 @@ impl ViewEye {
         self.center += translate;
     }
 }
+
+// Logic should be similar to `impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D`
+impl TypedComponentFallbackProvider<LinearSpeed> for ViewEye {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+        match self.kind {
+            Eye3DKind::FirstPerson => {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!("Fallback for `LinearSpeed` queried on 3D eye outside the context of a spatial view.");
+                    return 1.0_f64.into();
+                };
+
+                0.1 * view_state.bounding_boxes.current.size().length() as f64
+            }
+            Eye3DKind::Orbital => self.orbit_radius as f64,
+        }
+        .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ViewEye => [LinearSpeed]);

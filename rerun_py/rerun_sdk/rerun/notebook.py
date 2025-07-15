@@ -66,8 +66,8 @@ class Viewer:
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"] | None = None,
+        height: int | Literal["auto"] | None = None,
         url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
@@ -83,10 +83,14 @@ class Viewer:
 
         Parameters
         ----------
-        width : int
-            The width of the viewer in pixels.
-        height : int
-            The height of the viewer in pixels.
+        width:
+            The width of the viewer in pixels, or "auto".
+
+            When set to "auto", scales to 100% of the notebook cell's width.
+        height:
+            The height of the viewer in pixels, or "auto".
+
+            When set to "auto", scales using a 16:9 aspect ratio with `width`.
         url:
             Optional URL passed to the viewer for displaying its contents.
         recording:

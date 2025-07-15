@@ -23,8 +23,14 @@ pub struct TonicStatusError(pub tonic::Status);
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(emilk): duplicated in `re_grpc_server`
         let status = &self.0;
-        write!(f, "gRPC error, status: '{}'", status.code())?;
+
+        write!(f, "gRPC error")?;
+
+        if status.code() != tonic::Code::Unknown {
+            write!(f, ", code: '{}'", status.code())?;
+        }
         if !status.message().is_empty() {
             write!(f, ", message: {:?}", status.message())?;
         }
@@ -33,7 +39,7 @@ impl std::fmt::Display for TonicStatusError {
         //     write!(f, ", details: {:?}", status.details())?;
         // }
         if !status.metadata().is_empty() {
-            write!(f, ", metadata: {:?}", status.metadata())?;
+            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
         }
         Ok(())
     }

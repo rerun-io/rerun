@@ -1561,7 +1561,7 @@ impl App {
                             &self.rx_log,
                             &self.command_sender,
                             &WelcomeScreenState {
-                                hide: self.startup_options.hide_welcome_screen,
+                                hide_examples: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
@@ -1575,6 +1575,8 @@ impl App {
                     self.show_text_logs_as_notifications();
                 }
             });
+
+        self.notifications.show_toasts(egui_ctx);
     }
 
     /// Show recent text log messages to the user as toast notifications.

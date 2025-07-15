@@ -126,6 +126,8 @@ impl DatastoreUi {
 
         self.chunk_list_mode.ui(ui, chunk_store, timestamp_format);
 
+        let table_style = re_ui::TableStyle::Dense;
+
         //
         // Collect chunks based on query mode
         //
@@ -352,9 +354,9 @@ impl DatastoreUi {
                     .striped(true);
 
                 table_builder
-                    .header(tokens.deprecated_table_line_height(), header_ui)
+                    .header(tokens.table_row_height(table_style), header_ui)
                     .body(|body| {
-                        body.rows(tokens.deprecated_table_line_height(), chunks.len(), row_ui);
+                        body.rows(tokens.table_row_height(table_style), chunks.len(), row_ui);
                     });
             });
     }

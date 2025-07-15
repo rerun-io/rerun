@@ -359,10 +359,21 @@ impl ::prost::Name for ScanTableResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Create the acceleration structures for temporal queries.
+    ///
+    /// This will recreate all scalar indexes from scratch everytime.
+    ///
+    /// TODO(cmc): support incremental scalar indexing & index compaction
     #[prost(bool, tag = "2")]
     pub build_scalar_indexes: bool,
+    /// Compact the underlying Lance fragments, for all Rerun Manifests.
+    ///
+    /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
+    /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    #[prost(message, optional, tag = "4")]
+    pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
 }
 impl ::prost::Name for DoMaintenanceRequest {
     const NAME: &'static str = "DoMaintenanceRequest";
@@ -878,6 +889,30 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Register a foreign table as a new table entry in the catalog.
+        pub async fn register_table(
+            &mut self,
+            request: impl tonic::IntoRequest<
+                super::super::super::catalog::v1alpha1::RegisterTableRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/RegisterTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "RegisterTable",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn get_table_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetTableSchemaRequest>,
@@ -995,7 +1030,7 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Maintenance operations: scalar index creation, compaction, etc.
+        /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         pub async fn do_maintenance(
             &mut self,
             request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
@@ -1224,6 +1259,14 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Register a foreign table as a new table entry in the catalog.
+        async fn register_table(
+            &self,
+            request: tonic::Request<super::super::super::catalog::v1alpha1::RegisterTableRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
+            tonic::Status,
+        >;
         async fn get_table_schema(
             &self,
             request: tonic::Request<super::GetTableSchemaRequest>,
@@ -1271,7 +1314,7 @@ pub mod frontend_service_server {
                 super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
             >,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
-        /// Maintenance operations: scalar index creation, compaction, etc.
+        /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         async fn do_maintenance(
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
@@ -2101,6 +2144,52 @@ pub mod frontend_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/RegisterTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct RegisterTableSvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<
+                            super::super::super::catalog::v1alpha1::RegisterTableRequest,
+                        > for RegisterTableSvc<T>
+                    {
+                        type Response =
+                            super::super::super::catalog::v1alpha1::RegisterTableResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::super::super::catalog::v1alpha1::RegisterTableRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::register_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = RegisterTableSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

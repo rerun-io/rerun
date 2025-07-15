@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
-    EXAMPLES_ORIGIN, EntryKind, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
+    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
 };
 use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::ItemMenuButton;
@@ -57,20 +57,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         .collect();
 
     for source in ctx.connected_receivers.sources() {
-        let string = match source.as_ref() {
-            // We only show things we know are very-soon-to-be recordings:
-            SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
-            SmartChannelSource::RedapGrpcStream { uri, .. } => format!("Loading {uri}…"),
-
-            SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::MessageProxy { .. }
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::Stdin => {
-                // These show up in the top panel - see `top_panel.rs`.
-                continue;
-            }
+        let Some(string) = source.loading_string() else {
+            continue;
         };
 
         // Only show if we don't have a recording for this source,
@@ -117,7 +105,7 @@ fn recording_list_ui(
     if ctx.storage_context.tables.is_empty()
         && servers.is_empty()
         && local_recordings.is_empty()
-        && welcome_screen_state.hide
+        && welcome_screen_state.hide_examples
     {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -141,7 +129,7 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ui,
                             ctx,
-                            &EntryKind::Local(app_id.clone()),
+                            &DatasetKind::Local(app_id.clone()),
                             entity_dbs,
                         );
                     }
@@ -163,7 +151,7 @@ fn recording_list_ui(
     if (ctx
         .app_options()
         .include_rerun_examples_button_in_recordings_panel
-        && !welcome_screen_state.hide)
+        && !welcome_screen_state.hide_examples)
         || !example_recordings.is_empty()
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
@@ -188,7 +176,7 @@ fn recording_list_ui(
                             dataset_and_its_recordings_ui(
                                 ui,
                                 ctx,
-                                &EntryKind::Local(app_id.clone()),
+                                &DatasetKind::Local(app_id.clone()),
                                 entity_dbs,
                             );
                         }

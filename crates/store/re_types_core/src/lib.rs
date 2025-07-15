@@ -35,10 +35,7 @@ mod tuid;
 mod view;
 
 pub use self::{
-    archetype::{
-        Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
-        GenericIndicatorComponent, NamedIndicatorComponent,
-    },
+    archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
     arrow_string::ArrowString,
     as_components::AsComponents,
     component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},

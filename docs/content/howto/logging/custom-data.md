@@ -6,18 +6,52 @@ description: How to use Rerun with custom data
 
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
-For Python we have a helper for this, called [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/), allowing you to easily attach custom values to any entity instance:
+For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
+You find the documentation for these helpers here:
+
+* [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
+* [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html?speculative-link)
 
 ```python
 rr.log(
-    "my_entity", rr.AnyValues(
-        confidence=[1.2, 3.4, 5.6],
-        description="Bla bla bla…",
-        # URIs will become clickable links
+    "my_entity",
+    rr.AnyValues(
+        # Using arbitrary Arrow data.
         homepage="https://www.rerun.io",
         repository="https://github.com/rerun-io/rerun",
+    )
+    # Using Rerun's builtin components.
+    .with_field(
+        rr.ComponentDescriptor("confidence", component_type=rr.components.ScalarBatch._COMPONENT_TYPE), [1.2, 3.4, 5.6]
+    )
+    .with_field(
+        rr.ComponentDescriptor("description", component_type=rr.components.TextBatch._COMPONENT_TYPE), "Bla bla bla…"
     ),
 )
+```
+
+You can achieve the same thing in Rust:
+
+```rs
+let any_values = rerun::AnyValues::default()
+    // Using arbitrary Arrow data.
+    .with_field(
+        "homepage",
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://www.rerun.io",
+        ])),
+    )
+    .with_field(
+        "repository",
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://github.com/rerun-io/rerun",
+        ])),
+    )
+    // Using Rerun's builtin components.
+    .with_component::<rerun::components::Scalar>("confidence", [1.2, 3.4, 5.6])
+    .with_component::<rerun::components::Text>("description", vec!["Bla bla bla…"]);
+
+rec.log("my_entity", &any_values)?;
 ```
 
 You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
@@ -56,14 +90,19 @@ rr.log("points/classified", classified)
 
 You can also define and log your own custom archetypes and components completely from user code, without rebuilding Rerun.
 
-In this example we extend the Rerun Points3D archetype with custom confidence and indicator components.
+In this example we extend the Rerun Points3D archetype with a custom confidence component and user-defined archetype.
+
+⚠️ NOTE: Due to the component descriptor changes in `v0.24` it is currently not possible for custom data to be picked up by visualizers.
+We are currently investigating approaches to bring that functionality back.
+
+However, your custom data will still show up in the dataframe view, as shown below.
 
 snippet: tutorials/custom_data
 
 <picture>
-  <img src="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/1200w.png">
+  <img src="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1200w.png">
 </picture>

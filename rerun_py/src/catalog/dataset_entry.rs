@@ -420,10 +420,6 @@ impl PyDatasetEntry {
     ///     Whether to include columns that are semantically empty, by default `False`.
     ///
     ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-    /// include_indicator_columns : bool, optional
-    ///     Whether to include indicator columns, by default `False`.
-    ///
-    ///     Indicator columns are components used to represent the presence of an archetype within an entity.
     /// include_tombstone_columns : bool, optional
     ///     Whether to include tombstone columns, by default `False`.
     ///
@@ -434,13 +430,11 @@ impl PyDatasetEntry {
     /// -------
     /// DataframeQueryView
     ///     The view of the dataset.
-    #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,
         contents,
         include_semantically_empty_columns = false,
-        include_indicator_columns = false,
         include_tombstone_columns = false,
     ))]
     fn dataframe_query_view(
@@ -448,7 +442,6 @@ impl PyDatasetEntry {
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
-        include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<PyDataframeQueryView> {
@@ -457,7 +450,6 @@ impl PyDatasetEntry {
             index,
             contents,
             include_semantically_empty_columns,
-            include_indicator_columns,
             include_tombstone_columns,
             py,
         )
@@ -698,6 +690,7 @@ impl PyDatasetEntry {
     #[pyo3(signature = (
             build_scalar_index = false,
             compact_fragments = false,
+            cleanup_before = None,
     ))]
     #[instrument(skip_all, err)]
     fn do_maintenance(
@@ -705,12 +698,34 @@ impl PyDatasetEntry {
         py: Python<'_>,
         build_scalar_index: bool,
         compact_fragments: bool,
+        cleanup_before: Option<Bound<'_, PyAny>>,
     ) -> PyResult<()> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.do_maintenance(py, dataset_id, build_scalar_index, compact_fragments)
+        let cleanup_before_nanos = cleanup_before
+            .as_ref()
+            .map(|s| py_object_to_i64(py, s))
+            .transpose()?;
+
+        let cleanup_before = cleanup_before_nanos
+            .map(|ts_nanos| {
+                jiff::Timestamp::from_nanosecond(ts_nanos as i128).map_err(|err| {
+                    PyRuntimeError::new_err(format!(
+                        "failed converting cleanup_before timestamp: {err}"
+                    ))
+                })
+            })
+            .transpose()?;
+
+        connection.do_maintenance(
+            py,
+            dataset_id,
+            build_scalar_index,
+            compact_fragments,
+            cleanup_before,
+        )
     }
 }
 

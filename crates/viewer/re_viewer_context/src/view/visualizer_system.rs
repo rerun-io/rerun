@@ -14,6 +14,8 @@ use crate::{
 #[derive(Debug, Clone, Default)]
 pub struct SortedComponentDescriptorSet(linked_hash_map::LinkedHashMap<ComponentDescriptor, ()>);
 
+pub type UnorderedArchetypeSet = IntSet<ArchetypeName>;
+
 impl SortedComponentDescriptorSet {
     pub fn insert(&mut self, k: ComponentDescriptor) -> Option<()> {
         self.0.insert(k, ())
@@ -41,8 +43,7 @@ impl FromIterator<ComponentDescriptor> for SortedComponentDescriptorSet {
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
-    // TODO(#8129): Consider making this a proper struct to make the semantics of `Default::default()` clearer.
-    pub relevant_archetypes: IntSet<ArchetypeName>,
+    pub relevant_archetypes: UnorderedArchetypeSet,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     ///

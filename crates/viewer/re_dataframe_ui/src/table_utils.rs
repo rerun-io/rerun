@@ -23,8 +23,12 @@ pub fn apply_table_style_fixes(style: &mut Style) {
     style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.0, Color32::TRANSPARENT);
 }
 
-pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Response {
-    header_ui(ui, false, |ui| {
+pub fn header_title(
+    ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
+    title: impl Into<RichText>,
+) -> egui::Response {
+    header_ui(ui, table_style, false, |ui| {
         ui.monospace(title.into().strong());
     })
     .response
@@ -32,6 +36,7 @@ pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Resp
 
 pub fn header_ui<R>(
     ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
     connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
@@ -40,7 +45,7 @@ pub fn header_ui<R>(
         .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
     let response = Frame::new()
-        .inner_margin(ui.tokens().table_cell_margin())
+        .inner_margin(ui.tokens().header_cell_margin(table_style))
         .show(ui, content);
 
     if !connected_to_next_cell {
@@ -62,11 +67,12 @@ pub fn header_ui<R>(
 
 pub fn cell_ui<R>(
     ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
     connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
     let response = Frame::new()
-        .inner_margin(ui.tokens().table_cell_margin())
+        .inner_margin(ui.tokens().table_cell_margin(table_style))
         .show(ui, content);
 
     let rect = ui.max_rect();

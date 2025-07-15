@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <chrono>
@@ -66,10 +65,6 @@ namespace rerun::archetypes {
     ///     for (size_t i = 0; i <frame_timestamps_ns.size(); i++) {
     ///         video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
     ///     }
-    ///     auto video_frame_reference_indicators =
-    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-    ///             static_cast<uint32_t>(video_timestamps.size())
-    ///         );
     ///
     ///     rec.send_columns(
     ///         "video",
@@ -125,11 +120,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> media_type;
 
       public:
-        static constexpr const char IndicatorComponentType[] =
-            "rerun.components.AssetVideoIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentType>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.AssetVideo";
 

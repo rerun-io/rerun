@@ -26,6 +26,11 @@ struct DecoderOutput {
     /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
     /// reset decoder.
     /// See also <https://github.com/rerun-io/rerun/issues/7961>
+    ///
+    /// Note that this technically a bug in their respective WebCodec implementations as the spec says
+    /// (<https://www.w3.org/TR/webcodecs/#dom-videodecoder-decode>):
+    /// `VideoDecoder` requires that frames are output in the order they expect to be presented, commonly known as presentation order.
+    /// Either way, being robust against this seems like a good idea!
     frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
@@ -151,8 +156,16 @@ impl VideoSampleDecoder {
     ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
 
+        // Latest-at semantics means that if `pts` doesn't land on the exact PTS of a decode frame we have,
+        // we provide the next *older* frame.
+        let latest_at_pts = decoder_output
+            .frames_by_pts
+            .range(..=pts)
+            .next_back()
+            .map_or(pts, |(k, v)| *k);
+
         // Keep everything at or after the given PTS.
-        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&pts);
+        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&latest_at_pts);
 
         if !decoder_output.frames_by_pts.is_empty() {
             Some(parking_lot::MutexGuard::map(

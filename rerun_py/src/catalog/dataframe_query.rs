@@ -45,7 +45,6 @@ impl PyDataframeQueryView {
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
-        include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
@@ -68,7 +67,6 @@ impl PyDataframeQueryView {
             query_expression: QueryExpression {
                 view_contents: Some(view_contents),
                 include_semantically_empty_columns,
-                include_indicator_columns,
                 include_tombstone_columns,
                 include_static_columns: if static_only {
                     re_chunk_store::StaticColumnSelection::StaticOnly
@@ -80,12 +78,7 @@ impl PyDataframeQueryView {
                 filtered_index_values: None,
                 using_index_values: None,
                 filtered_is_not_null: None,
-                //TODO(#10327): this should not be necessary!
-                sparse_fill_strategy: if static_only {
-                    SparseFillStrategy::LatestAtGlobal
-                } else {
-                    SparseFillStrategy::None
-                },
+                sparse_fill_strategy: SparseFillStrategy::None,
                 selection: None,
             },
             partition_ids: vec![],
@@ -513,7 +506,8 @@ impl PyDataframeQueryView {
             .collect();
 
         DataframeQueryTableProvider::new(query_engines, &self.query_expression)
-            .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
+            .map_err(to_py_err)?
+            .try_into()
             .map_err(to_py_err)
     }
 }

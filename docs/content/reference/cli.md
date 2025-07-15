@@ -223,6 +223,7 @@ Manipulate the contents of .rrd and .rbl files.
 * `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
 * `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
 * `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
+* `route`: Manipulates the metadata of .rrd/.rbl streams without decoding the payloads.
 
 ## rerun rrd compare
 
@@ -328,7 +329,7 @@ Merges the contents of multiple .rrd/.rbl files/streams, and writes the result t
 
 Reads from standard input if no paths are specified.
 
-This will not affect the chunking of the data in any way.
+This command will decode the contents of these files and perform migration and compaction on them.
 
 Example: `rerun merge /my/recordings/*.rrd > output.rrd`
 
@@ -381,3 +382,44 @@ Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rr
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >
 > [Default: `false`]
+
+## rerun rrd route
+
+Changes the metadata of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+
+Reads from standard input if no paths are specified.
+
+This will not affect the chunking of the data in any way, but can be used to combine multiple .rrd/.rbl files/streams.
+
+Example: `rerun route --recording-id my_recording /my/recordings/*.rrd > output.rrd`
+
+**Usage**: `rerun rrd route [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-o, --output <dst.(rrd|rbl)>`
+> Path to write to. Writes to standard output if unspecified.
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `false`]
+
+* `--application-id <APPLICATION_ID>`
+> If set, specifies the application id of the output.
+>
+> [Default: `None`]
+
+* `--recording-id <RECORDING_ID>`
+> If set, specifies the recording id of the output.
+>
+> When this flag is set and multiple input .rdd/.rbl streams are specified,
+> blueprint activation commands will be dropped from the resulting
+> output.
+>
+> [Default: `None`]

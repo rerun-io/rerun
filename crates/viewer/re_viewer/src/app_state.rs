@@ -71,6 +71,13 @@ pub struct AppState {
     view_states: ViewStates,
 
     /// Selection & hovering state.
+    ///
+    /// Not serialized since on startup we have to typically discard it anyways since
+    /// whatever data was selected before is no longer accessible.
+    ///
+    /// For dataplatform use-cases this can even be rather irritating:
+    /// if previously a server was selected, then starting with a URL should no longer select it.
+    #[serde(skip)]
     pub selection_state: ApplicationSelectionState,
 
     /// Item that got focused on the last frame if any.
@@ -104,8 +111,8 @@ impl Default for AppState {
 }
 
 pub(crate) struct WelcomeScreenState {
-    /// The normal welcome screen should be hidden. Show a fallback "no data ui" instead.
-    pub hide: bool,
+    /// The normal examples screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide_examples: bool,
 
     /// The opacity of the welcome screen during fade-in.
     pub opacity: f32,
@@ -175,7 +182,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         // check state early, before the UI has a chance to close these popups
-        let is_any_popup_open = ui.memory(|m| m.any_popup_open());
+        let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
         match self.navigation.peek() {
             DisplayMode::Settings => {
@@ -641,6 +648,7 @@ impl AppState {
                                         command_sender,
                                         welcome_screen_state,
                                         is_history_enabled,
+                                        &rx_log.sources(),
                                     );
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);

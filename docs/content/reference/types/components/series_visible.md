@@ -5,7 +5,7 @@ title: "SeriesVisible"
 
 Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.
 
-TODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.
+TODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.
 
 ## Rerun datatype
 [`Bool`](../datatypes/bool.md)

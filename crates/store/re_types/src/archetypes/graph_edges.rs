@@ -87,52 +87,31 @@ impl GraphEdges {
             component_type: Some("rerun.components.GraphType".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.GraphEdgesIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_edges()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            GraphEdges::descriptor_graph_type(),
-            GraphEdges::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_graph_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GraphEdges::descriptor_edges(),
             GraphEdges::descriptor_graph_type(),
-            GraphEdges::descriptor_indicator(),
         ]
     });
 
 impl GraphEdges {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`GraphEdges`] [`::re_types_core::Archetype`]
-pub type GraphEdgesIndicator = ::re_types_core::GenericIndicatorComponent<GraphEdges>;
-
 impl ::re_types_core::Archetype for GraphEdges {
-    type Indicator = GraphEdgesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GraphEdges".into()
@@ -141,14 +120,6 @@ impl ::re_types_core::Archetype for GraphEdges {
     #[inline]
     fn display_name() -> &'static str {
         "Graph edges"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GraphEdgesIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

@@ -39,6 +39,7 @@ line_strip2d.cpp linguist-generated=true
 line_strip2d.hpp linguist-generated=true
 line_strip3d.cpp linguist-generated=true
 line_strip3d.hpp linguist-generated=true
+linear_speed.hpp linguist-generated=true
 magnification_filter.cpp linguist-generated=true
 magnification_filter.hpp linguist-generated=true
 marker_shape.cpp linguist-generated=true

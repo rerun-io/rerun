@@ -79,14 +79,6 @@ impl PyComponentColumnDescriptor {
     fn is_static(&self) -> bool {
         self.0.is_static
     }
-
-    /// Whether the column is an indicator column.
-    ///
-    /// This property is read-only.
-    #[getter]
-    fn is_indicator(&self) -> bool {
-        self.0.component_descriptor().is_indicator_component()
-    }
 }
 
 impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {

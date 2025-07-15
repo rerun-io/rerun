@@ -5,9 +5,10 @@ use itertools::Itertools as _;
 
 use re_chunk::{ArchetypeName, Chunk, ComponentIdentifier, ComponentType, RowId};
 use re_chunk_store::LatestAtQuery;
-use re_data_ui::DataUi as _;
+use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
+use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
@@ -123,8 +124,7 @@ fn active_default_ui(
                 // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
                 // so we can just check if the previous archetype name is different from the current one.
                 if let Some(archetype_name) = component_descr.archetype {
-                    ui.add_space(4.0);
-                    ui.label(archetype_name.syntax_highlighted(ui.style()));
+                    archetype_label_list_item_ui(ui, &Some(archetype_name));
                     previous_archetype_name = Some(archetype_name);
                 }
             }
@@ -144,17 +144,15 @@ fn active_default_ui(
             };
 
             let response = ui.list_item_flat_noninteractive(
-                re_ui::list_item::PropertyContent::new(
-                    component_descr.component.syntax_highlighted(ui.style()),
-                )
-                .min_desired_width(150.0)
-                .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
-                    ctx.clear_blueprint_component(
-                        view.defaults_path.clone(),
-                        component_descr.clone(),
-                    );
-                })
-                .value_fn(|ui, _| value_fn(ui)),
+                re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
+                    .min_desired_width(150.0)
+                    .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
+                        ctx.clear_blueprint_component(
+                            view.defaults_path.clone(),
+                            component_descr.clone(),
+                        );
+                    })
+                    .value_fn(|ui, _| value_fn(ui)),
             );
 
             if let Some(component_type) = component_descr.component_type {
@@ -188,13 +186,11 @@ fn visualized_components_by_archetype(
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
-                if !descr.is_indicator_component() {
-                    re_log::warn_once!(
-                        "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
-                        id,
-                        descr
-                    );
-                }
+                re_log::warn_once!(
+                    "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
+                    id,
+                    descr
+                );
                 continue;
             };
 
@@ -313,8 +309,9 @@ fn add_popup_ui(
     for (archetype_name, components) in components_to_show_in_add_menu {
         ui.menu_button(archetype_name.syntax_highlighted(ui.style()), |ui| {
             for entry in components {
+                let descriptor = entry.descriptor(archetype_name);
                 if ui
-                    .button(entry.component.syntax_highlighted(ui.style()))
+                    .button(descriptor.archetype_field_name())
                     .on_hover_ui(|ui| {
                         entry.component_type.data_ui_recording(
                             ctx.viewer_ctx,
@@ -328,7 +325,7 @@ fn add_popup_ui(
                         ctx,
                         defaults_path,
                         &query_context,
-                        entry.descriptor(archetype_name),
+                        descriptor,
                         entry.visualizer_identifier,
                         visualizers,
                     );

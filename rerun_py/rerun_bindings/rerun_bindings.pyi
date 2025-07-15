@@ -489,7 +489,6 @@ class Recording:
         index: str | None,
         contents: ViewContentsLike,
         include_semantically_empty_columns: bool = False,
-        include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> RecordingView:
         """
@@ -524,10 +523,6 @@ class Recording:
             Whether to include columns that are semantically empty, by default `False`.
 
             Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_indicator_columns : bool, optional
-            Whether to include indicator columns, by default `False`.
-
-            Indicator columns are components used to represent the presence of an archetype within an entity.
         include_tombstone_columns : bool, optional
             Whether to include tombstone columns, by default `False`.
 
@@ -652,6 +647,9 @@ class PyBinarySinkStorage:
 #
 # init
 #
+
+def flush_and_cleanup_orphaned_recordings() -> None:
+    """Flush and then cleanup any orphaned recordings."""
 
 def new_recording(
     application_id: str,
@@ -1277,7 +1275,6 @@ class DatasetEntry(Entry):
         index: str | None,
         contents: Any,
         include_semantically_empty_columns: bool = False,
-        include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> DataframeQueryView:
         """
@@ -1312,10 +1309,6 @@ class DatasetEntry(Entry):
             Whether to include columns that are semantically empty, by default `False`.
 
             Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_indicator_columns : bool, optional
-            Whether to include indicator columns, by default `False`.
-
-            Indicator columns are components used to represent the presence of an archetype within an entity.
         include_tombstone_columns : bool, optional
             Whether to include tombstone columns, by default `False`.
 
@@ -1369,6 +1362,7 @@ class DatasetEntry(Entry):
         self,
         build_scalar_index: bool = False,
         compact_fragments: bool = False,
+        cleanup_before: Optional[datetime] = None,
     ) -> None:
         """Perform maintenance tasks on the datasets."""
 
@@ -1576,6 +1570,7 @@ class CatalogClientInternal:
     # ---
 
     def create_dataset(self, name: str) -> DatasetEntry: ...
+    def register_table(self, name: str, url: str) -> TableEntry: ...
     def ctx(self) -> Any: ...
 
     # ---

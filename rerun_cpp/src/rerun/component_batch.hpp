@@ -103,15 +103,6 @@ namespace rerun {
             }
         }
 
-        /// Creates a new component batch for an archetype indicator.
-        template <typename Archetype>
-        static Result<ComponentBatch> from_indicator() {
-            return ComponentBatch::from_loggable(
-                typename Archetype::IndicatorComponent(),
-                Loggable<typename Archetype::IndicatorComponent>::Descriptor
-            );
-        }
-
         /// Creates a new component batch from an already existing arrow array.
         ///
         /// Automatically registers the descriptor the first time it is encountered.

@@ -137,6 +137,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Eye3DKind as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of the 3D eye to view a scene in a [`views.Spatial3DView`](https://rerun.io/docs/reference/types/views/spatial3d_view).\n\nThis is used to specify how the controls of the view react to user input (such as mouse gestures).",
+                deprecation_summary: None,
+                custom_placeholder: Some(Eye3DKind::default().to_arrow()?),
+                datatype: Eye3DKind::arrow_datatype(),
+                verify_arrow_array: Eye3DKind::verify_arrow_array,
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -721,6 +731,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LinearSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Linear speed, used for translation speed for example.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: LinearSpeed::arrow_datatype(),
+                verify_arrow_array: LinearSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <MagnificationFilter as Component>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
@@ -943,7 +963,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
-                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
+                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),
@@ -2156,7 +2176,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Markers", component_type :
                     "rerun.components.MarkerShape".into(), docstring_md :
                     "What shape to use to represent the point\n\nMay change over time.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    is_required : true, }, ArchetypeFieldReflection { name : "names",
                     display_name : "Names", component_type : "rerun.components.Name"
                     .into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
@@ -2439,6 +2459,26 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Visible", component_type : "rerun.components.Visible"
                     .into(), docstring_md :
                     "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.EyeControls3D"),
+            ArchetypeReflection {
+                display_name: "Eye controls 3D",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "kind", display_name : "Kind",
+                    component_type : "rerun.blueprint.components.Eye3DKind".into(),
+                    docstring_md :
+                    "The kind of the eye for the spatial 3D view.\n\nThis controls how the eye movement behaves when the user interact with the view.\nDefaults to orbital.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "speed",
+                    display_name : "Speed", component_type :
+                    "rerun.components.LinearSpeed".into(), docstring_md :
+                    "Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).\n\nThe default depends on the control kind.\nFor orbit cameras it is derived from the distance to the orbit center.\nFor first person cameras it is derived from the scene size.",
                     is_required : false, },
                 ],
             },

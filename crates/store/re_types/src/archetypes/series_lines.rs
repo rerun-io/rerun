@@ -175,23 +175,13 @@ impl SeriesLines {
             component_type: Some("rerun.components.AggregationPolicy".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.SeriesLinesIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [SeriesLines::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -204,10 +194,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            SeriesLines::descriptor_indicator(),
             SeriesLines::descriptor_colors(),
             SeriesLines::descriptor_widths(),
             SeriesLines::descriptor_names(),
@@ -217,16 +206,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl SeriesLines {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`SeriesLines`] [`::re_types_core::Archetype`]
-pub type SeriesLinesIndicator = ::re_types_core::GenericIndicatorComponent<SeriesLines>;
-
 impl ::re_types_core::Archetype for SeriesLines {
-    type Indicator = SeriesLinesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.SeriesLines".into()
@@ -235,14 +219,6 @@ impl ::re_types_core::Archetype for SeriesLines {
     #[inline]
     fn display_name() -> &'static str {
         "Series lines"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        SeriesLinesIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

@@ -107,6 +107,9 @@ pub struct DataFusionTableWidget<'a> {
     //TODO(ab): for now, this is the only way to have the column visibility/order menu
     title: Option<String>,
 
+    /// If provided, this will add a "copy URL" button next to the title (which must be provided).
+    url: Option<String>,
+
     /// User-provided closure to provide column blueprint.
     column_blueprint_fn: ColumnBlueprintFn<'a>,
 
@@ -132,6 +135,7 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref: table_ref.into(),
 
             title: None,
+            url: None,
             column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
         }
@@ -139,6 +143,12 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+
+        self
+    }
+
+    pub fn url(mut self, url: impl Into<String>) -> Self {
+        self.url = Some(url.into());
 
         self
     }
@@ -205,11 +215,13 @@ impl<'a> DataFusionTableWidget<'a> {
         ui: &mut egui::Ui,
     ) {
         let tokens = ui.tokens();
+        let table_style = re_ui::TableStyle::Spacious;
 
         let Self {
             session_ctx,
             table_ref,
             title,
+            url,
             column_blueprint_fn,
             initial_blueprint,
         } = self;
@@ -326,14 +338,14 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, &mut table_config, &title);
+            title_ui(ui, &mut table_config, &title, url.as_ref());
         }
 
         apply_table_style_fixes(ui.style_mut());
 
         let mut new_blueprint = table_state.blueprint().clone();
 
-        let mut row_height = viewer_ctx.tokens().table_line_height();
+        let mut row_height = viewer_ctx.tokens().table_row_height(table_style);
 
         // If the first column is a blob, we treat it as a thumbnail and increase the row height.
         // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
@@ -352,6 +364,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
+            table_style,
             fields,
             migrated_fields,
             display_record_batches: &display_record_batches,
@@ -393,7 +406,7 @@ impl<'a> DataFusionTableWidget<'a> {
             )
             .rect
             .width()
-            + ui.tokens().table_cell_margin().sum().x)
+            + ui.tokens().table_cell_margin(table_style).sum().x)
             .ceil();
 
         egui_table::Table::new()
@@ -501,7 +514,7 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
+fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url: Option<&String>) {
     Frame::new()
         .inner_margin(Margin {
             top: 16,
@@ -514,6 +527,15 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str) {
                 ui,
                 |ui| {
                     ui.heading(RichText::new(title).strong());
+                    if let Some(url) = url {
+                        if ui
+                            .small_icon_button(&re_ui::icons::COPY, "Copy URL")
+                            .on_hover_text(url)
+                            .clicked()
+                        {
+                            ui.ctx().copy_text(url.clone());
+                        }
+                    }
                 },
                 |ui| {
                     table_config.button_ui(ui);
@@ -528,6 +550,7 @@ enum BottomBarAction {
 
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    table_style: re_ui::TableStyle,
     fields: &'a Fields,
     migrated_fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
@@ -541,9 +564,10 @@ struct DataFusionTableDelegate<'a> {
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         let tokens = ui.tokens();
+        let table_style = self.table_style;
 
         if cell.group_index == 0 {
-            header_ui(ui, false, |ui| ui.weak("#"));
+            header_ui(ui, table_style, false, |ui| ui.weak("#"));
         } else {
             ui.set_truncate_style();
             // Offset by one for the row number column.
@@ -561,13 +585,13 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         .then_some(&sort_by.direction)
                 });
 
-                header_ui(ui, true, |ui| {
+                header_ui(ui, table_style, true, |ui| {
                     egui::Sides::new()
                         .shrink_left()
                         .show(
                             ui,
                             |ui| {
-                                ui.set_height(ui.tokens().table_content_height());
+                                ui.set_height(ui.tokens().table_content_height(table_style));
                                 let response = ui.label(
                                     egui::RichText::new(column_display_name)
                                         .strong()
@@ -584,7 +608,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                 response
                             },
                             |ui| {
-                                ui.set_height(ui.tokens().table_content_height());
+                                ui.set_height(ui.tokens().table_content_height(table_style));
                                 egui::containers::menu::MenuButton::from_button(
                                     ui.small_icon_button_widget(
                                         &re_ui::icons::MORE,
@@ -634,7 +658,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        cell_ui(ui, false, |ui| {
+        cell_ui(ui, self.table_style, false, |ui| {
             // find record batch
             let mut row_index = cell.row_nr as usize;
 

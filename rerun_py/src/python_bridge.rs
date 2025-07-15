@@ -3,9 +3,9 @@
 #![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
+use std::borrow::Borrow as _;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
-use std::{borrow::Borrow as _, collections::HashMap};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
@@ -16,7 +16,6 @@ use pyo3::{
 };
 use re_sdk::ComponentDescriptor;
 
-use super::utils;
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
@@ -52,9 +51,8 @@ use crate::dataframe::PyRecording;
 // Python GC is doing, which obviously leads to very bad things :tm:.
 //
 // TODO(#2116): drop unused recordings
-fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>> {
-    static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<HashMap<StoreId, RecordingStream>>> =
-        OnceCell::new();
+fn all_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
+    static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<Vec<RecordingStream>>> = OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
@@ -174,6 +172,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(cleanup_if_forked_child, m)?)?;
     m.add_function(wrap_pyfunction!(spawn, m)?)?;
+    m.add_function(wrap_pyfunction!(flush_and_cleanup_orphaned_recordings, m)?)?;
 
     // recordings
     m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
@@ -254,6 +253,28 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 // --- Init ---
+/// Flush and then cleanup any orphaned recordings.
+#[pyfunction]
+fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
+    // Start by clearing the current global data recording. Otherwise this holds
+    // a reference to the recording, which prevents it from being dropped.
+    set_global_data_recording(py, None);
+
+    py.allow_threads(|| {
+        // Now flush all recordings to handle weird cases where the data in the queue
+        // is actually holding onto the ref to the recording.
+        for recording in all_recordings().iter() {
+            recording.flush_blocking();
+        }
+
+        // Flush the garbage queue.
+        flush_garbage_queue();
+
+        // Finally remove any recordings that have a refcount of 1, which means they are ONLY
+        // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
+        all_recordings().retain(|recording| recording.ref_count() > 1);
+    });
+}
 
 /// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]
@@ -281,17 +302,6 @@ fn new_recording(
     } else {
         default_store_id(py, StoreKind::Recording, &application_id)
     };
-
-    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
-    // Check if recording already exists first.
-    // NOTE: This is scoped in order to release the Mutex locked by `all_recordings` as soon as possible
-    if let Some(existing_recording) = all_recordings().get(&recording_id) {
-        utils::py_rerun_warn(
-            format!("Recording with id: {} already exists, will ignore creation and return existing recording.",
-            &recording_id).as_str()
-        )?;
-        return Ok(PyRecordingStream(existing_recording.clone()));
-    }
 
     let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {
@@ -322,7 +332,7 @@ fn new_recording(
     }
 
     // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
-    all_recordings().insert(recording_id, recording.clone());
+    all_recordings().push(recording.clone());
 
     Ok(PyRecordingStream(recording))
 }
@@ -375,7 +385,7 @@ fn new_blueprint(
     }
 
     // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
-    all_recordings().insert(blueprint_id, blueprint.clone());
+    all_recordings().push(blueprint.clone());
 
     Ok(PyRecordingStream(blueprint))
 }
@@ -397,7 +407,7 @@ fn shutdown(py: Python<'_>) {
         // Calling `disconnect()` will already take care of flushing everything that can be flushed,
         // and cleaning up everything that can be safely cleaned up, anyhow.
         // Whatever's left can wait for the OS to clean it up.
-        for (_, recording) in all_recordings().iter() {
+        for recording in all_recordings().iter() {
             recording.disconnect();
         }
 

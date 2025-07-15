@@ -72,7 +72,6 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
 
             if field.name().ends_with("Indicator") {
                 let field_name = field.name();
-                // TODO(#8129): Remove indicator components
                 re_log::debug_once!(
                     "Moving indicator from field to component metadata field: {field_name}"
                 );
@@ -112,7 +111,6 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                     }
                     (None, Some(archetype_field)) => (None, archetype_field, Some(component)),
                     (maybe_archetype, None) if component.ends_with("Indicator") => {
-                        // TODO(#8129): For now, this renames the indicator column metadata. Eventually, we want to remove the column altogether.
                         re_log::debug_once!(
                             "Moving indicator to component field: {component}"
                         );

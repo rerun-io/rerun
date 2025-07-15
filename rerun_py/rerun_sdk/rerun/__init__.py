@@ -43,7 +43,6 @@ from ._image_encoded import (
 )
 from ._log import (
     AsComponents as AsComponents,
-    IndicatorComponentBatch as IndicatorComponentBatch,
     escape_entity_path_part as escape_entity_path_part,
     log as log,
     log_file_from_contents as log_file_from_contents,
@@ -229,6 +228,10 @@ def init(
 
     For more advanced use cases, e.g. multiple recordings setups, see [`rerun.RecordingStream`][].
 
+    To deal with accumulation of recording state when calling init() multiple times, this function will
+    have the side-effect of flushing all existing recordings. After flushing, any recordings which
+    are otherwise orphaned will also be destructed to free resources, close open file-descriptors, etc.
+
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
         at the start of the process.
@@ -310,6 +313,11 @@ def init(
     # Always check whether we are a forked child when calling init. This should have happened
     # via `_register_on_fork` but it's worth being conservative.
     cleanup_if_forked_child()
+
+    # Rerun is being re-initialized. We may have recordings from a previous call to init that are lingering.
+    # Clean them up now to avoid memory leaks. This could cause a problem if we call rr.init() from inside a
+    # destructor during shutdown, but that seems like a fair compromise.
+    bindings.flush_and_cleanup_orphaned_recordings()
 
     if recording_id is not None:
         recording_id = str(recording_id)

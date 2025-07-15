@@ -4,10 +4,7 @@ use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
-use pyo3::{
-    PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
-    exceptions::PyRuntimeError,
-};
+use pyo3::{PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError};
 use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -18,7 +15,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
-        EntryFilter, ReadTableEntryRequest,
+        EntryFilter,
         ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{
@@ -169,29 +166,39 @@ impl ConnectionHandle {
         )
     }
 
-    // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
-        let response = wait_for_future(
+    pub fn register_table(
+        &self,
+        py: Python<'_>,
+        name: String,
+        url: url::Url,
+    ) -> PyResult<TableEntry> {
+        wait_for_future(
             py,
             async {
                 self.client()
                     .await?
-                    .inner()
-                    .read_table_entry(ReadTableEntryRequest {
-                        id: Some(entry_id.into()),
-                    })
+                    .register_table(name, url)
                     .await
                     .map_err(to_py_err)
             }
             .in_current_span(),
-        )?;
+        )
+    }
 
-        Ok(response
-            .into_inner()
-            .table
-            .ok_or(PyRuntimeError::new_err("No table in response"))?
-            .try_into()?)
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .read_table_entry(entry_id)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
@@ -255,13 +262,19 @@ impl ConnectionHandle {
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
+        cleanup_before: Option<jiff::Timestamp>,
     ) -> PyResult<()> {
         wait_for_future(
             py,
             async {
                 self.client()
                     .await?
-                    .do_maintenance(dataset_id, build_scalar_indexes, compact_fragments)
+                    .do_maintenance(
+                        dataset_id,
+                        build_scalar_indexes,
+                        compact_fragments,
+                        cleanup_before,
+                    )
                     .await
                     .map_err(to_py_err)
             }

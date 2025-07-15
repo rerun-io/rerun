@@ -162,52 +162,31 @@ impl AssetVideo {
             component_type: Some("rerun.components.MediaType".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: None,
-            component: "rerun.components.AssetVideoIndicator".into(),
-            component_type: None,
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [AssetVideo::descriptor_blob()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            AssetVideo::descriptor_media_type(),
-            AssetVideo::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [AssetVideo::descriptor_media_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             AssetVideo::descriptor_blob(),
             AssetVideo::descriptor_media_type(),
-            AssetVideo::descriptor_indicator(),
         ]
     });
 
 impl AssetVideo {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`AssetVideo`] [`::re_types_core::Archetype`]
-pub type AssetVideoIndicator = ::re_types_core::GenericIndicatorComponent<AssetVideo>;
-
 impl ::re_types_core::Archetype for AssetVideo {
-    type Indicator = AssetVideoIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.AssetVideo".into()
@@ -216,14 +195,6 @@ impl ::re_types_core::Archetype for AssetVideo {
     #[inline]
     fn display_name() -> &'static str {
         "Asset video"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        AssetVideoIndicator::DEFAULT
-            .serialized(Self::descriptor_indicator())
-            .unwrap()
     }
 
     #[inline]

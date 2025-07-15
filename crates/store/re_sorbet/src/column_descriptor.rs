@@ -1,4 +1,4 @@
-// TODO(#6889): At some point all these descriptors needs to be interned and have handles or
+// TODO(#10460): At some point all these descriptors needs to be interned and have handles or
 // something. And of course they need to be codegen. But we'll get there once we're back to
 // natively tagged components.
 
@@ -177,7 +177,6 @@ fn test_schema_over_ipc() {
             is_static: true,
             is_tombstone: false,
             is_semantically_empty: false,
-            is_indicator: true,
         }),
     ];
 

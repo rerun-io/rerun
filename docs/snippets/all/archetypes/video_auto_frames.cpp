@@ -33,10 +33,6 @@ int main(int argc, char* argv[]) {
     for (size_t i = 0; i < frame_timestamps_ns.size(); i++) {
         video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
     }
-    auto video_frame_reference_indicators =
-        rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-            static_cast<uint32_t>(video_timestamps.size())
-        );
 
     rec.send_columns(
         "video",

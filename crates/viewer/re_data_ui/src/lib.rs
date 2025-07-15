@@ -31,6 +31,7 @@ pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 pub use image::image_preview_ui;
+pub use instance_path::archetype_label_list_item_ui;
 use re_types_core::ArchetypeName;
 use re_types_core::reflection::Reflection;
 
@@ -44,7 +45,6 @@ pub fn sorted_component_list_by_archetype_for_ui<'a>(
 ) -> ArchetypeComponentMap {
     let mut map = iter
         .into_iter()
-        .filter(|d| !d.is_indicator_component())
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
             acc.entry(descriptor.archetype)
                 .or_default()

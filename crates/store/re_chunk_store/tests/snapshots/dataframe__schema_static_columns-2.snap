@@ -1,0 +1,10 @@
+---
+source: crates/store/re_chunk_store/tests/dataframe.rs
+expression: static_only
+snapshot_kind: text
+---
+[
+    "baz",
+    "foo",
+    "yak",
+]

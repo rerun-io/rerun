@@ -152,7 +152,6 @@ Configure in the selection panel:
             filtered_index_values: None,
             using_index_values: None,
             include_semantically_empty_columns: false,
-            include_indicator_columns: false,
             include_tombstone_columns: false,
             include_static_columns: re_chunk_store::StaticColumnSelection::Both,
         };
