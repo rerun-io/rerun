@@ -419,7 +419,9 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
 ] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
-py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = ["js-build-no-wasm"] }
+py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
+  "js-build-no-wasm",
+] }
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.

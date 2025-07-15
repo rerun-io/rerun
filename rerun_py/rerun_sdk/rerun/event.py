@@ -188,7 +188,7 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
             recording_id=recording_id,
             partition_id=partition_id,
             source=data["source"],
-            version=data.get("version", None)
+            version=data.get("version", None),
         )
 
     else:
