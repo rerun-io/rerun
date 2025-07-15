@@ -32,7 +32,7 @@ For example, the `SeriesLines` visualizer only exist for time series views—not
 For a given view, each entity's components determine which visualizers are available.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
-This happens because the components of an [archetypes](../reference/types/archetypes.md) are tagged with the
+This happens because the components of an [archetype](../reference/types/archetypes.md) are tagged with the
 archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer.
 
