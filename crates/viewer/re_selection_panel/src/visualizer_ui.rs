@@ -124,7 +124,7 @@ pub fn visualizer_ui_impl(
                     .show_flat(
                         ui,
                         list_item::LabelContent::new(
-                            RichText::new(format!("{visualizer_id}:")).size(10.0).color(
+                            RichText::new(format!("{visualizer_id}")).size(10.0).color(
                                 design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
                             ),
                         )
