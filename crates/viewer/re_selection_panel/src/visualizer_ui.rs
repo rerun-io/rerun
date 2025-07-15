@@ -485,7 +485,6 @@ fn menu_more(
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
-        // TODO(#6889): Use component_descr directly.
         ctx.clear_blueprint_component(override_path.clone(), component_descr);
         ui.close();
         return;
