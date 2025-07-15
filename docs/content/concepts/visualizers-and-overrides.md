@@ -111,10 +111,10 @@ The default color value is displayed above the fallback since it takes precedenc
 
 All component default values are displayed in the selection panel when selecting the corresponding view:
 
-TODO: outdated screenshot
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/480w.png">
+  <img src="https://static.rerun.io/viscomp-component-default-screenshot-2/0d1e0159fd29e22fd09a5b471348480a57547130/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-2/0d1e0159fd29e22fd09a5b471348480a57547130/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-2/0d1e0159fd29e22fd09a5b471348480a57547130/768w.png">
 </picture>
 
 Again, it is possible to manually add, edit, and remove component defaults from the user interface.
