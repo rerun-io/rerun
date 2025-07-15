@@ -17,6 +17,12 @@ To accommodate the new tree keyboard navigation feature, the timeline navigation
 
 Have been removed in favor of `Scalars`, `SeriesLines`, `SeriesPoints` respectively.
 
+## Micro-batcher default flushing duration increased from 8ms to 200ms for memory & file recording streams
+
+`RERUN_FLUSH_TICK_SECS` previously always defaulted to 8ms when left unspecified.
+This now only applies to recording streams that use a GRPC connection, all others default to 200ms.
+
+You can learn more about micro-batching in our [dedicated documentation page](../sdk/micro-batching.md).
 
 ## Combining `InstancePoses3D` with orientations in `Boxes3D`/`Ellipsoids3D`/`Capsules3D` behaves differently in some cases now
 

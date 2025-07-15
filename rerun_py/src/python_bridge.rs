@@ -303,14 +303,14 @@ fn new_recording(
         default_store_id(py, StoreKind::Recording, &application_id)
     };
 
-    let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
+    let mut hooks = re_chunk::BatcherHooks::NONE;
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
-    batcher_config.hooks.on_release = Some(on_release.into());
+    hooks.on_release = Some(on_release.into());
 
     let recording = RecordingStreamBuilder::new(application_id)
-        .batcher_config(batcher_config)
+        .batcher_hooks(hooks)
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
@@ -357,14 +357,14 @@ fn new_blueprint(
     // blueprint id to avoid collisions.
     let blueprint_id = StoreId::random(StoreKind::Blueprint);
 
-    let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
+    let mut hooks = re_chunk::BatcherHooks::NONE;
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
-    batcher_config.hooks.on_release = Some(on_release.into());
+    hooks.on_release = Some(on_release.into());
 
     let blueprint = RecordingStreamBuilder::new(application_id)
-        .batcher_config(batcher_config)
+        .batcher_hooks(hooks)
         .store_id(blueprint_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
