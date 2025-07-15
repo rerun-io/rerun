@@ -314,7 +314,7 @@ impl ViewerEventDispatcher {
                 .into(),
                 version: db
                     .store_info()
-                    .and_then(|info| info.store_version.clone())
+                    .and_then(|info| info.store_version)
                     .map(|version| version.to_string()),
             },
         ));

@@ -1662,7 +1662,7 @@ impl App {
             // does the job for now.
 
             let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
-                && !store_hub.store_bundle().contains(&store_id);
+                && !store_hub.store_bundle().contains(store_id);
 
             let was_empty = {
                 let entity_db = store_hub.entity_db_mut(store_id);
