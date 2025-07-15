@@ -832,14 +832,6 @@ impl FFmpegCliH264Decoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        if let Some(ffmpeg_path) = &ffmpeg_path {
-            if !ffmpeg_path.is_file() {
-                return Err(Error::FFmpegNotInstalled);
-            }
-        } else if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FFmpegNotInstalled);
-        }
-
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
         match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
@@ -852,6 +844,11 @@ impl FFmpegCliH264Decoder {
                     });
                 }
             }
+
+            Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
+                return Err(Error::FFmpegNotInstalled);
+            }
+
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
                 // This happens quite often, don't fail playing video over it!
                 re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
