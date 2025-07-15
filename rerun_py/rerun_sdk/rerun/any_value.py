@@ -284,15 +284,15 @@ class AnyValues(AsComponents):
         """
         global ANY_VALUE_TYPE_REGISTRY
 
-        if len(kwargs) == 0:
-            raise ValueError(
-                "AnyValues should be initialized with at least one component."
-                " Please provide at least one keyword argument."
-            )
-
         self.component_batches = []
 
         with catch_and_log_exceptions(self.__class__.__name__):
+            if len(kwargs) == 0:
+                raise ValueError(
+                    "AnyValues should be initialized with at least one component."
+                    " Please provide at least one keyword argument."
+                )
+
             for name, value in kwargs.items():
                 batch = AnyBatchValue(name, value, drop_untyped_nones=drop_untyped_nones)
                 if batch.is_valid():

@@ -64,7 +64,7 @@ def test_bad_any_value() -> None:
 
         assert "Converting data for 'good_data':" in str(warnings[0].message)
 
-    with pytest.raises(ValueError):
+    with pytest.warns(RerunWarning, match="at least one component"):
         non_keyword_arg = 1
         rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
