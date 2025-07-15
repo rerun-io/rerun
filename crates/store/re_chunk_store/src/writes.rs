@@ -719,6 +719,8 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::{
         build_frame_nr, build_log_time,
@@ -1121,6 +1123,112 @@ mod tests {
             assert_eq!(2, num_chunks);
             assert_eq!(2, num_rows);
             assert_eq!(3, num_events);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn row_id_min_overwrites() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("this/that");
+
+        let timepoint = TimePoint::default().with(Timeline::log_tick(), 42);
+
+        let row_id1_1 = RowId::new();
+        let row_id2_1 = RowId::new();
+
+        let labels1 = &[MyLabel("111".to_owned())];
+        let labels2 = &[MyLabel("222".to_owned())];
+
+        let chunk1 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id1_1,
+                timepoint.clone(),
+                [(MyPoints::descriptor_labels(), labels1 as _)],
+            )
+            .build()?;
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id2_1,
+                timepoint.clone(),
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
+            .build()?;
+
+        let chunk1 = Arc::new(chunk1);
+        let chunk2 = Arc::new(chunk2);
+
+        fn assert_chunk_ids_per_min_row_id(
+            store: &ChunkStore,
+            chunks: impl IntoIterator<Item = (RowId, ChunkId)>,
+        ) {
+            assert_eq!(
+                chunks.into_iter().collect::<BTreeMap<_, _>>(),
+                store.chunk_ids_per_min_row_id
+            );
+        }
+
+        {
+            // Insert `chunk1` then `chunk2`.
+
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                ChunkStoreConfig {
+                    enable_changelog: false,
+                    chunk_max_bytes: u64::MAX,
+                    chunk_max_rows: u64::MAX,
+                    chunk_max_rows_if_unsorted: u64::MAX,
+                },
+            );
+
+            let _ = store.insert_chunk(&chunk1)?;
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, chunk1.id())]);
+
+            let _ = store.insert_chunk(&chunk1)?; // noop
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, chunk1.id())]);
+
+            // `chunk2` gets appended to `chunk1`:
+            // * the only Row ID left is `row_id1_1`
+            // * there shouldn't be any warning of any kind
+            // * the only chunk left in the store is the new, compacted chunk
+            let _ = store.insert_chunk(&chunk2)?;
+            assert_eq!(1, store.chunks_per_chunk_id.len());
+            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
+        }
+
+        {
+            // Insert `chunk2` then `chunk1`.
+
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                ChunkStoreConfig {
+                    enable_changelog: false,
+                    chunk_max_bytes: u64::MAX,
+                    chunk_max_rows: u64::MAX,
+                    chunk_max_rows_if_unsorted: u64::MAX,
+                },
+            );
+
+            let _ = store.insert_chunk(&chunk2)?;
+            assert_chunk_ids_per_min_row_id(&store, [(row_id2_1, chunk2.id())]);
+
+            let _ = store.insert_chunk(&chunk2)?; // noop
+            assert_chunk_ids_per_min_row_id(&store, [(row_id2_1, chunk2.id())]);
+
+            // Exactly the same as before, because chunks get compacted in Row ID order, regardless
+            // of the order they are inserted in.
+            //
+            // `chunk2` gets appended to `chunk1`:
+            // * the only Row ID left is `row_id1_1`
+            // * there shouldn't be any warning of any kind
+            // * the only chunk left in the store is the new, compacted chunk
+            let _ = store.insert_chunk(&chunk1)?;
+            assert_eq!(1, store.chunks_per_chunk_id.len());
+            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
         }
 
         Ok(())
