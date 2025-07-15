@@ -101,6 +101,7 @@ pub struct DataframePartitionStream {
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
     cpu_join_handle: JoinHandle<Result<(), DataFusionError>>,
+    cpu_runtime: Arc<CpuRuntime>,
 }
 
 fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
@@ -475,7 +476,7 @@ struct PartitionStreamExec {
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     num_partitions: usize,
-    worker_runtime: CpuRuntime,
+    worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
 }
@@ -605,7 +606,7 @@ impl PartitionStreamExec {
 
         let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches, num_partitions)?;
 
-        let worker_runtime = CpuRuntime::try_new(num_partitions)?;
+        let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
 
         Ok(Self {
             props,
@@ -841,6 +842,7 @@ impl ExecutionPlan for PartitionStreamExec {
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
+            cpu_runtime: Arc::clone(&self.worker_runtime),
         };
 
         Ok(Box::pin(stream))
@@ -862,7 +864,7 @@ impl ExecutionPlan for PartitionStreamExec {
             query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),
             num_partitions: target_partitions,
-            worker_runtime: CpuRuntime::try_new(target_partitions)?,
+            worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
             chunk_request: self.chunk_request.clone(),
         };
