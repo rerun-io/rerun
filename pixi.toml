@@ -364,6 +364,11 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = 
   "js-install",
 ] }
 
+# Build web-viewer and web-viewer-react without rebuilding re_viewer Wasm
+js-build-no-wasm = { cmd = "yarn --cwd rerun_js workspaces run build:js", depends-on = [
+  "js-install",
+] }
+
 # Build individual package JS docs in their own directories
 js-build-package-docs = { cmd = "yarn --cwd rerun_js workspaces run docs", depends-on = [
   "js-install",
@@ -412,6 +417,9 @@ py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALL
 py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
+
+# Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
+py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = ["js-build-no-wasm"] }
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
