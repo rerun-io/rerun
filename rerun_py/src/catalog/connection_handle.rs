@@ -60,8 +60,10 @@ impl ConnectionHandle {
     pub fn origin(&self) -> &re_uri::Origin {
         &self.origin
     }
-    
-    pub fn connection_registry(&self) -> &ConnectionRegistryHandle { &self.connection_registry}
+
+    pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
+        &self.connection_registry
+    }
 }
 
 impl ConnectionHandle {
