@@ -165,7 +165,7 @@ impl Cache for ImageDecodeCache {
         );
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let cache_key_removed = filter_blob_removed_events(events);

@@ -638,7 +638,7 @@ mod tests {
         StoreId, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
-    use re_viewer_context::{StoreContext, VisualizableEntities, blueprint_timeline};
+    use re_viewer_context::{Caches, StoreContext, VisualizableEntities, blueprint_timeline};
 
     use super::*;
 
@@ -691,7 +691,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Default::default(),
+            caches: &Caches::new(recording.store_id()),
             should_enable_heuristics: false,
         };
 

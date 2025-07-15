@@ -136,7 +136,7 @@ impl Cache for VideoAssetCache {
         // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let cache_key_removed = filter_blob_removed_events(events);
