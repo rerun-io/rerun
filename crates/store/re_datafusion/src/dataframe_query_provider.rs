@@ -19,13 +19,13 @@ use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, Pla
 use datafusion::{
     catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
 };
-use futures_util::{Stream, StreamExt};
+use futures_util::{Stream, StreamExt as _};
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression};
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
-use re_log_encoding::codec::wire::decoder::Decode;
-use re_log_types::external::re_types_core::{ChunkId, Loggable};
+use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::PartitionId;
 use re_protos::common::v1alpha1::ext::ScanParameters;
@@ -33,7 +33,7 @@ use re_protos::frontend::v1alpha1::{
     GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
+use re_protos::manifest_registry::v1alpha1::ext::Query;
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind};
 use re_tuid::Tuid;
 use re_uri::Origin;
@@ -58,6 +58,7 @@ use tracing::Instrument as _;
 const DEFAULT_BATCH_SIZE: usize = 2048;
 const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
+#[derive(Debug)]
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
     query_expression: QueryExpression,
@@ -67,13 +68,22 @@ pub struct DataframeQueryTableProvider {
     chunk_request: GetChunksRequest,
 }
 
-impl Debug for DataframeQueryTableProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DataframeQueryTableProvider")
-            .field("schema", &self.schema)
-            .field("sort_index", &self.sort_index)
-            .finish()
-    }
+#[derive(Debug)]
+struct PartitionStreamExec {
+    props: PlanProperties,
+    chunk_info_batches: Arc<Vec<RecordBatch>>,
+    /// Describes the chunks per partition, derived from `chunk_info_batches`.
+    /// We keep both around so that we only have to process once, but we may
+    /// reuse multiple times in theory. We may also need to recompute if the
+    /// user asks for a different target partition. These are generally not
+    /// too large.
+    chunk_info: Arc<Vec<Vec<(String, ChunkId, u64)>>>,
+    query_expression: QueryExpression,
+    projected_schema: Arc<Schema>,
+    num_partitions: usize,
+    worker_runtime: Arc<CpuRuntime>,
+    client: ConnectionClient,
+    chunk_request: GetChunksRequest,
 }
 
 pub struct DataframePartitionStream {
@@ -92,41 +102,20 @@ pub struct DataframePartitionStream {
     cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 }
 
-fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
-    let latest_at = if query_expression.is_static() {
-        Some(QueryLatestAt::new_static())
-    } else {
-        query_expression
-            .min_latest_at()
-            .map(|latest_at| QueryLatestAt {
-                index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at(),
-            })
-    };
-
-    Query {
-        latest_at,
-        range: query_expression.max_range().map(|range| QueryRange {
-            index: range.timeline().to_string(),
-            index_range: range.range,
-        }),
-        columns_always_include_everything: false,
-        columns_always_include_chunk_ids: false,
-        columns_always_include_entity_paths: false,
-        columns_always_include_byte_offsets: false,
-        columns_always_include_static_indexes: false,
-        columns_always_include_global_indexes: false,
-        columns_always_include_component_indexes: false,
-    }
-}
-
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
 /// on the data platform, we will get the schema for all entities and all components. This
 /// method is used to down select from that full schema based on `query_expression`.
-fn compute_schema_for_query(dataset_schema: &Schema, query_expression: &QueryExpression) -> Result<SchemaRef, DataFusionError> {
+fn compute_schema_for_query(
+    dataset_schema: &Schema,
+    query_expression: &QueryExpression,
+) -> Result<SchemaRef, DataFusionError> {
     // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
     // which is row id, then time, then data. We don't need perfect ordering other than that.
-    let mut fields = dataset_schema.fields().iter().map(Arc::clone).collect::<Vec<_>>();
+    let mut fields = dataset_schema
+        .fields()
+        .iter()
+        .map(Arc::clone)
+        .collect::<Vec<_>>();
     fields.sort_by(|a, b| {
         let Ok(a) = ColumnKind::try_from(a.as_ref()) else {
             return Ordering::Equal;
@@ -160,7 +149,10 @@ fn compute_schema_for_query(dataset_schema: &Schema, query_expression: &QueryExp
         .map(|cd| cd.to_arrow_field(BatchType::Dataframe))
         .collect::<Vec<_>>();
 
-    Ok(Arc::new(Schema::new_with_metadata(filtered_fields, dataset_schema.metadata().clone())))
+    Ok(Arc::new(Schema::new_with_metadata(
+        filtered_fields,
+        dataset_schema.metadata().clone(),
+    )))
 }
 
 impl DataframeQueryTableProvider {
@@ -216,7 +208,7 @@ impl DataframeQueryTableProvider {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = query_from_query_expression(query_expression);
+        let query = Query::from(query_expression);
 
         let fields_of_interest = [
             "chunk_partition_id",
@@ -265,7 +257,7 @@ impl DataframeQueryTableProvider {
 
         let response_stream = client
             .inner()
-            .query_dataset(dataset_query.clone())
+            .query_dataset(dataset_query)
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner();
@@ -428,40 +420,14 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
-struct PartitionStreamExec {
-    props: PlanProperties,
-    chunk_info_batches: Arc<Vec<RecordBatch>>,
-    /// Describes the chunks per partition, derived from chunk_info_batches.
-    /// We keep both around so that we only have to process once, but we may
-    /// reuse multiple times in theory. We may also need to recompute if the
-    /// user asks for a different target partition. These are generally not
-    /// too large.
-    chunk_info: Arc<Vec<Vec<(String, ChunkId, u64)>>>,
-    query_expression: QueryExpression,
-    projected_schema: Arc<Schema>,
-    num_partitions: usize,
-    worker_runtime: Arc<CpuRuntime>,
-    client: ConnectionClient,
-    chunk_request: GetChunksRequest,
-}
-
-impl Debug for PartitionStreamExec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PartitionStreamExec")
-            .field("props", &self.props)
-            .field("projected_schema", &self.projected_schema)
-            .finish()
-    }
-}
-
 /// We need to create `num_partitions` of partition stream outputs, each of
-/// which will be fed from multiple rerun_partition_id sources. The partitioning
-/// output is a hash of the rerun_partition_id. We will reuse some of the
-/// underlying execution code from DataFusion's RepartitionExec to compute
+/// which will be fed from multiple `rerun_partition_id` sources. The partitioning
+/// output is a hash of the `rerun_partition_id`. We will reuse some of the
+/// underlying execution code from DataFusion's `RepartitionExec` to compute
 /// these partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services. This will return a vector of
-/// vector of tuple. The outer vector is of length num_partitions. The inner
-/// vector contains the combination of rerun_partition_id, chunk ID, and
+/// vector of tuple. The outer vector is of length `num_partitions`. The inner
+/// vector contains the combination of `rerun_partition_id`, chunk ID, and
 /// chunk byte length.
 fn compute_partition_stream_chunk_info(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
@@ -504,7 +470,7 @@ fn compute_partition_stream_chunk_info(
             let chunk_id = ChunkId::from_tuid(chunk_id_arr[idx]);
             let byte_len = chunk_byte_len_arr.value(hash_idx);
 
-            results[hash_idx].push((partition_id.to_owned(), chunk_id, byte_len))
+            results[hash_idx].push((partition_id.to_owned(), chunk_id, byte_len));
         }
     }
 
@@ -834,6 +800,7 @@ impl DisplayAs for PartitionStreamExec {
     }
 }
 
+#[derive(Debug)]
 struct CpuRuntime {
     /// Handle is the tokio structure for interacting with a Runtime.
     handle: Handle,

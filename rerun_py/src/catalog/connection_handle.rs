@@ -23,9 +23,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{
-        DataSource, Query, QueryLatestAt, QueryRange, RegisterWithDatasetTaskDescriptor,
-    },
+    manifest_registry::v1alpha1::ext::{DataSource, Query, RegisterWithDatasetTaskDescriptor},
     redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
@@ -472,7 +470,7 @@ impl ConnectionHandle {
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
 
-        let query = query_from_query_expression(query_expression);
+        let query = Query::from(query_expression);
 
         let partition_ids = partition_ids
             .iter()
@@ -730,7 +728,7 @@ impl ConnectionHandle {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = query_from_query_expression(query_expression);
+        let query = Query::from(query_expression);
 
         wait_for_future(
             py,
@@ -798,33 +796,5 @@ impl ConnectionHandle {
             }
             .in_current_span(),
         )
-    }
-}
-
-fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
-    let latest_at = if query_expression.is_static() {
-        Some(QueryLatestAt::new_static())
-    } else {
-        query_expression
-            .min_latest_at()
-            .map(|latest_at| QueryLatestAt {
-                index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at(),
-            })
-    };
-
-    Query {
-        latest_at,
-        range: query_expression.max_range().map(|range| QueryRange {
-            index: range.timeline().to_string(),
-            index_range: range.range,
-        }),
-        columns_always_include_everything: false,
-        columns_always_include_chunk_ids: false,
-        columns_always_include_entity_paths: false,
-        columns_always_include_byte_offsets: false,
-        columns_always_include_static_indexes: false,
-        columns_always_include_global_indexes: false,
-        columns_always_include_component_indexes: false,
     }
 }
