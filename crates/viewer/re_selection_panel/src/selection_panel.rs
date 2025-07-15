@@ -1092,8 +1092,12 @@ fn visible_interactive_toggle_ui(
 #[cfg(test)]
 #[cfg(feature = "testing")]
 mod tests {
-    use re_chunk::LatestAtQuery;
-    use re_viewer_context::{blueprint_timeline, test_context::TestContext};
+    use re_chunk::{Chunk, LatestAtQuery, RowId, TimePoint};
+    use re_log_types::Instance;
+    use re_types::archetypes::Boxes2D;
+    use re_viewer_context::{ViewClass as _, blueprint_timeline, test_context::TestContext};
+    use re_viewport::test_context_ext::TestContextExt as _;
+    use re_viewport_blueprint::ViewBlueprint;
 
     use super::*;
 
@@ -1133,5 +1137,62 @@ mod tests {
 
         harness.run();
         harness.snapshot("selection_panel_recording");
+    }
+
+    /// Snapshot test for the selection panel when a recording is selected.
+    #[test]
+    fn selection_panel_visualizers() {
+        let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+
+        test_context.log_entity("box", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &Boxes2D::from_sizes([[1.0f32, 1.0]]),
+            )
+        });
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+                re_view_spatial::SpatialView2D::identifier(),
+            ))
+        });
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::DataResult(
+                view_id,
+                InstancePath {
+                    entity_path: "box".into(),
+                    instance: Instance::ALL,
+                },
+            ));
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_visualizers");
     }
 }

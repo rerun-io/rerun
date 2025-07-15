@@ -53,3 +53,5 @@ static_assertions.workspace = true
 
 [dev-dependencies]
 re_component_ui.workspace = true
+re_view_spatial.workspace = true
+re_viewport = { workspace = true, features = ["testing"] }
