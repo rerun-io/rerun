@@ -11,14 +11,14 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
 import numpy as np
+from rerun_bindings import (
+    ChunkBatcherConfig as ChunkBatcherConfig,
+)
 from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
 from rerun.memory import MemoryRecording
-from rerun_bindings import (
-    ChunkBatcherConfig as ChunkBatcherConfig,
-)
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
@@ -107,6 +107,8 @@ def new_recording(
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    batcher_config
+        Optional configuration for the chunk batcher.
 
     Returns
     -------
@@ -308,7 +310,7 @@ class RecordingStream:
     in a dedicated background thread.
 
     You can configure the frequency of the batches using the `batcher_config` parameter when creating
-    the RecordingStream, or via tthe following environment variables:
+    the RecordingStream, or via the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
         Flush frequency in seconds (default: `0.2` (200ms)).

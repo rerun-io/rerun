@@ -631,64 +631,84 @@ class ChunkBatcherConfig:
         ----------
         flush_tick : Optional[int | float | timedelta], optional
             Duration of the periodic tick, by default `None`.
-            Equivalent to setting: `_RERUN_FLUSH_TICK_SECS` environment variable.
+            Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
 
         flush_num_bytes : Optional[int], optional
             Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
-            Equivalent to setting: `_RERUN_FLUSH_NUM_BYTES` environment variable.
+            Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
 
         flush_num_rows : Optional[int], optional
             Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
-            Equivalent to setting: `_RERUN_FLUSH_NUM_ROWS` environment variable.
+            Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
 
         chunk_max_rows_if_unsorted : Optional[int], optional
             Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
             by default `None`.
-            Equivalent to setting: `_RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+            Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
 
         """
 
     @property
     def flush_tick(self) -> timedelta:
+        """Duration of the periodic tick."""
+
+    @flush_tick.setter
+    def flush_tick(self, value: float | int | timedelta):
         """
         Duration of the periodic tick.
 
-        Equivalent to setting:_`RERUN_FLUSH_TICK_SECS` environment variable.
+        Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
         """
 
     @property
     def flush_num_bytes(self) -> Optional[int]:
+        """Flush if the accumulated payload has a size in bytes equal or greater than this."""
+
+    @flush_num_bytes.setter
+    def flush_num_bytes(self, value: Optional[int]):
         """
         Flush if the accumulated payload has a size in bytes equal or greater than this.
 
-        Equivalent to setting:_`RERUN_FLUSH_NUM_BYTES` environment variable.
+        Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
         """
 
     @property
     def flush_num_rows(self) -> Optional[int]:
+        """Flush if the accumulated payload has a number of rows equal or greater than this."""
+
+    @flush_num_rows.setter
+    def flush_num_rows(self, value: Optional[int]):
         """
         Flush if the accumulated payload has a number of rows equal or greater than this.
 
-        Equivalent to setting:_`RERUN_FLUSH_NUM_ROWS` environment variable.
+        Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
         """
 
     @property
     def chunk_max_rows_if_unsorted(self) -> Optional[int]:
+        """Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted."""
+
+    @chunk_max_rows_if_unsorted.setter
+    def chunk_max_rows_if_unsorted(self, value: Optional[int]):
         """
         Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
 
-        Equivalent to setting:_`RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+        Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
         """
 
+    @staticmethod
     def DEFAULT() -> ChunkBatcherConfig:
         """Default configuration, applicable to most use cases."""
 
+    @staticmethod
     def LOW_LATENCY() -> ChunkBatcherConfig:
         """Low-latency configuration, preferred when streaming directly to a viewer."""
 
+    @staticmethod
     def ALWAYS() -> ChunkBatcherConfig:
         """Always flushes ASAP."""
 
+    @staticmethod
     def NEVER() -> ChunkBatcherConfig:
         """Never flushes unless manually told to (or hitting one the builtin invariants)."""
 
