@@ -103,8 +103,6 @@ impl ViewProperty {
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
-    // TODO(#6889): It's a bit sad that we can't derive the type of `C` from the `ComponentDescriptor`, which means
-    //              that the call site has to specify the return type.
     /// Get the component array for a given type or its fallback if the component is not present or empty.
     pub fn component_array_or_fallback<C: re_types::Component>(
         &self,

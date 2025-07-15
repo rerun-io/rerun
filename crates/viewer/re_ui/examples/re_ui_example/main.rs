@@ -3,7 +3,6 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::Modifiers;
-use egui::containers::menu;
 use re_ui::{
     CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
     filter_widget::FilterState, list_item,
@@ -426,7 +425,7 @@ impl ExampleApp {
                     }
                 }
 
-                menu::Bar::new().ui(ui, |ui| {
+                egui::MenuBar::new().ui(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 

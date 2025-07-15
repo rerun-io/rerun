@@ -55,10 +55,13 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None, d
     start_time = time.time()
 
     additional_env_vars = {}
-    # Compilation will fail we don't manually set `--cfg=web_sys_unstable_apis`,
-    # because env vars are not propagated from CI.
-    additional_env_vars["RUSTFLAGS"] = f"--cfg=web_sys_unstable_apis {'--deny warnings' if deny_warnings else ''}"
-    additional_env_vars["RUSTDOCFLAGS"] = f"--cfg=web_sys_unstable_apis {'--deny warnings' if deny_warnings else ''}"
+
+    extra_cfgs = ""
+    if "wasm" in cargo_args:
+        extra_cfgs = '--cfg=web_sys_unstable_apis --cfg=getrandom_backend="wasm_js"'
+
+    additional_env_vars["RUSTFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
+    additional_env_vars["RUSTDOCFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.

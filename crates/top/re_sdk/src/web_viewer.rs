@@ -1,3 +1,4 @@
+use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
@@ -107,6 +108,11 @@ impl crate::sink::LogSink for WebViewerSink {
         if let Err(err) = self.sender.flush_blocking() {
             re_log::error_once!("Failed to flush: {err}");
         }
+    }
+
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        // The GRPC sink is typically used for live streams.
+        ChunkBatcherConfig::LOW_LATENCY
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

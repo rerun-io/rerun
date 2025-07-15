@@ -217,7 +217,10 @@ impl VideoPlayer {
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
         if let Some(decoded_frame) = self
             .sample_decoder
-            .latest_decoded_frame_at_and_drop_earlier_frames(requested_sample_pts)
+            // Use the `requested_pts` which may be a bit higher than the PTS of the latest-at sample for `requested_pts`.
+            // This is to hedge against not well-behaved decoders, that may produce PTS values that
+            // don't show up in the input data (that in and on its own is a bug, but this makes it more robust)
+            .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
         {
             self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
@@ -393,19 +396,27 @@ impl VideoPlayer {
 
         self.last_requested = Some(requested);
 
-        // If this is a potentially live stream, signal the end of the video after a certain amount of time.
-        // This helps decoders to flush out any pending frames.
-        // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
-        if video_description
-            .last_time_updated_samples
-            .is_some_and(|last_time_updated_samples| {
-                last_time_updated_samples.elapsed() > self.config.time_until_video_assumed_ended
-            })
+        // Signal the end of the video if we reached it.
+        // This is important for some decoders to flush out all the frames.
+        if !self.signaled_end_of_video
+            && treat_video_as_finite(&self.config, video_description)
+            && self.enqueued_last_sample_of_video(video_description)
         {
-            self.signal_end_of_video_if_not_already_signaled()?;
+            re_log::debug!("Signaling end of video");
+            self.signaled_end_of_video = true;
+            self.sample_decoder.end_of_video()?;
         }
 
         Ok(())
+    }
+
+    fn enqueued_last_sample_of_video(
+        &self,
+        video_description: &re_video::VideoDataDescription,
+    ) -> bool {
+        self.last_enqueued.is_some_and(|last_enqueued| {
+            last_enqueued.sample_idx + 1 == video_description.samples.next_index()
+        })
     }
 
     #[expect(clippy::if_same_then_else)]
@@ -416,16 +427,6 @@ impl VideoPlayer {
     ) -> Result<(), VideoPlayerError> {
         // If we haven't decoded anything at all yet, reset the decoder.
         let Some(last_requested) = self.last_requested else {
-            return self.reset(video_description);
-        };
-
-        let Some(last_enqueued) = self.last_enqueued else {
-            // If we hit this we already requested a frame, but haven't enqueued any samples yet.
-            // That's a weird state to be in, better reset!
-            debug_assert!(
-                false,
-                "We already requested a frame, but haven't enqueued any samples yet."
-            );
             return self.reset(video_description);
         };
 
@@ -450,6 +451,15 @@ impl VideoPlayer {
         }
         // Backwards seeking across GOPs
         else if requested.gop_idx < last_requested.gop_idx {
+            self.reset(video_description)?;
+        }
+        // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.
+        else if self.signaled_end_of_video
+            && !self.enqueued_last_sample_of_video(video_description)
+        {
+            re_log::debug!(
+                "Reset because new frames appeared since we previously signaled the end of video."
+            );
             self.reset(video_description)?;
         }
         // Backwards seeking within the current GOP
@@ -484,10 +494,6 @@ impl VideoPlayer {
                 // (comparing decode timestamps should be equivalent to comparing sample indices)
                 self.reset(video_description)?;
             }
-        }
-        // Previously signaled the end of the video, but encountering new frames now.
-        else if self.signaled_end_of_video && last_enqueued.sample_idx < requested.sample_idx {
-            self.reset(video_description)?;
         }
 
         Ok(())
@@ -537,20 +543,6 @@ impl VideoPlayer {
             });
         }
 
-        if gop_idx + 1 == video_description.gops.next_index()
-            && video_description.duration.is_some()
-        {
-            self.signal_end_of_video_if_not_already_signaled()?;
-        }
-
-        Ok(())
-    }
-
-    fn signal_end_of_video_if_not_already_signaled(&mut self) -> Result<(), VideoPlayerError> {
-        if !self.signaled_end_of_video {
-            self.sample_decoder.end_of_video()?;
-            self.signaled_end_of_video = true;
-        }
         Ok(())
     }
 
@@ -600,9 +592,9 @@ impl VideoPlayer {
 
             let sample_idx_end = video_description.samples.next_index();
             for (_, sample) in video_description.samples.iter_index_range_clamped(
-                &(sample_idx_end.saturating_sub(allowed_delay)..sample_idx_end),
+                &(sample_idx_end.saturating_sub(allowed_delay + 1)..sample_idx_end),
             ) {
-                if sample.presentation_timestamp == last_decoded_frame_pts {
+                if sample.presentation_timestamp <= last_decoded_frame_pts {
                     return DecoderDelayState::UpToDateToleratedEdgeOfLiveStream;
                 }
             }
@@ -630,6 +622,25 @@ impl VideoPlayer {
             }
         }
     }
+}
+
+/// Whether we should assume the video has a defined end and won't add new samples.
+///
+/// Note that we need to be robust against this being wrong and the video getting new samples in the future after all.
+/// The result should be treated as a heuristic.
+fn treat_video_as_finite(
+    config: &PlayerConfiguration,
+    video_description: &re_video::VideoDataDescription,
+) -> bool {
+    // If this is a potentially live stream, signal the end of the video after a certain amount of time.
+    // This helps decoders to flush out any pending frames.
+    // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
+    video_description.duration.is_some()
+        || video_description
+            .last_time_updated_samples
+            .is_some_and(|last_time_updated_samples| {
+                last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended
+            })
 }
 
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
@@ -669,7 +680,18 @@ fn is_significantly_behind(
             // We're technically not catching up, but we may as well behave as if we are.
             return true;
         };
-        if current_sample.presentation_timestamp == decoded_frame_pts {
+        if current_sample.presentation_timestamp <= decoded_frame_pts {
+            // Decoded PTS is _supposed_ to show be exactly matched with one of the sample PTS.
+            // Checking for smaller equal here, hedges against bugs in decoders that may emit PTS values
+            // that don't show up in the input data.
+            if current_sample.presentation_timestamp != decoded_frame_pts {
+                re_log::debug!(
+                    "PTS {:?} of decoded sample is not equal to any sample pts {:?}. This hints at a bug in the decoder implementation.",
+                    decoded_frame_pts,
+                    current_sample.presentation_timestamp
+                );
+            }
+
             // This is the frame we actually got and we stayed under the tolerance.
             // This may happen if the load on the decoder fluctuates or it is just about able to keep up with playback.
             return false;

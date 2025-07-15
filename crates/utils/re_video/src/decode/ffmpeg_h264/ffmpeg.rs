@@ -832,14 +832,6 @@ impl FFmpegCliH264Decoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        if let Some(ffmpeg_path) = &ffmpeg_path {
-            if !ffmpeg_path.is_file() {
-                return Err(Error::FFmpegNotInstalled);
-            }
-        } else if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FFmpegNotInstalled);
-        }
-
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
         match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
@@ -852,6 +844,11 @@ impl FFmpegCliH264Decoder {
                     });
                 }
             }
+
+            Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
+                return Err(Error::FFmpegNotInstalled);
+            }
+
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
                 // This happens quite often, don't fail playing video over it!
                 re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
@@ -914,10 +911,8 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
     }
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
-        // TODO(#8848): On some videos (which??) we need to enqueue more samples, otherwise ffmpeg will not provide us with any frames.
-        // The observed behavior is that we continuously get frames that are N* frames older than what we enqueued,
-        // never reaching the frames of all currently enqueued GOPs prior.
-        // (The same happens with webcodec decoder on Safari for affected videos)
+        // Until FFmpeg's stdin isn't closed, we don't get the last few frames.
+        // By supplying more than we need we can workaround this a bit.
         //
         // *: N is 16 for ffmpeg 7.1, tested on Mac & Windows. For ffmpeg 6.1.2 on Linux it was found to be 18.
         18

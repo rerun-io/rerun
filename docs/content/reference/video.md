@@ -39,7 +39,7 @@ video asset file to be in Viewer memory before decoding can begin.
 
 Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream?speculative-link) example to learn how to stream live video to Rerun.
 
-Current limitations:
+Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.
 * [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10185](https://github.com/rerun-io/rerun/issues/10185), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 at this point.
@@ -55,6 +55,13 @@ TODO(#10186): fix above if ticket is outdated.
 TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
 -->
+
+### Remuxing video streams
+
+Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
+and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
+
+Check the [doc page on retrieving data](../../content/howto/get-data-out.md) to learn more about dataframe queries in general.
 
 
 ## Video files

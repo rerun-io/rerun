@@ -11,8 +11,8 @@ use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
 use re_chunk::{
-    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, ChunkError,
-    ChunkId, PendingRow, RowId, TimeColumn,
+    BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents,
+    ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
@@ -128,6 +128,7 @@ pub struct RecordingStreamBuilder {
     default_enabled: bool,
     enabled: Option<bool>,
 
+    batcher_hooks: BatcherHooks,
     batcher_config: Option<ChunkBatcherConfig>,
 
     // Optional user-defined recording properties.
@@ -161,6 +162,7 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
+            batcher_hooks: BatcherHooks::NONE,
 
             should_send_properties: true,
             recording_info: RecordingInfo::new()
@@ -258,10 +260,22 @@ impl RecordingStreamBuilder {
 
     /// Specifies the configuration of the internal data batching mechanism.
     ///
+    /// If not set, the default configuration for the currently active sink will be used.
+    /// Any environment variables as specified on [`ChunkBatcherConfig`] will always override respective settings.
+    ///
     /// See [`ChunkBatcher`] & [`ChunkBatcherConfig`] for more information.
     #[inline]
     pub fn batcher_config(mut self, config: ChunkBatcherConfig) -> Self {
         self.batcher_config = Some(config);
+        self
+    }
+
+    /// Specifies callbacks for the batcher thread.
+    ///
+    /// See [`ChunkBatcher`] & [`BatcherHooks`] for more information.
+    #[inline]
+    pub fn batcher_hooks(mut self, hooks: BatcherHooks) -> Self {
+        self.batcher_hooks = hooks;
         self
     }
 
@@ -288,13 +302,15 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let sink = crate::log_sink::BufferedSink::new();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
-                Box::new(crate::log_sink::BufferedSink::new()),
+                batcher_hooks,
+                Box::new(sink),
             )
         } else {
             re_log::debug!("Rerun disabled - call to buffered() ignored");
@@ -321,12 +337,13 @@ impl RecordingStreamBuilder {
     pub fn memory(
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         let rec = if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(crate::log_sink::BufferedSink::new()),
             )
         } else {
@@ -349,18 +366,23 @@ impl RecordingStreamBuilder {
     ///
     /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
     ///
+    /// If the batcher configuration has not been set explicitly or by environment variables,
+    /// this will change the batcher configuration to a conservative (less often flushing) mix of
+    /// default configurations of the underlying sinks.
+    ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
     pub fn set_sinks(
         self,
         sinks: impl crate::sink::IntoMultiSink,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(sinks.into_multi_sink()),
             )
         } else {
@@ -409,7 +431,7 @@ impl RecordingStreamBuilder {
         url: impl Into<String>,
         flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
             let url: String = url.into();
             let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
@@ -420,6 +442,7 @@ impl RecordingStreamBuilder {
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(crate::log_sink::GrpcSink::new(uri, flush_timeout)),
             )
         } else {
@@ -474,12 +497,13 @@ impl RecordingStreamBuilder {
         port: u16,
         server_memory_limit: re_memory::MemoryLimit,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(crate::grpc_server::GrpcServerSink::new(
                     bind_ip.as_ref(),
                     port,
@@ -510,13 +534,14 @@ impl RecordingStreamBuilder {
         self,
         path: impl Into<std::path::PathBuf>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
 
         if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(crate::sink::FileSink::new(path)?),
             )
         } else {
@@ -543,13 +568,14 @@ impl RecordingStreamBuilder {
             return self.buffered();
         }
 
-        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
 
         if enabled {
             RecordingStream::new(
                 store_info,
                 properties,
                 batcher_config,
+                batcher_hooks,
                 Box::new(crate::sink::FileSink::stdout()?),
             )
         } else {
@@ -665,7 +691,7 @@ impl RecordingStreamBuilder {
         server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, store_info, recording_info, batcher_config) = self.into_args();
+        let (enabled, store_info, recording_info, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
             let sink = crate::web_viewer::new_sink(
                 open_browser,
@@ -674,7 +700,13 @@ impl RecordingStreamBuilder {
                 grpc_port,
                 server_memory_limit,
             )?;
-            RecordingStream::new(store_info, recording_info, batcher_config, sink)
+            RecordingStream::new(
+                store_info,
+                recording_info,
+                batcher_config,
+                batcher_hooks,
+                sink,
+            )
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
             Ok(RecordingStream::disabled())
@@ -686,7 +718,15 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(self) -> (bool, StoreInfo, Option<RecordingInfo>, ChunkBatcherConfig) {
+    pub fn into_args(
+        self,
+    ) -> (
+        bool,
+        StoreInfo,
+        Option<RecordingInfo>,
+        Option<ChunkBatcherConfig>,
+        BatcherHooks,
+    ) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -697,6 +737,7 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
+            batcher_hooks,
             should_send_properties,
             recording_info,
         } = self;
@@ -715,20 +756,12 @@ impl RecordingStreamBuilder {
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         };
 
-        let batcher_config =
-            batcher_config.unwrap_or_else(|| match ChunkBatcherConfig::from_env() {
-                Ok(config) => config,
-                Err(err) => {
-                    re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
-                    ChunkBatcherConfig::default()
-                }
-            });
-
         (
             enabled,
             store_info,
             should_send_properties.then_some(recording_info),
             batcher_config,
+            batcher_hooks,
         )
     }
 
@@ -855,6 +888,9 @@ struct RecordingStreamInner {
     batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// It true, any new sink will update the batcher's configuration (as far as possible).
+    sink_dependent_batcher_config: bool,
+
     /// Keeps track of the top-level threads that were spawned in order to execute the `DataLoader`
     /// machinery in the context of this `RecordingStream`.
     ///
@@ -895,15 +931,34 @@ impl Drop for RecordingStreamInner {
     }
 }
 
+fn resolve_batcher_config(
+    batcher_config: Option<ChunkBatcherConfig>,
+    sink: &dyn LogSink,
+) -> ChunkBatcherConfig {
+    if let Some(explicit_batcher_config) = batcher_config {
+        explicit_batcher_config
+    } else {
+        let default_config = sink.default_batcher_config();
+        default_config.apply_env().unwrap_or_else(|err| {
+            re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
+            default_config
+        })
+    }
+}
+
 impl RecordingStreamInner {
     fn new(
         store_info: StoreInfo,
         recording_info: Option<RecordingInfo>,
-        batcher_config: ChunkBatcherConfig,
+        batcher_config: Option<ChunkBatcherConfig>,
+        batcher_hooks: BatcherHooks,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let on_release = batcher_config.hooks.on_release.clone();
-        let batcher = ChunkBatcher::new(batcher_config)?;
+        let sink_dependent_batcher_config = batcher_config.is_none();
+        let batcher_config = resolve_batcher_config(batcher_config, &*sink);
+
+        let on_release = batcher_hooks.on_release.clone();
+        let batcher = ChunkBatcher::new(batcher_config, batcher_hooks)?;
 
         {
             re_log::debug!(
@@ -957,6 +1012,7 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            sink_dependent_batcher_config,
             dataloader_handles: Mutex::new(Vec::new()),
             pid_at_creation: std::process::id(),
         })
@@ -1009,12 +1065,16 @@ impl RecordingStream {
     ///
     /// You can find sinks in [`crate::sink`].
     ///
+    /// If no batcher configuration is provided, the default batcher configuration for the sink will be used.
+    /// Any environment variables as specified in [`ChunkBatcherConfig`] will always override respective settings.
+    ///
     /// See also: [`RecordingStreamBuilder`].
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         store_info: StoreInfo,
         recording_info: Option<RecordingInfo>,
-        batcher_config: ChunkBatcherConfig,
+        batcher_config: Option<ChunkBatcherConfig>,
+        batcher_hooks: BatcherHooks,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
         let sink = (store_info.store_id.kind == StoreKind::Recording)
@@ -1028,10 +1088,16 @@ impl RecordingStream {
                 ) as Box<dyn LogSink>
             });
 
-        let stream = RecordingStreamInner::new(store_info, recording_info, batcher_config, sink)
-            .map(|inner| Self {
-                inner: Either::Left(Arc::new(Some(inner))),
-            })?;
+        let stream = RecordingStreamInner::new(
+            store_info,
+            recording_info,
+            batcher_config,
+            batcher_hooks,
+            sink,
+        )
+        .map(|inner| Self {
+            inner: Either::Left(Arc::new(Some(inner))),
+        })?;
 
         Ok(stream)
     }
@@ -1740,6 +1806,9 @@ impl RecordingStream {
     /// When this function returns, the calling thread is guaranteed that all future record calls
     /// will end up in the new sink.
     ///
+    /// If the batcher's configuration has not been set explicitly or by environment variables,
+    /// this will change the batcher configuration to the sink's default configuration.
+    ///
     /// ## Data loss
     ///
     /// If the current sink is in a broken state (e.g. a gRPC sink with a broken connection that
@@ -1756,17 +1825,23 @@ impl RecordingStream {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
-            // 1. Flush the batcher down the chunk channel
+            // Flush the batcher down the chunk channel
             inner.batcher.flush_blocking();
 
-            // 2. Receive pending chunks from the batcher's channel
+            // Receive pending chunks from the batcher's channel
             inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
-            // 3. Swap the sink, which will internally make sure to re-ingest the backlog if needed
+            // Update the batcher's configuration if it's sink-dependent.
+            if inner.sink_dependent_batcher_config {
+                let batcher_config = resolve_batcher_config(None, &*sink);
+                inner.batcher.update_config(batcher_config);
+            }
+
+            // Swap the sink, which will internally make sure to re-ingest the backlog if needed
             inner.cmds_tx.send(Command::SwapSink(sink)).ok();
 
-            // 4. Before we give control back to the caller, we need to make sure that the swap has
-            //    taken place: we don't want the user to send data to the old sink!
+            // Before we give control back to the caller, we need to make sure that the swap has
+            // taken place: we don't want the user to send data to the old sink!
             re_log::trace!("Waiting for sink swap to complete…");
             let (cmd, oneshot) = Command::flush();
             inner.cmds_tx.send(cmd).ok();
@@ -1857,6 +1932,10 @@ impl RecordingStream {
     /// [`RecordingStream`] will now stream data to multiple sinks at the same time.
     ///
     /// Currently only supports [`GrpcSink`][grpc_sink] and [`FileSink`][file_sink].
+    ///
+    /// If the batcher's configuration has not been set explicitly or by environment variables,
+    /// This will take over a conservative default of the new sinks.
+    /// (there's no guarantee on when exactly the new configuration will be active)
     ///
     /// [grpc_sink]: crate::sink::GrpcSink
     /// [file_sink]: crate::sink::FileSink
@@ -2203,6 +2282,7 @@ impl fmt::Debug for RecordingStream {
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
+                sink_dependent_batcher_config,
                 dataloader_handles,
                 pid_at_creation,
             } = inner;
@@ -2211,6 +2291,10 @@ impl fmt::Debug for RecordingStream {
                 .field("store_info", &store_info)
                 .field("recording_info", &recording_info)
                 .field("tick", &tick)
+                .field(
+                    "sink_dependent_batcher_config",
+                    &sink_dependent_batcher_config,
+                )
                 .field("pending_dataloaders", &dataloader_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)
                 .finish_non_exhaustive()
@@ -2988,5 +3072,145 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
+    }
+
+    struct BatcherConfigTestSink {
+        config: ChunkBatcherConfig,
+    }
+
+    impl LogSink for BatcherConfigTestSink {
+        fn default_batcher_config(&self) -> ChunkBatcherConfig {
+            self.config.clone()
+        }
+
+        fn send(&self, _msg: LogMsg) {
+            // noop
+        }
+
+        fn flush_blocking(&self) {
+            // noop
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+
+    struct ScopedEnvVarSet {
+        key: &'static str,
+    }
+
+    impl ScopedEnvVarSet {
+        #[allow(unsafe_code)]
+        fn new(key: &'static str, value: &'static str) -> Self {
+            // SAFETY: only used in tests.
+            unsafe { std::env::set_var(key, value) };
+            Self { key }
+        }
+    }
+
+    impl Drop for ScopedEnvVarSet {
+        #[allow(unsafe_code)]
+        fn drop(&mut self) {
+            // SAFETY: only used in tests.
+            unsafe {
+                std::env::remove_var(self.key);
+            }
+        }
+    }
+
+    const CONFIG_CHANGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+
+    #[test]
+    fn test_sink_dependent_batcher_config() {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
+            .batcher_hooks(BatcherHooks {
+                on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
+                    tx.send(config.clone()).unwrap();
+                })),
+                ..BatcherHooks::NONE
+            })
+            .buffered()
+            .unwrap();
+
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(new_config, ChunkBatcherConfig::DEFAULT); // buffered sink uses the default config.
+
+        // Change sink to our custom sink. Will it take over the setting?
+        let injected_config = ChunkBatcherConfig {
+            flush_tick: std::time::Duration::from_secs(123),
+            flush_num_bytes: 123,
+            flush_num_rows: 123,
+            ..ChunkBatcherConfig::DEFAULT
+        };
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: injected_config.clone(),
+        }));
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+
+        assert_eq!(new_config, injected_config);
+
+        // Set flush num bytes through env var and set the sink again.
+        // check that the env var is respected.
+        let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_NUM_BYTES", "456");
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: injected_config.clone(),
+        }));
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(
+            new_config,
+            ChunkBatcherConfig {
+                flush_num_bytes: 456,
+                ..injected_config
+            },
+        );
+    }
+
+    #[test]
+    fn test_explicit_batcher_config() {
+        // This environment variable should *not* override the explicit config.
+        let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_TICK_SECS", "456");
+        let explicit_config = ChunkBatcherConfig {
+            flush_tick: std::time::Duration::from_secs(123),
+            flush_num_bytes: 123,
+            flush_num_rows: 123,
+            ..ChunkBatcherConfig::DEFAULT
+        };
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
+            .batcher_config(explicit_config.clone())
+            .batcher_hooks(BatcherHooks {
+                on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
+                    tx.send(config.clone()).unwrap();
+                })),
+                ..BatcherHooks::NONE
+            })
+            .buffered()
+            .unwrap();
+
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(new_config, explicit_config);
+
+        // Changing the sink should have no effect since an explicit config is in place.
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: ChunkBatcherConfig::ALWAYS,
+        }));
+        // Don't want to stall the test for CONFIG_CHANGE_TIMEOUT here.
+        let new_config_recv_result = rx.recv_timeout(std::time::Duration::from_millis(100));
+        assert_eq!(
+            new_config_recv_result,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        );
     }
 }

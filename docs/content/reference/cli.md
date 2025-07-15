@@ -1,6 +1,6 @@
 ---
 title: CLI manual
-order: 0
+order: 250
 ---
 
 ## rerun
@@ -8,7 +8,7 @@ order: 0
 
 The Rerun command-line interface:
 * Spawn viewers to visualize Rerun recordings and other supported formats.
-* Start gRPC servers to share recordings over the network, on native or web.
+* Start a gRPC server to share recordings over the network, on native or web.
 * Inspect, edit and filter Rerun recordings.
 
 
@@ -55,12 +55,11 @@ The Rerun command-line interface:
 > [Default: `75%`]
 
 * `--server-memory-limit <SERVER_MEMORY_LIMIT>`
-> An upper limit on how much memory the gRPC server should use.
+> An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 > The server buffers log messages for the benefit of late-arriving viewers.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
->
-> [Default: `0B`]
+> Default is `0B`, or `25%` if any of the `--serve-*` flags are set.
 
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
@@ -89,20 +88,25 @@ The Rerun command-line interface:
 
 * `--serve <SERVE>`
 > Deprecated: use `--serve-web` instead.
+>
+> [Default: `false`]
 
 * `--serve-web <SERVE_WEB>`
-> Serve the recordings over gRPC to one or more Rerun Viewers.
+> This will host a web-viewer over HTTP, and a gRPC server.
 >
-> This will also host a web-viewer over HTTP that can connect to the gRPC address, but you can also connect with the native binary.
+> The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
-> `rerun --serve-web` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
+> Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >
 > [Default: `false`]
 
 * `--serve-grpc <SERVE_GRPC>`
-> Serve the recordings over gRPC to one or more Rerun Viewers.
+> This will host a gRPC server.
 >
-> `rerun --serve-grpc` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
+> The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
+>
+> Using this sets the default `--server-memory-limit` to 25% of available system memory.
+>
 > [Default: `false`]
 
 * `--connect <CONNECT>`
@@ -111,7 +115,8 @@ The Rerun command-line interface:
 > Optionally accepts a URL to a gRPC server.
 >
 > The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`, and the pathname must be `/proxy`.
-> [Default: `rerun+http://127.0.0.1:9876/proxy`]
+>
+> The default is `rerun+http://127.0.0.1:9876/proxy`.
 
 * `--expect-data-soon <EXPECT_DATA_SOON>`
 > This is a hint that we expect a recording to stream in very soon.
@@ -145,11 +150,6 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
-* `--web-viewer-port <WEB_VIEWER_PORT>`
-> What port do we listen to for hosting the web viewer over HTTP. A port of 0 will pick a random port.
->
-> [Default: `9090`]
-
 * `--hide-welcome-screen <HIDE_WELCOME_SCREEN>`
 > Hide the normal Rerun welcome screen.
 >
@@ -158,7 +158,7 @@ The Rerun command-line interface:
 * `--detach-process <DETACH_PROCESS>`
 > Detach Rerun Viewer process from the application process.
 >
-> [Default: `true`]
+> [Default: `false`]
 
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
@@ -175,6 +175,27 @@ The Rerun command-line interface:
 > * `gl` (Linux & Windows only)
 >
 > * `metal` (macOS only)
+
+* `--video-decoder <VIDEO_DECODER>`
+> Overwrites hardware acceleration option for video decoding.
+>
+> By default uses the last provided setting, which is `auto` if never configured.
+>
+> Depending on the decoder backend, these settings are merely hints and may be ignored.
+> However, they can be useful in some situations to work around issues.
+>
+> Possible values:
+>
+> * `auto`
+>   May use hardware acceleration if available and compatible with the codec.
+>
+> * `prefer_software`
+>   Should use a software decoder even if hardware acceleration is available.
+>   If no software decoder is present, this may cause decoding to fail.
+>
+> * `prefer_hardware`
+>   Should use a hardware decoder.
+>   If no hardware decoder is present, this may cause decoding to fail.
 
 * `--test-receive <TEST_RECEIVE>`
 > Ingest data and then quit once the goodbye message has been received.
@@ -218,59 +239,15 @@ Manipulate the contents of .rrd and .rbl files.
 
 **Commands**
 
-* `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
-* `print`: Print the contents of one or more .rrd/.rbl files/streams.
 * `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
-* `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+* `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
 * `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
-
-## rerun rrd compare
-
-Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
-
-This ignores the `log_time` timeline.
-
-**Usage**: `rerun rrd compare [OPTIONS] <PATH_TO_RRD1> <PATH_TO_RRD2>`
-
-**Arguments**
-
-* `<PATH_TO_RRD1>`
-
-* `<PATH_TO_RRD2>`
-
-**Options**
-
-* `--full-dump <FULL_DUMP>`
-> If specified, dumps both .rrd files as tables.
->
-> [Default: `false`]
-
-## rerun rrd print
-
-Print the contents of one or more .rrd/.rbl files/streams.
-
-Reads from standard input if no paths are specified.
-
-Example: `rerun rrd print /my/recordings/*.rrd`
-
-**Usage**: `rerun rrd print [OPTIONS] [PATH_TO_INPUT_RRDS]…`
-
-**Arguments**
-
-* `<PATH_TO_INPUT_RRDS>`
-> Paths to read from. Reads from standard input if none are specified.
-
-**Options**
-
-* `-v, --verbose <VERBOSE>`
-> If set, print out table contents.
->
-> [Default: `false`]
-
-* `--continue-on-error <CONTINUE_ON_ERROR>`
-> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
->
-> [Default: `true`]
+* `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+* `migrate`: Migrate one or more .rrd files to the newest Rerun version.
+* `print`: Print the contents of one or more .rrd/.rbl files/streams.
+* `route`: Manipulates the metadata of log message streams without decoding the payloads.
+* `stats`: Compute important statistics for one or more .rrd/.rbl files/streams.
+* `verify`: Verify the that the .rrd file can be loaded and correctly interpreted.
 
 ## rerun rrd compact
 
@@ -317,35 +294,52 @@ Examples:
 >
 > Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
 
+* `--num-pass <NUM_EXTRA_PASSES>`
+> Configures the number of extra compaction passes to run on the data.
+>
+> Compaction in Rerun is an iterative, convergent process: every single pass will improve the quality of the compaction (with diminishing returns), until it eventually converges into a stable state. The more passes, the better the compaction quality.
+>
+> Under the hood, you can think of it as a kind of clustering algorithm: every incoming chunk finds the most appropriate chunk to merge into, thereby creating a new cluster, which is itself just a bigger chunk. On the next pass, these new clustered chunks will themselves look for other clusters to merge into, yielding even bigger clusters, which again are also just chunks. And so on and so forth.
+>
+> If/When the data reaches a stable optimum, the computation will stop immediately, regardless of how many passes are left.
+>
+> [Default: `50`]
+
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >
 > [Default: `false`]
 
-## rerun rrd merge
+## rerun rrd compare
 
-Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
 
-Reads from standard input if no paths are specified.
+This ignores the `log_time` timeline.
 
-This will not affect the chunking of the data in any way.
-
-Example: `rerun merge /my/recordings/*.rrd > output.rrd`
-
-**Usage**: `rerun rrd merge [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+**Usage**: `rerun rrd compare [OPTIONS] <PATH_TO_RRD1> <PATH_TO_RRD2>`
 
 **Arguments**
 
-* `<PATH_TO_INPUT_RRDS>`
-> Paths to read from. Reads from standard input if none are specified.
+* `<PATH_TO_RRD1>`
+
+* `<PATH_TO_RRD2>`
 
 **Options**
 
-* `-o, --output <dst.(rrd|rbl)>`
-> Path to write to. Writes to standard output if unspecified.
+* `--unordered <UNORDERED>`
+> If specified, the comparison will focus purely on semantics, ignoring order.
+>
+> The Rerun data model is itself unordered, and because many of the internal pipelines are asynchronous by nature, it is very easy to end up with semantically identical, but differently ordered data. In most cases, the distinction is irrelevant, and you'd rather the comparison succeeds.
+>
+> [Default: `false`]
 
-* `--continue-on-error <CONTINUE_ON_ERROR>`
-> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+* `--full-dump <FULL_DUMP>`
+> If specified, dumps both .rrd files as tables.
+>
+> [Default: `false`]
+
+* `--ignore-chunks-without-components <IGNORE_CHUNKS_WITHOUT_COMPONENTS>`
+> If specified, the comparison will ignore chunks without components.
 >
 > [Default: `false`]
 
@@ -357,7 +351,7 @@ Reads from standard input if no paths are specified.
 
 This will not affect the chunking of the data in any way.
 
-Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
+Example: `rerun rrd filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
 
 **Usage**: `rerun rrd filter [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
@@ -381,3 +375,155 @@ Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rr
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >
 > [Default: `false`]
+
+## rerun rrd merge
+
+Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+
+Reads from standard input if no paths are specified.
+
+This will not affect the chunking of the data in any way.
+
+Example: `rerun rrd merge /my/recordings/*.rrd > output.rrd`
+
+**Usage**: `rerun rrd merge [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-o, --output <dst.(rrd|rbl)>`
+> Path to write to. Writes to standard output if unspecified.
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `false`]
+
+## rerun rrd migrate
+
+Migrate one or more .rrd files to the newest Rerun version.
+
+Example: `rerun rrd migrate foo.rrd` Results in a `foo.backup.rrd` (copy of the old file) and a new `foo.rrd` (migrated).
+
+**Usage**: `rerun rrd migrate [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to rrd files to migrate.
+
+## rerun rrd print
+
+Print the contents of one or more .rrd/.rbl files/streams.
+
+Reads from standard input if no paths are specified.
+
+Example: `rerun rrd print /my/recordings/*.rrd`
+
+**Usage**: `rerun rrd print [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-v, --verbose <VERBOSE>`
+> If set, print out table contents.
+>
+> This can be specified more than once to toggle more and more verbose levels (e.g. -vvv):
+>
+> * default: summary with short names.
+>
+> * `-v`: summary with fully-qualified names.
+>
+> * `-vv`: show all chunk metadata headers, keep the data hidden.
+>
+> * `-vvv`: show all chunk metadata headers as well as the data itself.
+>
+> [Default: `0`]
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `true`]
+
+## rerun rrd route
+
+Manipulates the metadata of log message streams without decoding the payloads.
+
+This can be used to combine multiple .rrd files into a single recording. Example: `rerun rrd route --recording-id my_recording /my/recordings/*.rrd > output.rrd`
+
+Note: Because the payload of the messages is never decoded, no migration or verification will performed.
+
+**Usage**: `rerun rrd route [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-o, --output <dst.rrd>`
+> Path to write to. Writes to standard output if unspecified.
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `false`]
+
+* `--application-id <APPLICATION_ID>`
+> If set, specifies the application id of the output.
+
+* `--recording-id <RECORDING_ID>`
+> If set, specifies the recording id of the output.
+>
+> When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+## rerun rrd stats
+
+Compute important statistics for one or more .rrd/.rbl files/streams.
+
+Reads from standard input if no paths are specified.
+
+Example: `rerun rrd stats /my/recordings/*.rrd`
+
+**Usage**: `rerun rrd stats [OPTIONS] [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `--no-decode <NO_DECODE>`
+> If set, the data will never be decoded.
+>
+> Statistics will be computed at the transport-level instead, which is more limited in terms of what can be computed, but also orders of magnitude faster.
+>
+> [Default: `false`]
+
+* `--continue-on-error <CONTINUE_ON_ERROR>`
+> If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> [Default: `true`]
+
+## rerun rrd verify
+
+Verify the that the .rrd file can be loaded and correctly interpreted.
+
+Can be used to ensure that the current Rerun version can load the data.
+
+**Usage**: `rerun rrd verify [PATH_TO_INPUT_RRDS]…`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRDS>`
+> Paths to read from. Reads from standard input if none are specified.

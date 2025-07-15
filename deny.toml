@@ -52,18 +52,20 @@ deny = [
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
-  { name = "base64" },          # Too popular
-  { name = "cargo_metadata" },  # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
-  { name = "hashbrown" },       # Old version used by polar-rs
-  { name = "itertools" },       # once egui_tiles updates this can be removed
-  { name = "libloading" },      # datafusion-ffi needs an older version than wgpu
-  { name = "ordered-float" },   # Old version being used by parquet, but super small!
-  { name = "pollster" },        # rfd is still on 0.3
-  { name = "pulldown-cmark" },  # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "redox_syscall" },   # Plenty of versions in the wild
-  { name = "rustc-hash" },      # numpy with compatible pyo3 requires different version than wgpu
-  { name = "twox-hash" },       # https://github.com/PSeitz/lz4_flex/pull/175 and then update needed to arrow-ipc
+  { name = "base64" },           # Too popular
+  { name = "block2" },           # Old version via rfd
+  { name = "cargo_metadata" },   # Older version used by ply-rs. It's small, and it's build-time only!
+  { name = "core-foundation" },  # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "hashbrown" },        # Old version used by polar-rs
+  { name = "libloading" },       # datafusion-ffi needs an older version than wgpu
+  { name = "objc2-app-kit" },    # `accesskit_macos` uses a different version than `arboard`
+  { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
+  { name = "objc2" },            # `accesskit_macos` uses a different version than `arboard`
+  { name = "ordered-float" },    # Old version being used by parquet, but super small!
+  { name = "pollster" },         # rfd is still on 0.3
+  { name = "pulldown-cmark" },   # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
+  { name = "redox_syscall" },    # Plenty of versions in the wild
+  { name = "rustc-hash" },       # numpy with compatible pyo3 requires different version than wgpu
 ]
 skip-tree = [
   { name = "re_perf_telemetry" }, # All the telemetry stack (tracing, otel, etc) carry a lot of old dependencies, it's all feature flagged though.
@@ -84,6 +86,7 @@ allow = [
   "BSD-3-Clause",                   # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
   "BSL-1.0",                        # https://tldrlegal.com/license/boost-software-license-1.0-explained
   "CC0-1.0",                        # https://creativecommons.org/publicdomain/zero/1.0/
+  "CDLA-Permissive-2.0",            # https://cdla.dev/permissive-2-0/
   "ISC",                            # https://www.tldrlegal.com/license/isc-license
   "MIT-0",                          # https://choosealicense.com/licenses/mit-0/
   "MIT",                            # https://tldrlegal.com/license/mit-license

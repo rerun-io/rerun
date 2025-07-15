@@ -17,6 +17,12 @@ To accommodate the new tree keyboard navigation feature, the timeline navigation
 
 Have been removed in favor of `Scalars`, `SeriesLines`, `SeriesPoints` respectively.
 
+## Micro-batcher default flushing duration increased from 8ms to 200ms for memory & file recording streams
+
+`RERUN_FLUSH_TICK_SECS` previously always defaulted to 8ms when left unspecified.
+This now only applies to recording streams that use a GRPC connection, all others default to 200ms.
+
+You can learn more about micro-batching in our [dedicated documentation page](../sdk/micro-batching.md).
 
 ## Combining `InstancePoses3D` with orientations in `Boxes3D`/`Ellipsoids3D`/`Capsules3D` behaves differently in some cases now
 
@@ -94,6 +100,19 @@ These changes are reflected in various parts of the Rerun viewer:
 * The new `:`-based syntax needs to be used when referring to components in the dataframe API and in the dataframe view.
 * Changed the interpretation of `blueprint.datatypes.ComponentColumnSelector` to use the new component identifier.
 * Indicator components have been removed entirely. The viewer now instead decides which views & visualizers to activate based on archetype information of components.
+
+#### Blueprint component defaults
+
+Blueprint component defaults were previously applied to component _types_.
+They are now instead, applies to archetype fields, i.e. what is now just called _component_ (e.g. `GraphNodes:positions`).
+
+In practice this means that component defaults are now limited to a single archetype, making them a lot more useful!
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/visualizer-default-context-menu/274a393a59c19c876337e3795a4f81318bee3fd6/768w.png">
+</picture>
 
 ### Limitations & breaking changes
 
