@@ -538,7 +538,7 @@ impl Cache for VideoStreamCache {
     }
 
     /// Keep existing cache entries up to date with new and removed video data.
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let sample_descr = VideoStream::descriptor_sample();
