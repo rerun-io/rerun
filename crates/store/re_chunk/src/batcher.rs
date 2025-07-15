@@ -55,8 +55,7 @@ pub struct BatcherHooks {
     ///
     /// See [`re_log_types::ArrowRecordBatchReleaseCallback`] for more information.
     //
-    // As of writing this is used to handle memory that's shared from Python with the
-    // Batcher thread - we need special handling for release of potentially Python owned memory.
+    // TODO(#6412): probably don't need this anymore.
     pub on_release: Option<re_log_types::ArrowRecordBatchReleaseCallback>,
 }
 
