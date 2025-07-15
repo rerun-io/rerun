@@ -3,6 +3,7 @@
 #![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
+use core::time;
 use std::borrow::Borrow as _;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
@@ -14,6 +15,7 @@ use pyo3::{
     prelude::*,
     types::{PyBytes, PyDict},
 };
+use re_chunk::ChunkBatcherConfig;
 use re_sdk::ComponentDescriptor;
 
 use re_log::ResultExt as _;
@@ -158,6 +160,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
+    m.add_class::<PyChunkBatcherConfig>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -276,6 +279,100 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
     });
 }
 
+/// Defines the different batching thresholds used within the RecordingStream.
+#[pyclass(name = "ChunkBatcherConfig")]
+#[derive(Clone)]
+pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
+
+#[pymethods]
+impl PyChunkBatcherConfig {
+    #[new]
+    fn new(
+        flush_tick: Option<time::Duration>,
+        flush_num_bytes: Option<u64>,
+        flush_num_rows: Option<u64>,
+        chunk_max_rows_if_unsorted: Option<u64>,
+    ) -> Self {
+        let default = ChunkBatcherConfig::DEFAULT;
+
+        Self(ChunkBatcherConfig {
+            flush_tick: flush_tick.unwrap_or(default.flush_tick),
+            flush_num_bytes: flush_num_bytes.unwrap_or(default.flush_num_bytes),
+            flush_num_rows: flush_num_rows.unwrap_or(default.flush_num_rows),
+            chunk_max_rows_if_unsorted: chunk_max_rows_if_unsorted
+                .unwrap_or(default.chunk_max_rows_if_unsorted),
+            ..default
+        })
+    }
+
+    #[getter]
+    fn get_flush_tick(&self) -> time::Duration {
+        self.0.flush_tick
+    }
+
+    #[setter]
+    fn set_flush_tick(&mut self, flush_tick: Option<time::Duration>) {
+        self.0.flush_tick = flush_tick.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_tick);
+    }
+
+    #[getter]
+    fn get_flush_num_bytes(&self) -> u64 {
+        self.0.flush_num_bytes
+    }
+
+    #[setter]
+    fn set_flush_num_bytes(&mut self, flush_num_bytes: Option<u64>) {
+        self.0.flush_num_bytes =
+            flush_num_bytes.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_num_bytes);
+    }
+
+    #[getter]
+    fn get_flush_num_rows(&self) -> u64 {
+        self.0.flush_num_rows
+    }
+
+    #[setter]
+    fn set_flush_num_rows(&mut self, flush_num_rows: Option<u64>) {
+        self.0.flush_num_rows =
+            flush_num_rows.unwrap_or(ChunkBatcherConfig::DEFAULT.flush_num_rows);
+    }
+
+    #[getter]
+    fn get_chunk_max_rows_if_unsorted(&self) -> u64 {
+        self.0.chunk_max_rows_if_unsorted
+    }
+
+    #[setter]
+    fn set_chunk_max_rows_if_unsorted(&mut self, chunk_max_rows_if_unsorted: Option<u64>) {
+        self.0.chunk_max_rows_if_unsorted = chunk_max_rows_if_unsorted
+            .unwrap_or(ChunkBatcherConfig::DEFAULT.chunk_max_rows_if_unsorted);
+    }
+
+    #[allow(non_snake_case)]
+    #[staticmethod]
+    fn DEFAULT() -> Self {
+        Self(ChunkBatcherConfig::DEFAULT)
+    }
+
+    #[allow(non_snake_case)]
+    #[staticmethod]
+    fn LOW_LATENCY() -> Self {
+        Self(ChunkBatcherConfig::LOW_LATENCY)
+    }
+
+    #[allow(non_snake_case)]
+    #[staticmethod]
+    fn ALWAYS() -> Self {
+        Self(ChunkBatcherConfig::ALWAYS)
+    }
+
+    #[allow(non_snake_case)]
+    #[staticmethod]
+    fn NEVER() -> Self {
+        Self(ChunkBatcherConfig::NEVER)
+    }
+}
+
 /// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
@@ -287,6 +384,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
     make_thread_default=true,
     default_enabled=true,
     send_properties=true,
+    batcher_config=None,
 ))]
 fn new_recording(
     py: Python<'_>,
@@ -296,6 +394,7 @@ fn new_recording(
     make_thread_default: bool,
     default_enabled: bool,
     send_properties: bool,
+    batcher_config: Option<PyChunkBatcherConfig>,
 ) -> PyResult<PyRecordingStream> {
     let recording_id = if let Some(recording_id) = recording_id {
         StoreId::from_string(StoreKind::Recording, recording_id)
@@ -309,12 +408,18 @@ fn new_recording(
     };
     hooks.on_release = Some(on_release.into());
 
-    let recording = RecordingStreamBuilder::new(application_id)
+    let mut builder = RecordingStreamBuilder::new(application_id)
         .batcher_hooks(hooks)
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
-        .send_properties(send_properties)
+        .send_properties(send_properties);
+
+    if let Some(batcher_config) = batcher_config {
+        builder = builder.batcher_config(batcher_config.0);
+    }
+
+    let recording = builder
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
