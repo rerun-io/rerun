@@ -51,6 +51,13 @@ pub struct BatcherHooks {
     #[allow(clippy::type_complexity)]
     pub on_insert: Option<Arc<dyn Fn(&[PendingRow]) + Send + Sync>>,
 
+    /// Called when the batcher's configuration changes.
+    ///
+    /// Called for initial configuration as well as subsequent changes.
+    /// Used for testing.
+    #[allow(clippy::type_complexity)]
+    pub on_config_change: Option<Arc<dyn Fn(&ChunkBatcherConfig) + Send + Sync>>,
+
     /// Callback to be run when an Arrow Chunk goes out of scope.
     ///
     /// See [`re_log_types::ArrowRecordBatchReleaseCallback`] for more information.
@@ -62,6 +69,7 @@ pub struct BatcherHooks {
 impl BatcherHooks {
     pub const NONE: Self = Self {
         on_insert: None,
+        on_config_change: None,
         on_release: None,
     };
 }
@@ -70,6 +78,7 @@ impl PartialEq for BatcherHooks {
     fn eq(&self, other: &Self) -> bool {
         let Self {
             on_insert,
+            on_config_change,
             on_release,
         } = self;
 
@@ -79,7 +88,13 @@ impl PartialEq for BatcherHooks {
             _ => false,
         };
 
-        on_insert_eq && on_release == &other.on_release
+        let on_config_change_eq = match (on_config_change, &other.on_config_change) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+
+        on_insert_eq && on_config_change_eq && on_release == &other.on_release
     }
 }
 
@@ -87,10 +102,12 @@ impl std::fmt::Debug for BatcherHooks {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             on_insert,
+            on_config_change,
             on_release,
         } = self;
         f.debug_struct("BatcherHooks")
             .field("on_insert", &on_insert.as_ref().map(|_| "…"))
+            .field("on_config_change", &on_config_change.as_ref().map(|_| "…"))
             .field("on_release", &on_release)
             .finish()
     }
@@ -617,6 +634,10 @@ fn batching_thread(
         config.flush_num_rows,
         re_format::format_bytes(config.flush_num_bytes as _),
     );
+    // Signal initial config
+    if let Some(on_config_change) = hooks.on_config_change.as_ref() {
+        on_config_change(&config);
+    }
 
     // Set to `true` when a flush is triggered for a reason other than hitting the time threshold,
     // so that the next tick will not unnecessarily fire early.
@@ -683,6 +704,9 @@ fn batching_thread(
                         }
 
                         re_log::trace!("Updated batcher config: {:?}", new_config);
+                        if let Some(on_config_change) = hooks.on_config_change.as_ref() {
+                            on_config_change(&new_config);
+                        }
 
                         config = new_config;
                         rx_tick = crossbeam::channel::tick(config.flush_tick);

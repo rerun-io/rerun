@@ -3069,4 +3069,149 @@ mod tests {
         )
         .unwrap();
     }
+
+    struct BatcherConfigTestSink {
+        config: ChunkBatcherConfig,
+    }
+
+    impl LogSink for BatcherConfigTestSink {
+        fn default_batcher_config(&self) -> ChunkBatcherConfig {
+            self.config.clone()
+        }
+
+        fn send(&self, _msg: LogMsg) {
+            // noop
+        }
+
+        fn flush_blocking(&self) {
+            // noop
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+
+    struct ScopedEnvVarSet {
+        key: &'static str,
+    }
+
+    impl ScopedEnvVarSet {
+        #[allow(unsafe_code)]
+        fn new(key: &'static str, value: &'static str) -> Self {
+            // SAFETY: only used in tests.
+            unsafe { std::env::set_var(key, value) };
+            Self { key }
+        }
+    }
+
+    impl Drop for ScopedEnvVarSet {
+        #[allow(unsafe_code)]
+        fn drop(&mut self) {
+            // SAFETY: only used in tests.
+            unsafe {
+                std::env::remove_var(self.key);
+            }
+        }
+    }
+
+    const CONFIG_CHANGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+
+    #[test]
+
+    fn test_sink_dependent_batcher_config() {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
+            .batcher_hooks(BatcherHooks {
+                on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
+                    tx.send(config.clone()).unwrap();
+                })),
+                ..BatcherHooks::NONE
+            })
+            .buffered()
+            .unwrap();
+
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(new_config, ChunkBatcherConfig::DEFAULT); // buffered sink uses the default config.
+
+        // Change sink to our custom sink. Will it take over the setting?
+        let injected_config = ChunkBatcherConfig {
+            flush_tick: std::time::Duration::from_secs(123),
+            flush_num_bytes: 123,
+            flush_num_rows: 123,
+            ..ChunkBatcherConfig::DEFAULT
+        };
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: injected_config.clone(),
+        }));
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+
+        assert_eq!(new_config, injected_config);
+
+        // Set flush num bytes through env var and set the sink again.
+        // check that the env var is respected.
+        let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_NUM_BYTES", "456");
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: injected_config.clone(),
+        }));
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(
+            new_config,
+            ChunkBatcherConfig {
+                flush_num_bytes: 456,
+                ..injected_config
+            },
+        );
+    }
+
+    #[test]
+    fn test_explicit_batcher_config() {
+        // This environment variable should still override the explicit config.
+        let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_TICK_SECS", "456");
+        let explicit_config = ChunkBatcherConfig {
+            flush_tick: std::time::Duration::from_secs(123),
+            flush_num_bytes: 123,
+            flush_num_rows: 123,
+            ..ChunkBatcherConfig::DEFAULT
+        };
+        let expected_config = ChunkBatcherConfig {
+            flush_tick: std::time::Duration::from_secs(456),
+            ..explicit_config
+        };
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
+            .batcher_config(explicit_config)
+            .batcher_hooks(BatcherHooks {
+                on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
+                    tx.send(config.clone()).unwrap();
+                })),
+                ..BatcherHooks::NONE
+            })
+            .buffered()
+            .unwrap();
+
+        let new_config = rx
+            .recv_timeout(CONFIG_CHANGE_TIMEOUT)
+            .expect("no config change message received within timeout");
+        assert_eq!(new_config, expected_config);
+
+        // Changing the sink should have no effect since an explicit config is in place.
+        rec.set_sink(Box::new(BatcherConfigTestSink {
+            config: ChunkBatcherConfig::ALWAYS,
+        }));
+        // Don't want to stall the test for CONFIG_CHANGE_TIMEOUT here.
+        let new_config_recv_result = rx.recv_timeout(std::time::Duration::from_millis(100));
+        assert_eq!(
+            new_config_recv_result,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        );
+    }
 }
