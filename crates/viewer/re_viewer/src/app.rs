@@ -1780,6 +1780,9 @@ impl App {
             let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
             if is_new_store && entity_db.store_kind() == StoreKind::Recording {
                 self.analytics.on_open_recording(entity_db);
+                if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
+                    event_dispatcher.on_recording_open(entity_db);
+                }
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
