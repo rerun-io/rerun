@@ -3,7 +3,7 @@
 #[cfg(debug_assertions)]
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
-use egui::{Button, NumExt as _};
+use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
 use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
@@ -37,7 +37,12 @@ impl App {
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
-                self.rerun_menu_ui(ui, render_state, _store_context);
+                ui.set_max_height(ui.ctx().screen_rect().height());
+                ScrollArea::vertical()
+                    .max_height(ui.ctx().screen_rect().height() - 16.0)
+                    .show(ui, |ui| {
+                        self.rerun_menu_ui(ui, render_state, _store_context);
+                    });
             });
     }
 
