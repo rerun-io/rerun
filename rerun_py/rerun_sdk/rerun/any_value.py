@@ -81,49 +81,80 @@ class AnyBatchValue(ComponentBatchLike):
                 if pa_type is not None:
                     if value is None:
                         value = []
-                    # Special case: strings are iterables so pyarrow will not
-                    # handle them properly
-                    if not isinstance(value, (str, bytes)):
-                        try:
-                            self.pa_array = pa.array(value, type=pa_type)
-                        except (ArrowInvalid, TypeError):
-                            pass
-                    if self.pa_array is None:
-                        try:
-                            pa_scalar = pa.scalar(value, type=pa_type)
-                            self.pa_array = pa.array([pa_scalar], type=pa_type)
-                        except (ArrowInvalid, TypeError):
-                            pass
-                    if self.pa_array is None:
-                        # Fall back - use numpy
-                        np_value = np.atleast_1d(np.asarray(value, dtype=np_type))
-                        self.pa_array = pa.array(np_value, type=pa_type)
+                    self._maybe_parse_dlpack(value, pa_type)
+                    self._maybe_parse_string(value, pa_type)
+                    self._maybe_parse_scalar(value, pa_type)
+                    self._fallback_parse(value, pa_type, np_type)
+
                 else:
                     if value is None:
                         if not drop_untyped_nones:
                             raise ValueError("Cannot convert None to arrow array. Type is unknown.")
                     else:
-                        # This should handle most non-scalar values, but we have to
-                        # treat str and bytes special because they are iterable
-                        if not isinstance(value, (str, bytes)) and value is not None:
-                            try:
-                                self.pa_array = pa.array(value)
-                                ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
-                            except (ArrowInvalid, TypeError):
-                                pass
-                        if self.pa_array is None:
-                            try:
-                                pa_scalar = pa.scalar(value)
-                                self.pa_array = pa.array([pa_scalar])
-                                ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
-                            except (ArrowInvalid, TypeError):
-                                pass
-                        if self.pa_array is None:
-                            # Fall back - use numpy which handles a wide variety of lists, tuples,
-                            # and mixtures of them and will turn into a well formed array
-                            np_value = np.atleast_1d(np.asarray(value))
-                            self.pa_array = pa.array(np_value)
-                            ANY_VALUE_TYPE_REGISTRY[descriptor] = (np_value.dtype, self.pa_array.type)
+                        self._maybe_parse_dlpack(value, pa_type=None, descriptor=descriptor)
+                        self._maybe_parse_string(value, pa_type=None, descriptor=descriptor)
+                        self._maybe_parse_scalar(value, pa_type=None, descriptor=descriptor)
+                        self._fallback_parse(value, pa_type, np_type, descriptor=descriptor)
+
+    def _maybe_parse_dlpack(
+        self, value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    ) -> None:
+        # If the value has a __dlpack__ method, we can convert it to numpy without copy
+        # then to arrow
+        if self.pa_array is None and hasattr(value, "__dlpack__"):
+            try:
+                self.pa_array = pa.array(np.from_dlpack(value), type=pa_type)
+                if descriptor is not None:
+                    ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
+            except (ArrowInvalid, TypeError):
+                pass
+
+    def _maybe_parse_string(
+        self, value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    ) -> None:
+        # Special case: strings are iterables so pyarrow will not
+        # handle them properly
+        if self.pa_array is None and not isinstance(value, (str, bytes)):
+            try:
+                self.pa_array = pa.array(value, type=pa_type)
+                if descriptor is not None:
+                    ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
+            except (ArrowInvalid, TypeError):
+                pass
+
+    def _maybe_parse_scalar(
+        self, value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    ) -> None:
+        if self.pa_array is None:
+            try:
+                pa_scalar = pa.scalar(value)
+                self.pa_array = pa.array([pa_scalar], type=pa_type)
+                if descriptor is not None:
+                    ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
+            except (ArrowInvalid, TypeError):
+                pass
+
+    def _fallback_parse(
+        self,
+        value: Any,
+        pa_type: Any | None = None,
+        np_type: Any | None = None,
+        descriptor: ComponentDescriptor | None = None,
+    ) -> None:
+        if self.pa_array is None:
+            # Fall back - use numpy which handles a wide variety of lists, tuples,
+            # and mixtures of them and will turn into a well formed array
+            np_value = np.atleast_1d(np.asarray(value, dtype=np_type))
+            try:
+                self.pa_array = pa.array(np_value, type=pa_type)
+            except pa.lib.ArrowNotImplementedError as e:
+                if np_type is None and descriptor is None:
+                    raise ValueError(
+                        f"Cannot convert value {value} to arrow array of type {pa_type}."
+                        " Inconsistent with previous type provided."
+                    ) from e
+            if descriptor is not None:
+                ANY_VALUE_TYPE_REGISTRY[descriptor] = (np_value.dtype, self.pa_array.type)
 
     def is_valid(self) -> bool:
         return self.pa_array is not None
@@ -256,6 +287,12 @@ class AnyValues(AsComponents):
         self.component_batches = []
 
         with catch_and_log_exceptions(self.__class__.__name__):
+            if len(kwargs) == 0:
+                raise ValueError(
+                    "AnyValues should be initialized with at least one component."
+                    " Please provide at least one keyword argument."
+                )
+
             for name, value in kwargs.items():
                 batch = AnyBatchValue(name, value, drop_untyped_nones=drop_untyped_nones)
                 if batch.is_valid():
