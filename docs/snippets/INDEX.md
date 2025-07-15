@@ -255,6 +255,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | **`DataframeQuery`** | `reference⁠/⁠dataframe_view_query` | Query and display the first 10 rows of a recording in a dataframe view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_view_query.py) |  |  |
 | **`DataframeQuery`** | `views⁠/⁠dataframe` | Use a blueprint to customize a DataframeView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/dataframe.py) |  |  |
 | **`EntityBehavior`** | `archetypes⁠/⁠entity_behavior` | Configure interactivity & visibility of entities | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/entity_behavior.py) |  |  |
+| **`EyeControls3D`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |
 | **`LineGrid3D`** | `views⁠/⁠spatial3d` | Use a blueprint to customize a Spatial3DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial3d.py) |  |  |
 | **`PlotLegend`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
 | **`ScalarAxis`** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |

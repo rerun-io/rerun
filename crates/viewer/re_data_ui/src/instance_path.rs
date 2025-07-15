@@ -190,7 +190,7 @@ fn component_list_ui(
                 if archetype.is_none() && components_by_archetype.len() == 1 {
                     // They are all without archetype, so we can skip the label.
                 } else {
-                    archetype_label_ui(ui, archetype);
+                    archetype_label_list_item_ui(ui, archetype);
                 }
 
                 for (component_descr, unit) in components {
@@ -276,7 +276,7 @@ fn component_list_ui(
     );
 }
 
-fn archetype_label_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
+pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
     ui.list_item()
         .with_y_offset(1.0)
         .with_height(20.0)

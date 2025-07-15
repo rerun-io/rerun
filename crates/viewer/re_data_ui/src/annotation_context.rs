@@ -99,7 +99,7 @@ fn annotation_info(
     // TODO(#3168): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
 
-    // TODO(#6889): If there's several class ids we have no idea which one to use.
+    // TODO(grtlr): If there's several class ids we have no idea which one to use.
     // This code uses the first one that shows up.
     // We should search instead for a class id that is likely a sibling of the keypoint id.
     let storage_engine = ctx.recording().storage_engine();

@@ -32,6 +32,7 @@ lat_lon.py linguist-generated=true
 length.py linguist-generated=true
 line_strip2d.py linguist-generated=true
 line_strip3d.py linguist-generated=true
+linear_speed.py linguist-generated=true
 magnification_filter.py linguist-generated=true
 marker_shape.py linguist-generated=true
 marker_size.py linguist-generated=true

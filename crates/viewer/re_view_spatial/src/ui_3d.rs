@@ -10,7 +10,7 @@ use re_renderer::{
 };
 use re_types::{
     blueprint::{
-        archetypes::{Background, LineGrid3D},
+        archetypes::{Background, EyeControls3D, LineGrid3D},
         components::GridSpacing,
     },
     components::{ViewCoordinates, Visible},
@@ -116,6 +116,8 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
+        view_ctx: &ViewContext<'_>,
+        eye_property: &ViewProperty,
     ) -> ViewEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
@@ -198,7 +200,7 @@ impl View3DState {
             0.0
         };
 
-        if view_eye.update(response, view_eye_drag_threshold, bounding_boxes) {
+        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -274,7 +276,7 @@ impl View3DState {
     /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
     fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
         if let Some(view_eye) = &self.view_eye {
-            target.set_mode(view_eye.mode());
+            target.set_kind(view_eye.kind());
         }
 
         // the user wants to move the camera somewhere, so stop spinning
@@ -443,11 +445,19 @@ impl SpatialView3D {
             return Ok(()); // protect against problems with zero-sized views
         }
 
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+
         let view_eye = state.state_3d.update_eye(
             &response,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
+            &self.view_context(ctx, query.view_id, &state.clone()),
+            &eye_property,
         );
         let eye = view_eye.to_eye();
 
