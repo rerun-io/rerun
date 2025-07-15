@@ -31,7 +31,7 @@ pub enum SourceImageDataFormat {
         range: YuvRange,
     },
     //
-    // TODO(#7608): Add rgb (3 channels!) formats.
+    // TODO(#10648): Add rgb (3 channels!) formats.
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {

@@ -246,7 +246,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
+    // TODO(#10648): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);
