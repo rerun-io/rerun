@@ -653,7 +653,7 @@ class ChunkBatcherConfig:
         """Duration of the periodic tick."""
 
     @flush_tick.setter
-    def flush_tick(self, value: float | int | timedelta):
+    def flush_tick(self, value: float | int | timedelta) -> None:
         """
         Duration of the periodic tick.
 
@@ -661,11 +661,11 @@ class ChunkBatcherConfig:
         """
 
     @property
-    def flush_num_bytes(self) -> Optional[int]:
+    def flush_num_bytes(self) -> int:
         """Flush if the accumulated payload has a size in bytes equal or greater than this."""
 
     @flush_num_bytes.setter
-    def flush_num_bytes(self, value: Optional[int]):
+    def flush_num_bytes(self, value: int) -> None:
         """
         Flush if the accumulated payload has a size in bytes equal or greater than this.
 
@@ -673,11 +673,11 @@ class ChunkBatcherConfig:
         """
 
     @property
-    def flush_num_rows(self) -> Optional[int]:
+    def flush_num_rows(self) -> int:
         """Flush if the accumulated payload has a number of rows equal or greater than this."""
 
     @flush_num_rows.setter
-    def flush_num_rows(self, value: Optional[int]):
+    def flush_num_rows(self, value: int) -> None:
         """
         Flush if the accumulated payload has a number of rows equal or greater than this.
 
@@ -685,11 +685,11 @@ class ChunkBatcherConfig:
         """
 
     @property
-    def chunk_max_rows_if_unsorted(self) -> Optional[int]:
+    def chunk_max_rows_if_unsorted(self) -> int:
         """Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted."""
 
     @chunk_max_rows_if_unsorted.setter
-    def chunk_max_rows_if_unsorted(self, value: Optional[int]):
+    def chunk_max_rows_if_unsorted(self, value: int) -> None:
         """
         Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
 
