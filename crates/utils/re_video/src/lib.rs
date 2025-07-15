@@ -16,6 +16,7 @@ pub use self::{
     demux::{
         ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
         SamplesStatistics, VideoCodec, VideoDataDescription, VideoEncodingDetails, VideoLoadError,
+        VideoUpdateType,
     },
 };
 

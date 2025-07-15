@@ -581,10 +581,7 @@ impl VideoPlayer {
         // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
         // * some decoders need a certain amount of samples in the queue to produce a frame.
         //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
-        let recently_updated_video = video_description
-            .last_time_updated_samples
-            .is_some_and(|t| t.elapsed() < self.config.time_until_video_assumed_ended);
-        if recently_updated_video {
+        if !treat_video_as_finite(&self.config, video_description) {
             let min_num_samples_to_enqueue_ahead =
                 self.sample_decoder.min_num_samples_to_enqueue_ahead();
             let allowed_delay =
@@ -635,12 +632,12 @@ fn treat_video_as_finite(
     // If this is a potentially live stream, signal the end of the video after a certain amount of time.
     // This helps decoders to flush out any pending frames.
     // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
-    video_description.duration.is_some()
-        || video_description
-            .last_time_updated_samples
-            .is_some_and(|last_time_updated_samples| {
-                last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended
-            })
+    match &video_description.update_type {
+        re_video::VideoUpdateType::NoUpdates { .. } => false,
+        re_video::VideoUpdateType::Stream {
+            last_time_updated_samples,
+        } => last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended,
+    }
 }
 
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.

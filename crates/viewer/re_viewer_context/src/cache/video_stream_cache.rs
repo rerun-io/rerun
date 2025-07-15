@@ -250,12 +250,13 @@ fn load_video_data_from_chunks(
         codec,
         encoding_details: None, // Unknown so far, we'll find out later.
         timescale: timescale_for_timeline(store, timeline),
-        duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
+        update_type: re_video::VideoUpdateType::Stream {
+            last_time_updated_samples: Instant::now(),
+        },
         gops: StableIndexDeque::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
         samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
         mp4_tracks: Default::default(),
-        last_time_updated_samples: Some(Instant::now()),
     };
 
     for chunk in sample_chunks {
@@ -565,7 +566,9 @@ impl Cache for VideoStreamCache {
                     video_sample_buffers,
                 } = &mut *video_stream;
                 let video_data = video_renderer.data_descr_mut();
-                video_data.last_time_updated_samples = Some(Instant::now());
+                video_data.update_type = re_video::VideoUpdateType::Stream {
+                    last_time_updated_samples: Instant::now(),
+                };
 
                 match event.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -759,17 +762,19 @@ mod tests {
             codec,
             encoding_details,
             timescale,
-            duration,
+            update_type,
             gops,
             samples,
             samples_statistics,
             mp4_tracks,
-            last_time_updated_samples: _,
         } = data_descr.clone();
 
         assert_eq!(codec, re_video::VideoCodec::H264);
         assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
-        assert_eq!(duration, None); // Open ended video.
+        assert!(matches!(
+            update_type,
+            re_video::VideoUpdateType::Stream { .. }
+        )); // Open ended video.
         assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
         assert!(mp4_tracks.is_empty());
 

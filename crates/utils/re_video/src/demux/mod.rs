@@ -115,6 +115,27 @@ pub type GopIndex = usize;
 /// Index used for referencing into [`VideoDataDescription::samples`].
 pub type SampleIndex = usize;
 
+/// Distinguishes finate videos from video streams.
+#[derive(Clone)]
+pub enum VideoUpdateType {
+    /// A finite video with a known duration which won't be updated further.
+    NoUpdates { duration: Time },
+
+    /// A stream that may be periodically updated.
+    ///
+    /// Video streams may drop samples at the beginning and add new samples at the end.
+    /// The last sample's duration is treated as unknown.
+    /// However, it is typically assumed to be as long as the average sample duration.
+    Stream {
+        /// Last time we added/removed samples from the [`VideoDataDescription`].
+        ///
+        /// This is used solely as a heuristic input for how the player schedules work to decoders.
+        /// For live streams, even those that stopped, this is expected to be wallclock time of when a sample was
+        /// added do this datastructure. *Not* when the sample was first recorded.
+        last_time_updated_samples: Instant,
+    },
+}
+
 /// Description of video data.
 ///
 /// Store various metadata about a video.
@@ -138,10 +159,8 @@ pub struct VideoDataDescription {
     /// This happens for streams logged on a non-temporal timeline.
     pub timescale: Option<Timescale>,
 
-    /// Duration of the video, in time units if known.
-    ///
-    /// For open ended video streams rather than video files this is generally unknown.
-    pub duration: Option<Time>,
+    /// Whether this is a finite video or a stream.
+    pub update_type: VideoUpdateType,
 
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
@@ -166,14 +185,6 @@ pub struct VideoDataDescription {
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
 
-    /// If this is potentially a live stream, then when was the last time, we added/removed samples from this data description.
-    ///
-    /// This is used solely as a heuristic input for how the player schedules work to decoders.
-    /// For static video data this is expected to be `None`.
-    /// For live streams, even those that stopped, this is expected to be wallclock time of when a sample was
-    /// added do this datastructure. *Not* when the sample was first recorded.
-    pub last_time_updated_samples: Option<Instant>,
-
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
@@ -186,12 +197,11 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
             codec: _,
             encoding_details: _,
             timescale: _,
-            duration: _,
+            update_type: _,
             gops,
             samples,
             samples_statistics,
             mp4_tracks,
-            last_time_updated_samples: _,
         } = self;
 
         gops.heap_size_bytes()
@@ -474,18 +484,6 @@ impl VideoDataDescription {
         }
     }
 
-    /// Length of the video if known.
-    ///
-    /// NOTE: This includes the duration of the final frame too!
-    ///
-    /// For video streams (as opposed to video files) this is generally unknown.
-    #[inline]
-    pub fn duration(&self) -> Option<std::time::Duration> {
-        let timescale = self.timescale?;
-        let duration = self.duration?;
-        Some(duration.duration(timescale))
-    }
-
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
@@ -513,6 +511,43 @@ impl VideoDataDescription {
     #[inline]
     pub fn num_samples(&self) -> usize {
         self.samples.num_elements()
+    }
+
+    /// Duration of the video.
+    ///
+    /// For videos that may still grow this is an estimate of the video length so far.
+    /// (we don't know for sure how long the last sample is going to be)
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        match &self.update_type {
+            VideoUpdateType::NoUpdates { duration } => Some(duration.duration(self.timescale?)),
+
+            VideoUpdateType::Stream { .. } => {
+                if self.samples.num_elements() < 2 {
+                    return None;
+                }
+
+                // TODO(#10090): This is only correct because there's no b-frames on streams right now.
+                // If there are b-frames determining the last timestamp is a bit more complicated.
+                let first_sample = self.samples.front()?;
+                let last_sample = self.samples.back()?;
+                let timescale = self.timescale?;
+
+                // Estimate length of the last sample:
+                let second_to_last_sample = self
+                    .samples
+                    .get(self.samples.next_index().saturating_sub(2))?;
+                let estimated_average_sample_duration = (last_sample.presentation_timestamp
+                    - second_to_last_sample.presentation_timestamp)
+                    .duration(timescale)
+                    / (self.num_samples() - 1) as u32;
+
+                Some(
+                    (last_sample.presentation_timestamp - first_sample.presentation_timestamp)
+                        .duration(timescale)
+                        + estimated_average_sample_duration,
+                )
+            }
+        }
     }
 
     /// `num_frames / duration`.
@@ -835,7 +870,6 @@ impl std::fmt::Debug for VideoDataDescription {
             .field("codec", &self.codec)
             .field("encoding_details", &self.encoding_details)
             .field("timescale", &self.timescale)
-            .field("duration", &self.duration)
             .field("gops", &self.gops)
             .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
             .finish()
