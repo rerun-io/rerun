@@ -167,3 +167,27 @@ impl From<&TraceHeaders> for opentelemetry::Context {
         propagator.extract(value)
     }
 }
+
+// ---
+
+// Extension to [`tracing_subscriber:EnvFilter`] that allows to 
+// add a directive only if not already present in the base filter
+pub trait EnvFilterExt where Self: Sized {
+    fn add_directive_if_absent(self, base: &str, target: &str, default: &str) -> anyhow::Result<Self>;
+}
+
+impl EnvFilterExt for tracing_subscriber::EnvFilter {
+    fn add_directive_if_absent(
+        self,
+        base: &str,
+        target: &str,
+        default: &str,
+    ) -> anyhow::Result<Self> {
+        if !base.contains(&format!("{target}=")) {
+            let filter = self.add_directive(format!("{target}={default}").parse()?);
+            Ok(filter)
+        } else {
+            Ok(self)
+        }
+    }
+}
