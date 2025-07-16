@@ -106,7 +106,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         &mut self.data,
                         highlight,
                         world_from_entity,
-                        format!("Failed to load video stream at {entity_path:?}: {err}"),
+                        format!("Failed to play video at {entity_path:?}: {err}"),
                         video_resolution,
                         entity_path,
                     );

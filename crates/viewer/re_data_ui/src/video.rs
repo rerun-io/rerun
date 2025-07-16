@@ -46,7 +46,7 @@ pub fn video_asset_result_ui(
             // See also `MediaTypeIsNotAVideo` case above.
         }
         Err(err) => {
-            let error_message = format!("Failed to load video: {err}");
+            let error_message = format!("Failed to play: {err}");
             if ui_layout.is_single_line() {
                 ui.error_with_details_on_hover(error_message);
             } else {
