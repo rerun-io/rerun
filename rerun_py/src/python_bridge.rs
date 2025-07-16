@@ -289,9 +289,9 @@ enum DurationLike {
 impl DurationLike {
     fn into_duration(self) -> time::Duration {
         match self {
-            DurationLike::Int(i) => time::Duration::from_secs(i as u64),
-            DurationLike::Float(f) => time::Duration::from_secs_f64(f),
-            DurationLike::Duration(d) => d,
+            Self::Int(i) => time::Duration::from_secs(i as u64),
+            Self::Float(f) => time::Duration::from_secs_f64(f),
+            Self::Duration(d) => d,
         }
     }
 }
@@ -311,19 +311,19 @@ impl PyChunkBatcherConfig {
     ///
     /// Parameters
     /// ----------
-    /// flush_tick : Optional[int | float | timedelta], optional
+    /// flush_tick : int | float | timedelta | None
     ///     Duration of the periodic tick, by default `None`.
     ///     Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
     ///
-    /// flush_num_bytes : Optional[int], optional
+    /// flush_num_bytes : int | None
     ///     Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
     ///     Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
     ///
-    /// flush_num_rows : Optional[int], optional
+    /// flush_num_rows : int | None
     ///     Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
     ///     Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
     ///
-    /// chunk_max_rows_if_unsorted : Optional[int], optional
+    /// chunk_max_rows_if_unsorted : int | None
     ///     Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
     ///     by default `None`.
     ///     Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
