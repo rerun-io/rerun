@@ -1,10 +1,14 @@
-use arrow::array::{Array, Int64Array, RecordBatch, StringArray, UInt64Array, new_null_array, TimestampSecondArray, TimestampMillisecondArray, TimestampMicrosecondArray, TimestampNanosecondArray};
+use arrow::array::{
+    Array, ArrayRef, Int64Array, RecordBatch, StringArray, TimestampMicrosecondArray,
+    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
+    new_null_array,
+};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use async_trait::async_trait;
 use datafusion::catalog::Session;
 use datafusion::common::hash_utils::HashValue as _;
-use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
+use datafusion::common::{downcast_value, exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, TaskContext};
@@ -20,10 +24,11 @@ use datafusion::{
     catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
 };
 use futures_util::{Stream, StreamExt as _};
-use itertools::Itertools;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression};
+use re_dataframe::{
+    ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
+};
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
@@ -92,7 +97,6 @@ pub struct DataframePartitionStream {
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
     rerun_partition_ids: Vec<String>,
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
 
     chunk_tx: Option<Sender<Vec<(Chunk, Option<String>)>>>,
     store_output_channel: Receiver<RecordBatch>,
@@ -225,6 +229,7 @@ impl DataframeQueryTableProvider {
         .collect::<Vec<_>>();
 
         if let Some(index) = query_expression.filtered_index {
+            fields_of_interest.push(format!("{}:start", index.as_str()));
             fields_of_interest.push(format!("{}:end", index.as_str()));
         }
 
@@ -379,7 +384,6 @@ impl Stream for DataframePartitionStream {
                 this.client.clone(),
                 this.chunk_request.clone(),
                 this.rerun_partition_ids.clone(),
-                Arc::clone(&this.chunk_info),
                 chunk_tx,
             )));
         }
@@ -430,25 +434,63 @@ pub fn align_record_batch_to_schema(
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ChunkInfo {
+    pub start_time: i64,
     pub end_time: i64,
     pub chunk_id: ChunkId,
     pub byte_len: u64,
 }
 
-impl PartialOrd for ChunkInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let end_time_cmp = self.end_time.partial_cmp(&other.end_time)?;
-        let Ordering::Equal = end_time_cmp else {
-            return Some(end_time_cmp);
+impl Ord for ChunkInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let start_time_cmp = self.start_time.cmp(&other.start_time);
+        let Ordering::Equal = start_time_cmp else {
+            return start_time_cmp;
         };
-        let chunk_id_cmp = self.chunk_id.partial_cmp(&other.chunk_id)?;
+        let end_time_cmp = self.end_time.cmp(&other.end_time);
+        let Ordering::Equal = end_time_cmp else {
+            return end_time_cmp;
+        };
+        let chunk_id_cmp = self.chunk_id.cmp(&other.chunk_id);
         let Ordering::Equal = chunk_id_cmp else {
-            return Some(chunk_id_cmp);
+            return chunk_id_cmp;
         };
 
         // We should never get here
-        Some(self.byte_len.cmp(&other.byte_len))
+        self.byte_len.cmp(&other.byte_len)
     }
+}
+impl PartialOrd for ChunkInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusionError> {
+    Ok(match time_array.data_type() {
+        DataType::Int64 => downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
+        DataType::Timestamp(TimeUnit::Second, _) => {
+            let nano_array = downcast_value!(time_array, TimestampSecondArray);
+            nano_array.reinterpret_cast::<Int64Type>()
+        }
+        DataType::Timestamp(TimeUnit::Millisecond, _) => {
+            let nano_array = downcast_value!(time_array, TimestampMillisecondArray);
+            nano_array.reinterpret_cast::<Int64Type>()
+        }
+        DataType::Timestamp(TimeUnit::Microsecond, _) => {
+            let nano_array = downcast_value!(time_array, TimestampMicrosecondArray);
+            nano_array.reinterpret_cast::<Int64Type>()
+        }
+        DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+            let nano_array = downcast_value!(time_array, TimestampNanosecondArray);
+            nano_array.reinterpret_cast::<Int64Type>()
+        }
+        _ => {
+            return Err(exec_datafusion_err!(
+                "Unexpected type for time column {}",
+                time_array.data_type()
+            ));
+        }
+    })
 }
 
 /// We need to create `num_partitions` of partition stream outputs, each of
@@ -462,17 +504,22 @@ impl PartialOrd for ChunkInfo {
 /// chunk byte length.
 fn compute_partition_stream_chunk_info(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
-    num_partitions: usize,
 ) -> Result<Arc<BTreeMap<String, Vec<ChunkInfo>>>, DataFusionError> {
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
         let schema = batch.schema();
-        let time_col = schema
+        let end_time_col = schema
             .fields()
             .iter()
             .map(|f| f.name())
             .find(|name| name.ends_with(":end"))
+            .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
+        let start_time_col = schema
+            .fields()
+            .iter()
+            .map(|f| f.name())
+            .find(|name| name.ends_with(":start"))
             .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
 
         let partition_id_arr = batch
@@ -500,31 +547,18 @@ fn compute_partition_stream_chunk_info(
             .downcast_ref::<UInt64Array>()
             .ok_or(exec_datafusion_err!("Unexpected type for chunk_id"))?;
 
-        // TODO(tsaucer) verify all of the possible time columns
-        let time_end_arr = batch
-            .column_by_name(time_col)
+        let end_time_arr = batch
+            .column_by_name(end_time_col)
             .ok_or(exec_datafusion_err!(
-                "Unable to return time column as expected"
+                "Unable to return end time column as expected"
             ))?;
-        let time_end_arr = match time_end_arr.data_type() {
-            DataType::Int64 => {
-                time_end_arr.as_any().downcast_ref::<Int64Array>().unwrap()
-            }
-            DataType::Timestamp(TimeUnit::Second, _) => {
-                &time_end_arr.as_any().downcast_ref::<TimestampSecondArray>().unwrap().reinterpret_cast::<Int64Type>()
-            }
-            DataType::Timestamp(TimeUnit::Millisecond, _) => {
-                &time_end_arr.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap().reinterpret_cast::<Int64Type>()
-            }
-            DataType::Timestamp(TimeUnit::Microsecond, _) => {
-                &time_end_arr.as_any().downcast_ref::<TimestampMicrosecondArray>().unwrap().reinterpret_cast::<Int64Type>()
-            }
-            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-                &time_end_arr.as_any().downcast_ref::<TimestampNanosecondArray>().unwrap().reinterpret_cast::<Int64Type>()
-            }
-            _ => return Err(exec_datafusion_err!("Unexpected type for time column {}", time_end_arr.data_type())),
-        };
-
+        let end_time_arr = time_array_ref_to_i64(end_time_arr)?;
+        let start_time_arr = batch
+            .column_by_name(start_time_col)
+            .ok_or(exec_datafusion_err!(
+                "Unable to return start time column as expected"
+            ))?;
+        let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
 
         let num_rows = partition_id_arr.len();
         for idx in 0..num_rows {
@@ -532,9 +566,11 @@ fn compute_partition_stream_chunk_info(
             // let hash_idx = partition_id.hash_one(&random_state) as usize;
             let chunk_id = ChunkId::from_tuid(chunk_id_arr[idx]);
             let byte_len = chunk_byte_len_arr.value(idx);
-            let end_time = time_end_arr.value(idx);
+            let start_time = start_time_arr.value(idx);
+            let end_time = end_time_arr.value(idx);
 
             let chunk_info = ChunkInfo {
+                start_time,
                 end_time,
                 chunk_id,
                 byte_len,
@@ -605,7 +641,7 @@ impl PartitionStreamExec {
             Boundedness::Bounded,
         );
 
-        let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches, num_partitions)?;
+        let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches)?;
 
         let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
 
@@ -623,34 +659,95 @@ impl PartitionStreamExec {
     }
 }
 
+async fn send_next_row(
+    query_handle: &QueryHandle<StorageEngine>,
+    partition_id: &str,
+    target_schema: &Arc<Schema>,
+    output_channel: &Sender<RecordBatch>,
+) -> Result<Option<()>, DataFusionError> {
+    let query_schema = Arc::clone(query_handle.schema());
+    let num_fields = query_schema.fields.len();
+
+    let Some(next_row) = query_handle.next_row() else {
+        return Ok(None);
+    };
+
+    if next_row.is_empty() {
+        // Should not happen
+        return Ok(None);
+    }
+    if num_fields != next_row.len() {
+        return plan_err!("Unexpected number of columns returned from query");
+    }
+
+    let pid_array = Arc::new(StringArray::from(vec![
+        partition_id.to_owned();
+        next_row[0].len()
+    ])) as Arc<dyn Array>;
+
+    let mut arrays = Vec::with_capacity(num_fields + 1);
+    arrays.push(pid_array);
+    arrays.extend(next_row);
+
+    let batch_schema = Arc::new(prepend_string_column_schema(
+        &query_schema,
+        DATASET_MANIFEST_ID_FIELD_NAME,
+    ));
+
+    let batch = RecordBatch::try_new(batch_schema, arrays)?;
+
+    let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
+
+    output_channel
+        .send(output_batch)
+        .await
+        .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+    Ok(Some(()))
+}
+
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<Vec<(Chunk, Option<String>)>>,
     output_channel: Sender<RecordBatch>,
+    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
-    let mut stores = BTreeMap::default();
 
+    let mut current_stores: Option<(
+        String,
+        ChunkStoreHandle,
+        QueryHandle<StorageEngine>,
+        Vec<ChunkInfo>,
+    )> = None;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
-        // Clone the stores for mutabillity within the spawned task.
-        // Note at the end of this task we return the mutated stores and assign
-        // it back to the outer stores variable.
-
-        let _span = tracing::trace_span!(
-            "get_chunks::batch_insert",
-            num_chunks = chunks_and_partition_ids.len()
-        )
-        .entered();
-
         for chunk_and_partition_id in chunks_and_partition_ids {
             let (chunk, partition_id) = chunk_and_partition_id;
 
             let partition_id = partition_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
 
-            let store = stores.entry(partition_id.clone()).or_insert_with(|| {
+            if let Some((current_partition, _, query_handle, _)) = &current_stores {
+                // When we change partitions, flush the outputs
+                if current_partition != &partition_id {
+
+                    while send_next_row(
+                        query_handle,
+                        current_partition.as_str(),
+                        &projected_schema,
+                        &output_channel,
+                    )
+                    .await?
+                    .is_some()
+                    {}
+
+                    current_stores = None;
+                }
+            }
+
+            if current_stores.is_none() {
                 let store_info = StoreInfo {
-                    application_id: ApplicationId::from(partition_id),
+                    application_id: ApplicationId::from(partition_id.as_str()),
                     store_id: StoreId::random(StoreKind::Recording),
                     cloned_from: None,
                     store_source: StoreSource::Unknown,
@@ -659,61 +756,59 @@ async fn chunk_store_cpu_worker_thread(
 
                 let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
                 store.set_store_info(store_info);
-                ChunkStoreHandle::new(store)
-            });
+                let store = ChunkStoreHandle::new(store);
+
+                let query_engine =
+                    QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
+                let query_handle = query_engine.query(query_expression.clone());
+
+                let mut chunks_to_receive = chunk_info
+                    .get(&partition_id)
+                    .ok_or(exec_datafusion_err!(
+                        "No chunk info for partition id {partition_id}"
+                    ))?
+                    .clone();
+                chunks_to_receive.sort();
+
+                current_stores =
+                    Some((partition_id.clone(), store, query_handle, chunks_to_receive));
+            };
+
+            let (_, store, _, remaining_chunks) = &mut current_stores.as_mut().unwrap();
+
+            let chunk_id = chunk.id();
+            let Some((chunk_idx, _)) = remaining_chunks
+                .iter()
+                .enumerate()
+                .find(|(_, info)| info.chunk_id == chunk_id)
+            else {
+                return exec_err!("Unable to locate chunk ID in expected return values");
+            };
 
             store
                 .write()
                 .insert_chunk(&std::sync::Arc::new(chunk))
                 .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+            // TODO(tsaucer) we should be able to send out intermediate rows as we are getting
+            // data in, but the prior attempts to validate these were invalid
+            remaining_chunks.remove(chunk_idx);
         }
     }
 
-    // TODO(tsaucer) we are still collecting *everything* before sending. Instead we do have
-    // the chunk information with timeline of interest so we should be able to tell when we
-    // can send out because we have all chunks required up to index X *in that time series*
-    for (partition_id, store) in stores {
-        let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
-
-        let query_handle = query_engine.query(query_expression.clone());
-
-        let query_schema = Arc::clone(query_handle.schema());
-        let num_fields = query_schema.fields.len();
-
-        let Some(next_row) = query_handle.next_row() else {
-            break;
-        };
-
-        if next_row.is_empty() {
-            // Should not happen
-            break;
-        }
-        if num_fields != next_row.len() {
-            return plan_err!("Unexpected number of columns returned from query");
-        }
-
-        let pid_array = Arc::new(StringArray::from(vec![
-            partition_id.clone();
-            next_row[0].len()
-        ])) as Arc<dyn Array>;
-
-        let mut arrays = Vec::with_capacity(num_fields + 1);
-        arrays.push(pid_array);
-        arrays.extend(next_row);
-
-        let batch_schema = Arc::new(prepend_string_column_schema(
-            &query_schema,
-            DATASET_MANIFEST_ID_FIELD_NAME,
-        ));
-
-        let batch = RecordBatch::try_new(batch_schema, arrays)?;
-
-        let output_batch = align_record_batch_to_schema(&batch, &projected_schema)?;
-
-        output_channel
-            .send(output_batch)
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+    // Flush out remaining of last partition
+    if let Some((final_partition, _, query_handle, _)) =
+        &mut current_stores.as_mut()
+    {
+        while send_next_row(
+            query_handle,
+            final_partition,
+            &projected_schema,
+            &output_channel,
+        )
+            .await?
+            .is_some()
+        {}
     }
 
     Ok(())
@@ -726,24 +821,11 @@ async fn chunk_store_cpu_worker_thread(
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     base_request: GetChunksRequest,
-    rerun_partition_ids: Vec<String>,
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
+    mut rerun_partition_ids: Vec<String>,
     output_channel: Sender<Vec<(Chunk, Option<String>)>>,
 ) -> Result<(), DataFusionError> {
-    // let chunks_to_stream = rerun_partition_hashes.into_iter()
-    //     .map(|hash| chunk_info.get(&hash).cloned().ok_or(exec_datafusion_err!("Invalid partition hash")))
-    //     .collect::<Result<Vec<_>, DataFusionError>>()?
-    //     .into_iter()
-    //     .flatten()
-    //     .collect::<Vec<_>>();
-    //
-    // let partition_ids = chunks_to_stream
-    //     .iter()
-    //     .map(|info| info.partition_id.clone())
-    //     .unique()
-    //     .sorted()
-    //     .collect::<Vec<_>>();
 
+    rerun_partition_ids.sort();
     for partition_id in rerun_partition_ids {
         let mut get_chunks_request = base_request.clone();
         get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
@@ -758,8 +840,9 @@ async fn chunk_stream_io_loop(
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream =
-            re_grpc_client::get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
+        let mut chunk_stream = re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+            get_chunks_response_stream,
+        );
 
         // We want the underlying HTTP2 client to keep polling on the gRPC stream as fast
         // as non-blockingly possible, which cannot happen if we just poll once in a while
@@ -816,7 +899,8 @@ impl ExecutionPlan for PartitionStreamExec {
             .keys()
             .filter(|partition_id| {
                 let hash_value = partition_id.hash_one(&random_state) as usize;
-                hash_value % self.target_partitions == partition })
+                hash_value % self.target_partitions == partition
+            })
             .cloned()
             .collect::<Vec<_>>();
 
@@ -827,7 +911,13 @@ impl ExecutionPlan for PartitionStreamExec {
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            chunk_store_cpu_worker_thread(chunk_rx, batches_tx, query_expression, projected_schema),
+            chunk_store_cpu_worker_thread(
+                chunk_rx,
+                batches_tx,
+                Arc::clone(&self.chunk_info),
+                query_expression,
+                projected_schema,
+            ),
         ));
 
         let stream = DataframePartitionStream {
@@ -836,7 +926,6 @@ impl ExecutionPlan for PartitionStreamExec {
             client,
             chunk_request,
             rerun_partition_ids,
-            chunk_info: Arc::clone(&self.chunk_info),
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
