@@ -17,21 +17,17 @@ We finally concluded this effort and made all parts of the Viewer and API aware 
 
 While this is mostly about under-the-hood changes, this has a lot of surface level benefits:
 
-* You can now log the several type of component many times on a single entity path. E.g. this was not possible before since colors would have overwritten each other:
+* You can now log the several type of component many times on a single entity path.
+E.g. this was not possible before since colors would have overwritten each other:
 ```py
 rr.log("path", rr.GeoPoints(lat_lon=[some_coordinate], colors=[0xFF0000FF]))
 rr.log("path", rr.Points2D(positions=[0.0, 0.0], colors=[0x0000FFFF]))
 rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 ```
-
 * The UI groups now by archetype everywhere and will show the same field names you use in the logging SDKs
-
 [<img src="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/480w.png">](https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/full.png)
-
 * Better blueprint defaults: component defaults are now per archetype field and not per type. Making them **a lot** more useful.
-
 [<img width=300 src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png">](https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png)
-
 * No more indicator components! These showed previously up in the ui and needed to be kept in mind for some advanced API usage.
 
 
