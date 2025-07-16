@@ -87,6 +87,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 * [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
 * [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
 * [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
+* Much faster & better compaction for both `rerun rrd compact` and automatic in-Viewer compaction
 * Viewers started with `spawn` use now less memory since it no longer sets up an GRPC server for message forwarding
 * View3D's eye control type & speed can now be changed from blueprint (and as such is persisted over session!) more properties will follow in the future. (thanks to @jccampagne)
 
