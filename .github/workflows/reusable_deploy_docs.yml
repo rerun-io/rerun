@@ -131,7 +131,7 @@ jobs:
           cat versions.json.new
 
           echo "prepend new version with `stable` alias"
-          jq -c --arg v "0.24.0" '[{ version: $v, title: $v, aliases: ["stable"] }] + .' versions.json.new > versions.json
+          jq -c --arg v "${{ inputs.PY_DOCS_VERSION_NAME }}" '[{ version: $v, title: $v, aliases: ["stable"] }] + .' versions.json.new > versions.json
           cat versions.json
 
           echo "overwrite the file on gcs"
