@@ -55,6 +55,9 @@
     "label_button_icon_color": {
       "color": "{Gray.775}"
     },
+    "section_collapsing_header_color": {
+      "color": "{Gray.200}"
+    },
     "loop_selection_color": {
       "color": "#012569B2"
     },
