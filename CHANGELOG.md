@@ -114,7 +114,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 🐍 Python API
 - Add `Dataset.register_batch` and wrappers for task ids [#9895](https://github.com/rerun-io/rerun/pull/9895)
-- Introduce `ConnectionRegistry` for centralised redap client and token management [#10078](https://github.com/rerun-io/rerun/pull/10078)   
+- Introduce `ConnectionRegistry` for centralised redap client and token management [#10078](https://github.com/rerun-io/rerun/pull/10078)
 - Build in `manylinux_2_28` container [#10148](https://github.com/rerun-io/rerun/pull/10148)
 - Add APIs to Dataset to query and update the associated blueprint [#10156](https://github.com/rerun-io/rerun/pull/10156)
 - Support for seconds-since-Epoch numpy arrays for constructing `TimeColumn` [#10168](https://github.com/rerun-io/rerun/pull/10168) (thanks [@MichaelGrupp](https://github.com/MichaelGrupp)!)
@@ -125,7 +125,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Rename to `tee` to `set_sinks` [#10312](https://github.com/rerun-io/rerun/pull/10312)
 - Add support for `index=None` to local and remote dataframe APIs and deprecate `select_static` [#10332](https://github.com/rerun-io/rerun/pull/10332)
 - Disable gRPC server history for Spawn/CLI [#10314](https://github.com/rerun-io/rerun/pull/10314)
-- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)   
+- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)
 - Add partition ID to `TimeUpdateEvent` [#10403](https://github.com/rerun-io/rerun/pull/10403)
 - Fix `set_time_ctrl` not doing anything when called twice [#10547](https://github.com/rerun-io/rerun/pull/10547)
 - Notebook auto-sizing [#10554](https://github.com/rerun-io/rerun/pull/10554)
@@ -143,7 +143,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Add `RecordingStream::set_timestamp_nanos_since_epoch` [#10200](https://github.com/rerun-io/rerun/pull/10200)
 - Add `set_sinks` to Rust `RecordingStream` [#10336](https://github.com/rerun-io/rerun/pull/10336)
 - Disable gRPC server history for Spawn/CLI [#10314](https://github.com/rerun-io/rerun/pull/10314)
-- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)   
+- Deprecate `serve_web` and improve documentation around how to serve a web viewer [#10360](https://github.com/rerun-io/rerun/pull/10360)
 - Experimental connection status inspection for Rust gRPC connections [#10433](https://github.com/rerun-io/rerun/pull/10433)
 - Implement `From` for more narrow integers and floats for `Float64` [#10463](https://github.com/rerun-io/rerun/pull/10463)
 
@@ -204,7 +204,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Fix custom view example not instantiating visualizer by default [#9762](https://github.com/rerun-io/rerun/pull/9762)
 - Improve custom visualizer example [#9994](https://github.com/rerun-io/rerun/pull/9994)
 - New example: log and animate a URDF file [#10210](https://github.com/rerun-io/rerun/pull/10210)
-- Add Python example snippet for `VideoStream` using `av` to encode numpy images [#10279](https://github.com/rerun-io/rerun/pull/10279)     
+- Add Python example snippet for `VideoStream` using `av` to encode numpy images [#10279](https://github.com/rerun-io/rerun/pull/10279)
 - Standalone example for compressed video streams [#10297](https://github.com/rerun-io/rerun/pull/10297)
 - Add snippet demonstrating re-muxing of `VideoStream` data [#10614](https://github.com/rerun-io/rerun/pull/10614)
 
@@ -229,7 +229,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Use archetype field name in ui instead of component name [#9983](https://github.com/rerun-io/rerun/pull/9983)
 - Add keyboard navigation to the blueprint and streams tree [#9960](https://github.com/rerun-io/rerun/pull/9960)
 - Allow selecting multiple recordings [#10004](https://github.com/rerun-io/rerun/pull/10004)
-- Remove `data_based_visualizability_filter` from `BarChart` and `EncodedImage` [#10029](https://github.com/rerun-io/rerun/pull/10029)      
+- Remove `data_based_visualizability_filter` from `BarChart` and `EncodedImage` [#10029](https://github.com/rerun-io/rerun/pull/10029)
 - Add support for variant UIs in the DataFusion table widget and show a button in the partition table recording links [#10035](https://github.com/rerun-io/rerun/pull/10035)
 - Switch icons to .svg [#10055](https://github.com/rerun-io/rerun/pull/10055)
 - Improve button tooltip help text [#10103](https://github.com/rerun-io/rerun/pull/10103)
@@ -253,7 +253,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Rename the 'Welcome screen' option to 'Rerun examples' [#10503](https://github.com/rerun-io/rerun/pull/10503)
 - Show arrow data in header tooltips and ever more data when alt is down [#10526](https://github.com/rerun-io/rerun/pull/10526)
 - Add support for table entries in the redap browser [#10569](https://github.com/rerun-io/rerun/pull/10569)
-- Add a 'copy entry url' button next to the name of remote datasets and table [#10571](https://github.com/rerun-io/rerun/pull/10571)        
+- Add a 'copy entry url' button next to the name of remote datasets and table [#10571](https://github.com/rerun-io/rerun/pull/10571)
 - Show loading screen when starting viewer with a URL [#10587](https://github.com/rerun-io/rerun/pull/10587)
 
 #### 🕸️ Web
@@ -267,7 +267,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 🗣 Refactors
 - Add descriptors to all remaining blueprint components [#9908](https://github.com/rerun-io/rerun/pull/9908)
-- Require `ComponentDescriptor` in `ChunkBuilder::with_component_batch*` methods [#10026](https://github.com/rerun-io/rerun/pull/10026)     
+- Require `ComponentDescriptor` in `ChunkBuilder::with_component_batch*` methods [#10026](https://github.com/rerun-io/rerun/pull/10026)
 - Make `archetype_field_name` mandatory in `ComponentDescriptor` [#10082](https://github.com/rerun-io/rerun/pull/10082)
 
 #### 📦 Dependencies
