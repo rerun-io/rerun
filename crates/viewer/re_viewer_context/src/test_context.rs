@@ -625,6 +625,8 @@ impl TestContext {
     }
 
     /// Helper function to save the active recording to file for troubleshooting.
+    ///
+    /// Note: Right now it _only_ saves the recording and blueprints are ignored.
     pub fn save_recording_to_file(&self, path: impl AsRef<std::path::Path>) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(path)?;
 
