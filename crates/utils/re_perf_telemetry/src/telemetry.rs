@@ -178,10 +178,6 @@ impl Telemetry {
         }
 
         let create_filter = |base: &str, forced: &str| {
-            // TODO(zehiko) is there a better way to do this?!
-            // Lance traces are all at INFO level and they are over 30% of total spans, hence
-            // disabling them if we're at the INFO level cause we only want them at DEBUG
-            let lance_level = if base == "info" { "off" } else { base };
 
             use crate::EnvFilterExt as _;
 
@@ -213,9 +209,9 @@ impl Telemetry {
                 .add_directive_if_absent(base, "tower_http", forced)?
                 .add_directive_if_absent(base, "tower_web", forced)?
                 //
-                .add_directive_if_absent(base, "lance::index", lance_level)?
-                .add_directive_if_absent(base, "lance::dataset::scanner", lance_level)?
-                .add_directive_if_absent(base, "lance::dataset::builder", lance_level)?
+                .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance::dataset::builder", "off")?
                 .add_directive_if_absent(base, "lance_encoding", "off")
         };
 
