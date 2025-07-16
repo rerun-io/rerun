@@ -178,46 +178,40 @@ impl Telemetry {
         }
 
         let create_filter = |base: &str, forced: &str| {
-            // TODO(zehiko) is there a better way to do this?!
-            // Lance traces are all at INFO level and they are over 30% of total spans, hence
-            // disabling them if we're at the INFO level cause we only want them at DEBUG
-            let lance_level = if base == "info" { "off" } else { base };
+            use crate::EnvFilterExt as _;
 
-            Ok::<_, anyhow::Error>(
-                EnvFilter::new(base)
-                    // TODO(cmc): do not override user's choice, bring back the logic from re_log
-                    .add_directive(format!("aws_smithy_runtime={forced}").parse()?)
-                    .add_directive(format!("datafusion={forced}").parse()?)
-                    .add_directive(format!("datafusion_optimizer={forced}").parse()?)
-                    .add_directive(format!("h2={forced}").parse()?)
-                    .add_directive(format!("hyper={forced}").parse()?)
-                    .add_directive(format!("hyper_util={forced}").parse()?)
-                    .add_directive(format!("lance-arrow={forced}").parse()?)
-                    .add_directive(format!("lance-core={forced}").parse()?)
-                    .add_directive(format!("lance-datafusion={forced}").parse()?)
-                    .add_directive(format!("lance-encoding={forced}").parse()?)
-                    .add_directive(format!("lance-file={forced}").parse()?)
-                    .add_directive(format!("lance-index={forced}").parse()?)
-                    .add_directive(format!("lance-io={forced}").parse()?)
-                    .add_directive(format!("lance-linalg={forced}").parse()?)
-                    .add_directive(format!("lance-table={forced}").parse()?)
-                    .add_directive(format!("lance={forced}").parse()?)
-                    .add_directive(format!("opentelemetry-otlp={forced}").parse()?)
-                    .add_directive(format!("opentelemetry={forced}").parse()?)
-                    .add_directive(format!("opentelemetry_sdk={forced}").parse()?)
-                    .add_directive(format!("rustls={forced}").parse()?)
-                    .add_directive(format!("sqlparser={forced}").parse()?)
-                    .add_directive(format!("tonic={forced}").parse()?)
-                    .add_directive(format!("tonic_web={forced}").parse()?)
-                    .add_directive(format!("tower={forced}").parse()?)
-                    .add_directive(format!("tower_http={forced}").parse()?)
-                    .add_directive(format!("tower_web={forced}").parse()?)
-                    //
-                    .add_directive(format!("lance::index={lance_level}").parse()?)
-                    .add_directive(format!("lance::dataset::scanner={lance_level}").parse()?)
-                    .add_directive(format!("lance::dataset::builder={lance_level}").parse()?)
-                    .add_directive("lance_encoding=off".parse()?), // this one is a real nightmare
-            )
+            EnvFilter::new(base)
+                .add_directive_if_absent(base, "aws_smithy_runtime", forced)?
+                .add_directive_if_absent(base, "datafusion", forced)?
+                .add_directive_if_absent(base, "datafusion_optimizer", forced)?
+                .add_directive_if_absent(base, "h2", forced)?
+                .add_directive_if_absent(base, "hyper", forced)?
+                .add_directive_if_absent(base, "hyper_util", forced)?
+                .add_directive_if_absent(base, "lance-arrow", forced)?
+                .add_directive_if_absent(base, "lance-core", forced)?
+                .add_directive_if_absent(base, "lance-datafusion", forced)?
+                .add_directive_if_absent(base, "lance-encoding", forced)?
+                .add_directive_if_absent(base, "lance-file", forced)?
+                .add_directive_if_absent(base, "lance-index", forced)?
+                .add_directive_if_absent(base, "lance-io", forced)?
+                .add_directive_if_absent(base, "lance-linalg", forced)?
+                .add_directive_if_absent(base, "lance-table", forced)?
+                .add_directive_if_absent(base, "lance", forced)?
+                .add_directive_if_absent(base, "opentelemetry-otlp", forced)?
+                .add_directive_if_absent(base, "opentelemetry", forced)?
+                .add_directive_if_absent(base, "opentelemetry_sdk", forced)?
+                .add_directive_if_absent(base, "rustls", forced)?
+                .add_directive_if_absent(base, "sqlparser", forced)?
+                .add_directive_if_absent(base, "tonic", forced)?
+                .add_directive_if_absent(base, "tonic_web", forced)?
+                .add_directive_if_absent(base, "tower", forced)?
+                .add_directive_if_absent(base, "tower_http", forced)?
+                .add_directive_if_absent(base, "tower_web", forced)?
+                //
+                .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance::dataset::builder", "off")?
+                .add_directive_if_absent(base, "lance_encoding", "off")
         };
 
         // Logging strategy
