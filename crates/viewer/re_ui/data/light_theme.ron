@@ -55,7 +55,7 @@
       "color": "{Gray.250}"
     },
     "section_header_color": {
-      "color": "{Gray.900}"
+      "color": "{Gray.875}"
     },
     "loop_selection_color": {
       "color": "#6386C9B2"
@@ -95,7 +95,7 @@
       "color": "{Gray.975}"
     },
     "text_edit_bg_color": {
-      "color": "{Gray.850}"
+      "color": "{Gray.900}"
     },
 
     "blueprint_time_panel_bg_fill": {
