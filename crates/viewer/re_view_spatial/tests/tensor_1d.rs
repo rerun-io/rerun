@@ -11,7 +11,7 @@ fn x() -> Vec<f64> {
 }
 
 #[test]
-fn test_tensor() -> anyhow::Result<()> {
+fn test_image_from_tensor_1d() -> anyhow::Result<()> {
     let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
 
     let tensor_data =
@@ -22,13 +22,11 @@ fn test_tensor() -> anyhow::Result<()> {
         builder.with_archetype(RowId::new(), TimePoint::STATIC, &image)
     });
 
-    test_context.save_recording_to_file("tensor_1d_image.rrd")?;
-
     let view_id = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
         &mut test_context,
         view_id,
-        "tensor_1d",
+        "image_from_tensor_1d",
         egui::vec2(300.0, 20.0),
     );
 
