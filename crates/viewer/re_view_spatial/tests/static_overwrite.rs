@@ -4,9 +4,9 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
-use re_types::{archetypes, blueprint, components, Archetype as _};
+use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{test_context::TestContext, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
@@ -17,7 +17,7 @@ fn log_twice(test_context: &mut TestContext, entity_path: &EntityPath) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
+            &archetypes::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0)]),
         )
     });
 
@@ -26,7 +26,7 @@ fn log_twice(test_context: &mut TestContext, entity_path: &EntityPath) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
+            &archetypes::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
         )
     });
 }
@@ -39,13 +39,6 @@ fn setup_blueprint(
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(SpatialView3D::identifier());
-
-        ctx.save_blueprint_archetype(
-            property_path.clone(),
-            &blueprint::archetypes::EyeControls3D::new()
-                .with_kind(blueprint::components::Eye3DKind::Orbital)
-                .with_speed(6.5),
-        );
 
         if let Some(radius_default) = radius_default {
             ctx.save_blueprint_archetype(view.defaults_path.clone(), radius_default);
@@ -130,6 +123,17 @@ fn run_view_ui_and_save_snapshot(
         .build(|ctx| {
             test_context.run_with_single_view(ctx, view_id);
         });
-    harness.run();
+
+    let raw_input = harness.input_mut();
+    raw_input
+        .events
+        .push(egui::Event::PointerMoved((100.0, 100.0).into()));
+    raw_input.events.push(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Line,
+        delta: egui::Vec2::UP * 3.1,
+        modifiers: egui::Modifiers::default(),
+    });
+    harness.run_steps(8);
+
     harness.snapshot(name);
 }
