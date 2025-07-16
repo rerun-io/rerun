@@ -4,9 +4,9 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
-use re_types::{Archetype as _, archetypes, blueprint, components};
+use re_types::{archetypes, blueprint, components, Archetype as _};
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewer_context::{test_context::TestContext, ViewClass as _, ViewId};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
@@ -39,12 +39,6 @@ fn setup_blueprint(
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(SpatialView3D::identifier());
-
-        let property_path = re_viewport_blueprint::entity_path_for_view_property(
-            view.id,
-            ctx.store_context.blueprint.tree(),
-            blueprint::archetypes::EyeControls3D::name(),
-        );
 
         ctx.save_blueprint_archetype(
             property_path.clone(),
