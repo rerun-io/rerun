@@ -29,7 +29,7 @@ fn test_tensor() -> anyhow::Result<()> {
         &mut test_context,
         view_id,
         "tensor_1d",
-        egui::vec2(300.0, 50.0),
+        egui::vec2(300.0, 20.0),
     );
 
     Ok(())
