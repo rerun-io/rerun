@@ -21,8 +21,12 @@ This is also very simple to do, and the Python logging SDK has built-in support 
 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
-* Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md).
+* Raw video frames [`VideoStream`](../reference/types/archetypes/video_stream.md)
 * Video files using [`AssetVideo`](../reference/types/archetypes/asset_video.md)
+
+⚠️ Do not use compressed video if you need accurate pixel replication:
+this is not only due to the obvious detail loss on encoding,
+but also since the exact _display_ of the same video is not consistent across platforms and decoder versions.
 
 ## Streaming video / raw encoded video frames
 
