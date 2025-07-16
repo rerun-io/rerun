@@ -10,30 +10,30 @@
 #### 💽 Tagged components
 
 Starting with 0.22 Rerun began storing additional meta-information for each component,
-identifying its field name (e.g. `vertex_colors`) and it's archetype (e.g. `Mesh3D`).
+identifying its field name (e.g. `vertex_colors`) and its archetype (e.g. `Mesh3D`).
 We finally concluded this effort and made all parts of the Viewer and API aware of this.
 
 [<img src="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/1024w.png">](https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/full.png)
 
 While this is mostly about under-the-hood changes, this has a lot of surface level benefits:
 
-* You can now log the several type of component many times on a single entity path.
-E.g. this was not possible before since colors would have overwritten each other:
+* You can now log the same component type multiple times on a single entity path.
+For example, logging multiple archetypes which use the `Color` component onto the same entity was possible before, but the colors would have overwritten each other:
 ```py
 rr.log("path", rr.GeoPoints(lat_lon=[some_coordinate], colors=[0xFF0000FF]))
 rr.log("path", rr.Points2D(positions=[0.0, 0.0], colors=[0x0000FFFF]))
 rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 ```
-* The UI groups now by archetype everywhere and will show the same field names you use in the logging SDKs
+* The UI now groups by archetype everywhere and will show the same field names you use in the logging SDKs
 [<img src="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/480w.png">](https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/full.png)
 * Better blueprint defaults: component defaults are now per archetype field and not per type. Making them **a lot** more useful.
 [<img width=300 src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png">](https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png)
-* No more indicator components! These showed previously up in the ui and needed to be kept in mind for some advanced API usage.
+* No more indicator components! These showed previously up in the UI and needed special handling for some advanced use cases.
 
 
 #### 🎥 Video streams
 
-Rerun previously supported only video assets in the form of MP4,
+Rerun previously supported video only in the form of MP4 files,
 so it was not possible to stream live encoded video to Rerun.
 The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream#speculative-link) archetype remedies that!
 
@@ -47,12 +47,12 @@ rr.set_time("time", duration=float(packet.pts * packet.time_base))
 rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264, sample=bytes(packet)))
 ```
 
-For now only H.264 is supported, but more codecs will follow in the future.
+For now, we only handle H.264, but support for more codecs is on the roadmap.
 Learn more on the updated [video reference page](https://rerun.io/docs/reference/video).
 
 #### 😎 Light mode
 
-Rerun has now finally a light mode.
+Rerun finally has a light mode.
 
 [<img src="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/480w.png">](https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/full.png)
 
@@ -64,7 +64,7 @@ Previously, the SDK's recording stream could only send to one sink at a time.
 We now expose the ability to set multiple sinks at once, so you can simultaneously
 stream to both the Viewer and a file.
 
-In Python this looks like this (but the API is available in C++ & Rust as well!)
+Here's what that looks like in Python (but the API is available in C++ & Rust as well!)
 
 ```py
 rr.set_sinks(
@@ -83,7 +83,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 👀 Other highlights in short
 
-* New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
+* New [`Cylinder`](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
 * [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
 * [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
 * [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
