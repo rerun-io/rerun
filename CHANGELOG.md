@@ -31,7 +31,7 @@ rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 * No more indicator components! These showed previously up in the ui and needed to be kept in mind for some advanced API usage.
 
 
-#### 🎥 Video Streams
+#### 🎥 Video streams
 
 Rerun previously supported only video assets in the form of MP4,
 so it was not possible to stream live encoded video to Rerun.
@@ -50,7 +50,7 @@ rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264, sample=bytes(pac
 For now only H.264 is supported, but more codecs will follow in the future.
 Learn more on the updated [video reference page](https://rerun.io/docs/reference/video).
 
-#### 😎 Light Mode
+#### 😎 Light mode
 
 Rerun has now finally a light mode.
 
@@ -58,7 +58,7 @@ Rerun has now finally a light mode.
 
 The theme defaults to your OS's setting, but can be adjusted in the settings menu.
 
-#### 🔀 Multi Sink
+#### 🔀 Multi sink
 
 Previously, the SDK's recording stream could only send to one sink at a time.
 We now expose the ability to set multiple sinks at once, so you can simultaneously
@@ -139,7 +139,7 @@ TODO(andreas): Update this list before final release.
 
 #### 🦀 Rust API
 - Update MSRV to 1.85 [#9798](https://github.com/rerun-io/rerun/pull/9798)
-- Improve `rerun` crate forwarding, removing need to depend on other `re_*` crates for viewer customization [#9825](https://github.com/rerun-io/rerun/pull/9825)     
+- Improve `rerun` crate forwarding, removing need to depend on other `re_*` crates for viewer customization [#9825](https://github.com/rerun-io/rerun/pull/9825)
 - Update glam to 0.30, and replace `re_math` with `macaw` [#10119](https://github.com/rerun-io/rerun/pull/10119)
 - Add `RecordingStream::set_timestamp_nanos_since_epoch` [#10200](https://github.com/rerun-io/rerun/pull/10200)
 - Add `set_sinks` to Rust `RecordingStream` [#10336](https://github.com/rerun-io/rerun/pull/10336)
