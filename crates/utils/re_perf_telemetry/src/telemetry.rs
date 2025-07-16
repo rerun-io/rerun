@@ -178,7 +178,6 @@ impl Telemetry {
         }
 
         let create_filter = |base: &str, forced: &str| {
-
             use crate::EnvFilterExt as _;
 
             EnvFilter::new(base)
