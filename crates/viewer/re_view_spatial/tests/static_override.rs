@@ -4,8 +4,8 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
-use re_types::{Archetype as _, archetypes};
-use re_view_spatial::SpatialView2D;
+use re_types::{Archetype as _, archetypes, blueprint, components};
+use re_view_spatial::SpatialView3D;
 use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
@@ -17,7 +17,7 @@ fn log_twice(test_context: &mut TestContext, entity_path: &EntityPath) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0)]),
+            &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
         )
     });
 
@@ -26,7 +26,7 @@ fn log_twice(test_context: &mut TestContext, entity_path: &EntityPath) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
+            &archetypes::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
         )
     });
 }
@@ -34,23 +34,23 @@ fn log_twice(test_context: &mut TestContext, entity_path: &EntityPath) {
 fn setup_blueprint(
     test_context: &mut TestContext,
     entity_path: &EntityPath,
-    radius_default: Option<&archetypes::Points2D>,
-    color_override: Option<&archetypes::Points2D>,
+    radius_default: Option<&archetypes::Points3D>,
+    color_override: Option<&archetypes::Points3D>,
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view = ViewBlueprint::new_with_root_wildcard(SpatialView2D::identifier());
+        let view = ViewBlueprint::new_with_root_wildcard(SpatialView3D::identifier());
 
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::VisualBounds2D::name(),
+            blueprint::archetypes::EyeControls3D::name(),
         );
+
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [-1.0, 3.0].into(),
-                y_range: [-1.0, 3.0].into(),
-            }),
+            &blueprint::archetypes::EyeControls3D::new()
+                .with_kind(blueprint::components::Eye3DKind::Orbital)
+                .with_speed(6.5),
         );
 
         if let Some(radius_default) = radius_default {
@@ -68,7 +68,7 @@ fn setup_blueprint(
 
 #[test]
 pub fn test_static_overwrite_original() {
-    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
 
     let entity_path = EntityPath::from("points");
 
@@ -86,13 +86,13 @@ pub fn test_static_overwrite_original() {
 
 #[test]
 pub fn test_static_overwrite_radius_default() {
-    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
 
     let entity_path = EntityPath::from("points");
 
     log_twice(&mut test_context, &entity_path);
 
-    let radius_default = archetypes::Points2D::default().with_radii([0.25]);
+    let radius_default = archetypes::Points3D::default().with_radii([0.25]);
     let view_id = setup_blueprint(&mut test_context, &entity_path, Some(&radius_default), None);
 
     run_view_ui_and_save_snapshot(
@@ -105,13 +105,13 @@ pub fn test_static_overwrite_radius_default() {
 
 #[test]
 pub fn test_static_overwrite_color_override() {
-    let mut test_context = TestContext::new_with_view_class::<SpatialView2D>();
+    let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
 
     let entity_path = EntityPath::from("points");
 
     log_twice(&mut test_context, &entity_path);
 
-    let color_override = archetypes::Points2D::default()
+    let color_override = archetypes::Points3D::default()
         .with_colors([[0, 255, 0]])
         .with_radii([0.25]);
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, Some(&color_override));
