@@ -6,7 +6,7 @@ order: 10
 
 ## Understanding chunks and their impact on performance
 
-Rerun stores all its data in Chunks -- Arrow-encoded tables of data. A basic understanding of chunks is key to understanding how Rerun works and why performance behaves the way it does. See the [chunk concept documentation](../concepts/chunks.md) for more details.
+Rerun stores all its data in Chunks — Arrow-encoded tables of data. A basic understanding of chunks is key to understanding how Rerun works and why performance behaves the way it does. See the [chunk concept documentation](../concepts/chunks.md) for more details.
 
 Chunks are the atomic unit of work in Rerun: the performance cost of logging, ingesting, storing, querying, and visualizing data (including memory overhead to some extent) scales roughly linearly with the number of chunks in the system (ignoring caching and indexing optimizations). Many small chunks cause significantly more overhead than fewer, larger ones. Larger chunks reduce index pressure and per-chunk overhead, improving write and query throughput.
 
@@ -31,7 +31,7 @@ This reduces metadata overhead (fewer chunks), which improves network and CPU ef
 
 These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../reference/sdk/micro-batching.md).
 
-Micro-batching trades a bit of latency for significantly fewer chunks, improving ingestion throughput and downstream performance. While lightweight to compute, it operates with minimal context -- all it sees is a small rolling window of logs -- so compaction is far from optimal.
+Micro-batching trades a bit of latency for significantly fewer chunks, improving ingestion throughput and downstream performance. While lightweight to compute, it operates with minimal context — all it sees is a small rolling window of logs — so compaction is far from optimal.
 
 Constraints:
 * Runs: client-side, in the SDK
@@ -146,7 +146,7 @@ Constraints:
 
 ## Conclusion
 
-* Compaction isn’t a minor optimization -- it can and frequently yields massive performance gains depending on your workload.
+* Compaction isn’t a minor optimization — it can and frequently yields massive performance gains depending on your workload.
 * Rerun applies micro-batching and compaction by default, but optimal settings vary per use case.
 * Compaction can (and should) happen at multiple stages, each with different tradeoffs, operating under very different constraints.
 * The Rerun CLI is your best tool to:
