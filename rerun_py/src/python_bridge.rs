@@ -310,6 +310,8 @@ impl PyChunkBatcherConfig {
     )]
     /// Initialize the chunk batcher onfiguration.
     ///
+    /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
+    ///
     /// Parameters
     /// ----------
     /// flush_tick : int | float | timedelta | None
