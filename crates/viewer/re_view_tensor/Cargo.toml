@@ -41,3 +41,4 @@ wgpu.workspace = true
 
 [dev-dependencies]
 re_viewer_context = { workspace = true, features = ["testing"] }
+re_viewport = { workspace = true, features = ["testing"] }

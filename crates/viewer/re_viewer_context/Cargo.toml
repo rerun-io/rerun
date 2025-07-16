@@ -27,7 +27,9 @@ testing = [
   "dep:egui_kittest",
   "dep:jiff",
   "dep:pollster",
+  "dep:re_build_info",
   "dep:re_grpc_client",
+  "dep:re_log_encoding",
   "re_global_context/testing",
 ]
 
@@ -82,7 +84,9 @@ web-time.workspace = true
 wgpu.workspace = true
 
 # Optional dependencies:
+re_build_info = { workspace = true, optional = true }
 re_grpc_client = { workspace = true, optional = true }
+re_log_encoding = { workspace = true, optional = true }
 egui_kittest = { workspace = true, features = ["wgpu"], optional = true }
 jiff = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
