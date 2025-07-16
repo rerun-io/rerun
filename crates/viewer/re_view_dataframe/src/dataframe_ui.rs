@@ -323,7 +323,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
             header_ui(ui, table_style, connected_to_next_cell, |ui| {
                 let header_content = |ui: &mut egui::Ui| {
-                    let text = egui::RichText::new(
+                    let mut text = egui::RichText::new(
                         if let ColumnDescriptor::Component(component) = column {
                             component
                                 .component_descriptor()
@@ -333,7 +333,6 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             column.display_name()
                         },
                     )
-                    .strong()
                     .monospace();
                     let archetype = column.archetype_name().map_or("", |a| a.short_name());
 
@@ -351,6 +350,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                 component_column_descriptor.component_path(),
                             )),
                     };
+
+                    // If we set strong
+                    if !is_selected {
+                        text = text.strong();
+                    }
 
                     let response = ui
                         .vertical(|ui| {

@@ -43,7 +43,7 @@ def test_bad_any_value() -> None:
         batches = list(values.as_component_batches())
 
         assert len(batches) == 0
-        assert len(warnings) == 1
+        assert len(warnings) == 2  # 1 for bad data, 1 for empty batches
         assert "Converting data for 'bad_data':" in str(warnings[0].message)
 
     with pytest.warns(RerunWarning) as warnings:
@@ -60,11 +60,11 @@ def test_bad_any_value() -> None:
         batches = list(values.as_component_batches())
 
         assert len(batches) == 0
-        assert len(warnings) == 1
+        assert len(warnings) == 2  # 1 for bad data, 1 for empty batches
 
         assert "Converting data for 'good_data':" in str(warnings[0].message)
 
-    with pytest.warns(RerunWarning, match="at least one component"):
+    with pytest.warns(RerunWarning, match="using keyword arguments"):
         non_keyword_arg = 1
         rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
@@ -75,23 +75,30 @@ def test_bad_any_value() -> None:
 
 def test_none_any_value() -> None:
     with pytest.warns(RerunWarning) as warnings:
+        running_warning_count = 0
+
         # Log as None -- ignored with no warnings
         values = rr.AnyValues(none_data=None)
-        batches = list(values.as_component_batches())
-
-        assert len(batches) == 0
         assert len(warnings) == 0
+
+        # Generate warning when we try to get empty batches
+        batches = list(values.as_component_batches())
+        running_warning_count += 1
+        assert len(batches) == 0
+        assert len(warnings) == running_warning_count
 
         # Log as None -- ignored with warning
         values = rr.AnyValues(none_data=None, drop_untyped_nones=False)
+        running_warning_count += 1
         batches = list(values.as_component_batches())
+        running_warning_count += 1
 
         assert len(batches) == 0
-        assert len(warnings) == 1
+        assert len(warnings) == running_warning_count
 
         assert (
             "Converting data for 'none_data': ValueError(Cannot convert None to arrow array. Type is unknown.)"
-            in str(warnings[0].message)
+            in str(warnings[running_warning_count - 2].message)
         )
 
         # Log as not None
@@ -99,14 +106,14 @@ def test_none_any_value() -> None:
         batches = list(values.as_component_batches())
 
         assert len(batches) == 1
-        assert len(warnings) == 1  # no new warnings
+        assert len(warnings) == running_warning_count
 
         # Log as None is now logged successfully
         values = rr.AnyValues(none_data=None, drop_untyped_nones=False)
         batches = list(values.as_component_batches())
 
         assert len(batches) == 1
-        assert len(warnings) == 1  # no new warnings
+        assert len(warnings) == running_warning_count
 
 
 def test_iterable_any_value() -> None:
@@ -138,3 +145,28 @@ def test_iterable_any_value() -> None:
     assert len(batches) == 2
     assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT, LONG_TEXT], type=pa.string())
     assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.binary())
+
+
+def test_any_values_numpy() -> None:
+    # Test with numpy arrays
+    values = rr.AnyValues(
+        int_array=np.array([1, 2, 3]),
+        float_array=np.array([1.0, 2.0, 3.0]),
+        str_array=np.array(["a", "b", "c"]),
+    )
+
+    batches = list(values.as_component_batches())
+
+    assert len(batches) == 3
+    np.testing.assert_array_equal(batches[0].as_arrow_array().to_numpy(), np.array([1, 2, 3]))
+    np.testing.assert_array_equal(batches[1].as_arrow_array().to_numpy(), np.array([1.0, 2.0, 3.0]))
+    np.testing.assert_array_equal(batches[2].as_arrow_array().to_numpy(False), np.array(["a", "b", "c"], dtype=object))
+
+
+def test_any_values_with_field() -> None:
+    values = rr.AnyValues().with_field(
+        descriptor=rr.ComponentDescriptor("value"),
+        value=np.array([5], dtype=np.int64),
+    )
+    assert values.component_batches[0].component_descriptor() == rr.ComponentDescriptor("value")
+    assert values.component_batches[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)

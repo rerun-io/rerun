@@ -13,6 +13,7 @@ pub struct LabelContent<'a> {
     subdued: bool,
     weak: bool,
     italics: bool,
+    strong: bool,
 
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
@@ -31,6 +32,7 @@ impl<'a> LabelContent<'a> {
             subdued: false,
             weak: false,
             italics: false,
+            strong: false,
 
             label_style: Default::default(),
             icon_fn: None,
@@ -47,11 +49,7 @@ impl<'a> LabelContent<'a> {
     /// Text will be strong and smaller.
     /// For best results, use this with [`super::ListItem::header`].
     pub fn header(text: impl Into<RichText>) -> Self {
-        Self::new(
-            text.into()
-                .size(DesignTokens::list_header_font_size())
-                .strong(),
-        )
+        Self::new(text.into().size(DesignTokens::list_header_font_size())).strong(true)
     }
 
     /// Set the subdued state of the item.
@@ -82,6 +80,13 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn italics(mut self, italics: bool) -> Self {
         self.italics = italics;
+        self
+    }
+
+    /// Set the text to be strong.
+    #[inline]
+    pub fn strong(mut self, strong: bool) -> Self {
+        self.strong = strong;
         self
     }
 
@@ -186,6 +191,7 @@ impl ListItemContent for LabelContent<'_> {
             subdued,
             weak,
             italics,
+            strong,
             label_style,
             icon_fn,
             buttons_fn,
@@ -211,7 +217,8 @@ impl ListItemContent for LabelContent<'_> {
             text = text.italics();
         }
 
-        let visuals = context.visuals;
+        let mut visuals = context.visuals;
+        visuals.strong |= strong;
 
         let mut text_color = visuals.text_color();
 

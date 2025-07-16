@@ -348,11 +348,9 @@ pub trait UiExt {
                     ui.full_span(),
                     ui.available_rect_before_wrap().y_range(),
                 );
-                let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
 
-                ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
                 ui.painter()
-                    .hline(rect.x_range(), rect.bottom(), hline_stroke);
+                    .rect_filled(rect, 0.0, ui.tokens().section_header_color);
 
                 // draw label
                 let resp = ui.strong(label);

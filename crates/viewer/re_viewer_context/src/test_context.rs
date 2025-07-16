@@ -623,6 +623,29 @@ impl TestContext {
             harness.snapshot(&name);
         }
     }
+
+    /// Helper function to save the active recording to file for troubleshooting.
+    ///
+    /// Note: Right now it _only_ saves the recording and blueprints are ignored.
+    pub fn save_recording_to_file(&self, path: impl AsRef<std::path::Path>) -> anyhow::Result<()> {
+        let mut file = std::fs::File::create(path)?;
+
+        let store_hub = self.store_hub.lock();
+        let Some(recording_entity_db) = store_hub.active_recording() else {
+            anyhow::bail!("no active recording");
+        };
+        let messages = recording_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::encoder::encode(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -153,6 +153,7 @@ from .memory import (
 )
 from .recording_stream import (
     BinaryStream as BinaryStream,
+    ChunkBatcherConfig as ChunkBatcherConfig,
     RecordingStream as RecordingStream,
     binary_stream as binary_stream,
     get_application_id as get_application_id,
