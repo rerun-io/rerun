@@ -13,7 +13,7 @@ use datafusion_python::dataframe::PyDataFrame;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
-use pyo3::{Bound, IntoPyObjectExt, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, IntoPyObjectExt as _, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
 use re_chunk::ComponentIdentifier;
@@ -449,7 +449,7 @@ impl PyDataframeQueryView {
         let mut py_session_ctx = ctx.borrow_mut(py);
 
         // We're fine with this failing.
-        let _ = PySessionContext::deregister_table(&mut py_session_ctx, &name);
+        PySessionContext::deregister_table(&mut py_session_ctx, &name)?;
 
         PySessionContext::register_table_provider(
             &mut py_session_ctx,

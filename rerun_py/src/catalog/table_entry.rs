@@ -7,10 +7,8 @@ use datafusion_ffi::table_provider::FFI_TableProvider;
 use datafusion_python::context::PySessionContext;
 use datafusion_python::dataframe::PyDataFrame;
 use pyo3::{
-    Bound, IntoPyObjectExt, Py, PyAny, PyRef, PyRefMut, PyResult, Python,
-    exceptions::PyRuntimeError,
-    pyclass, pymethods,
-    types::{PyAnyMethods as _, PyCapsule},
+    Bound, IntoPyObjectExt as _, Py, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
+    pyclass, pymethods, types::PyCapsule,
 };
 use tracing::instrument;
 
@@ -67,7 +65,7 @@ impl PyTableEntry {
         let mut py_session_ctx = ctx.borrow_mut(py);
 
         // We're fine with this failing.
-        let _ = PySessionContext::deregister_table(&mut py_session_ctx, &table_name);
+        PySessionContext::deregister_table(&mut py_session_ctx, &table_name)?;
 
         PySessionContext::register_table_provider(
             &mut py_session_ctx,

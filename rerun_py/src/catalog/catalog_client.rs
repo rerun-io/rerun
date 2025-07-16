@@ -1,7 +1,7 @@
 use datafusion_python::context::PySessionContext;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    Py, PyAny, PyResult, Python,
+    Py, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,

@@ -6,9 +6,8 @@ use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use datafusion_python::context::PySessionContext;
 use datafusion_python::dataframe::PyDataFrame;
-use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::PyCapsule;
-use pyo3::{Bound, IntoPyObjectExt, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, IntoPyObjectExt as _, Py, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
 use crate::arrow::datafusion_table_provider_to_arrow_reader;
@@ -38,7 +37,7 @@ impl PyDataFusionTable {
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.
-    fn df(self_: PyRef<'_, Self>) -> PyResult<PyDataFrame> {
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Py<PyDataFrame>> {
         let py = self_.py();
 
         let client = self_.client.borrow(py);
@@ -53,7 +52,7 @@ impl PyDataFusionTable {
         let mut py_session_ctx = ctx.borrow_mut(py);
 
         // We're fine with this failing.
-        let _ = PySessionContext::deregister_table(&mut py_session_ctx, &name);
+        PySessionContext::deregister_table(&mut py_session_ctx, &name)?;
 
         PySessionContext::register_table_provider(
             &mut py_session_ctx,
@@ -65,7 +64,7 @@ impl PyDataFusionTable {
         let df = py_session_ctx.table(&name, py)?;
         let df = Py::new(py, df)?;
 
-        Ok(py)
+        Ok(df)
     }
 
     /// Convert this table to a [`pyarrow.RecordBatchReader`][].
