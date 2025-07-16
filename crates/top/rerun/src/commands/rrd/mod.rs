@@ -37,6 +37,8 @@ pub enum RrdCommands {
     ///
     /// Unless explicit flags are passed, in which case they will override environment values.
     ///
+    /// ⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+    ///
     /// Examples:
     ///
     /// * `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
@@ -63,7 +65,7 @@ pub enum RrdCommands {
     ///
     /// Reads from standard input if no paths are specified.
     ///
-    /// This will not affect the chunking of the data in any way.
+    /// ⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
     ///
     /// Example: `rerun rrd merge /my/recordings/*.rrd > output.rrd`
     Merge(MergeCommand),
