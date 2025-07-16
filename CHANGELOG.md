@@ -9,7 +9,7 @@
 
 #### 💽 Tagged components
 
-Starting with 0.22 began storing additional metainformation for each component,
+Starting with 0.22 Rerun began storing additional meta-information for each component,
 identifying its field name (e.g. `vertex_colors`) and it's archetype (e.g. `Mesh3D`).
 We finally concluded this effort and made all parts of the Viewer and API aware of this.
 
@@ -79,7 +79,7 @@ rr.set_sinks(
 
 You can now log URDF files directly to Rerun using the `log_file` API.
 
-<img width="900" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
+<img width="900" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
 
 #### 👀 Other highlights in short
 
