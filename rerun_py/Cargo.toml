@@ -81,6 +81,7 @@ comfy-table.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
 datafusion-ffi.workspace = true
+datafusion-python.workspace = true
 document-features.workspace = true
 futures.workspace = true
 itertools.workspace = true
