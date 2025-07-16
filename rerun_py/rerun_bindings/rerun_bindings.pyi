@@ -1276,6 +1276,7 @@ class DatasetEntry(Entry):
         contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
+        two_phase_query: bool = False,
     ) -> DataframeQueryView:
         """
         Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
@@ -1314,6 +1315,9 @@ class DatasetEntry(Entry):
 
             Tombstone columns are components used to represent clears. However, even without the clear
             tombstone columns, the view will still apply the clear semantics when resolving row contents.
+
+        two_phase_query : bool, optional
+            Whether to use a two-phase query to fetch the data.
 
         Returns
         -------

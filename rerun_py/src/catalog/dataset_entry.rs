@@ -426,6 +426,9 @@ impl PyDatasetEntry {
     ///     Tombstone columns are components used to represent clears. However, even without the clear
     ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
     ///
+    /// two_phase_query : bool, optional
+    ///     Whether to use a two-phase query to fetch the data.
+    ///
     /// Returns
     /// -------
     /// DataframeQueryView
@@ -436,6 +439,7 @@ impl PyDatasetEntry {
         contents,
         include_semantically_empty_columns = false,
         include_tombstone_columns = false,
+        two_phase_query = false,
     ))]
     fn dataframe_query_view(
         self_: Py<Self>,
@@ -443,6 +447,7 @@ impl PyDatasetEntry {
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_tombstone_columns: bool,
+        two_phase_query: bool,
         py: Python<'_>,
     ) -> PyResult<PyDataframeQueryView> {
         PyDataframeQueryView::new(
@@ -451,6 +456,7 @@ impl PyDatasetEntry {
             contents,
             include_semantically_empty_columns,
             include_tombstone_columns,
+            two_phase_query,
             py,
         )
     }
