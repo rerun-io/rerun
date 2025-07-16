@@ -6,12 +6,12 @@ use re_types::{
 };
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport::test_context_ext::{SingleViewTestContext, TestContextExt as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 #[test]
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let mut test_context = SingleViewTestContext::<TimeSeriesView>::new();
 
     for i in 0..32 {
         let timepoint = TimePoint::from([(test_context.active_timeline(), i)]);
@@ -25,11 +25,10 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     }
 
     let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
-        egui::vec2(300.0, 300.0),
+        [300.0, 300.0],
     );
 }
 
@@ -61,20 +60,4 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
         blueprint.add_view_at_root(view)
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
-        });
-    harness.run();
-    harness.snapshot(name);
 }

@@ -4,7 +4,7 @@ use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
     ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
 };
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport::test_context_ext::{SingleViewTestContext, TestContextExt as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
@@ -23,7 +23,7 @@ pub fn test_clear_series_points_and_line() {
 }
 
 fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
-    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let mut test_context = SingleViewTestContext::<TimeSeriesView>::new();
 
     // TODO(#10512): Potentially fix up this after we have "markers".
     // There are some intricacies involved with this test. `SeriesLines` and

@@ -1,7 +1,7 @@
 use ahash::HashMap;
 
 use re_viewer_context::{
-    Contents, ViewId, ViewerContext, VisitorControlFlow, test_context::TestContext,
+    Contents, ViewClass, ViewId, ViewerContext, VisitorControlFlow, test_context::TestContext,
 };
 
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
@@ -166,5 +166,66 @@ impl TestContextExt for TestContext {
 
             self.handle_system_commands();
         });
+    }
+}
+
+pub struct SingleViewTestContext<T: ViewClass + Default + 'static> {
+    inner: TestContext,
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<T: ViewClass + Default + 'static> std::ops::Deref for SingleViewTestContext<T> {
+    type Target = TestContext;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T: ViewClass + Default + 'static> std::ops::DerefMut for SingleViewTestContext<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<T: ViewClass + Default + 'static> SingleViewTestContext<T> {
+    /// Create a new test context that knows about a specific view class.
+    ///
+    /// This is useful for tests that need test a single view class.
+    ///
+    /// Note that it's important to first register the view class before adding any entities,
+    /// otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
+    /// and thus will not find anything applicable to the visualizer.
+    pub fn new() -> Self {
+        let mut inner = TestContext::new();
+        inner.register_view_class::<T>();
+        Self {
+            inner,
+            _marker: std::marker::PhantomData {},
+        }
+    }
+
+    /// Runs the view and compares (or writes) the snapshot.
+    pub fn run_view_ui_and_save_snapshot(
+        &mut self,
+        view_id: ViewId,
+        name: &str,
+        size: impl Into<egui::Vec2>,
+    ) {
+        let mut harness = self
+            .inner
+            .setup_kittest_for_rendering()
+            .with_size(size.into())
+            .build(|ctx| {
+                self.inner.run_with_single_view(ctx, view_id);
+            });
+        harness.run();
+        harness.snapshot(name);
+    }
+}
+
+impl<T: ViewClass + Default + 'static> Default for SingleViewTestContext<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }

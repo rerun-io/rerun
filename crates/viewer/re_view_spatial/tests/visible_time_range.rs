@@ -7,10 +7,10 @@ use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport::test_context_ext::{SingleViewTestContext, TestContextExt as _};
 use re_viewport_blueprint::ViewBlueprint;
 
-fn intra_timestamp_data(test_context: &mut TestContext) {
+fn intra_timestamp_data(test_context: &mut SingleViewTestContext<SpatialView2D>) {
     let timeline = Timeline::new_sequence("frame");
     let points_path = EntityPath::from("points");
 
@@ -170,7 +170,7 @@ fn intra_timestamp_test() {
     );
 }
 
-fn visible_timerange_data(test_context: &mut TestContext) {
+fn visible_timerange_data(test_context: &mut SingleViewTestContext<SpatialView2D>) {
     let timeline = Timeline::new_duration("timestamp");
     {
         for i in 0..10 {
@@ -295,15 +295,15 @@ fn test_visible_time_range_latest_at() {
 
 fn run_visible_time_range_test(
     name: &str,
-    add_data: impl FnOnce(&mut TestContext),
+    add_data: impl FnOnce(&mut SingleViewTestContext<SpatialView2D>),
     view_time_range: Option<VisibleTimeRange>,
     green_time_range: Option<VisibleTimeRange>,
 ) {
-    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    let mut test_context = SingleViewTestContext::<re_view_spatial::SpatialView2D>::new();
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, name, egui::vec2(200.0, 200.0));
+    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(200.0, 200.0));
 }
 
 fn setup_blueprint(
@@ -356,21 +356,4 @@ fn setup_blueprint(
 
         view_id
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }
