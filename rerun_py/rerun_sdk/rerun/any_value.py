@@ -106,7 +106,7 @@ class AnyBatchValue(ComponentBatchLike):
                 self.pa_array = pa.array(np.from_dlpack(value), type=pa_type)
                 if descriptor is not None:
                     ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, self.pa_array.type)
-            except (ArrowInvalid, TypeError):
+            except (ArrowInvalid, TypeError, BufferError):
                 pass
 
     def _maybe_parse_string(
@@ -287,10 +287,11 @@ class AnyValues(AsComponents):
         self.component_batches = []
 
         with catch_and_log_exceptions(self.__class__.__name__):
-            if len(kwargs) == 0:
+            if not isinstance(drop_untyped_nones, bool) and drop_untyped_nones is not None:
                 raise ValueError(
-                    "AnyValues should be initialized with at least one component."
-                    " Please provide at least one keyword argument."
+                    "AnyValues components must be set using keyword arguments, "
+                    "you've provided a positional argument of type {type(drop_untyped_nones)} "
+                    "to our boolean flag."
                 )
 
             for name, value in kwargs.items():
@@ -308,6 +309,9 @@ class AnyValues(AsComponents):
         return self
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:
+        with catch_and_log_exceptions(self.__class__.__name__):
+            if len(self.component_batches) == 0:
+                raise ValueError("No valid component batches to return.")
         return self.component_batches
 
     @classmethod
