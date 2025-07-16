@@ -22,7 +22,10 @@ use crate::{
         SpatialViewVisualizerData,
         entity_iterator::{self, process_archetype},
         filter_visualizable_2d_entities,
-        video::{show_video_error, video_stream_id, visualize_video_frame_texture},
+        video::{
+            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+            visualize_video_frame_texture,
+        },
     },
 };
 
@@ -166,12 +169,13 @@ impl VideoFrameReferenceVisualizer {
 
         match query_result {
             None => {
-                show_video_error(
+                show_video_playback_issue(
                     ctx.view_ctx,
                     &mut self.data,
                     spatial_ctx.highlight,
                     world_from_entity,
                     format!("No video asset at {video_reference:?}"),
+                    VideoPlaybackIssueSeverity::Informational,
                     video_resolution,
                     entity_path,
                 );
@@ -212,12 +216,13 @@ impl VideoFrameReferenceVisualizer {
                             if err.should_request_more_frames() {
                                 ctx.view_ctx.egui_ctx().request_repaint();
                             }
-                            show_video_error(
+                            show_video_playback_issue(
                                 ctx.view_ctx,
                                 &mut self.data,
                                 spatial_ctx.highlight,
                                 world_from_entity,
                                 err.to_string(),
+                                VideoPlaybackIssueSeverity::Error,
                                 video_resolution,
                                 entity_path,
                             );
@@ -225,12 +230,13 @@ impl VideoFrameReferenceVisualizer {
                     }
                 }
                 Err(err) => {
-                    show_video_error(
+                    show_video_playback_issue(
                         ctx.view_ctx,
                         &mut self.data,
                         spatial_ctx.highlight,
                         world_from_entity,
                         err.to_string(),
+                        VideoPlaybackIssueSeverity::Error,
                         video_resolution,
                         entity_path,
                     );

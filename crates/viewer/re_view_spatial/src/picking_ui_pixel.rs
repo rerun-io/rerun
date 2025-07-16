@@ -34,8 +34,8 @@ pub fn textured_rect_hover_ui(
     let depth_meter = match &source_data {
         PickableRectSourceData::Image { depth_meter, .. } => *depth_meter,
         PickableRectSourceData::Video { .. } => None,
-        PickableRectSourceData::ErrorPlaceholder => {
-            // No point in zooming into an error placeholder!
+        PickableRectSourceData::Placeholder => {
+            // No point in zooming into a placeholder!
             return;
         }
     };
