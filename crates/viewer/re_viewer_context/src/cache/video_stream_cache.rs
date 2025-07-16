@@ -124,19 +124,16 @@ pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
 
 #[derive(thiserror::Error, Debug)]
 pub enum VideoStreamProcessingError {
-    #[error("No video frame chunks found.")]
+    #[error("No video samples.")]
     NoVideoSamplesFound,
 
-    #[error("Frame chunks present, but arrow type but unexpected arrow type: {0:?}")]
+    #[error("Unexpected arrow type for video sample {0:?}")]
     InvalidVideoSampleType(arrow::datatypes::DataType),
-
-    #[error("Expected only a single video sample per timestep")]
-    MultipleVideoSamplesPerTimestep,
 
     #[error("No codec specified.")]
     MissingCodec,
 
-    #[error("Failed reading codec: {0}")]
+    #[error("Failed to read codec - {0}")]
     FailedReadingCodec(re_chunk::ChunkError),
 }
 

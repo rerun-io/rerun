@@ -44,7 +44,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         Err(err) => {
             CError::new(
                 CErrorCode::VideoLoadError,
-                &format!("Failed to load video data: {err}"),
+                &format!("Failed to play video: {err}"),
             )
             .write_error(error);
             return std::ptr::null_mut();
