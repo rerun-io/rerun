@@ -336,7 +336,12 @@ impl PyChunkBatcherConfig {
         flush_num_rows: Option<u64>,
         chunk_max_rows_if_unsorted: Option<u64>,
     ) -> Self {
-        let default = ChunkBatcherConfig::DEFAULT;
+        let default = ChunkBatcherConfig::from_env().unwrap_or_else(|_| {
+            re_log::warn!(
+                "couldn't init ChunkBatcherConfig from environment, falling back to defaults"
+            );
+            ChunkBatcherConfig::DEFAULT
+        });
 
         Self(ChunkBatcherConfig {
             flush_tick: flush_tick
