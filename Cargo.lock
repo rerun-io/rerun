@@ -8406,6 +8406,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
 ]
 
@@ -8553,6 +8554,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
  "thiserror 1.0.69",
  "wgpu",
@@ -8737,6 +8739,7 @@ dependencies = [
  "parking_lot",
  "pollster",
  "re_arrow_util",
+ "re_build_info",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
@@ -8745,6 +8748,7 @@ dependencies = [
  "re_global_context",
  "re_grpc_client",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_query",
  "re_renderer",
