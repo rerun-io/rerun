@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## Unreleased
+## [0.24.0](https://github.com/rerun-io/rerun/compare/0.23.4...0.24.0) - 2025-07-16 - Tagged components, Video Stream, light mode and more
 
 * 📖 [Release blogpost](https://rerun.io/blog/release-0.24#speculative-link)
 * 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24#speculative-link)
@@ -81,7 +81,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 <img width="900" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
 
-#### 👀 Other new features in short
+#### 👀 Other highlights in short
 
 * New [Cylinder](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
 * [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
