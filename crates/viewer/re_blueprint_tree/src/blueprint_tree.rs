@@ -87,9 +87,6 @@ impl BlueprintTree {
         }
 
         ui.panel_content(|ui| {
-            ui.full_span_separator();
-            ui.add_space(-1.);
-
             ui.list_item_scope("blueprint_section_title", |ui| {
                 ui.list_item().interactive(false).show_flat(
                     ui,
@@ -115,8 +112,6 @@ impl BlueprintTree {
                     ),
                 );
             });
-
-            ui.full_span_separator();
         });
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
