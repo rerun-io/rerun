@@ -35,7 +35,7 @@ impl Cache for TensorStatsCache {
         self.0.total_size_bytes()
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let cache_keys: HashSet<Hash64> = events

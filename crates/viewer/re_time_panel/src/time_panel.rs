@@ -6,7 +6,6 @@ use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
     Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
 };
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -17,7 +16,7 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
-use re_ui::{ContextExt as _, Help, UiExt as _, filter_widget, icons, list_item};
+use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
@@ -295,6 +294,7 @@ impl TimePanel {
         let tokens = ui.tokens();
 
         ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.5;
             // Add back the margin we removed from the panel:
             let mut top_row_frame = egui::Frame::default();
             let margin = tokens.bottom_panel_margin();
@@ -433,14 +433,12 @@ impl TimePanel {
             ),
             time_ctrl.time_view(),
         );
-        let full_y_range = Rangef::new(ui.min_rect().bottom(), ui.max_rect().bottom());
+        let full_y_range = Rangef::new(ui.max_rect().top(), ui.max_rect().bottom());
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
 
-            ui.add_space(-4.0); // hack to vertically center the text
-
-            let size = egui::vec2(self.prev_col_width, 27.0);
+            let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -490,7 +488,7 @@ impl TimePanel {
         }
 
         ui.painter().hline(
-            0.0..=ui.max_rect().right(),
+            timeline_rect.left()..=ui.max_rect().right(),
             timeline_rect.bottom(),
             ui.visuals().widgets.noninteractive.bg_stroke,
         );

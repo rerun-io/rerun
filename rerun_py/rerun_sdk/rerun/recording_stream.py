@@ -11,6 +11,9 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
 import numpy as np
+from rerun_bindings import (
+    ChunkBatcherConfig as ChunkBatcherConfig,
+)
 from typing_extensions import deprecated
 
 import rerun as rr
@@ -39,6 +42,7 @@ def new_recording(
     make_thread_default: bool = False,
     spawn: bool = False,
     default_enabled: bool = True,
+    batcher_config: ChunkBatcherConfig | None = None,
 ) -> RecordingStream:
     """
     Creates a new recording with a user-chosen application id (name) that can be used to log data.
@@ -103,6 +107,8 @@ def new_recording(
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    batcher_config
+        Optional configuration for the chunk batcher.
 
     Returns
     -------
@@ -117,6 +123,7 @@ def new_recording(
         make_default=make_default,
         make_thread_default=make_thread_default,
         default_enabled=default_enabled,
+        batcher_config=batcher_config,
     )
 
     if spawn:
@@ -302,7 +309,8 @@ class RecordingStream:
     Micro-batching using both space and time triggers (whichever comes first) is done automatically
     in a dedicated background thread.
 
-    You can configure the frequency of the batches using the following environment variables:
+    You can configure the frequency of the batches using the `batcher_config` parameter when creating
+    the RecordingStream, or via the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
         Flush frequency in seconds (default: `0.2` (200ms)).
@@ -322,6 +330,7 @@ class RecordingStream:
         make_thread_default: bool = False,
         default_enabled: bool = True,
         send_properties: bool = True,
+        batcher_config: ChunkBatcherConfig | None = None,
     ) -> None:
         """
         Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
@@ -383,6 +392,8 @@ class RecordingStream:
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
         send_properties
             Immediately send the recording properties to the viewer (default: True)
+        batcher_config
+            Optional configuration for the chunk batcher.
 
         Returns
         -------
@@ -411,6 +422,7 @@ class RecordingStream:
             make_thread_default=make_thread_default,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=batcher_config,
         )
 
         self._prev: RecordingStream | None = None

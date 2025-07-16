@@ -63,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ViewerEventKind::SelectionChange { items } => {
                         shared_state.current_selection = items;
                     }
+                    ViewerEventKind::RecordingOpen { .. } => {}
                 }
             })
         }),

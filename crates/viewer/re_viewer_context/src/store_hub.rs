@@ -191,7 +191,7 @@ impl StoreHub {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
-            once_cell::sync::Lazy::new(Default::default);
+            once_cell::sync::Lazy::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
@@ -532,7 +532,10 @@ impl StoreHub {
         });
 
         // Make sure the active recording has associated caches, always.
-        _ = self.caches_per_recording.entry(recording_id).or_default();
+        _ = self
+            .caches_per_recording
+            .entry(recording_id.clone())
+            .or_insert_with(|| Caches::new(recording_id));
     }
 
     /// Activate a recording by its [`StoreId`].

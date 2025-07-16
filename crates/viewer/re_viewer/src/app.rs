@@ -1661,6 +1661,9 @@ impl App {
             // everything and some of it is mutable and some not… it's really not pretty, but it
             // does the job for now.
 
+            let msg_will_add_new_store = matches!(&msg, LogMsg::SetStoreInfo(..))
+                && !store_hub.store_bundle().contains(store_id);
+
             let was_empty = {
                 let entity_db = store_hub.entity_db_mut(store_id);
                 if entity_db.data_source.is_none() {
@@ -1773,13 +1776,15 @@ impl App {
                 },
             }
 
-            // Do analytics after ingesting the new message,
-            // because that's when the `entity_db.store_info` is set,
-            // which we use in the analytics call.
+            // Do analytics/events after ingesting the new message,
+            // because `entity_db.store_info` needs to be set.
             let entity_db = store_hub.entity_db_mut(store_id);
-            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
-            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
+            if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
                 self.analytics.on_open_recording(entity_db);
+
+                if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
+                    event_dispatcher.on_recording_open(entity_db);
+                }
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {

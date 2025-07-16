@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Iterator, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Optional, Self
 
@@ -614,6 +614,120 @@ class PyRecordingStream:
         Calling operations such as flush or set_sink will result in an error.
         """
 
+class ChunkBatcherConfig:
+    """Defines the different batching thresholds used within the RecordingStream."""
+
+    def __init__(
+        self,
+        flush_tick: int | float | timedelta | None = None,
+        flush_num_bytes: int | None = None,
+        flush_num_rows: int | None = None,
+        chunk_max_rows_if_unsorted: int | None = None,
+    ) -> None:
+        """
+        Initialize the chunk batcher configuration.
+
+        Parameters
+        ----------
+        flush_tick : int | float | timedelta | None
+            Duration of the periodic tick, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+
+        flush_num_bytes : int | None
+            Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+
+        flush_num_rows : int | None
+            Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+
+        chunk_max_rows_if_unsorted : int | None
+            Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
+            by default `None`.
+            Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+
+        """
+
+    @property
+    def flush_tick(self) -> timedelta:
+        """
+        Duration of the periodic tick.
+
+        Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+        """
+
+    @flush_tick.setter
+    def flush_tick(self, value: float | int | timedelta) -> None:
+        """
+        Duration of the periodic tick.
+
+        Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+        """
+
+    @property
+    def flush_num_bytes(self) -> int:
+        """
+        Flush if the accumulated payload has a size in bytes equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+        """
+
+    @flush_num_bytes.setter
+    def flush_num_bytes(self, value: int) -> None:
+        """
+        Flush if the accumulated payload has a size in bytes equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+        """
+
+    @property
+    def flush_num_rows(self) -> int:
+        """
+        Flush if the accumulated payload has a number of rows equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+        """
+
+    @flush_num_rows.setter
+    def flush_num_rows(self, value: int) -> None:
+        """
+        Flush if the accumulated payload has a number of rows equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+        """
+
+    @property
+    def chunk_max_rows_if_unsorted(self) -> int:
+        """
+        Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+
+        Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+        """
+
+    @chunk_max_rows_if_unsorted.setter
+    def chunk_max_rows_if_unsorted(self, value: int) -> None:
+        """
+        Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+
+        Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+        """
+
+    @staticmethod
+    def DEFAULT() -> ChunkBatcherConfig:
+        """Default configuration, applicable to most use cases."""
+
+    @staticmethod
+    def LOW_LATENCY() -> ChunkBatcherConfig:
+        """Low-latency configuration, preferred when streaming directly to a viewer."""
+
+    @staticmethod
+    def ALWAYS() -> ChunkBatcherConfig:
+        """Always flushes ASAP."""
+
+    @staticmethod
+    def NEVER() -> ChunkBatcherConfig:
+        """Never flushes unless manually told to (or hitting one the builtin invariants)."""
+
 class PyMemorySinkStorage:
     def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
         """
@@ -658,6 +772,7 @@ def new_recording(
     make_thread_default: bool = True,
     default_enabled: bool = True,
     send_properties: bool = True,
+    batcher_config: Optional[ChunkBatcherConfig] = None,
 ) -> PyRecordingStream:
     """Create a new recording stream."""
 
@@ -1379,6 +1494,9 @@ class TableEntry(Entry):
     def df(self) -> Any:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
+
 class DataframeQueryView:
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
@@ -1583,6 +1701,9 @@ class DataFusionTable:
 
     def df(self) -> Any:
         """Register this view to the global DataFusion context and return a DataFrame."""
+
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
     @property
     def name(self) -> str:

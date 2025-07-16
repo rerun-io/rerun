@@ -84,7 +84,7 @@ pub struct DesignTokens {
     pub label_button_icon_color: Color32,
 
     /// The color for the background of [`crate::SectionCollapsingHeader`].
-    pub section_collapsing_header_color: Color32,
+    pub section_header_color: Color32,
 
     /// The color we use to mean "loop this selection"
     pub loop_selection_color: Color32,
@@ -253,7 +253,7 @@ impl DesignTokens {
             highlight_color: get_color("highlight_color"),
 
             label_button_icon_color: get_color("label_button_icon_color"),
-            section_collapsing_header_color: get_color("section_collapsing_header_color"),
+            section_header_color: get_color("section_header_color"),
 
             loop_selection_color: get_color("loop_selection_color"),
             loop_everything_color: get_color("loop_everything_color"),

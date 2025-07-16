@@ -222,8 +222,6 @@ impl PyCatalogClientInternal {
         Py::new(py, (dataset, entry))
     }
 
-    //TODO(#9360): `dataset_from_url()`
-
     /// Get a table by name or id.
     ///
     /// Note: the entry table is named `__entries`.

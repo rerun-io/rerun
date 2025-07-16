@@ -124,19 +124,16 @@ pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
 
 #[derive(thiserror::Error, Debug)]
 pub enum VideoStreamProcessingError {
-    #[error("No video frame chunks found.")]
+    #[error("No video samples.")]
     NoVideoSamplesFound,
 
-    #[error("Frame chunks present, but arrow type but unexpected arrow type: {0:?}")]
+    #[error("Unexpected arrow type for video sample {0:?}")]
     InvalidVideoSampleType(arrow::datatypes::DataType),
-
-    #[error("Expected only a single video sample per timestep")]
-    MultipleVideoSamplesPerTimestep,
 
     #[error("No codec specified.")]
     MissingCodec,
 
-    #[error("Failed reading codec: {0}")]
+    #[error("Failed to read codec - {0}")]
     FailedReadingCodec(re_chunk::ChunkError),
 }
 
@@ -538,7 +535,7 @@ impl Cache for VideoStreamCache {
     }
 
     /// Keep existing cache entries up to date with new and removed video data.
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let sample_descr = VideoStream::descriptor_sample();
@@ -953,7 +950,8 @@ mod tests {
                 let store_events = store
                     .add_chunk(&Arc::new(chunk_builder.build().unwrap()))
                     .unwrap();
-                cache.on_store_events(&store_events);
+                let store_events_refs = store_events.iter().collect::<Vec<_>>();
+                cache.on_store_events(&store_events_refs);
 
                 let video_stream = cache
                     .entry(
@@ -1008,7 +1006,7 @@ mod tests {
         // Instead of relying on the "real" GC, we fake it by creating a GC event, pretending the first chunk got removed.
         let storage_engine = store.storage_engine();
         let chunk_store = storage_engine.store();
-        cache.on_store_events(&[ChunkStoreEvent {
+        cache.on_store_events(&[&ChunkStoreEvent {
             store_id: store.store_id(),
             store_generation: store.generation(),
             event_id: 0, // Wrong but don't care.

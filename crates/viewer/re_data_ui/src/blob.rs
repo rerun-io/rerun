@@ -229,7 +229,7 @@ pub fn blob_preview_and_save_ui(
                     if let Some(duration) = video.data_descr().duration() {
                         VideoTimestamp::from_secs(time % duration.as_secs_f64())
                     } else {
-                        // TODO(#7484): show something more useful here
+                        // TODO(#10646): show something more useful here
                         VideoTimestamp::from_nanos(i64::MAX)
                     }
                 });

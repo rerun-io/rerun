@@ -101,7 +101,7 @@ impl Cache for MeshCache {
         self.0.total_size_bytes()
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let row_ids_removed: HashSet<RowId> = events

@@ -332,7 +332,7 @@ class MeasurementBatchLogger:
         timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
         pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
 
-        raw_coordinates = rr.AnyValues(
+        raw_coordinates = rr.AnyValues.columns(
             latitude=df["latitude"].to_numpy(),
             longitude=df["longitude"].to_numpy(),
             barometric_altitude=df["barometric_altitude"].to_numpy(),
@@ -344,7 +344,7 @@ class MeasurementBatchLogger:
             [
                 *rr.Points3D.columns(positions=np.vstack(pos).T),
                 *rr.GeoPoints.columns(positions=np.vstack((df["latitude"], df["longitude"])).T),
-                *raw_coordinates.columns(),
+                *raw_coordinates,
             ],
         )
 

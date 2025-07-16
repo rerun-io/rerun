@@ -140,6 +140,11 @@ class ErrorWidget:
             display(self._html)
 
 
+_EventData = dict[str, Any]
+_Buffers = list[bytes]
+_Event = tuple[_EventData, _Buffers | None]
+
+
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
@@ -165,8 +170,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
 
     _ready = False
-    _data_queue: list[bytes]
-    _table_queue: list[bytes]
+    _event_queue: list[_Event] = []
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
 
@@ -187,8 +191,6 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._width = width
         self._height = height
         self._url = url
-        self._data_queue = []
-        self._table_queue = []
 
         if panel_states:
             self.update_panel_states(panel_states)
@@ -209,28 +211,24 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def _on_ready(self) -> None:
         self._ready = True
 
-        for data in self._data_queue:
-            self.send_rrd(data)
-        self._data_queue.clear()
+        for event, buffers in self._event_queue:
+            super().send(event, buffers)
 
-        for data in self._table_queue:
-            self.send_table(data)
-        self._table_queue.clear()
+        self._event_queue.clear()
+
+    def send(self, content: _EventData, buffers: _Buffers | None = None) -> None:
+        if not self._ready:
+            self._event_queue.append((content, buffers))
+            return
+
+        super().send(content, buffers)
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
 
-        if not self._ready:
-            self._data_queue.append(data)
-            return
-
         self.send({"type": "rrd"}, buffers=[data])
 
     def send_table(self, data: bytes) -> None:
-        if not self._ready:
-            self._table_queue.append(data)
-            return
-
         self.send({"type": "table"}, buffers=[data])
 
     def block_until_ready(self, timeout: float = 10.0) -> None:
@@ -263,8 +261,11 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def set_active_recording(self, recording_id: str) -> None:
         self.send({"type": "recording_id", "recording_id": recording_id})
 
-    def set_active_partition_url(self, url: str) -> None:
-        self.send({"type": "partition_url", "partition_url": url})
+    def open_url(self, url: str) -> None:
+        self.send({"type": "open_url", "url": url})
+
+    def close_url(self, url: str) -> None:
+        self.send({"type": "close_url", "url": url})
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""

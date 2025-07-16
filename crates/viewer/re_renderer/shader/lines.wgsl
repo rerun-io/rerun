@@ -261,8 +261,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         strip_radius += size_boost;
         triangle_cap_length += size_boost;
         // Push out positions as well along the quad dir.
-        // This is especially important if there's no miters on a line-strip (TODO(#829)),
-        // as this would enhance gaps between lines otherwise.
+        // Otherwise we loose the rounded corners at start/end of a line strip.
         center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 

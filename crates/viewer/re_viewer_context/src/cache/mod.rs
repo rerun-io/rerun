@@ -27,7 +27,7 @@ pub use video_stream_cache::{
 // ----
 
 fn filter_blob_removed_events(
-    events: &[re_chunk_store::ChunkStoreEvent],
+    events: &[&re_chunk_store::ChunkStoreEvent],
 ) -> ahash::HashSet<crate::StoredBlobCacheKey> {
     use re_types::Component as _;
 

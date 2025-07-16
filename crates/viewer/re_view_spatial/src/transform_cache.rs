@@ -1153,7 +1153,7 @@ fn query_and_resolve_pinhole_projection_at_entity(
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#9917): This is confusing and should be cleaned up.
+// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -1179,7 +1179,7 @@ pub fn query_view_coordinates(
 /// at the closest ancestor of the given entity path.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#9917): This is confusing and should be cleaned up.
+// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates_at_closest_ancestor(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -1207,7 +1207,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{Loggable as _, SerializedComponentBatch, archetypes, datatypes};
+    use re_types::{archetypes, datatypes};
 
     use super::*;
 
@@ -1810,26 +1810,11 @@ mod tests {
                     .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
                     .with_scales([[2.0, 3.0, 4.0]]),
             )
-            .with_serialized_batches(
+            .with_archetype(
                 RowId::new(),
                 [(timeline, 4)],
-                [
-                    SerializedComponentBatch::new(
-                        arrow::array::new_empty_array(&components::Translation3D::arrow_datatype()),
-                        archetypes::InstancePoses3D::descriptor_translations(),
-                    ),
-                    SerializedComponentBatch::new(
-                        arrow::array::new_empty_array(&components::Scale3D::arrow_datatype()),
-                        archetypes::InstancePoses3D::descriptor_scales(),
-                    ),
-                ],
+                &archetypes::InstancePoses3D::clear_fields(),
             )
-            // TODO(#7245): Use this instead of the above
-            // .with_archetype(
-            //     RowId::new(),
-            //     [(timeline, 4)],
-            //     &archetypes::InstancePoses3D::clear_fields(),
-            // )
             .build()
             .unwrap();
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
@@ -2070,20 +2055,11 @@ mod tests {
                 &archetypes::ViewCoordinates::BLU(),
             )
             // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
-            .with_serialized_batch(
+            .with_archetype(
                 RowId::new(),
                 [(timeline, 4)],
-                SerializedComponentBatch::new(
-                    arrow::array::new_empty_array(&components::PinholeProjection::arrow_datatype()),
-                    archetypes::Pinhole::descriptor_image_from_camera(),
-                ),
+                &archetypes::Pinhole::clear_fields(),
             )
-            // TODO(#7245): Use this instead
-            // .with_archetype(
-            //     RowId::new(),
-            //     [(timeline, 4)],
-            //     &archetypes::Pinhole::clear_fields(),
-            // )
             .build()
             .unwrap();
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();

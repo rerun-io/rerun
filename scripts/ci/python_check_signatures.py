@@ -44,11 +44,14 @@ def print_colored_diff(runtime: str, stub: str) -> None:
 
 
 class APIDef:
-    def __init__(self, name: str, signature: Signature, internal_object: bool, doc: str | None) -> None:
+    def __init__(
+        self, name: str, signature: Signature, internal_object: bool, doc: str | None, getset: bool = False
+    ) -> None:
         self.name = name
         self.signature = signature
         self.internal_object = internal_object
         self.doc = inspect.cleandoc(doc) if doc else None
+        self.getset = getset
 
     def __str__(self) -> str:
         doclines = (self.doc or "").split("\n")
@@ -73,6 +76,9 @@ class APIDef:
         elif self.internal_object:
             # We don't care about docstrings for internal objects
             return self.name == other.name and self.signature == other.signature
+        elif self.getset:
+            # Getter/setter methods are complicated. We don't enforce the signatures match.
+            return self.name == other.name and self.doc == other.doc
         else:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
@@ -205,6 +211,7 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                     Signature(parameters=[Parameter("self", Parameter.POSITIONAL_ONLY)]),
                     is_internal_class,
                     method_obj.__doc__,
+                    getset=True,
                 )
                 class_def[method_name] = api_def
             signatures[name] = class_def

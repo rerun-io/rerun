@@ -346,7 +346,7 @@ impl VideoPlayer {
         // Furthermore, we have to take into account whether the current GOP got expanded since we last enqueued samples.
         // This happens regularly in live video streams.
         //
-        // (potentially related to:) TODO(#7327, #7595): We don't necessarily have to enqueue full GOPs always.
+        // (potentially related to:) TODO(#7595): We don't necessarily have to enqueue full GOPs always.
         // In particularly beyond `requested_gop_idx` this can be overkill.
 
         if self.last_enqueued.is_none() {

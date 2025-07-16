@@ -10,7 +10,7 @@
 # * are all chunks arriving, are things crashing
 # * is the video playing smooth on video asset transitions
 # * does seeking across and within video assets work
-# * does memory usage induced by mp4 parsing stay low over time and doesn't accumluate (TODO(#7481): it should be smaller to begin with)
+# * does memory usage induced by mp4 parsing stay low over time and doesn't accumluate
 from __future__ import annotations
 
 import re
