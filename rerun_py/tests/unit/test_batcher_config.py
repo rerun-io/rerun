@@ -50,6 +50,27 @@ def test_getter_setter() -> None:
     assert config.chunk_max_rows_if_unsorted == 987
 
 
+def test_partial_overrides() -> None:
+    from unittest.mock import patch
+
+    with patch.dict(os.environ, {"RERUN_FLUSH_TICK_SECS": "42", "RERUN_FLUSH_NUM_ROWS": "666"}):
+        assert "RERUN_FLUSH_TICK_SECS" in os.environ
+        assert "RERUN_FLUSH_NUM_ROWS" in os.environ
+
+        config = rr.ChunkBatcherConfig(
+            flush_num_bytes=123,
+            chunk_max_rows_if_unsorted=789,
+        )
+
+        assert config.flush_tick == timedelta(seconds=42)
+        assert config.flush_num_bytes == 123
+        assert config.flush_num_rows == 666
+        assert config.chunk_max_rows_if_unsorted == 789
+
+    assert "RERUN_FLUSH_TICK_SECS" not in os.environ
+    assert "RERUN_FLUSH_NUM_ROWS" not in os.environ
+
+
 def test_flush_always() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         rec_path = f"{tmpdir}/rec.rrd"
