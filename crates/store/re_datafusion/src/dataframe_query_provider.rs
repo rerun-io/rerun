@@ -1,6 +1,6 @@
-use arrow::array::{Array, RecordBatch, StringArray, UInt64Array, new_null_array};
+use arrow::array::{Array, Int64Array, RecordBatch, StringArray, UInt64Array, new_null_array, TimestampSecondArray, TimestampMillisecondArray, TimestampMicrosecondArray, TimestampNanosecondArray};
 use arrow::compute::SortOptions;
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use async_trait::async_trait;
 use datafusion::catalog::Session;
 use datafusion::common::hash_utils::HashValue as _;
@@ -20,6 +20,7 @@ use datafusion::{
     catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
 };
 use futures_util::{Stream, StreamExt as _};
+use itertools::Itertools;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression};
@@ -77,10 +78,10 @@ struct PartitionStreamExec {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<Vec<Vec<(String, ChunkId, u64)>>>,
+    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
-    num_partitions: usize,
+    target_partitions: usize,
     worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
@@ -91,6 +92,8 @@ pub struct DataframePartitionStream {
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
     rerun_partition_ids: Vec<String>,
+    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
+
     chunk_tx: Option<Sender<Vec<(Chunk, Option<String>)>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
@@ -210,7 +213,7 @@ impl DataframeQueryTableProvider {
 
         let query = Query::from(query_expression);
 
-        let fields_of_interest = [
+        let mut fields_of_interest = [
             "chunk_partition_id",
             "chunk_entity_path",
             "chunk_id",
@@ -220,6 +223,10 @@ impl DataframeQueryTableProvider {
         .into_iter()
         .map(String::from)
         .collect::<Vec<_>>();
+
+        if let Some(index) = query_expression.filtered_index {
+            fields_of_interest.push(format!("{}:end", index.as_str()));
+        }
 
         let chunk_request = GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
@@ -372,6 +379,7 @@ impl Stream for DataframePartitionStream {
                 this.client.clone(),
                 this.chunk_request.clone(),
                 this.rerun_partition_ids.clone(),
+                Arc::clone(&this.chunk_info),
                 chunk_tx,
             )));
         }
@@ -420,6 +428,29 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ChunkInfo {
+    pub end_time: i64,
+    pub chunk_id: ChunkId,
+    pub byte_len: u64,
+}
+
+impl PartialOrd for ChunkInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let end_time_cmp = self.end_time.partial_cmp(&other.end_time)?;
+        let Ordering::Equal = end_time_cmp else {
+            return Some(end_time_cmp);
+        };
+        let chunk_id_cmp = self.chunk_id.partial_cmp(&other.chunk_id)?;
+        let Ordering::Equal = chunk_id_cmp else {
+            return Some(chunk_id_cmp);
+        };
+
+        // We should never get here
+        Some(self.byte_len.cmp(&other.byte_len))
+    }
+}
+
 /// We need to create `num_partitions` of partition stream outputs, each of
 /// which will be fed from multiple `rerun_partition_id` sources. The partitioning
 /// output is a hash of the `rerun_partition_id`. We will reuse some of the
@@ -432,12 +463,18 @@ pub fn align_record_batch_to_schema(
 fn compute_partition_stream_chunk_info(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
     num_partitions: usize,
-) -> Result<Arc<Vec<Vec<(String, ChunkId, u64)>>>, DataFusionError> {
-    let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-
-    let mut results = vec![Vec::new(); num_partitions];
+) -> Result<Arc<BTreeMap<String, Vec<ChunkInfo>>>, DataFusionError> {
+    let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
+        let schema = batch.schema();
+        let time_col = schema
+            .fields()
+            .iter()
+            .map(|f| f.name())
+            .find(|name| name.ends_with(":end"))
+            .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
+
         let partition_id_arr = batch
             .column_by_name("chunk_partition_id")
             .ok_or(exec_datafusion_err!(
@@ -463,14 +500,48 @@ fn compute_partition_stream_chunk_info(
             .downcast_ref::<UInt64Array>()
             .ok_or(exec_datafusion_err!("Unexpected type for chunk_id"))?;
 
+        // TODO(tsaucer) verify all of the possible time columns
+        let time_end_arr = batch
+            .column_by_name(time_col)
+            .ok_or(exec_datafusion_err!(
+                "Unable to return time column as expected"
+            ))?;
+        let time_end_arr = match time_end_arr.data_type() {
+            DataType::Int64 => {
+                time_end_arr.as_any().downcast_ref::<Int64Array>().unwrap()
+            }
+            DataType::Timestamp(TimeUnit::Second, _) => {
+                &time_end_arr.as_any().downcast_ref::<TimestampSecondArray>().unwrap().reinterpret_cast::<Int64Type>()
+            }
+            DataType::Timestamp(TimeUnit::Millisecond, _) => {
+                &time_end_arr.as_any().downcast_ref::<TimestampMillisecondArray>().unwrap().reinterpret_cast::<Int64Type>()
+            }
+            DataType::Timestamp(TimeUnit::Microsecond, _) => {
+                &time_end_arr.as_any().downcast_ref::<TimestampMicrosecondArray>().unwrap().reinterpret_cast::<Int64Type>()
+            }
+            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+                &time_end_arr.as_any().downcast_ref::<TimestampNanosecondArray>().unwrap().reinterpret_cast::<Int64Type>()
+            }
+            _ => return Err(exec_datafusion_err!("Unexpected type for time column {}", time_end_arr.data_type())),
+        };
+
+
         let num_rows = partition_id_arr.len();
         for idx in 0..num_rows {
-            let partition_id = partition_id_arr.value(idx);
-            let hash_idx = partition_id.hash_one(&random_state) as usize % num_partitions;
+            let partition_id = partition_id_arr.value(idx).to_owned();
+            // let hash_idx = partition_id.hash_one(&random_state) as usize;
             let chunk_id = ChunkId::from_tuid(chunk_id_arr[idx]);
-            let byte_len = chunk_byte_len_arr.value(hash_idx);
+            let byte_len = chunk_byte_len_arr.value(idx);
+            let end_time = time_end_arr.value(idx);
 
-            results[hash_idx].push((partition_id.to_owned(), chunk_id, byte_len));
+            let chunk_info = ChunkInfo {
+                end_time,
+                chunk_id,
+                byte_len,
+            };
+
+            let chunks_vec = results.entry(partition_id).or_insert(vec![]);
+            chunks_vec.push(chunk_info);
         }
     }
 
@@ -544,7 +615,7 @@ impl PartitionStreamExec {
             chunk_info,
             query_expression,
             projected_schema,
-            num_partitions,
+            target_partitions: num_partitions,
             worker_runtime,
             client,
             chunk_request,
@@ -654,38 +725,53 @@ async fn chunk_store_cpu_worker_thread(
 /// which is different from the partition_id.
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
-    mut base_request: GetChunksRequest,
+    base_request: GetChunksRequest,
     rerun_partition_ids: Vec<String>,
+    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
     output_channel: Sender<Vec<(Chunk, Option<String>)>>,
 ) -> Result<(), DataFusionError> {
-    base_request.partition_ids = rerun_partition_ids
-        .into_iter()
-        .map(PartitionId::from)
-        .collect();
+    // let chunks_to_stream = rerun_partition_hashes.into_iter()
+    //     .map(|hash| chunk_info.get(&hash).cloned().ok_or(exec_datafusion_err!("Invalid partition hash")))
+    //     .collect::<Result<Vec<_>, DataFusionError>>()?
+    //     .into_iter()
+    //     .flatten()
+    //     .collect::<Vec<_>>();
+    //
+    // let partition_ids = chunks_to_stream
+    //     .iter()
+    //     .map(|info| info.partition_id.clone())
+    //     .unique()
+    //     .sorted()
+    //     .collect::<Vec<_>>();
 
-    let get_chunks_response_stream = client
-        .inner()
-        .get_chunks(base_request)
-        .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-        .await
-        .map_err(|err| exec_datafusion_err!("{err}"))?
-        .into_inner();
+    for partition_id in rerun_partition_ids {
+        let mut get_chunks_request = base_request.clone();
+        get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
 
-    // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-    // and the app layer (Arrow).
-    let mut chunk_stream =
-        re_grpc_client::get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
+        let get_chunks_response_stream = client
+            .inner()
+            .get_chunks(get_chunks_request)
+            .instrument(tracing::trace_span!("chunk_stream_io_loop"))
+            .await
+            .map_err(|err| exec_datafusion_err!("{err}"))?
+            .into_inner();
 
-    // We want the underlying HTTP2 client to keep polling on the gRPC stream as fast
-    // as non-blockingly possible, which cannot happen if we just poll once in a while
-    // in-between decoding phases. This results in the stream just sleeping, waiting
-    // for IO to complete, way more frequently that it should.
-    // We resolve that by spawning a dedicated I/O task that just polls the stream as fast as
-    // the stream will allows. This way, whenever the underlying HTTP2 stream is polled, we
-    // will already have pre-fetched a bunch of data for it.
-    while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
-        if output_channel.send(chunk_and_partition_id).await.is_err() {
-            break;
+        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
+        // and the app layer (Arrow).
+        let mut chunk_stream =
+            re_grpc_client::get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
+
+        // We want the underlying HTTP2 client to keep polling on the gRPC stream as fast
+        // as non-blockingly possible, which cannot happen if we just poll once in a while
+        // in-between decoding phases. This results in the stream just sleeping, waiting
+        // for IO to complete, way more frequently that it should.
+        // We resolve that by spawning a dedicated I/O task that just polls the stream as fast as
+        // the stream will allows. This way, whenever the underlying HTTP2 stream is polled, we
+        // will already have pre-fetched a bunch of data for it.
+        while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
+            if output_channel.send(chunk_and_partition_id).await.is_err() {
+                break;
+            }
         }
     }
 
@@ -724,12 +810,14 @@ impl ExecutionPlan for PartitionStreamExec {
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
 
+        let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
         let rerun_partition_ids = self
             .chunk_info
-            .get(partition)
-            .ok_or(exec_datafusion_err!("Invalid partition number"))?
-            .iter()
-            .map(|(id, _, _)| id.to_owned())
+            .keys()
+            .filter(|partition_id| {
+                let hash_value = partition_id.hash_one(&random_state) as usize;
+                hash_value % self.target_partitions == partition })
+            .cloned()
             .collect::<Vec<_>>();
 
         let client = self.client.clone();
@@ -748,6 +836,7 @@ impl ExecutionPlan for PartitionStreamExec {
             client,
             chunk_request,
             rerun_partition_ids,
+            chunk_info: Arc::clone(&self.chunk_info),
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
@@ -762,7 +851,7 @@ impl ExecutionPlan for PartitionStreamExec {
         target_partitions: usize,
         _config: &ConfigOptions,
     ) -> datafusion::common::Result<Option<Arc<dyn ExecutionPlan>>> {
-        if target_partitions == self.num_partitions {
+        if target_partitions == self.target_partitions {
             return Ok(None);
         }
 
@@ -772,7 +861,7 @@ impl ExecutionPlan for PartitionStreamExec {
             chunk_info: self.chunk_info.clone(),
             query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),
-            num_partitions: target_partitions,
+            target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
             chunk_request: self.chunk_request.clone(),
@@ -795,7 +884,7 @@ impl DisplayAs for PartitionStreamExec {
         write!(
             f,
             "StreamingTableExec: num_partitions={:?}",
-            self.num_partitions,
+            self.target_partitions,
         )
     }
 }
