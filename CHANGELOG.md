@@ -13,13 +13,7 @@ Starting with 0.22 began storing additional metainformation for each component,
 identifying its field name (e.g. `vertex_colors`) and it's archetype (e.g. `Mesh3D`).
 We finally concluded this effort and made all parts of the Viewer and API aware of this.
 
-<picture>
-  <img src="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/1200w.png">
-</picture>
+[<img src="https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/1024w.png">](https://static.rerun.io/tags-before-after/2cb9942317249e1bd06eb7a7d16d1b6e8f814466/full.png)
 
 While this is mostly about under-the-hood changes, this has a lot of surface level benefits:
 
@@ -29,17 +23,15 @@ rr.log("path", rr.GeoPoints(lat_lon=[some_coordinate], colors=[0xFF0000FF]))
 rr.log("path", rr.Points2D(positions=[0.0, 0.0], colors=[0x0000FFFF]))
 rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 ```
+
 * The UI groups now by archetype everywhere and will show the same field names you use in the logging SDKs
-Before / after
-<picture>
-  <img src="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/768w.png">
-</picture>
+
+[<img src="https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/480w.png">](https://static.rerun.io/ui-grouping-before-after/08d2e3ab971fe3468f279c3b7bfb0858a821a1c8/full.png)
+
 * Better blueprint defaults: component defaults are now per archetype field and not per type. Making them **a lot** more useful.
-<picture>
-  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="">
-</picture>
+
+[<img width=300 src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png">](https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png)
+
 * No more indicator components! These showed previously up in the ui and needed to be kept in mind for some advanced API usage.
 
 
@@ -49,7 +41,8 @@ Rerun previously supported only video assets in the form of MP4,
 so it was not possible to stream live encoded video to Rerun.
 The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream#speculative-link) archetype remedies that!
 
-<img src="https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/1024w.png">
+[<img src="https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/480w.png">](https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/full.png)
+
 
 If you already have encoded video frames, it is just as easy as logging images now:
 
@@ -65,13 +58,7 @@ Learn more on the updated [video reference page](https://rerun.io/docs/reference
 
 Rerun has now finally a light mode.
 
-<picture>
-  <img src="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/1200w.png">
-</picture>
+[<img src="https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/480w.png">](https://static.rerun.io/theme-before-after/4160c066eab17a6982201687993be60ceb37c33e/full.png)
 
 The theme defaults to your OS's setting, but can be adjusted in the settings menu.
 
@@ -96,7 +83,7 @@ rr.set_sinks(
 
 You can now log URDF files directly to Rerun using the `log_file` API.
 
-<img width="1303" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
+<img width="900" alt="Screenshot 2025-05-31 at 11 17 44" src="https://github.com/user-attachments/assets/e3206d26-e1cf-4161-b1d5-ecd58fe6d07b" />
 
 #### 👀 Other new features in short
 
