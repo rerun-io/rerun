@@ -43,6 +43,12 @@ features = [
     ],
   ],
   [
+    "Micro batching",
+    [
+      "howto/micro_batching",
+    ],
+  ],
+  [
     "Partial updates",
     [
       "archetypes/points3d_partial_updates",
@@ -151,6 +157,9 @@ features = [
   "py",   # TODO(#2353): Doesn't exist
   "cpp",  # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
+]
+"howto/micro_batching" = [
+  "cpp", # TODO(#10661): Doesn't exist
 ]
 "howto/send_table" = [
   "py",   # Requires a server to connect to
