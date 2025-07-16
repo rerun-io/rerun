@@ -436,7 +436,7 @@ class RecordingView:
 
     @deprecated(
         """Use `view(index=None)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
     )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """

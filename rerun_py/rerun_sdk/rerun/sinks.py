@@ -380,7 +380,7 @@ def serve_grpc(
 
 @deprecated(
     """Use a combination of `rr.serve_grpc` and `rr.serve_web_viewer` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
 )
 def serve_web(
     *,

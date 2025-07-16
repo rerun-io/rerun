@@ -41,7 +41,7 @@ allows the Rerun Viewer to show incomplete or open ended video streams.
 In contrast, [`AssetVideo`](../reference/types/archetypes/asset_video.md) requires the entire
 video asset file to be in Viewer memory before decoding can begin.
 
-Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream?speculative-link) example to learn how to stream live video to Rerun.
+Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to stream live video to Rerun.
 
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
@@ -177,7 +177,7 @@ There are still some limitations to encoded Video in Rerun which will be address
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
 * [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
 * There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
-  Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream?speculative-link) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
+  Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
