@@ -256,7 +256,7 @@ fn get_pixel_picking_info(
             .and_then(|picked_rect| {
                 if matches!(
                     picked_rect.source_data,
-                    PickableRectSourceData::ErrorPlaceholder
+                    PickableRectSourceData::Placeholder { .. }
                 ) {
                     return None;
                 }

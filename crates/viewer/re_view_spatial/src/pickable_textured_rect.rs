@@ -14,8 +14,8 @@ pub enum PickableRectSourceData {
     /// The rectangle is a frame in a video.
     Video,
 
-    /// The rectangle represents an error icon.
-    ErrorPlaceholder,
+    /// The rectangle represents an placeholder icon.
+    Placeholder,
 }
 
 /// Image rectangle that can be picked in the view.

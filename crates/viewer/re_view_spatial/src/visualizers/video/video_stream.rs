@@ -5,9 +5,9 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
-    VideoStreamCache, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem, video_stream_time_from_query,
+    VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, video_stream_time_from_query,
 };
 
 use crate::{
@@ -16,7 +16,10 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::{
         SpatialViewVisualizerData, filter_visualizable_2d_entities,
-        video::{show_video_error, video_stream_id, visualize_video_frame_texture},
+        video::{
+            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+            visualize_video_frame_texture,
+        },
     },
 };
 
@@ -100,13 +103,26 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     )
                 }) {
                 Ok(video) => video,
+
                 Err(err) => {
-                    show_video_error(
+                    let (description, severity) = match err {
+                        VideoStreamProcessingError::NoVideoSamplesFound => (
+                            format!("No video samples available for {entity_path:?}"),
+                            VideoPlaybackIssueSeverity::Informational,
+                        ),
+                        _ => (
+                            format!("Failed to play video at {entity_path:?}: {err}"),
+                            VideoPlaybackIssueSeverity::Error,
+                        ),
+                    };
+
+                    show_video_playback_issue(
                         ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
-                        format!("Failed to play video at {entity_path:?}: {err}"),
+                        description,
+                        severity,
                         video_resolution,
                         entity_path,
                     );
@@ -155,15 +171,13 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
-                    if err.should_request_more_frames() {
-                        ctx.egui_ctx().request_repaint();
-                    }
-                    show_video_error(
+                    show_video_playback_issue(
                         ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
                         err.to_string(),
+                        VideoPlaybackIssueSeverity::Error,
                         video_resolution,
                         entity_path,
                     );
