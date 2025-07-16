@@ -117,6 +117,7 @@ enum VideoPlaybackIssueSeverity {
     Informational,
 }
 
+#[expect(clippy::too_many_arguments)]
 fn show_video_playback_issue(
     ctx: &ViewContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,
