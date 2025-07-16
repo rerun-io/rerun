@@ -26,7 +26,7 @@ There are two options to choose from:
 
 ⚠️ Do not use compressed video if you need accurate pixel replication:
 this is not only due to the obvious detail loss on encoding,
-but also the exact _display_ of the same video is not consistent across platforms and decoder versions.
+but also since the exact _display_ of the same video is not consistent across platforms and decoder versions.
 
 ## Streaming video / raw encoded video frames
 
