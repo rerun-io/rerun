@@ -304,6 +304,7 @@ pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 #[pymethods]
 impl PyChunkBatcherConfig {
     #[new]
+    #[pyo3(signature = (flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None))]
     #[pyo3(
         text_signature = "(self, flush_tick=None, flush_num_bytes=None, flush_num_rows=None, chunk_max_rows_if_unsorted=None)"
     )]
