@@ -311,13 +311,5 @@ fn run_time_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot_options(
-        snapshot_name,
-        &SnapshotOptions::default().failed_pixel_count_threshold(
-            OsThreshold::new(0)
-                // For some reason, the timeline stroke is not covered by the zigzag mesh on windows
-                // https://rerunio.slack.com/archives/C08TEFXNHB2/p1752753284351809
-                .windows(27),
-        ),
-    );
+    harness.snapshot(snapshot_name);
 }
