@@ -1191,7 +1191,7 @@ mod tests {
         harness.snapshot("selection_panel_component_static");
     }
 
-    /// Snapshot test for the selection panel when a static component that was overwriten is selected.
+    /// Snapshot test for the selection panel when a static component that was overwritten is selected.
     #[test]
     fn selection_panel_component_static_overwrite_snapshot() {
         let mut test_context = get_test_context();
@@ -1250,7 +1250,8 @@ mod tests {
         harness.snapshot("selection_panel_component_static_overwrite");
     }
 
-    /// Snapshot test for the selection panel when a static component with additional time information is selected.
+    /// Snapshot test for the selection panel when a static component with additional time information is
+    /// selected (which means a user error).
     #[test]
     fn selection_panel_component_static_hybrid_snapshot() {
         let mut test_context = get_test_context();
