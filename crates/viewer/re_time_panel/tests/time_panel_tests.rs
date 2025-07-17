@@ -10,7 +10,6 @@ use re_log_types::{
 };
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::external::egui_kittest::{OsThreshold, SnapshotOptions};
 use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline, test_context::TestContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
