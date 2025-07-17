@@ -10,6 +10,7 @@ use re_log_types::{
 };
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
+use re_viewer_context::external::egui_kittest::{OsThreshold, SnapshotOptions};
 use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline, test_context::TestContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -310,5 +311,13 @@ fn run_time_panel_and_save_snapshot(
         });
 
     harness.run();
-    harness.snapshot(snapshot_name);
+    harness.snapshot_options(
+        snapshot_name,
+        &SnapshotOptions::default().failed_pixel_count_threshold(
+            OsThreshold::new(0)
+                // For some reason, the timeline stroke is not covered by the zigzag mesh on windows
+                // https://rerunio.slack.com/archives/C08TEFXNHB2/p1752753284351809
+                .windows(27),
+        ),
+    );
 }
