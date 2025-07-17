@@ -1,7 +1,6 @@
-use datafusion_python::context::PySessionContext;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    Py, PyResult, Python,
+    Py, PyAny, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
@@ -20,7 +19,7 @@ pub struct PyCatalogClientInternal {
     connection: ConnectionHandle,
 
     // If this isn't set, it means datafusion wasn't found
-    datafusion_ctx: Option<Py<PySessionContext>>,
+    datafusion_ctx: Option<Py<PyAny>>,
 }
 
 impl PyCatalogClientInternal {
@@ -56,9 +55,10 @@ impl PyCatalogClientInternal {
 
         let connection = ConnectionHandle::new(connection_registry, origin.clone());
 
-        let datafusion_ctx: Option<Py<PySessionContext>> = PySessionContext::new(None, None)
-            .ok()
-            .and_then(|ctx| Py::new(py, ctx).ok());
+        let datafusion_ctx = py
+            .import("datafusion")
+            .and_then(|datafusion| Ok(datafusion.getattr("SessionContext")?.call0()?.unbind()))
+            .ok();
 
         // Set up our renderer by default since we've already established datafusion
         // is installed.
@@ -299,7 +299,7 @@ impl PyCatalogClientInternal {
     }
 
     /// The DataFusion context (if available).
-    pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PySessionContext>> {
+    pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if let Some(datafusion_ctx) = &self.datafusion_ctx {
             Ok(datafusion_ctx.clone_ref(py))
         } else {

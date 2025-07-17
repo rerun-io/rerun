@@ -21,12 +21,6 @@ IS_IN_RERUN_WORKSPACE = "yes"
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
 
-[target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-
-[target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-
 # TODO(emilk): This should be unnecessary when we update to the 2024 edition in Rust 1.85.
 # See https://blog.rust-lang.org/2025/01/09/Rust-1.84.0.html#cargo-considers-rust-versions-for-dependency-version-selection
 [resolver]

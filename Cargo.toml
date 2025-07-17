@@ -205,7 +205,6 @@ criterion = "0.5"
 crossbeam = "0.8"
 datafusion = { version = "47", default-features = false }
 datafusion-ffi = "47"
-datafusion-python = { version = "47", default-features = false }
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes

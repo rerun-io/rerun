@@ -4,10 +4,9 @@ use arrow::array::RecordBatchReader;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
-use datafusion_python::context::PySessionContext;
-use datafusion_python::dataframe::PyDataFrame;
+use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::PyCapsule;
-use pyo3::{Bound, IntoPyObjectExt as _, Py, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
 use crate::arrow::datafusion_table_provider_to_arrow_reader;
@@ -37,32 +36,24 @@ impl PyDataFusionTable {
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.
-    fn df(self_: PyRef<'_, Self>) -> PyResult<Py<PyDataFrame>> {
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let client = self_.client.borrow(py);
 
         let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
 
         drop(client);
 
         let name = self_.name.clone();
 
-        // Access the underlying PySessionContext
-        let mut py_session_ctx = ctx.borrow_mut(py);
-
         // We're fine with this failing.
-        PySessionContext::deregister_table(&mut py_session_ctx, &name)?;
+        ctx.call_method1("deregister_table", (name.clone(),))?;
 
-        PySessionContext::register_table_provider(
-            &mut py_session_ctx,
-            &name,
-            self_.into_bound_py_any(py)?,
-        )?;
+        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
 
-        // Get the table as a DataFusion DataFrame
-        let df = py_session_ctx.table(&name, py)?;
-        let df = Py::new(py, df)?;
+        let df = ctx.call_method1("table", (name.clone(),))?;
 
         Ok(df)
     }
