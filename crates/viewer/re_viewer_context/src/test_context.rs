@@ -468,7 +468,7 @@ impl TestContext {
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
     /// an [`egui::CentralPanel`].
     ///
-    /// Prefer not using this in conjunction with egui_kittest's harness and use
+    /// Prefer not using this in conjunction with `egui_kittest`'s harness and use
     /// `egui_kittest::Harness::build_ui` instead, calling [`Self::run_ui`] inside the closure.
     ///
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
