@@ -64,10 +64,10 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     .store()
                     .num_static_events_for_component(entity_path, component_descriptor);
                 if static_message_count > 1 {
-                    ui.label(ui.ctx().warning_text(format!(
-                        "Static component value was overridden {} times",
+                    ui.warning_label(format!(
+                        "Static component value was overridden {} times.",
                         static_message_count.saturating_sub(1),
-                    )))
+                    ))
                     .on_hover_text(
                         "When a static component is logged multiple times, only the last value \
                         is stored. Previously logged values are overwritten and not \
@@ -83,7 +83,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     );
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
-                        "Static component has {} event{} logged on timelines",
+                        "Static component has {} event{} logged on timelines.",
                         temporal_message_count,
                         if temporal_message_count > 1 { "s" } else { "" }
                     ))

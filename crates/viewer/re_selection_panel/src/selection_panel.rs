@@ -1092,17 +1092,24 @@ fn visible_interactive_toggle_ui(
 #[cfg(test)]
 #[cfg(feature = "testing")]
 mod tests {
-    use re_chunk::LatestAtQuery;
+    use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
+    use re_log_types::TimeType;
+    use re_types::archetypes;
     use re_viewer_context::{blueprint_timeline, test_context::TestContext};
 
     use super::*;
 
-    /// Snapshot test for the selection panel when a recording is selected.
-    #[test]
-    fn selection_panel_recording_snapshot() {
+    fn get_test_context() -> TestContext {
         let mut test_context = TestContext::new();
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+        test_context
+    }
+
+    /// Snapshot test for the selection panel when a recording is selected.
+    #[test]
+    fn selection_panel_recording_snapshot() {
+        let mut test_context = get_test_context();
 
         // Select recording:
         let recording_id = test_context.active_recording_id();
@@ -1133,5 +1140,185 @@ mod tests {
 
         harness.run();
         harness.snapshot("selection_panel_recording");
+    }
+
+    /// Snapshot test for the selection panel when a static component is selected.
+    #[test]
+    fn selection_panel_static_component_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        // Select component:
+        let component_path = re_log_types::ComponentPath {
+            entity_path,
+            component_descriptor: archetypes::Points2D::descriptor_positions(),
+        };
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(component_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static");
+    }
+
+    /// Snapshot test for the selection panel when a static component that was overwriten is selected.
+    #[test]
+    fn selection_panel_component_static_overwrite_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static");
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (5., 2.)]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (10., 2.)]),
+                )
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component_descriptor: archetypes::Points2D::descriptor_positions(),
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static_overwrite");
+    }
+
+    /// Snapshot test for the selection panel when a static component with additional time information is selected.
+    #[test]
+    fn selection_panel_component_static_hybrid_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("hybrid");
+
+        let timeline_frame = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_other = Timeline::new("other_time", TimeType::Sequence);
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_frame, 1)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_frame, 1)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_other, 10)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component_descriptor: archetypes::Points2D::descriptor_positions(),
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_hybrid_overwrite");
     }
 }
