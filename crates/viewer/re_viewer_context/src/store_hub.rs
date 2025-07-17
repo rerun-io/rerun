@@ -595,6 +595,12 @@ impl StoreHub {
             .and_then(|app_id| self.active_blueprint_id_for_app(app_id))
     }
 
+    /// Active blueprint for currently active application.
+    pub fn active_blueprint(&self) -> Option<&EntityDb> {
+        self.active_blueprint_id()
+            .and_then(|id| self.store_bundle.get(id))
+    }
+
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
         self.active_blueprint_by_app_id.get(app_id)
     }

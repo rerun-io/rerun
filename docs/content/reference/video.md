@@ -65,7 +65,7 @@ TODO(#10422): fix above if ticket is outdated.
 Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
 and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
 
-Check the [doc page on retrieving data](../../content/howto/get-data-out.md) to learn more about dataframe queries in general.
+Check the [doc page on retrieving data](../../content/howto/dataframe-api) to learn more about dataframe queries in general.
 
 
 ## Video files
