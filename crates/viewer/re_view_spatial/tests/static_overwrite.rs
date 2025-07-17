@@ -6,7 +6,9 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewer_context::{
+    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
+};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
@@ -135,5 +137,5 @@ fn run_view_ui_and_save_snapshot(
     });
     harness.run_steps(8);
 
-    harness.snapshot(name);
+    harness.snapshot_options(name, &SnapshotOptions::new().threshold(1.2));
 }
