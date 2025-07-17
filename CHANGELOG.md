@@ -2,8 +2,8 @@
 
 ## [0.24.0](https://github.com/rerun-io/rerun/compare/0.23.4...0.24.0) - 2025-07-16 - Tagged components, Video Stream, light mode and more
 
-* 📖 [Release blogpost](https://rerun.io/blog/release-0.24#speculative-link)
-* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24#speculative-link)
+* 📖 [Release blogpost](https://rerun.io/blog/release-0.24)
+* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24)
 
 ### ✨ Overview & highlights
 
@@ -35,7 +35,7 @@ rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 
 Rerun previously supported video only in the form of MP4 files,
 so it was not possible to stream live encoded video to Rerun.
-The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream#speculative-link) archetype remedies that!
+The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) archetype remedies that!
 
 [<img src="https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/480w.png">](https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/full.png)
 
@@ -83,8 +83,8 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 👀 Other highlights in short
 
-* New [`Cylinder`](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
-* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
+* New [`Cylinder`](https://rerun.io/docs/reference/types/archetypes/cylinders3d) archetype
+* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs) utility for Rust
 * [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
 * [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
 * Much faster & better compaction for both `rerun rrd compact` and automatic in-Viewer compaction
