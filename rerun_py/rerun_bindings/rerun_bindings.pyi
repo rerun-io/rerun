@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Optional, Self
 
+import datafusion as dfn
 import pyarrow as pa
 from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -1491,7 +1492,7 @@ class TableEntry(Entry):
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
@@ -1658,7 +1659,7 @@ class DataframeQueryView:
 
         """
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
@@ -1699,7 +1700,7 @@ class DataFusionTable:
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
