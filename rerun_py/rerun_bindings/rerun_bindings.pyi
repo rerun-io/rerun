@@ -1492,7 +1492,7 @@ class TableEntry(Entry):
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
