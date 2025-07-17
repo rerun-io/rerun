@@ -205,6 +205,18 @@ impl<T: ViewClass + Default + 'static> SingleViewTestContext<T> {
         }
     }
 
+    pub fn setup_blueprint(
+        &mut self,
+
+        blueprint_fn: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint, &ViewId),
+    ) -> ViewId {
+        self.inner.setup_viewport_blueprint(|ctx, blueprint| {
+            let view = ViewBlueprint::new_with_root_wildcard(T::identifier());
+            blueprint_fn(ctx, blueprint, &view.id);
+            blueprint.add_view_at_root(view)
+        })
+    }
+
     /// Runs the view and compares (or writes) the snapshot.
     pub fn run_view_ui_and_save_snapshot(
         &mut self,
