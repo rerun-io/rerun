@@ -1,5 +1,5 @@
 use re_chunk_store::RowId;
-use re_log_types::{EntityPath, Timeline, build_frame_nr};
+use re_log_types::{EntityPath, build_frame_nr};
 use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{
