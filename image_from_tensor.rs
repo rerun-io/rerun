@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_types::{archetypes, datatypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
+use re_viewer_context::{test_context::TestContext, ViewClass as _, ViewId};
 use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -50,7 +50,7 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
+        .build_ui(|ctx| {
             test_context.run_with_single_view(ctx, view_id);
         });
     harness.run();
