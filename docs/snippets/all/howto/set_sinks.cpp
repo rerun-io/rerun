@@ -7,9 +7,9 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_set_sinks");
     rec.set_sinks(
            // Connect to a local viewer using the default URL.
-           rerun::GrpcSink(),
+           rerun::GrpcSink{},
            // Write data to a `data.rrd` file in the current directory.
-           rerun::FileSink("data.rrd")
+           rerun::FileSink{"data.rrd"}
     )
         .exit_on_failure();
 
