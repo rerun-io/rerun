@@ -219,12 +219,13 @@ fn merge_and_compact(
             )
         }
 
+        let msg_count = msg_nr + 1;
         let check_in_interval = 10_000;
-        if (msg_nr + 1) % check_in_interval == 0 {
+        if msg_count % check_in_interval == 0 {
             let msg_per_second = check_in_interval as f64 / last_checkpoint.elapsed().as_secs_f64();
             last_checkpoint = std::time::Instant::now();
             re_log::info!(
-                "processed {msg_nr} messages so far, current speed is {msg_per_second:.2} msg/s"
+                "processed {msg_count} messages so far, current speed is {msg_per_second:.2} msg/s"
             );
             re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
         }
