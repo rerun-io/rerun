@@ -131,7 +131,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 - Notebook auto-sizing [#10554](https://github.com/rerun-io/rerun/pull/10554)
 - Add `RegisterTable` rpc, `LanceTable` message, and related proto changes [#10538](https://github.com/rerun-io/rerun/pull/10538)
 - Add `open_url`/`close_url` notebook APIs [#10602](https://github.com/rerun-io/rerun/pull/10602)
-- AnyValue Torch Performance Improvement [#10647](https://github.com/rerun-io/rerun/pull/10647) (thanks [@ntjohnson1](https://github.com/ntjohnson1)!)
+- AnyValue Torch Performance Improvement [#10647](https://github.com/rerun-io/rerun/pull/10647)
 - Make it easier to disable the 3D line grid in Python (blueprint) [#10621](https://github.com/rerun-io/rerun/pull/10621)
 - Add `to_arrow_reader()` to `TableEntry` and `DataFusionTable` [#10601](https://github.com/rerun-io/rerun/pull/10601)
 - Make it possible to configure batcher explicitly via python APIs [#10657](https://github.com/rerun-io/rerun/pull/10657)
@@ -262,7 +262,7 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 🧑‍💻 Dev-experience
 - Show stderr output of external dataloaders [#10087](https://github.com/rerun-io/rerun/pull/10087)
-- Dynamically Set Active Partition URL and Select Time Window [#10557](https://github.com/rerun-io/rerun/pull/10557) (thanks [@ntjohnson1](https://github.com/ntjohnson1)!)
+- Dynamically Set Active Partition URL and Select Time Window [#10557](https://github.com/rerun-io/rerun/pull/10557)
 - Log a warning when starting the viewer from inside a Docker container [#10306](https://github.com/rerun-io/rerun/pull/10306)
 
 #### 🗣 Refactors
