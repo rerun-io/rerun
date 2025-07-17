@@ -137,5 +137,10 @@ fn run_view_ui_and_save_snapshot(
     });
     harness.run_steps(8);
 
-    harness.snapshot_options(name, &SnapshotOptions::new().threshold(1.2));
+    let broken_pixels_fraction = 0.004;
+
+    let options = SnapshotOptions::new()
+        .failed_pixel_count_threshold((size.x * size.y * broken_pixels_fraction).round() as usize);
+
+    harness.snapshot_options(name, &options);
 }
