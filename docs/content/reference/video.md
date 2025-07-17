@@ -41,7 +41,7 @@ allows the Rerun Viewer to show incomplete or open ended video streams.
 In contrast, [`AssetVideo`](../reference/types/archetypes/asset_video.md) requires the entire
 video asset file to be in Viewer memory before decoding can begin.
 
-Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream?speculative-link) example to learn how to stream live video to Rerun.
+Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to stream live video to Rerun.
 
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
@@ -65,7 +65,7 @@ TODO(#10422): fix above if ticket is outdated.
 Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
 and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
 
-Check the [doc page on retrieving data](../../content/howto/dataframe-api) to learn more about dataframe queries in general.
+Check the [doc page on retrieving data](../howto/dataframe-api) to learn more about dataframe queries in general.
 
 
 ## Video files
@@ -177,7 +177,7 @@ There are still some limitations to encoded Video in Rerun which will be address
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
 * [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
 * There is no video encoder in the Rerun SDK, so you need to create the video stream or file yourself.
-  Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream?speculative-link) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
+  Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/latest/examples/python/camera_video_stream) example to learn how to encode video using [`pyAV`](https://github.com/PyAV-Org/PyAV).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
