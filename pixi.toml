@@ -314,14 +314,32 @@ misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Parametrize py-lint
-py-lint-config = {args=["config", "args"], cmd = "mypy --config-file {{config}} --install-types --non-interactive --no-warn-unused-ignore {{args}}" }
+py-lint-config = { args = [
+  "config",
+  "args",
+], cmd = "mypy --config-file {{config}} --install-types --non-interactive --no-warn-unused-ignore {{args}}" }
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { depends-on = [{"task" = "py-lint-config", "args" = ["rerun_py/.non_sdk_mypy.ini", ""] }] }
+py-lint-non-sdk = { depends-on = [
+  { "task" = "py-lint-config", "args" = [
+    "rerun_py/.non_sdk_mypy.ini",
+    "",
+  ] },
+] }
 # Need to run this in env with rerun installed
-py-lint-rerun = { depends-on = [{"task" = "py-lint-config", "args" = ["rerun_py/pyproject.toml", ""] }] }
+py-lint-rerun = { depends-on = [
+  { "task" = "py-lint-config", "args" = [
+    "rerun_py/pyproject.toml",
+    "",
+  ] },
+] }
 # Backwards compatible version
-py-lint-rerun-old = { depends-on = [{"task" = "py-lint-config", "args" = ["rerun_py/pyproject.toml", "--disable-error-code=import-not-found"] }] }
-py-lint = {depends-on = ["py-lint-non-sdk", "py-lint-rerun-old"] }
+py-lint-rerun-old = { depends-on = [
+  { "task" = "py-lint-config", "args" = [
+    "rerun_py/pyproject.toml",
+    "--disable-error-code=import-not-found",
+  ] },
+] }
+py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun-old"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 

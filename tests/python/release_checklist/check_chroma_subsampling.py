@@ -5,11 +5,10 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
-from typing import cast, Any
+from typing import cast
 from uuid import uuid4
 
 import cv2
-import cv2.typing as cvt
 import numpy as np
 import numpy.typing as npt
 import rerun as rr

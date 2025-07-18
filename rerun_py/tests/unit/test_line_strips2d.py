@@ -11,7 +11,7 @@ from rerun.components import (
     LineStrip2DArrayLike,
     LineStrip2DBatch,
 )
-from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2D, Float32Like
+from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Float32Like, Rgba32ArrayLike, Utf8ArrayLike, Vec2D
 
 from .common_arrays import (
     class_ids_arrays,
