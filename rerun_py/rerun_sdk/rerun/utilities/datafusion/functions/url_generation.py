@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pyarrow as pa
+import pyarrow.compute
 from rerun_bindings import DatasetEntry
 
 from rerun.error_utils import RerunOptionalDependencyError

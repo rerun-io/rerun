@@ -100,8 +100,8 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();
@@ -117,43 +117,33 @@ fn run_view_selection_panel_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
+        .build_ui(|ui| {
+            test_context.run_ui(ui, |ctx, ui| {
+                let view_class = ctx
+                    .view_class_registry()
+                    .get_class_or_log_error(DataframeView::identifier());
 
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(DataframeView::identifier());
+                let view_blueprint = ViewBlueprint::try_from_db(
+                    view_id,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                )
+                .expect("we just created that view");
 
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
+                let spacing = ui.spacing().item_spacing;
+                ui.list_item_scope("test_harness", |ui| {
+                    ui.spacing_mut().item_spacing = spacing;
 
-                    let spacing = ui.spacing().item_spacing;
-                    ui.list_item_scope("test_harness", |ui| {
-                        ui.spacing_mut().item_spacing = spacing;
+                    let mut view_states = test_context.view_states.lock();
+                    let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-                        let mut view_states = test_context.view_states.lock();
-                        let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                        view_class
-                            .selection_ui(
-                                ctx,
-                                ui,
-                                view_state,
-                                &view_blueprint.space_origin,
-                                view_id,
-                            )
-                            .expect("failed to run view selection panel ui");
-                    });
+                    view_class
+                        .selection_ui(ctx, ui, view_state, &view_blueprint.space_origin, view_id)
+                        .expect("failed to run view selection panel ui");
                 });
-
-                test_context.handle_system_commands();
             });
+
+            test_context.handle_system_commands();
         });
 
     harness.run();

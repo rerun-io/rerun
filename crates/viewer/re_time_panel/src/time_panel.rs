@@ -1679,11 +1679,13 @@ fn paint_time_ranges_gaps(
         let gap_edge = *segment.x.start() as f32;
 
         if zig_zag_first_and_last_edges {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge - 100_000.0, gap_edge);
+            paint_time_gap(gap_edge - 10_000.0, gap_edge);
         } else {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge - 100_000.0, top), pos2(gap_edge, bottom)),
+                Rect::from_min_max(pos2(gap_edge - 10_000.0, top), pos2(gap_edge, bottom)),
                 0.0,
                 fill_color,
             );
