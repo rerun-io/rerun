@@ -31,7 +31,7 @@ from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import git
 import requests
@@ -324,8 +324,8 @@ def bump_dependency_versions(
             update_to = pin_prefix + str(new_version)
             ctx.bump(
                 f"{crate}.{dependency.name}",
-                info["version"],
-                update_to,
+                str(info["version"]),
+                cast(VersionInfo, update_to),
             )
             info["version"] = update_to
 
@@ -646,7 +646,7 @@ def print_version(
         current_version = current_version.finalize_version()
 
     if pre_id:
-        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
+        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))  # type: ignore[union-attr]
         sys.stdout.flush()
     else:
         sys.stdout.write(str(current_version))

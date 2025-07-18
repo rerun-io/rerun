@@ -41,7 +41,7 @@ else:
     BoolLike = Any
 
 BoolArrayLike = Union[
-    BoolLike,
+    Bool,
     Sequence[BoolLike],
 ]
 

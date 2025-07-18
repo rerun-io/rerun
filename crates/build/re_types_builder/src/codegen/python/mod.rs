@@ -2301,7 +2301,7 @@ fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing
             let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
             let import_path = if current_obj_is_testing && is_field_testing {
                 // Extract the relative path within the testing namespace
-                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.") {
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
                     format!(".{}", testing_prefix)
                 } else if mod_path == "rerun.testing" {
                     ".".to_string()

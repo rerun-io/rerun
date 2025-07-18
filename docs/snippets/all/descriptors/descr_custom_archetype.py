@@ -8,7 +8,7 @@ import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
 
 
-class CustomPoints3D(rr.AsComponents):
+class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
     def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
         self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(

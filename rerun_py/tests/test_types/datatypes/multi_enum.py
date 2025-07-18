@@ -63,7 +63,7 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: MultiEnumArrayLike, data_type: pa.DataType) -> pa.Array:
-        from .datatypes import EnumTestBatch, ValuedEnumBatch
+        from . import EnumTestBatch, ValuedEnumBatch
 
         if isinstance(data, MultiEnum):
             data = [data]
