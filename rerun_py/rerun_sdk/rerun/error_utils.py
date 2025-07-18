@@ -275,6 +275,6 @@ class RerunOptionalDependencyError(ImportError):
     def __init__(self, package: str, optional_dep: str) -> None:
         super().__init__(
             f"'{package}' could not be imported. "
-            "Please install it, or install rerun as rerun[optional_dep]/rerun[all] "
+            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
             "to use this functionality."
         )

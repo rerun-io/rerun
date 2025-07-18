@@ -118,7 +118,7 @@ class Viewer:
 
         """
         if not HAS_NOTEBOOK:
-            raise RerunOptionalDependencyError("notebook", "rerun-notebook")
+            raise RerunOptionalDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
