@@ -36,6 +36,8 @@ pub struct PyDataframeQueryView {
     ///
     /// If empty, use the whole dataset.
     partition_ids: Vec<String>,
+
+    two_phase_query: bool,
 }
 
 impl PyDataframeQueryView {
@@ -46,6 +48,7 @@ impl PyDataframeQueryView {
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
         include_tombstone_columns: bool,
+        two_phase_query: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
         // Static only implies:
@@ -63,6 +66,7 @@ impl PyDataframeQueryView {
 
         Ok(Self {
             dataset,
+            two_phase_query,
 
             query_expression: QueryExpression {
                 view_contents: Some(view_contents),
@@ -94,6 +98,7 @@ impl PyDataframeQueryView {
             dataset: self.dataset.clone_ref(py),
             query_expression: self.query_expression.clone(),
             partition_ids: self.partition_ids.clone(),
+            two_phase_query: self.two_phase_query,
         };
 
         mutation_fn(&mut copy.query_expression);
@@ -122,6 +127,7 @@ impl PyDataframeQueryView {
         Ok(Self {
             dataset: self.dataset.clone_ref(py),
             query_expression: self.query_expression.clone(),
+            two_phase_query: self.two_phase_query,
             partition_ids,
         })
     }
@@ -491,6 +497,7 @@ impl PyDataframeQueryView {
             dataset_id,
             &self.query_expression,
             self.partition_ids.as_slice(),
+            self.two_phase_query,
         )?;
 
         let query_engines = chunk_stores
