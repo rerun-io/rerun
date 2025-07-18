@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pyarrow as pa
+import pyarrow.compute
 from datafusion import Expr, ScalarUDF, col, udf
 from rerun_bindings import DatasetEntry
 
