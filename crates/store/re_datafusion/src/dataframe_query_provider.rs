@@ -992,7 +992,6 @@ impl DisplayAs for PartitionStreamExec {
 
 #[derive(Debug)]
 struct CpuRuntime {
-
     /// Handle is the tokio structure for interacting with a Runtime.
     handle: Handle,
 
@@ -1013,7 +1012,7 @@ impl Drop for CpuRuntime {
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
             if let Err(err) = thread_join_handle.join() {
-                log::error!("Error joining CPU runtime thread: {err:?}",);
+                log::error!("Error joining CPU runtime thread");
             }
         }
     }
