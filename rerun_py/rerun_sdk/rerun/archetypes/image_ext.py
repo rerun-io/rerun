@@ -322,7 +322,7 @@ class ImageExt:
             else:
                 mode = str(image_format.color_model)
 
-            pil_image = PILImage.fromarray(image, mode=mode)
+            pil_image = PILImage.fromarray(image).convert(mode)
             output = BytesIO()
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
