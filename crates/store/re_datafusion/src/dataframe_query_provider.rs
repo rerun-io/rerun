@@ -78,6 +78,7 @@ pub struct DataframeQueryTableProvider {
 struct PartitionStreamExec {
     props: PlanProperties,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
+
     /// Describes the chunks per partition, derived from `chunk_info_batches`.
     /// We keep both around so that we only have to process once, but we may
     /// reuse multiple times in theory. We may also need to recompute if the
@@ -459,6 +460,7 @@ impl Ord for ChunkInfo {
         self.byte_len.cmp(&other.byte_len)
     }
 }
+
 impl PartialOrd for ChunkInfo {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -983,10 +985,13 @@ impl DisplayAs for PartitionStreamExec {
 
 #[derive(Debug)]
 struct CpuRuntime {
+
     /// Handle is the tokio structure for interacting with a Runtime.
     handle: Handle,
+
     /// Signal to start shutting down
     notify_shutdown: Arc<Notify>,
+    
     /// When thread is active, is Some
     thread_join_handle: Option<std::thread::JoinHandle<()>>,
 }
@@ -1000,8 +1005,8 @@ impl Drop for CpuRuntime {
         // thread to complete its work and exit cleanly.
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
-            if let Err(e) = thread_join_handle.join() {
-                eprintln!("Error joining CPU runtime thread: {e:?}",);
+            if let Err(err) = thread_join_handle.join() {
+                eprintln!("Error joining CPU runtime thread: {err:?}",);
             }
         }
     }
