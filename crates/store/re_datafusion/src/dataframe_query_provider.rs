@@ -600,7 +600,8 @@ impl PartitionStreamExec {
             None => Arc::clone(table_schema),
         };
 
-        let partition_col = Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
+        let partition_col =
+            Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
         let order_col = sort_index
             .and_then(|index| {
                 let index_name = index.as_str();
@@ -613,9 +614,15 @@ impl PartitionStreamExec {
             })
             .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
-        let mut physical_ordering = vec![PhysicalSortExpr::new(partition_col, SortOptions::new(false, true))];
+        let mut physical_ordering = vec![PhysicalSortExpr::new(
+            partition_col,
+            SortOptions::new(false, true),
+        )];
         if let Some(col_expr) = order_col {
-            physical_ordering.push(PhysicalSortExpr::new(col_expr, SortOptions::new(false, true)));
+            physical_ordering.push(PhysicalSortExpr::new(
+                col_expr,
+                SortOptions::new(false, true),
+            ));
         }
 
         let orderings = vec![LexOrdering::new(physical_ordering)];
@@ -714,7 +721,6 @@ async fn chunk_store_cpu_worker_thread(
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
-
     let mut current_stores: Option<(
         String,
         ChunkStoreHandle,
@@ -731,7 +737,6 @@ async fn chunk_store_cpu_worker_thread(
             if let Some((current_partition, _, query_handle, _)) = &current_stores {
                 // When we change partitions, flush the outputs
                 if current_partition != &partition_id {
-
                     while send_next_row(
                         query_handle,
                         current_partition.as_str(),
@@ -798,17 +803,15 @@ async fn chunk_store_cpu_worker_thread(
     }
 
     // Flush out remaining of last partition
-    if let Some((final_partition, _, query_handle, _)) =
-        &mut current_stores.as_mut()
-    {
+    if let Some((final_partition, _, query_handle, _)) = &mut current_stores.as_mut() {
         while send_next_row(
             query_handle,
             final_partition,
             &projected_schema,
             &output_channel,
         )
-            .await?
-            .is_some()
+        .await?
+        .is_some()
         {}
     }
 
@@ -825,7 +828,6 @@ async fn chunk_stream_io_loop(
     mut rerun_partition_ids: Vec<String>,
     output_channel: Sender<Vec<(Chunk, Option<String>)>>,
 ) -> Result<(), DataFusionError> {
-
     rerun_partition_ids.sort();
     for partition_id in rerun_partition_ids {
         let mut get_chunks_request = base_request.clone();
