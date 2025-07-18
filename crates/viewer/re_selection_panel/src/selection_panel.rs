@@ -10,7 +10,7 @@ use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
 use re_ui::{
-    ContextExt as _, SyntaxHighlighting as _, UiExt as _, icons,
+    SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
@@ -660,7 +660,7 @@ fn entity_path_filter_ui(
     // Show some statistics about the query, print a warning text if something seems off.
     let query = ctx.lookup_query_result(view_id);
     if query.num_matching_entities == 0 {
-        ui.label(ui.ctx().warning_text("Does not match any entity"));
+        ui.warning_label("Does not match any entity");
     } else if query.num_matching_entities == 1 {
         ui.label("Matches 1 entity");
     } else {
@@ -668,9 +668,9 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
-        ui.label(ui.ctx().warning_text(
+        ui.warning_label(
             format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
-        ));
+        );
     }
 
     // Apply the edit.
