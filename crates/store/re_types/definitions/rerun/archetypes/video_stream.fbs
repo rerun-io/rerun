@@ -12,7 +12,6 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
 table VideoStream (
-  "attr.docs.unreleased",
   "attr.rerun.state": "unstable",
   "attr.docs.category": "Video",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"

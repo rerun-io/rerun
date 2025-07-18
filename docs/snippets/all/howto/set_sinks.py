@@ -4,7 +4,7 @@ import numpy as np
 import rerun as rr
 
 # Initialize the SDK and give our recording a unique name
-rr.init("rerun_example_tee")
+rr.init("rerun_example_set_sinks")
 
 rr.set_sinks(
     # Connect to a local viewer using the default URL

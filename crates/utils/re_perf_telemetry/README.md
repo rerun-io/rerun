@@ -2,8 +2,8 @@
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_perf_telemetry.svg)](https://crates.io/crates/re_perf_telemetry?speculative-link)
-[![Documentation](https://docs.rs/re_perf_telemetry/badge.svg)](https://docs.rs/re_perf_telemetry?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_perf_telemetry.svg)](https://crates.io/crates/re_perf_telemetry)
+[![Documentation](https://docs.rs/re_perf_telemetry/badge.svg)](https://docs.rs/re_perf_telemetry)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
