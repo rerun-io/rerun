@@ -72,6 +72,8 @@ class VideoStream(Archetype):
     av.logging.set_level(av.logging.VERBOSE)
     container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
     stream = container.add_stream("libx264", rate=fps)
+    # Type narrowing
+    assert isinstance(stream, av.video.stream.VideoStream)
     stream.width = width
     stream.height = height
     # TODO(#10090): Rerun Video Streams don't support b-frames yet.
