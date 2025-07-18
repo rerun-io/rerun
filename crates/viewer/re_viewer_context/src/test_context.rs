@@ -659,6 +659,27 @@ impl TestContext {
 
         Ok(())
     }
+
+    /// Helper function to save the active blueprint to file for troubleshooting.
+    pub fn save_blueprint_to_file(&self, path: impl AsRef<std::path::Path>) -> anyhow::Result<()> {
+        let mut file = std::fs::File::create(path)?;
+
+        let store_hub = self.store_hub.lock();
+        let Some(blueprint_entity_db) = store_hub.active_blueprint() else {
+            anyhow::bail!("no active blueprint");
+        };
+        let messages = blueprint_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::encoder::encode(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

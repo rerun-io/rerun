@@ -10,7 +10,7 @@ For Python and Rust we have helpers for this, called `AnyValues`, allowing you t
 You find the documentation for these helpers here:
 
 * [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
-* [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html?speculative-link)
+* [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 ```python
 rr.log(
