@@ -18,10 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[features]
-default = []
-testing = ["re_viewer_context/testing", "smallvec/serde"]
-
 [dependencies]
 re_chunk_store.workspace = true
 re_context_menu.workspace = true
@@ -47,7 +43,7 @@ smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
-re_viewer_context = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
 
 anyhow.workspace = true
 criterion.workspace = true

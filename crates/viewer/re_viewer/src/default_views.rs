@@ -32,8 +32,9 @@ mod tests {
     use egui::Vec2;
     use egui_kittest::SnapshotOptions;
     use re_chunk::EntityPath;
+    use re_test_context::TestContext;
     use re_ui::UiExt as _;
-    use re_viewer_context::{ViewId, test_context::TestContext};
+    use re_viewer_context::ViewId;
 
     use super::*;
 

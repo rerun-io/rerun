@@ -38,3 +38,6 @@ egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
 walkers.workspace = true
+
+[dev-dependencies]
+re_test_context.workspace = true

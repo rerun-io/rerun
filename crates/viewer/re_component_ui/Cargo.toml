@@ -40,7 +40,7 @@ egui.workspace = true
 
 
 [dev-dependencies]
-re_viewer_context = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
 
 egui_kittest.workspace = true
 itertools.workspace = true

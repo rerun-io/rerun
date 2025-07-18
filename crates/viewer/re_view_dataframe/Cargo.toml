@@ -15,13 +15,6 @@ include.workspace = true
 [lints]
 workspace = true
 
-[package.metadata.docs.rs]
-all-features = true
-
-[features]
-default = []
-testing = ["re_viewer_context/testing"]
-
 [dependencies]
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
@@ -48,5 +41,5 @@ itertools.workspace = true
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
-re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
+re_test_viewport.workspace = true

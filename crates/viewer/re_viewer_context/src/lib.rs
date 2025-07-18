@@ -29,9 +29,6 @@ mod utils;
 mod view;
 mod viewer_context;
 
-#[cfg(feature = "testing")]
-pub mod test_context;
-
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 mod visitor_flow_control;
@@ -98,9 +95,6 @@ pub use re_ui::UiLayout; // Historical reasons
 pub mod external {
     pub use nohash_hasher;
     pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
-
-    #[cfg(feature = "testing")]
-    pub use egui_kittest;
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;

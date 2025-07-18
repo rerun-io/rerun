@@ -14,7 +14,6 @@ use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 use crate::time_panel::TimePanelSource;
 
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct StreamsTreeData {
     pub children: Vec<EntityData>,
 }
@@ -88,7 +87,6 @@ impl StreamsTreeData {
 // ---
 
 #[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct EntityData {
     pub entity_path: EntityPath,
 

@@ -961,5 +961,5 @@ re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
 }

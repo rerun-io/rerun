@@ -1,9 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_viewer_context::external::egui_kittest::SnapshotOptions;
-use re_viewer_context::test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]

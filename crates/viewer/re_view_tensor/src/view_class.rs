@@ -737,5 +737,5 @@ re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
 }

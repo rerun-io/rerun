@@ -4,16 +4,15 @@ use std::cell::Cell;
 
 use re_chunk_store::RowId;
 use re_log_types::{NonMinI64, TimeInt, TimePoint};
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference, VideoStream},
     components::{self, MediaType, VideoTimestamp},
     datatypes,
 };
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::{
-    ViewClass as _, external::egui_kittest::SnapshotOptions, test_context::TestContext,
-};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 fn workspace_dir() -> std::path::PathBuf {

@@ -209,5 +209,5 @@ fn text_document_ui(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
 }

@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 ## Enable for testing utilities.
-testing = ["re_viewer_context/testing"]
+testing = []
 
 [dependencies]
 re_context_menu.workspace = true
@@ -45,3 +45,6 @@ egui.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
 web-time.workspace = true
+
+[dev-dependencies]
+re_test_context.workspace = true

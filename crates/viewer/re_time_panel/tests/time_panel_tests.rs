@@ -1,4 +1,5 @@
-#![cfg(feature = "testing")]
+// TODO:
+// #![cfg(feature = "testing")]
 
 use egui::Vec2;
 
@@ -8,9 +9,10 @@ use re_log_types::{
     EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
     example_components::{MyPoint, MyPoints},
 };
+use re_test_context::TestContext;
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline, test_context::TestContext};
+use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]

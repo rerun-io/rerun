@@ -19,9 +19,9 @@ workspace = true
 all-features = true
 
 
-[features]
-## Enable for testing utilities.
-testing = ["re_viewer_context/testing"]
+# [features]
+# ## Enable for testing utilities.
+# testing = ["re_viewer_context/testing"]
 
 
 [dependencies]
@@ -53,3 +53,4 @@ static_assertions.workspace = true
 
 [dev-dependencies]
 re_component_ui.workspace = true
+re_test_context.workspace = true

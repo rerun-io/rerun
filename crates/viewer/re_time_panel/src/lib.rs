@@ -17,7 +17,8 @@ mod time_selection_ui;
 
 pub use time_panel::TimePanel;
 
-#[cfg(feature = "testing")]
+// #[cfg(feature = "testing")]
+// TODO:
 pub use {streams_tree_data::StreamsTreeData, time_panel::TimePanelSource};
 
 #[doc(hidden)]
