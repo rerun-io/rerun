@@ -2108,6 +2108,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dae-parser"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee4253e35714fabaf4bd442b81ba903b3be71833e3fd885adf114127b81c89c"
+dependencies = [
+ "chrono",
+ "minidom-14",
+ "percent-encoding",
+ "ref-cast",
+]
+
+[[package]]
 name = "darling"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4935,7 +4947,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -5261,6 +5273,15 @@ dependencies = [
  "phf",
  "phf_shared",
  "unicase",
+]
+
+[[package]]
+name = "minidom-14"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0233972f8e82ae98ec4e9fd6daa3f6e29c2732c55b3626e9a3bde856e986345c"
+dependencies = [
+ "quick-xml",
 ]
 
 [[package]]
@@ -7945,6 +7966,7 @@ dependencies = [
  "cfg_aliases",
  "clean-path",
  "crossbeam",
+ "dae-parser",
  "document-features",
  "ecolor",
  "enumset",
@@ -8878,6 +8900,26 @@ dependencies = [
  "getrandom 0.2.16",
  "libredox",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "ref-cast"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a0ae411dbe946a674d89546582cea4ba2bb8defac896622d6496f14c23ba5cf"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1165225c21bff1f3bbce98f5a1f889949bc902d3575308cc7b0de30b4f6d27c7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.102",
 ]
 
 [[package]]
