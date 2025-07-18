@@ -267,3 +267,14 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         return cast(T, wrapper)
 
     return decorator
+
+
+class RerunOptionalDependencyError(ImportError):
+    """Raised when an optional dependency is not installed."""
+
+    def __init__(self, package: str, optional_dep: str) -> None:
+        super().__init__(
+            f"'{package}' could not be imported. "
+            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
+            "to use this functionality."
+        )
