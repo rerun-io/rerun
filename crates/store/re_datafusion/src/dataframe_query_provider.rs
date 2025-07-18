@@ -64,6 +64,13 @@ use tracing::Instrument as _;
 const DEFAULT_BATCH_SIZE: usize = 2048;
 const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
+/// TODO(tsaucer)
+/// - We're getting "Data truncated due to size" even when showing a tiny dataframe, just id and time. It should have many more rows.
+/// - I need to make sure I do some static queries also because they may break the time based portions
+/// - Verify this works for ALL different time indices - time stamps vs i64 (u64?)
+/// - Validate sorting is as expected - add unit tests
+/// - Add tracing spans back in
+
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
