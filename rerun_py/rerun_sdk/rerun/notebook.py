@@ -19,13 +19,19 @@ if TYPE_CHECKING:
 
 
 from rerun import bindings
-from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+from rerun.error_utils import RerunOptionalDependencyError
 
 from .event import (
     ViewerEvent as ViewerEvent,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording
+
+HAS_NOTEBOOK = True
+try:
+    from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+except ModuleNotFoundError:
+    HAS_NOTEBOOK = False
 
 _default_width = 640
 _default_height = 480
@@ -111,7 +117,8 @@ class Viewer:
             Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-
+        if not HAS_NOTEBOOK:
+            raise RerunOptionalDependencyError("notebook", "rerun-notebook")
         self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
