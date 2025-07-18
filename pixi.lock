@@ -4117,7 +4117,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: rerun_py
+      - pypi: ./rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aws-c-auth-0.7.31-hee1f4ab_5.conda
@@ -4501,7 +4501,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: rerun_py
+      - pypi: ./rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.7.31-h459cf4e_5.conda
@@ -4886,7 +4886,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: rerun_py
+      - pypi: ./rerun_py
   examples-pypi:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -6304,6 +6304,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/75/49e5bfe642f71f272236b5b2d2691cf915a7283cc0ceda56357b61daa538/comm-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/f8/a81170a816679fca9ccd907b801992acfc03c33f952440421c921af2cc57/cryptography-38.0.4-cp36-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/5f/73/95daf83a61e6cc877da78831a848aa13b0af050ca0c9df23a96bb61cf234/datafusion-48.0.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/3b/97/2b2fd1b1c9569c6764ccdb650a6f752e4ac31be465049563c9eb127a8487/debugpy-1.8.14-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl
@@ -6445,7 +6446,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/52/2da48b35193e39ac53cfb141467d9f259851522d0e8c87153f0ba4205fb1/wrapt-1.16.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: rerun_py
+      - pypi: ./rerun_py
       linux-aarch64:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-2_gnu.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/aiohttp-3.9.5-py311hcd402e7_0.conda
@@ -6697,6 +6698,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/75/49e5bfe642f71f272236b5b2d2691cf915a7283cc0ceda56357b61daa538/comm-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a2/8f/6c52b1f9d650863e8f67edbe062c04f1c8455579eaace1593d8fe469319a/cryptography-38.0.4-cp36-abi3-manylinux_2_28_aarch64.whl
+      - pypi: https://files.pythonhosted.org/packages/3c/ca/0227e285fbf1b35d1a45d15f25dc698b594c718b1a514851a1bc1caab812/datafusion-48.0.0-cp39-abi3-manylinux_2_28_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/97/1a/481f33c37ee3ac8040d3d51fc4c4e4e7e61cb08b8bc8971d6032acc2279f/debugpy-1.8.14-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl
@@ -6824,7 +6826,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/7f/a7/f1212ba098f3de0fd244e2de0f8791ad2539c03bef6c05a9fcb03e45b089/wrapt-1.16.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/b6/677e65c095d8e12b66b8f862b069bcf1f1d781b9c9c6f12eb55000d57583/zstandard-0.23.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
-      - pypi: rerun_py
+      - pypi: ./rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -7054,6 +7056,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/75/49e5bfe642f71f272236b5b2d2691cf915a7283cc0ceda56357b61daa538/comm-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/75/7a/2ea7dd2202638cf1053aaa8fbbaddded0b78c78832b3d03cafa0416a6c84/cryptography-38.0.4-cp36-abi3-macosx_10_10_universal2.whl
+      - pypi: https://files.pythonhosted.org/packages/a1/21/fdbb3bf1f5bb8f8c06cf80de967ee56519c0ead4ad3354ee0ba22b4bff99/datafusion-48.0.0-cp39-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/97/1a/481f33c37ee3ac8040d3d51fc4c4e4e7e61cb08b8bc8971d6032acc2279f/debugpy-1.8.14-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl
@@ -7179,7 +7182,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0f/16/ea627d7817394db04518f62934a5de59874b587b792300991b3c347ff5e0/wrapt-1.16.0-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: rerun_py
+      - pypi: ./rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.3.1-pyhd8ed1ab_0.tar.bz2
@@ -7407,6 +7410,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/75/49e5bfe642f71f272236b5b2d2691cf915a7283cc0ceda56357b61daa538/comm-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c0/eb/f52b165db2abd662cda0a76efb7579a291fed1a7979cf41146cdc19e0d7a/cryptography-38.0.4-cp36-abi3-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/83/c8/48abb69d2482477996cc1cf33274b953524471ae7eea68dd06d374489aa3/datafusion-48.0.0-cp39-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/d5/a6/6c70cd15afa43d37839d60f324213843174c1d1e6bb616bd89f7c1341bac/debugpy-1.8.14-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl
@@ -7535,7 +7539,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cf/c3/0084351951d9579ae83a3d9e38c140371e4c6b038136909235079f2e6e78/wrapt-1.16.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: rerun_py
+      - pypi: ./rerun_py
   py-docs:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -15046,6 +15050,19 @@ packages:
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
   requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
+  name: betterproto
+  version: 1.2.5
+  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
+  requires_dist:
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
+  - grpclib
+  - stringcase
+  - black ; extra == 'compiler'
+  - jinja2 ; extra == 'compiler'
+  - protobuf ; extra == 'compiler'
+  requires_python: '>=3.6'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/binaryen-117-h59595ed_0.conda
   sha256: f6d7f876c514d2d138fd8b06e485b042598cf3dcda40a8a346252bb7e1adf8d7
   md5: 58aea5eaef8cb663104654734d432ba3
@@ -17031,6 +17048,38 @@ packages:
   - pyarrow>=11.0.0
   - typing-extensions ; python_full_version < '3.13'
   requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/3c/ca/0227e285fbf1b35d1a45d15f25dc698b594c718b1a514851a1bc1caab812/datafusion-48.0.0-cp39-abi3-manylinux_2_28_aarch64.whl
+  name: datafusion
+  version: 48.0.0
+  sha256: 3d316dc339c0231588ac3f4139af490c556912c54c4508c443e3466c81ff457b
+  requires_dist:
+  - pyarrow>=11.0.0
+  - typing-extensions ; python_full_version < '3.13'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/5f/73/95daf83a61e6cc877da78831a848aa13b0af050ca0c9df23a96bb61cf234/datafusion-48.0.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: datafusion
+  version: 48.0.0
+  sha256: b6b1ed4552c496b961d648d2cbbb6a43aaae3c6442acebc795a4ef256f549cd4
+  requires_dist:
+  - pyarrow>=11.0.0
+  - typing-extensions ; python_full_version < '3.13'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/83/c8/48abb69d2482477996cc1cf33274b953524471ae7eea68dd06d374489aa3/datafusion-48.0.0-cp39-abi3-win_amd64.whl
+  name: datafusion
+  version: 48.0.0
+  sha256: 3d75026f93083febef2e8b362f56e19cfbd5d8058c61c3847f04e786697fc4bd
+  requires_dist:
+  - pyarrow>=11.0.0
+  - typing-extensions ; python_full_version < '3.13'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/a1/21/fdbb3bf1f5bb8f8c06cf80de967ee56519c0ead4ad3354ee0ba22b4bff99/datafusion-48.0.0-cp39-abi3-macosx_11_0_arm64.whl
+  name: datafusion
+  version: 48.0.0
+  sha256: 31e841d02147b0904984850421ae18499d4ab2492ff1ef4dd9d15d3cba3fbef3
+  requires_dist:
+  - pyarrow>=11.0.0
+  - typing-extensions ; python_full_version < '3.13'
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/dav1d-1.2.1-hd590300_0.conda
   sha256: 22053a5842ca8ee1cf8e1a817138cdb5e647eb2c46979f84153f6ad7bde73020
   md5: 418c6ca5929a611cbd69204907a83995
@@ -19148,6 +19197,13 @@ packages:
   sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
   requires_dist:
   - importlib-resources>=1.3 ; python_full_version < '3.9' and os_name == 'nt'
+  - pytest ; extra == 'testing'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/67/72/c3298da1a3773102359c5a78f20dae8925f5ea876e37354415f68594a6fb/google_crc32c-1.6.0.tar.gz
+  name: google-crc32c
+  version: 1.6.0
+  sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
+  requires_dist:
   - pytest ; extra == 'testing'
   requires_python: '>=3.9'
 - pypi: https://files.pythonhosted.org/packages/7d/14/ab47972ac79b6e7b03c8be3a7ef44b530a60e69555668dbbf08fc5692a98/google_crc32c-1.6.0-cp311-cp311-macosx_12_0_arm64.whl
@@ -34073,6 +34129,15 @@ packages:
   - deprecated
   - dataclasses ; python_full_version == '3.6.*'
   requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
+  name: pygltflib
+  version: 1.16.2
+  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
+  requires_dist:
+  - dataclasses ; python_full_version == '3.6.*'
+  - dataclasses-json>=0.0.25
+  - deprecated
+  requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl
   name: pygments
   version: 2.18.0
@@ -34990,16 +35055,17 @@ packages:
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.24.0a6 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: rerun_py
+- pypi: ./rerun_py
   name: rerun-sdk
   version: 0.25.0a1+dev
-  sha256: cfded17ecd9ab839891ee42ff019b3f61c9de6bf835ae1f32f2014ad40aa1d69
+  sha256: 55742f32a870215360c69d167f57450d23edc0fa0b85e046a6e163aea71a8597
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
   - pillow>=8.0.0
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
+  - datafusion>=45.0.0
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.25.0a1+dev ; extra == 'notebook'
   requires_python: '>=3.9'
