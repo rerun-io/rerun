@@ -991,7 +991,7 @@ struct CpuRuntime {
 
     /// Signal to start shutting down
     notify_shutdown: Arc<Notify>,
-    
+
     /// When thread is active, is Some
     thread_join_handle: Option<std::thread::JoinHandle<()>>,
 }
@@ -1006,7 +1006,7 @@ impl Drop for CpuRuntime {
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
             if let Err(err) = thread_join_handle.join() {
-                eprintln!("Error joining CPU runtime thread: {err:?}",);
+                log::error!("Error joining CPU runtime thread: {err:?}",);
             }
         }
     }

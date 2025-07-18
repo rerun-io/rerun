@@ -49,6 +49,7 @@ datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
+log.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
