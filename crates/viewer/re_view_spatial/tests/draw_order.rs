@@ -1,12 +1,12 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewer_context::ViewClass as _;
+use re_viewport::test_context_ext::{SingleViewTestContext, TestContextExt as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_draw_order() {
-    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    let mut test_context = SingleViewTestContext::<re_view_spatial::SpatialView2D>::new();
 
     {
         use ndarray::{Array, ShapeBuilder as _, s};
@@ -144,27 +144,9 @@ pub fn test_draw_order() {
             re_view_spatial::SpatialView2D::identifier(),
         ))
     });
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "draw_order",
         egui::vec2(300.0, 150.0) * 2.0,
     );
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }

@@ -7,7 +7,7 @@ use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{ViewClass as _, ViewId};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewport::test_context_ext::{SingleViewTestContext, TestContextExt as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -30,12 +30,7 @@ pub fn test_null_timeline() {
     });
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "null_timeline",
-        egui::vec2(400.0, 200.0),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, "null_timeline", egui::vec2(400.0, 200.0));
 }
 
 #[test]
@@ -53,8 +48,7 @@ pub fn test_unknown_timeline() {
 
     let view_id = setup_blueprint(&mut test_context, &TimelineName::from("unknown_timeline"));
 
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
+    test_context.run_view_ui_and_save_snapshot(
         view_id,
         "unknown_timeline_view_ui",
         egui::vec2(300.0, 150.0),
@@ -68,8 +62,8 @@ pub fn test_unknown_timeline() {
     );
 }
 
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::new_with_view_class::<re_view_dataframe::DataframeView>();
+fn get_test_context() -> SingleViewTestContext<re_view_dataframe::DataframeView> {
+    let mut test_context = SingleViewTestContext::new();
 
     // Make sure we can draw stuff in the table.
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
@@ -89,23 +83,6 @@ fn setup_blueprint(test_context: &mut TestContext, timeline_name: &TimelineName)
 
         view_id
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
-        });
-
-    harness.run();
-    harness.snapshot(name);
 }
 
 fn run_view_selection_panel_ui_and_save_snapshot(
