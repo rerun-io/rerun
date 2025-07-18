@@ -1,10 +1,9 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{
-    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
-};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn color_gradient0(step: i64) -> re_types::components::Color {

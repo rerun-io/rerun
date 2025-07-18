@@ -22,18 +22,22 @@ use re_types::{
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
-use crate::{
+use re_viewer_context::{
     ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
     DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub, SystemCommand,
     ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     command_channel,
 };
 
+pub mod external {
+    pub use egui_kittest;
+}
+
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
 /// Example:
 /// ```rust
-/// use re_viewer_context::test_context::TestContext;
+/// use re_test_context::TestContext;
 /// use re_viewer_context::ViewerContext;
 ///
 /// let mut test_context = TestContext::new();
@@ -54,7 +58,7 @@ pub struct TestContext {
 
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
-    pub focused_item: Mutex<Option<crate::Item>>,
+    pub focused_item: Mutex<Option<re_viewer_context::Item>>,
 
     // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
     pub recording_config: Arc<RecordingConfig>,
@@ -404,7 +408,8 @@ impl TestContext {
                 &store_context.recording.store_id(),
             );
 
-        let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
+        let drag_and_drop_manager =
+            re_viewer_context::DragAndDropManager::new(ItemCollection::default());
 
         let mut context_render_state = self.egui_render_state.lock();
         let render_state = context_render_state.get_or_insert_with(create_egui_renderstate);
@@ -685,8 +690,8 @@ impl TestContext {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Item;
     use re_entity_db::InstancePath;
+    use re_viewer_context::Item;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.
