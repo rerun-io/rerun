@@ -1090,10 +1090,10 @@ fn visible_interactive_toggle_ui(
 }
 
 #[cfg(test)]
-#[cfg(feature = "testing")]
 mod tests {
     use re_chunk::LatestAtQuery;
-    use re_viewer_context::{blueprint_timeline, test_context::TestContext};
+    use re_test_context::TestContext;
+    use re_viewer_context::blueprint_timeline;
 
     use super::*;
 

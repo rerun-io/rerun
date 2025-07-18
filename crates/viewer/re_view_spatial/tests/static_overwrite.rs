@@ -4,12 +4,11 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{
-    ViewClass as _, ViewId, external::egui_kittest::SnapshotOptions, test_context::TestContext,
-};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(300.0, 300.0);

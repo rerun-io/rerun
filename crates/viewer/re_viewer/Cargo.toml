@@ -166,7 +166,7 @@ web-sys = { workspace = true, features = [
 
 [dev-dependencies]
 egui_kittest.workspace = true
-re_viewer_context = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
 
 
 [build-dependencies]

@@ -1,12 +1,11 @@
 use ahash::HashMap;
 
-use re_viewer_context::{
-    Contents, ViewId, ViewerContext, VisitorControlFlow, test_context::TestContext,
-};
+use re_test_context::TestContext;
+use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
 
-use crate::execute_systems_for_view;
+use re_viewport::execute_systems_for_view;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
