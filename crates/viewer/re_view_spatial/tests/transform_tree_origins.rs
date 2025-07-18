@@ -186,32 +186,28 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
+        .build_ui(|ui| {
+            test_context.run_ui(ui, |ctx, ui| {
+                // Show axis at the origin to help with orientation.
+                // TODO(#10028): this should be a blueprint property, not a state.
+                {
+                    let view_class = ctx
+                        .view_class_registry()
+                        .get_class_or_log_error(SpatialView3D::identifier());
+                    let mut view_states = test_context.view_states.lock();
+                    let view_state = view_states.get_mut_or_create(view_id, view_class);
+                    view_state
+                        .as_any_mut()
+                        .downcast_mut::<SpatialViewState>()
+                        .expect("view state is not of correct type")
+                        .state_3d
+                        .show_axes = true;
+                }
 
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    // Show axis at the origin to help with orientation.
-                    // TODO(#10028): this should be a blueprint property, not a state.
-                    {
-                        let view_class = ctx
-                            .view_class_registry()
-                            .get_class_or_log_error(SpatialView3D::identifier());
-                        let mut view_states = test_context.view_states.lock();
-                        let view_state = view_states.get_mut_or_create(view_id, view_class);
-                        view_state
-                            .as_any_mut()
-                            .downcast_mut::<SpatialViewState>()
-                            .expect("view state is not of correct type")
-                            .state_3d
-                            .show_axes = true;
-                    }
-
-                    test_context.ui_for_single_view(ui, ctx, view_id);
-                });
-
-                test_context.handle_system_commands();
+                test_context.ui_for_single_view(ui, ctx, view_id);
             });
+
+            test_context.handle_system_commands();
         });
 
     harness.snapshot_options(

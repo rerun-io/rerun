@@ -299,7 +299,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         .with_step_dt(step_dt_seconds)
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
         .with_size(egui::vec2(300.0, 200.0))
-        .build(|ctx| {
+        .build_ui(|ui| {
             // Since we can't access `test_context` after creating `harness`, we have to do the seeking in here.
             {
                 let mut time_ctrl = test_context.recording_config.time_ctrl.write();
@@ -307,7 +307,7 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                     NonMinI64::new(desired_seek_ns.get()).unwrap(),
                 ));
             }
-            test_context.run_with_single_view(ctx, view_id);
+            test_context.run_with_single_view(ui, view_id);
 
             std::thread::sleep(std::time::Duration::from_millis(20));
         });
