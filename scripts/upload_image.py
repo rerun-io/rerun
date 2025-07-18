@@ -86,7 +86,7 @@ def build_image_stack(image: Image) -> list[tuple[int | None, Image]]:
     return image_stack
 
 
-def image_from_clipboard() -> Image:
+def image_from_clipboard() -> Image | None:
     """
     Get image from the clipboard.
 

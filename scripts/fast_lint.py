@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+from typing import cast
 
 from git import Repo
 
@@ -23,7 +24,12 @@ def changed_files() -> list[str]:
     current_branch = repo.active_branch
     common_ancestor = repo.merge_base(current_branch, "main")[0]
 
-    return [item.b_path for item in repo.index.diff(common_ancestor) if os.path.exists(item.b_path)]
+    changed_files = [
+        item.b_path
+        for item in repo.index.diff(common_ancestor)
+        if item.b_path is not None and os.path.exists(item.b_path)
+    ]
+    return changed_files
 
 
 @dataclass

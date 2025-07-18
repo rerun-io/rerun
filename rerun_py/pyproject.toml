@@ -245,3 +245,7 @@ plugins = ["numpy.typing.mypy_plugin"]
 ignore_missing_imports = true
 no_implicit_reexport = false
 disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = ["rerun.*"]
+ignore_missing_imports = false
