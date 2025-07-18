@@ -114,7 +114,12 @@ def image_from_clipboard() -> Image | None:
         os.unlink(filepath)
         return im
     else:
-        return PIL.ImageGrab.grabclipboard()
+        # On windows might return a list, of files,
+        # so return None signaling no image found.
+        content = PIL.ImageGrab.grabclipboard()
+        if isinstance(content, list):
+            return None
+        return content
 
 
 class Uploader:
