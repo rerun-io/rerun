@@ -36,20 +36,20 @@ This design allows for keeping chunks within a target size range, even for recor
 </picture>
 
 
-Here's an excerpt from a real-world chunk (taken from the [Helix example](https://app.rerun.io/?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2Flatest%2Fexamples%2Fdna.rrd)) (you might want to open [this image](https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/full.png) in a new tab):
+Here's an excerpt from a real-world chunk (taken from the [Helix example](https://app.rerun.io/?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2Flatest%2Fexamples%2Fdna.rrd)) (you might want to open [this image](https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/full.png) in a new tab):
 
 <picture>
-  <img src="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/full.png" alt="A real-world Rerun Chunk">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a_real_chunk/ef010ee1ca03516c3f9cce320dc18f814e7e546c/1200w.png">
+  <img src="https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/full.png" alt="A real-world Rerun chunk">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a_real_chunk/2c4c16303dd1a04ba8ad8962ed85386a6568773e/1200w.png">
 </picture>
 
 You can see that this matches very closely the diagram above:
 * A single *control* column, that contains the globally unique row IDs.
-* Multiple *time*/*index* columns (`log_time`, `log_tick`, `stable_time`).
-* Multiple component columns (`Color`, `Position3D`, `Radius`).
+* Multiple *time*/*index* columns (`log_tick`, `log_time`, `stable_time`).
+* Multiple component columns (`Points3D:colors`, `Points3D:positions`, `Points3D:radii`).
 
 Within each row of each component column, the individual cells are [*Component Batches*](./batches.md). Component batches are the atomic unit of data in Rerun.
 
@@ -64,7 +64,7 @@ You can learn more about chunks and how they came to be in [this blog post](http
 
 If you've used the Rerun SDK before, you know it doesn't actually force to manually craft these chunks byte by byte - that would be rather cumbersome!
 
-How does one creates and stores chunks in Rerun, then?
+How does one create and store chunks in Rerun, then?
 
 
 ### The row-oriented way: `log`
@@ -94,11 +94,11 @@ It will also grab the current values for any custom timelines from the time cont
 Any data passed to `rr.log` or `rr.log_components` becomes component batches.
 
 <picture>
-  <img src="https://static.rerun.io/build-row/b1ae50d8ac487ab18e7a6e9e219c2b337f11d6c3/full.png" alt="A diagram showing how a row gets created in Rerun">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/build-row/b1ae50d8ac487ab18e7a6e9e219c2b337f11d6c3/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/build-row/b1ae50d8ac487ab18e7a6e9e219c2b337f11d6c3/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/build-row/b1ae50d8ac487ab18e7a6e9e219c2b337f11d6c3/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/build-row/b1ae50d8ac487ab18e7a6e9e219c2b337f11d6c3/1200w.png">
+  <img src="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/full.png" alt="A diagram showing how a row gets created in Rerun">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/1200w.png">
 </picture>
 
 The row id, timestamps, and logged component batches are then encoded as Apache Arrow arrays and together make up a row.
