@@ -2302,14 +2302,14 @@ fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing
             let import_path = if current_obj_is_testing && is_field_testing {
                 // Extract the relative path within the testing namespace
                 if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
-                    format!(".{}", testing_prefix)
+                    format!(".{testing_prefix}")
                 } else if mod_path == "rerun.testing" {
-                    ".".to_string()
+                    ".".to_owned()
                 } else {
-                    mod_path.to_string()
+                    mod_path.to_owned()
                 }
             } else {
-                mod_path.to_string()
+                mod_path.to_owned()
             };
 
             code.push_unindented(
