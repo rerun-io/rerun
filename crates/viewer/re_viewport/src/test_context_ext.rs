@@ -20,7 +20,7 @@ pub trait TestContextExt {
     fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId);
 
     /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
-    fn run_with_single_view(&mut self, ctx: &egui::Context, view_id: ViewId);
+    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId);
 }
 
 impl TestContextExt for TestContext {
@@ -153,18 +153,12 @@ impl TestContextExt for TestContext {
             .expect("failed to run view ui");
     }
 
-    /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
-    fn run_with_single_view(&mut self, ctx: &egui::Context, view_id: ViewId) {
-        // This is also called by `TestContext::run`,  but since it may change offsets in the central panel,
-        // we have to call it before creating any ui.
-        re_ui::apply_style_and_install_loaders(ctx);
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.run(ctx, |ctx| {
-                self.ui_for_single_view(ui, ctx, view_id);
-            });
-
-            self.handle_system_commands();
+    /// [`TestContext::run`] for a single view.
+    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId) {
+        self.run_ui(ui, |ctx, ui| {
+            self.ui_for_single_view(ui, ctx, view_id);
         });
+
+        self.handle_system_commands();
     }
 }
