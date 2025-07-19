@@ -89,10 +89,10 @@ def run_segmentation() -> None:
 
 
 def small_image() -> None:
-    img = [
+    img = np.array([
         [[255, 0, 0], [0, 255, 0], [0, 0, 255]],
         [[0, 0, 255], [255, 0, 0], [0, 255, 0]],
-    ]
+    ])
     rr.log("small_image", rr.Image(img))
 
 
