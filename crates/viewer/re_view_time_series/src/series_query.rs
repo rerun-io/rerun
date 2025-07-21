@@ -31,13 +31,19 @@ pub fn determine_num_series(all_scalar_chunks: &ChunksWithDescriptor<'_>) -> usi
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
     query: &RangeQuery,
+    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &HybridRangeResults<'_>,
     num_series: usize,
     visibility_descriptor: ComponentDescriptor,
 ) -> Vec<bool> {
-    results
-        .iter_as(*query.timeline(), visibility_descriptor)
+    bootstrapped_results
+        .iter_as(*query.timeline(), visibility_descriptor.clone())
         .slice::<bool>()
+        .chain(
+            results
+                .iter_as(*query.timeline(), visibility_descriptor)
+                .slice::<bool>(),
+        )
         .next()
         .map_or_else(
             || vec![true; num_series], // By default all series are visible.
@@ -118,6 +124,7 @@ pub fn collect_scalars(
 pub fn collect_colors(
     entity_path: &EntityPath,
     query: &RangeQuery,
+    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
     all_scalar_chunks: &ChunksWithDescriptor<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
@@ -134,7 +141,19 @@ pub fn collect_colors(
         #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
-    let all_color_chunks = results.get_optional_chunks(color_descriptor.clone());
+
+    let all_color_chunks = bootstrapped_results
+        .get_optional_chunks(color_descriptor.clone())
+        .iter()
+        .cloned()
+        .chain(
+            results
+                .get_optional_chunks(color_descriptor.clone())
+                .iter()
+                .cloned(),
+        )
+        .collect_vec();
+
     if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
         re_tracing::profile_scope!("override/default fast path");
 
@@ -212,15 +231,17 @@ pub fn collect_colors(
 pub fn collect_series_name(
     fallback_provider: &dyn TypedComponentFallbackProvider<components::Name>,
     query_ctx: &QueryContext<'_>,
+    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
     num_series: usize,
     name_descriptor: &ComponentDescriptor,
 ) -> Vec<String> {
     re_tracing::profile_function!();
 
-    let mut series_names: Vec<String> = results
+    let mut series_names: Vec<String> = bootstrapped_results
         .get_optional_chunks(name_descriptor.clone())
         .iter()
+        .chain(results.get_optional_chunks(name_descriptor.clone()).iter())
         .find(|chunk| !chunk.is_empty())
         .and_then(|chunk| chunk.iter_slices::<String>(name_descriptor.clone()).next())
         .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
@@ -243,6 +264,7 @@ pub fn collect_series_name(
 /// Collects `radius_ui` for the series into pre-allocated plot points.
 pub fn collect_radius_ui(
     query: &RangeQuery,
+    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
     results: &re_view::HybridRangeResults<'_>,
     all_scalar_chunks: &ChunksWithDescriptor<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
@@ -254,7 +276,17 @@ pub fn collect_radius_ui(
     let num_series = points_per_series.len();
 
     {
-        let all_radius_chunks = results.get_optional_chunks(radius_descriptor.clone());
+        let all_radius_chunks = bootstrapped_results
+            .get_optional_chunks(radius_descriptor.clone())
+            .iter()
+            .cloned()
+            .chain(
+                results
+                    .get_optional_chunks(radius_descriptor.clone())
+                    .iter()
+                    .cloned(),
+            )
+            .collect_vec();
 
         if all_radius_chunks.len() == 1 && all_radius_chunks[0].is_static() {
             re_tracing::profile_scope!("override/default fast path");
