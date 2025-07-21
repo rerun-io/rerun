@@ -15,24 +15,6 @@ include.workspace = true
 [lints]
 workspace = true
 
-[package.metadata.docs.rs]
-all-features = true
-
-[package.metadata.cargo-shear]
-ignored = ["home"]
-
-[features]
-## Enable for testing utilities.
-testing = [
-  "dep:egui_kittest",
-  "dep:jiff",
-  "dep:pollster",
-  "dep:re_build_info",
-  "dep:re_grpc_client",
-  "dep:re_log_encoding",
-  "re_global_context/testing",
-]
-
 [dependencies]
 re_arrow_util.workspace = true
 re_byte_size.workspace = true
@@ -82,15 +64,6 @@ smallvec.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
-
-# Optional dependencies:
-re_build_info = { workspace = true, optional = true }
-re_grpc_client = { workspace = true, optional = true }
-re_log_encoding = { workspace = true, optional = true }
-egui_kittest = { workspace = true, features = ["wgpu"], optional = true }
-jiff = { workspace = true, optional = true }
-pollster = { workspace = true, optional = true }
-
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

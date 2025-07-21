@@ -1,43 +1,44 @@
 [package]
+name = "re_test_context"
+description = "A common context used for tests."
 authors.workspace = true
-description = "A view that shows a graph (node-link diagram)."
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
-name = "re_view_graph"
 publish = true
-readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 
 [lints]
 workspace = true
 
 [dependencies]
-re_data_ui.workspace = true
+re_build_info.workspace = true
 re_chunk.workspace = true
+re_chunk_store.workspace = true
 re_entity_db.workspace = true
-re_format.workspace = true
+re_global_context.workspace = true
+re_grpc_client.workspace = true
 re_log.workspace = true
+re_log_encoding.workspace = true
 re_log_types.workspace = true
-re_query.workspace = true
 re_renderer.workspace = true
-re_view.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
+re_types_core.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
-re_viewport_blueprint.workspace = true
 
+# External dependencies
 ahash.workspace = true
+anyhow.workspace = true
+egui-wgpu.workspace = true
 egui.workspace = true
-fjadra.workspace = true
-itertools.workspace = true
-nohash-hasher.workspace = true
-
-[dev-dependencies]
-re_chunk_store.workspace = true
-re_test_context.workspace = true
-re_test_viewport.workspace = true
+egui_kittest.workspace = true
+jiff.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+pollster.workspace = true
+wgpu.workspace = true

@@ -1929,5 +1929,5 @@ fn time_marker_ui(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(help);
+    re_test_context::TestContext::test_help_view(help);
 }
