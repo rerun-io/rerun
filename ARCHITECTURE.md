@@ -235,6 +235,13 @@ Update instructions:
 | re_uri             | Parsing and constructing of Rerun URIs                                               |
 | re_video           | Video decoding library                                                               |
 
+### Test crates
+
+| Crate              | Description                                                   |
+| ------------------ | ------------------------------------------------------------- |
+| re_test_context    | Provides a test context that builds on `re_viewer_context.    |
+| re_test_viewport   | Extends the `re_test_context` with viewport-related features. |
+
 ### Dependencies and docs
 
 In order to get a dependency graph for our in-house crates and their docs, we recommend you run:
