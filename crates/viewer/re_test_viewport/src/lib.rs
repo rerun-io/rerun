@@ -1,3 +1,5 @@
+//! Extends the `re_test_context` with viewport-related features.
+
 use ahash::HashMap;
 
 use re_test_context::TestContext;

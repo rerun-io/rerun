@@ -45,6 +45,3 @@ egui.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
 web-time.workspace = true
-
-[dev-dependencies]
-re_test_context.workspace = true

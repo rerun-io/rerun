@@ -73,7 +73,6 @@ web-time.workspace = true
 re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
-re_viewport.workspace = true
 
 insta.workspace = true
 ndarray.workspace = true

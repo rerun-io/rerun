@@ -1,6 +1,3 @@
-// TODO:
-// #![cfg(feature = "testing")]
-
 use re_chunk_store::RowId;
 use re_log_types::{Timeline, TimelineName};
 use re_test_context::TestContext;

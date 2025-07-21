@@ -10,7 +10,4 @@ mod view_query;
 mod visualizer_system;
 
 pub use view_class::DataframeView;
-
-// #[cfg(feature = "testing")]
-// TODO:
 pub use view_query::Query;

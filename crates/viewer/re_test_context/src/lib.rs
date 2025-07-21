@@ -1,3 +1,5 @@
+//! Provides a test context that builds on `re_viewer_context`.    
+
 #![allow(clippy::unwrap_used)] // This is only a test
 
 use std::sync::Arc;
