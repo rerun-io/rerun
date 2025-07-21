@@ -237,6 +237,7 @@ module = [
   "rerun_notebook.*",
   # https://github.com/jupyter-widgets/ipywidgets/issues/3688
   "ipywidgets.*",
+  "anywidget.*",
   # TODO(nick): is this blocked on above?
   "jupyter_ui_poll.*",
 ]
