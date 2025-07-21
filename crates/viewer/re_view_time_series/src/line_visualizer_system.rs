@@ -399,6 +399,26 @@ fn collect_recursive_clears(
     let mut clear_entity_path = entity_path.clone();
     let clear_descriptor = archetypes::Clear::descriptor_is_recursive();
 
+    // Bootstrap in case there's a pending clear out of the visible time range.
+    {
+        let results = ctx.recording_engine().cache().latest_at(
+            &LatestAtQuery::new(query.timeline, query.range.min()),
+            &clear_entity_path,
+            [&clear_descriptor],
+        );
+
+        cleared_indices.extend(
+            results
+                .iter_as(*query.timeline(), clear_descriptor.clone())
+                .slice::<bool>()
+                .filter_map(|(index, is_recursive_buffer)| {
+                    let is_recursive =
+                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
+                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
+                }),
+        );
+    }
+
     loop {
         let results =
             ctx.recording_engine()
