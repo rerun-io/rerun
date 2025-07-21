@@ -35,6 +35,9 @@ mod v1alpha1 {
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
+    #[path = "./rerun.log_msg.v1alpha1.ext.rs"]
+    pub mod rerun_log_msg_v1alpha1_ext;
+
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
