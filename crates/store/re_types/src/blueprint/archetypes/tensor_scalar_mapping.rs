@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how tensor scalars are mapped to color.
@@ -49,9 +49,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.MagnificationFilter".into(),
-            archetype_field_name: Some("mag_filter".into()),
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component: "TensorScalarMapping:mag_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
         }
     }
 
@@ -61,9 +61,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.Colormap".into(),
-            archetype_field_name: Some("colormap".into()),
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component: "TensorScalarMapping:colormap".into(),
+            component_type: Some("rerun.components.Colormap".into()),
         }
     }
 
@@ -73,19 +73,9 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.GammaCorrection".into(),
-            archetype_field_name: Some("gamma".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component: "TensorScalarMapping:gamma".into(),
+            component_type: Some("rerun.components.GammaCorrection".into()),
         }
     }
 }
@@ -93,8 +83,8 @@ impl TensorScalarMapping {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [TensorScalarMapping::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -105,10 +95,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            TensorScalarMapping::descriptor_indicator(),
             TensorScalarMapping::descriptor_mag_filter(),
             TensorScalarMapping::descriptor_colormap(),
             TensorScalarMapping::descriptor_gamma(),
@@ -116,17 +105,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     });
 
 impl TensorScalarMapping {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`TensorScalarMapping`] [`::re_types_core::Archetype`]
-pub type TensorScalarMappingIndicator =
-    ::re_types_core::GenericIndicatorComponent<TensorScalarMapping>;
-
 impl ::re_types_core::Archetype for TensorScalarMapping {
-    type Indicator = TensorScalarMappingIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.TensorScalarMapping".into()
@@ -135,12 +118,6 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn display_name() -> &'static str {
         "Tensor scalar mapping"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TensorScalarMappingIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -194,7 +171,6 @@ impl ::re_types_core::AsComponents for TensorScalarMapping {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.mag_filter.clone(),
             self.colormap.clone(),
             self.gamma.clone(),

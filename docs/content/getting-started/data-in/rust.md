@@ -25,8 +25,8 @@ For this example in particular, we're going to need all of these:
 
 ```toml
 [dependencies]
-rerun = "0.9"
-itertools = "0.11"
+rerun = "0.23"
+itertools = "0.14"
 rand = "0.8"
 ```
 
@@ -36,7 +36,7 @@ While we're at it, let's get imports out of the way:
 use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
-
+use rand::Rng as _;
 use rerun::{
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
@@ -127,7 +127,7 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
-Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual _components_ like positions, colors,
+Under the hood, the Rerun [Rust SDK](https://docs.rs/rerun) logs individual _components_ like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
@@ -163,39 +163,36 @@ Good news is: once you've digested all of the above, logging any other entity wi
 We can represent the scaffolding using a batch of 3D line segments:
 
 ```rust
-let points_interleaved: Vec<[glam::Vec3; 2]> = points1
-    .into_iter()
-    .interleave(points2)
-    .chunks(2)
-    .into_iter()
-    .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
+let lines: Vec<[glam::Vec3; 2]> = points1
+    .iter()
+    .zip(&points2)
+    .map(|(&p1, &p2)| (p1, p2).into())
     .collect_vec();
 
 rec.log(
     "dna/structure/scaffolding",
-    &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
-        .with_colors([rerun::Color::from([128, 128, 128, 255])]),
+    &rerun::LineStrips3D::new(lines.iter().cloned())
+        .with_colors([rerun::Color::from_rgb(128, 128, 128)]),
 )?;
 ```
 
 Which only leaves the beads:
 
 ```rust
-use rand::Rng as _;
 let mut rng = rand::thread_rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.gen::<f32>()).collect_vec();
+let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
 
-let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
+let beads = lines
     .iter()
-    .enumerate()
-    .map(|(n, &[p1, p2])| {
-        let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
-        (
-            rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
-            rerun::Color::from_rgb(c, c, c),
-        )
-    })
-    .unzip();
+    .zip(&offsets)
+    .map(|(&[p1, p2], &offset)| bounce_lerp(p1, p2, offset))
+    .collect_vec();
+let colors = offsets
+    .iter()
+    .map(|&offset| bounce_lerp(80.0, 230.0, offset * 2.0) as u8)
+    .map(|c| rerun::Color::from_rgb(c, c, c))
+    .collect_vec();
+
 rec.log(
     "dna/structure/scaffolding/beads",
     &rerun::Points3D::new(beads)
@@ -244,17 +241,16 @@ for i in 0..400 {
     rec.set_duration_secs("stable_time", time);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
-    let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
+    let beads = lines
         .iter()
-        .enumerate()
-        .map(|(n, &[p1, p2])| {
-            let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
-            (
-                rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
-                rerun::Color::from_rgb(c, c, c),
-            )
-        })
-        .unzip();
+        .zip(&times)
+        .map(|(&[p1, p2], &time)| bounce_lerp(p1, p2, time))
+        .collect_vec();
+    let colors = times
+        .iter()
+        .map(|time| bounce_lerp(80.0, 230.0, time * 2.0) as u8)
+        .map(|c| rerun::Color::from_rgb(c, c, c))
+        .collect_vec();
 
     rec.log(
         "dna/structure/scaffolding/beads",
@@ -308,13 +304,15 @@ simply add a second loop like this:
 
 ```rust
 for i in 0..400 {
-    // …everything else…
+    let time = i as f32 * 0.01;
+
+    rec.set_duration_secs("stable_time", time);
 
     rec.log(
         "dna/structure",
         &rerun::archetypes::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
             glam::Vec3::Z,
-            rerun::Angle::Radians(time / 4.0 * TAU),
+            rerun::Angle::from_radians(time / 4.0 * TAU),
         )),
     )?;
 }

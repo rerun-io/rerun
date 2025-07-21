@@ -2,6 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the 3D line grid.
 table LineGrid3D (
+    "attr.python.aliases": "datatypes.BoolLike", // Make it easy to turn it off passing in `False`
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the grid is visible.

@@ -7,8 +7,9 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use tracing::instrument;
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
@@ -18,17 +19,27 @@ use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, Sca
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TableEntryTableProvider {
-    client: RedapClient,
+    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
+    client: ConnectionClient,
     table: EntryIdOrName,
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
 }
 
+impl std::fmt::Debug for TableEntryTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TableEntryTableProvider")
+            .field("table", &self.table)
+            .field("table_id", &self.table_id)
+            .finish()
+    }
+}
+
 impl TableEntryTableProvider {
-    pub fn new(client: RedapClient, table: impl Into<EntryIdOrName>) -> Self {
+    pub fn new(client: ConnectionClient, table: impl Into<EntryIdOrName>) -> Self {
         Self {
             client,
             table: table.into(),
@@ -41,6 +52,7 @@ impl TableEntryTableProvider {
         Ok(GrpcStreamProvider::prepare(self).await?)
     }
 
+    #[instrument(skip(self), err)]
     async fn table_id(&mut self) -> Result<EntryId, DataFusionError> {
         if let Some(table_id) = self.table_id {
             return Ok(table_id);
@@ -55,6 +67,7 @@ impl TableEntryTableProvider {
 
                 let entry_details: EntryDetails = make_future_send(async move {
                     Ok(client
+                        .inner()
                         .find_entries(FindEntriesRequest {
                             filter: Some(EntryFilter {
                                 id: None,
@@ -91,6 +104,7 @@ impl TableEntryTableProvider {
 impl GrpcStreamToTable for TableEntryTableProvider {
     type GrpcStreamData = ScanTableResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetTableSchemaRequest {
             table_id: Some(self.table_id().await?.into()),
@@ -99,7 +113,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            make_future_send(async move { Ok(client.get_table_schema(request).await) })
+            make_future_send(async move { Ok(client.inner().get_table_schema(request).await) })
                 .await?
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
@@ -111,6 +125,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
@@ -120,7 +135,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.scan_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

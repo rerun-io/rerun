@@ -13,13 +13,14 @@ slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
 /// If set, all readily stitched (import resolve) and patched
 /// wgsl shaders will be written to the specified directory.
+#[cfg(not(target_arch = "wasm32"))]
 const RERUN_WGSL_SHADER_DUMP_PATH: &str = "RERUN_WGSL_SHADER_DUMP_PATH";
 
 /// Create a shader module using the `include_file!` macro and set the path name as debug string.
 #[macro_export]
 macro_rules! include_shader_module {
     ($path:expr $(,)?) => {{
-        $crate::wgpu_resources::ShaderModuleDesc {
+        $crate::ShaderModuleDesc {
             label: $crate::DebugLabel::from(stringify!($path).strip_prefix("../../shader/")),
             source: $crate::include_file!($path),
             extra_workaround_replacements: Vec::new(),
@@ -75,6 +76,7 @@ impl ShaderModuleDesc {
             source_interpolated.contents = source_interpolated.contents.replace(from, to);
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         if let Ok(wgsl_dump_dir) = std::env::var(RERUN_WGSL_SHADER_DUMP_PATH) {
             let mut path = PathBuf::from(wgsl_dump_dir);
             std::fs::create_dir_all(&path).unwrap();

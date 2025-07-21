@@ -41,6 +41,16 @@ impl ColormapWithRange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StoredBlobCacheKey(pub Hash64);
 
+impl re_byte_size::SizeBytes for StoredBlobCacheKey {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);
 
@@ -82,7 +92,7 @@ impl ImageInfo {
         // This also means that the `ImageKind` may change!
         // But until then, image kind and descriptor should be in sync.
         debug_assert_eq!(
-            ImageKind::from_archetype_name(component_descriptor.archetype_name),
+            ImageKind::from_archetype_name(component_descriptor.archetype),
             kind
         );
 

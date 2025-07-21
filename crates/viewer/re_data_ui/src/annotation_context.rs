@@ -1,4 +1,4 @@
-use egui::{Vec2, color_picker};
+use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_types::{
@@ -8,7 +8,7 @@ use re_types::{
         AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
     },
 };
-use re_ui::{DesignTokens, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
 
 use super::DataUi;
@@ -99,13 +99,13 @@ fn annotation_info(
     // TODO(#3168): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
 
-    // TODO(#6889): If there's several class ids we have no idea which one to use.
+    // TODO(grtlr): If there's several class ids we have no idea which one to use.
     // This code uses the first one that shows up.
     // We should search instead for a class id that is likely a sibling of the keypoint id.
     let storage_engine = ctx.recording().storage_engine();
     let possible_class_id_descriptors = storage_engine
         .store()
-        .entity_component_descriptors_with_name(entity_path, components::ClassId::name());
+        .entity_component_descriptors_with_type(entity_path, components::ClassId::name());
     let picked_class_id_descriptors = possible_class_id_descriptors.iter().next()?;
 
     let (_, class_id) = ctx
@@ -182,9 +182,13 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     let use_collapsible = ui_layout == UiLayout::SelectionPanel;
 
-    let row_height = DesignTokens::table_line_height();
+    let table_style = re_ui::TableStyle::Dense;
+
+    let row_height = tokens.table_row_height(table_style);
     if !class.keypoint_annotations.is_empty() {
         ui.maybe_collapsing_header(
             use_collapsible,
@@ -218,8 +222,8 @@ fn class_description_ui(
                     .column(Column::auto().clip(true).at_least(40.0))
                     .column(Column::auto().clip(true).at_least(40.0));
                 table
-                    .header(DesignTokens::table_header_height(), |mut header| {
-                        DesignTokens::setup_table_header(&mut header);
+                    .header(tokens.deprecated_table_header_height(), |mut header| {
+                        re_ui::DesignTokens::setup_table_header(&mut header);
                         header.col(|ui| {
                             ui.strong("From");
                         });
@@ -228,7 +232,7 @@ fn class_description_ui(
                         });
                     })
                     .body(|mut body| {
-                        DesignTokens::setup_table_body(&mut body);
+                        tokens.setup_table_body(&mut body, table_style);
 
                         // TODO(jleibs): Helper to do this with caching somewhere
                         let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
@@ -274,7 +278,9 @@ fn annotation_info_table_ui(
 ) {
     re_tracing::profile_function!();
 
-    let row_height = DesignTokens::table_line_height();
+    let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
+    let row_height = tokens.table_row_height(table_style);
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
@@ -288,8 +294,8 @@ fn annotation_info_table_ui(
         .column(Column::auto()); // color
 
     table
-        .header(DesignTokens::table_header_height(), |mut header| {
-            DesignTokens::setup_table_header(&mut header);
+        .header(tokens.deprecated_table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Class Id");
             });
@@ -301,7 +307,7 @@ fn annotation_info_table_ui(
             });
         })
         .body(|mut body| {
-            DesignTokens::setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body, table_style);
 
             body.rows(row_height, annotation_infos.len(), |mut row| {
                 let info = &annotation_infos[row.index()];
@@ -338,7 +344,12 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
 }
 
 fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
-    let size = egui::Vec2::splat(DesignTokens::table_line_height());
+    let tokens = ui.tokens();
+    let size = egui::Vec2::splat(
+        tokens
+            .table_row_height(re_ui::TableStyle::Dense)
+            .at_most(ui.available_height()),
+    );
 
     let color = info
         .color

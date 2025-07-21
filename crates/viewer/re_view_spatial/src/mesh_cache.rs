@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashSet};
 
 use itertools::Either;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
@@ -30,6 +31,17 @@ pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
     pub query_result_hash: Hash64,
     pub media_type: Option<MediaType>,
+}
+
+impl re_byte_size::SizeBytes for MeshCacheKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            versioned_instance_path_hash: _,
+            query_result_hash: _,
+            media_type,
+        } = self;
+        media_type.heap_size_bytes()
+    }
 }
 
 /// Caches meshes based on their [`MeshCacheKey`].
@@ -85,7 +97,11 @@ impl Cache for MeshCache {
         self.0.clear();
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
+    }
+
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let row_ids_removed: HashSet<RowId> = events

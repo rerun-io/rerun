@@ -48,7 +48,7 @@ pub struct StartupOptions {
     ///
     /// By default uses the last provided setting, which is `auto` if never configured.
     /// This also can be changed in the viewer's option menu.
-    pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
+    pub video_decoder_hw_acceleration: Option<re_video::DecodeHardwareAcceleration>,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub on_event: Option<ViewerEventCallback>,

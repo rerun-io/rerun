@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the background map of the map view.
@@ -37,19 +37,9 @@ impl MapBackground {
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component_name: "rerun.blueprint.components.MapProvider".into(),
-            archetype_field_name: Some("provider".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
+            component: "MapBackground:provider".into(),
+            component_type: Some("rerun.blueprint.components.MapProvider".into()),
         }
     }
 }
@@ -57,31 +47,21 @@ impl MapBackground {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [MapBackground::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [MapBackground::descriptor_provider()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            MapBackground::descriptor_indicator(),
-            MapBackground::descriptor_provider(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [MapBackground::descriptor_provider()]);
 
 impl MapBackground {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`MapBackground`] [`::re_types_core::Archetype`]
-pub type MapBackgroundIndicator = ::re_types_core::GenericIndicatorComponent<MapBackground>;
-
 impl ::re_types_core::Archetype for MapBackground {
-    type Indicator = MapBackgroundIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.MapBackground".into()
@@ -90,12 +70,6 @@ impl ::re_types_core::Archetype for MapBackground {
     #[inline]
     fn display_name() -> &'static str {
         "Map background"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        MapBackgroundIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -136,10 +110,7 @@ impl ::re_types_core::AsComponents for MapBackground {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.provider.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.provider.clone()).flatten().collect()
     }
 }
 

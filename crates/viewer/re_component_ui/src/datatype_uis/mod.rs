@@ -1,5 +1,5 @@
 mod bool_toggle;
-mod enum_combobox;
+mod enum_ui;
 mod float_drag;
 mod int_drag;
 mod range1d;
@@ -10,7 +10,7 @@ mod view_timestamp;
 mod view_uuid;
 
 pub use bool_toggle::edit_bool;
-pub use enum_combobox::{
+pub use enum_ui::{
     VariantAvailable, VariantAvailableProvider, edit_view_enum,
     edit_view_enum_with_variant_available,
 };

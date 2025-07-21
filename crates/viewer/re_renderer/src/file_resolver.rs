@@ -467,7 +467,9 @@ pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
 
 /// Returns the recommended `FileResolver` for the current platform/target.
 pub fn new_recommended() -> RecommendedFileResolver {
-    FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
+    let mut search_path = SearchPath::from_env();
+    search_path.push("crates/viewer/re_renderer/shader");
+    FileResolver::with_search_path(crate::get_filesystem(), search_path)
 }
 
 #[derive(Clone, Debug, Default)]

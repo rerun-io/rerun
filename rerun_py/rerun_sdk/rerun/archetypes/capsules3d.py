@@ -30,6 +30,9 @@ class Capsules3D(Capsules3DExt, Archetype):
     Capsules in other orientations may be produced by applying a rotation to the entity or
     instances.
 
+    If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
+    Orienting and placing capsules forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+
     Example
     -------
     ### Batch of capsules:
@@ -90,6 +93,8 @@ class Capsules3D(Capsules3DExt, Archetype):
             rotation_axis_angles=None,
             quaternions=None,
             colors=None,
+            line_radii=None,
+            fill_mode=None,
             labels=None,
             show_labels=None,
             class_ids=None,
@@ -113,6 +118,8 @@ class Capsules3D(Capsules3DExt, Archetype):
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -132,23 +139,27 @@ class Capsules3D(Capsules3DExt, Archetype):
             Optional translations of the capsules.
 
             If not specified, one end of each capsule will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the capsules.
+        line_radii:
+            Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the cylinders are drawn with lines or solid.
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -165,6 +176,8 @@ class Capsules3D(Capsules3DExt, Archetype):
                 "rotation_axis_angles": rotation_axis_angles,
                 "quaternions": quaternions,
                 "colors": colors,
+                "line_radii": line_radii,
+                "fill_mode": fill_mode,
                 "labels": labels,
                 "show_labels": show_labels,
                 "class_ids": class_ids,
@@ -194,6 +207,8 @@ class Capsules3D(Capsules3DExt, Archetype):
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -216,23 +231,27 @@ class Capsules3D(Capsules3DExt, Archetype):
             Optional translations of the capsules.
 
             If not specified, one end of each capsule will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the capsules.
+        line_radii:
+            Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the cylinders are drawn with lines or solid.
         labels:
             Optional text labels for the capsules, which will be located at their centers.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -249,25 +268,29 @@ class Capsules3D(Capsules3DExt, Archetype):
                 rotation_axis_angles=rotation_axis_angles,
                 quaternions=quaternions,
                 colors=colors,
+                line_radii=line_radii,
+                fill_mode=fill_mode,
                 labels=labels,
                 show_labels=show_labels,
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "lengths": lengths,
-            "radii": radii,
-            "translations": translations,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Capsules3D:lengths": lengths,
+            "Capsules3D:radii": radii,
+            "Capsules3D:translations": translations,
+            "Capsules3D:rotation_axis_angles": rotation_axis_angles,
+            "Capsules3D:quaternions": quaternions,
+            "Capsules3D:colors": colors,
+            "Capsules3D:line_radii": line_radii,
+            "Capsules3D:fill_mode": fill_mode,
+            "Capsules3D:labels": labels,
+            "Capsules3D:show_labels": show_labels,
+            "Capsules3D:class_ids": class_ids,
         }
         columns = []
 
@@ -276,7 +299,7 @@ class Capsules3D(Capsules3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -296,8 +319,7 @@ class Capsules3D(Capsules3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     lengths: components.LengthBatch | None = field(
         metadata={"component": True},
@@ -325,7 +347,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Optional translations of the capsules.
     #
     # If not specified, one end of each capsule will be at (0, 0, 0).
-    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -337,7 +358,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -349,7 +369,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Rotations via quaternion.
     #
     # If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -359,6 +378,24 @@ class Capsules3D(Capsules3DExt, Archetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the capsules.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    line_radii: components.RadiusBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
+    )
+    # Optional radii for the lines used when the cylinder is rendered as a wireframe.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fill_mode: components.FillModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.FillModeBatch._converter,  # type: ignore[misc]
+    )
+    # Optionally choose whether the cylinders are drawn with lines or solid.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -376,7 +413,10 @@ class Capsules3D(Capsules3DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

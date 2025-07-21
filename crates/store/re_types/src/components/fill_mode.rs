@@ -17,7 +17,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: How a geometric shape is drawn and colored.
@@ -49,8 +49,8 @@ pub enum FillMode {
 
 impl ::re_types_core::Component for FillMode {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.FillMode")
+    fn name() -> ComponentType {
+        "rerun.components.FillMode".into()
     }
 }
 

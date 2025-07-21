@@ -23,6 +23,15 @@ pub enum RedapUri {
 }
 
 impl RedapUri {
+    pub fn origin(&self) -> &Origin {
+        match self {
+            Self::Catalog(uri) => &uri.origin,
+            Self::Entry(uri) => &uri.origin,
+            Self::DatasetData(uri) => &uri.origin,
+            Self::Proxy(uri) => &uri.origin,
+        }
+    }
+
     /// Return the parsed `#fragment` of the URI, if any.
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {

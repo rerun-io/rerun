@@ -46,9 +46,22 @@ need_stdout = false
 watch = ["tests", "benches", "examples"]
 
 [jobs.test]
-command = ["cargo", "test", "--color=always"]
+command = ["cargo", "test", "--all-features", "--color=always"]
 need_stdout = true
 watch = ["tests"]
+
+[jobs.nextest]
+command = [
+  "cargo",
+  "nextest",
+  "run",
+  "--hide-progress-bar",
+  "--all-features",
+  "--failure-output",
+  "final",
+]
+need_stdout = true
+analyzer = "nextest"
 
 [jobs.doc]
 command = ["cargo", "doc", "--color=always", "--all-features", "--no-deps"]
@@ -73,7 +86,7 @@ on_success = "back" # so that we don't open the browser at each change
 # way. Don't forget the `--color always` part or the errors won't be
 # properly parsed.
 [jobs.run]
-command = ["cargo", "run", "--color=always"]
+command = ["pixi", "run", "rerun"]
 need_stdout = true
 
 # You may define here keybindings that would be specific to
@@ -87,3 +100,4 @@ d = "job:doc-open"
 t = "job:test"
 r = "job:run"
 a = "job:wasm"
+n = "job:nextest"

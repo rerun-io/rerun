@@ -55,7 +55,12 @@ pub struct RerunArgs {
 
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
-    /// Optionally takes an HTTP(S) URL.
+    /// Optionally takes a URL to connect to.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
     #[allow(clippy::option_option)]
     connect: Option<Option<String>>,

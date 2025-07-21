@@ -6,8 +6,9 @@ struct CustomPosition3D {
 
 template <>
 struct rerun::Loggable<CustomPosition3D> {
-    static constexpr const ComponentDescriptor Descriptor =
-        ComponentDescriptor("user.CustomArchetype", "custom_positions", "user.CustomPosition3D");
+    static constexpr const ComponentDescriptor Descriptor = ComponentDescriptor(
+        "user.CustomArchetype", "user.CustomArchetype:custom_positions", "user.CustomPosition3D"
+    );
 
     static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
         return rerun::Loggable<rerun::components::Position3D>::arrow_datatype();

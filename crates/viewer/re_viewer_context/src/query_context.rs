@@ -5,7 +5,9 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline};
+use crate::{
+    DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
+};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -17,7 +19,7 @@ slotmap::new_key_type! {
 // This is currently used only for fallback providers, but the expectation is that we're using this more widely as the primary context object
 // in all places where we query a specific entity in a specific view.
 pub struct QueryContext<'a> {
-    pub viewer_ctx: &'a ViewerContext<'a>,
+    pub view_ctx: &'a ViewContext<'a>,
 
     /// Target entity path which is lacking the component and needs a fallback.
     ///
@@ -32,19 +34,37 @@ pub struct QueryContext<'a> {
 
     /// Query which didn't yield a result for the component at the target entity path.
     pub query: &'a re_chunk_store::LatestAtQuery,
-
-    /// The view state of the view in which the query is executed.
-    pub view_state: &'a dyn ViewState,
-
-    /// The view context, if available.
-    // TODO(jleibs): Make this non-optional.
-    pub view_ctx: Option<&'a ViewContext<'a>>,
 }
 
 impl QueryContext<'_> {
     #[inline]
+    pub fn viewer_ctx(&self) -> &ViewerContext<'_> {
+        self.view_ctx.viewer_ctx
+    }
+
+    #[inline]
+    pub fn store_ctx(&self) -> &StoreContext<'_> {
+        self.view_ctx.viewer_ctx.store_context
+    }
+
+    #[inline]
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.view_ctx.viewer_ctx.global_context.render_ctx
+    }
+
+    #[inline]
+    pub fn egui_ctx(&self) -> &egui::Context {
+        self.view_ctx.viewer_ctx.global_context.egui_ctx
+    }
+
+    #[inline]
     pub fn recording(&self) -> &re_entity_db::EntityDb {
-        self.viewer_ctx.recording()
+        self.view_ctx.recording()
+    }
+
+    #[inline]
+    pub fn view_state(&self) -> &dyn ViewState {
+        self.view_ctx.view_state
     }
 }
 

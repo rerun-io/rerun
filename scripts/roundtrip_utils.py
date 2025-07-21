@@ -72,9 +72,9 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
-    cmd = ["rerun", "rrd", "compare", "--unordered"]
+    cmd = ["rerun", "rrd", "compare", "--unordered", "--ignore-chunks-without-components"]
     if full_dump:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]
 
-    run(cmd, env=roundtrip_env(), timeout=30)
+    run(cmd, env=roundtrip_env(), timeout=60)

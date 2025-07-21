@@ -1,16 +1,18 @@
 use std::sync::Arc;
 
+use arrow::datatypes::{DataType, Fields};
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{col as datafusion_col, lit};
-use datafusion::prelude::SessionContext;
+use datafusion::prelude::{SessionContext, cast, encode};
 use parking_lot::Mutex;
 
+use re_log_types::Timestamp;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::RequestedObject;
-use crate::table_blueprint::{PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -33,6 +35,8 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
 struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
+    pub entry_links: Option<EntryLinksSpec>,
+    pub filter: Option<datafusion::prelude::Expr>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
@@ -40,11 +44,15 @@ impl From<&TableBlueprint> for DataFusionQueryData {
         let TableBlueprint {
             sort_by,
             partition_links,
+            entry_links,
+            filter,
         } = value;
 
         Self {
             sort_by: sort_by.clone(),
             partition_links: partition_links.clone(),
+            entry_links: entry_links.clone(),
+            filter: filter.clone(),
         }
     }
 }
@@ -71,16 +79,19 @@ impl DataFusionQuery {
         }
     }
 
-    /// Execute the query and produce a vector of [`SorbetBatch`]s.
+    /// Execute the query and produce a vector of [`SorbetBatch`]s along with physical columns
+    /// names.
     ///
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
-    async fn execute(self) -> Result<Vec<SorbetBatch>, DataFusionError> {
+    async fn execute(self) -> Result<(Vec<SorbetBatch>, Fields), DataFusionError> {
         let mut dataframe = self.session_ctx.table(self.table_ref).await?;
 
         let DataFusionQueryData {
             sort_by,
             partition_links,
+            entry_links,
+            filter,
         } = &self.query_data;
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
@@ -101,14 +112,39 @@ impl DataFusionQuery {
             )?;
         }
 
+        if let Some(entry_links) = entry_links {
+            let uri = format!("{}/entry/", entry_links.origin);
+
+            let column = concat(vec![
+                lit(uri),
+                encode(
+                    cast(col(&entry_links.entry_id_column_name), DataType::Binary),
+                    lit("hex"),
+                ),
+            ]);
+            dataframe = dataframe.with_column(&entry_links.column_name, column)?;
+        }
+
+        if let Some(filter) = filter {
+            dataframe = dataframe.filter(filter.clone())?;
+        }
+
         if let Some(sort_by) = sort_by {
             dataframe = dataframe.sort(vec![
-                col(&sort_by.column).sort(sort_by.direction.is_ascending(), true),
+                col(&sort_by.column_physical_name).sort(sort_by.direction.is_ascending(), true),
             ])?;
         }
 
         // collect
         let record_batches = dataframe.collect().await?;
+
+        // TODO(#10421) IMPORTANT: fields must be copied here *before* converting to `SorbetBatch`,
+        // because that conversion modifies the field names. As a result, the schema contained in a
+        // `SorbetBatch` cannot be used to derive the physical column names as seen by DataFusion.
+        let fields = record_batches
+            .first()
+            .map(|record_batch| record_batch.schema().fields.clone())
+            .unwrap_or_default();
 
         // convert to SorbetBatch
         let sorbet_batches = record_batches
@@ -119,7 +155,7 @@ impl DataFusionQuery {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| DataFusionError::External(err.into()))?;
 
-        Ok(sorbet_batches)
+        Ok((sorbet_batches, fields))
     }
 }
 
@@ -137,7 +173,8 @@ impl PartialEq for DataFusionQuery {
     }
 }
 
-type RequestedSorbetBatches = RequestedObject<Result<Vec<SorbetBatch>, DataFusionError>>;
+type RequestedSorbetBatches =
+    RequestedObject<Result<(Vec<SorbetBatch>, arrow::datatypes::Fields), DataFusionError>>;
 
 /// Helper struct to manage the datafusion async query and the resulting `SorbetBatch`.
 #[derive(Clone)]
@@ -151,11 +188,13 @@ pub struct DataFusionAdapter {
     query: DataFusionQuery,
 
     // Used to have something to display while the new dataframe is being queried.
-    pub last_sorbet_batches: Option<Vec<SorbetBatch>>,
+    pub last_sorbet_batches: Option<(Vec<SorbetBatch>, Fields)>,
 
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
     pub requested_sorbet_batches: Arc<Mutex<RequestedSorbetBatches>>,
+
+    pub queried_at: Timestamp,
 }
 
 impl DataFusionAdapter {
@@ -190,6 +229,7 @@ impl DataFusionAdapter {
                 ))),
                 query,
                 last_sorbet_batches: None,
+                queried_at: Timestamp::now(),
             };
 
             ui.data_mut(|data| {

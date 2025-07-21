@@ -67,16 +67,15 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
 
         half_size = 0.5 * np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
         centroid = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
-        mat3x3 = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
+        mat3x3 = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3).T
 
         rr.log(
             f"world/annotations/box-{uid}-{label}",
             rr.Boxes3D(
                 half_sizes=half_size,
-                centers=centroid,
                 labels=label,
             ),
-            rr.InstancePoses3D(mat3x3=mat3x3),
+            rr.InstancePoses3D(translations=centroid, mat3x3=mat3x3),
             static=True,
         )
 

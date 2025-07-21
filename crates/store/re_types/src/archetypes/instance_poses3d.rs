@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
@@ -116,9 +116,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.PoseTranslation3D".into(),
-            archetype_field_name: Some("translations".into()),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:translations".into(),
+            component_type: Some("rerun.components.PoseTranslation3D".into()),
         }
     }
 
@@ -128,9 +128,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.PoseRotationAxisAngle".into(),
-            archetype_field_name: Some("rotation_axis_angles".into()),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:rotation_axis_angles".into(),
+            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
         }
     }
 
@@ -140,9 +140,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.PoseRotationQuat".into(),
-            archetype_field_name: Some("quaternions".into()),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:quaternions".into(),
+            component_type: Some("rerun.components.PoseRotationQuat".into()),
         }
     }
 
@@ -152,9 +152,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.PoseScale3D".into(),
-            archetype_field_name: Some("scales".into()),
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:scales".into(),
+            component_type: Some("rerun.components.PoseScale3D".into()),
         }
     }
 
@@ -164,19 +164,9 @@ impl InstancePoses3D {
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.PoseTransformMat3x3".into(),
-            archetype_field_name: Some("mat3x3".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.InstancePoses3DIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+            component: "InstancePoses3D:mat3x3".into(),
+            component_type: Some("rerun.components.PoseTransformMat3x3".into()),
         }
     }
 }
@@ -184,8 +174,8 @@ impl InstancePoses3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [InstancePoses3D::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -198,10 +188,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            InstancePoses3D::descriptor_indicator(),
             InstancePoses3D::descriptor_translations(),
             InstancePoses3D::descriptor_rotation_axis_angles(),
             InstancePoses3D::descriptor_quaternions(),
@@ -211,16 +200,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl InstancePoses3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`InstancePoses3D`] [`::re_types_core::Archetype`]
-pub type InstancePoses3DIndicator = ::re_types_core::GenericIndicatorComponent<InstancePoses3D>;
-
 impl ::re_types_core::Archetype for InstancePoses3D {
-    type Indicator = InstancePoses3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.InstancePoses3D".into()
@@ -229,12 +213,6 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     #[inline]
     fn display_name() -> &'static str {
         "Instance poses 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        InstancePoses3DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -303,7 +281,6 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.translations.clone(),
             self.rotation_axis_angles.clone(),
             self.quaternions.clone(),
@@ -400,12 +377,7 @@ impl InstancePoses3D {
                 .map(|mat3x3| mat3x3.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

@@ -1,7 +1,7 @@
-use egui::{NumExt as _, WidgetText, epaint::util::OrderedFloat, text::TextWrapping};
+use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
+use macaw::BoundingBox;
 use re_format::format_f32;
-use re_math::BoundingBox;
 use re_types::{
     blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };
@@ -10,7 +10,6 @@ use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighl
 
 use crate::{
     Pinhole,
-    eye::EyeMode,
     pickable_textured_rect::PickableRectSourceData,
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
@@ -45,7 +44,7 @@ pub struct ImageCounts {
     pub depth: usize,
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by `View3DState`, not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
@@ -56,7 +55,7 @@ pub struct SpatialViewState {
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
 
-    pub(super) state_3d: View3DState,
+    pub state_3d: View3DState,
 
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,
@@ -150,15 +149,6 @@ impl SpatialViewState {
             {
                 self.state_3d.set_spin(spin);
             }
-        }
-
-        if let Some(eye) = &mut self.state_3d.view_eye {
-            ui.selectable_toggle(|ui| {
-                let mut mode = eye.mode();
-                ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
-                ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
-                eye.set_mode(mode);
-            });
         }
     }
 
@@ -259,6 +249,7 @@ pub fn create_labels(
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
         let is_error = matches!(label.style, UiLabelStyle::Error);
         let text_color = match label.style {
+            UiLabelStyle::Default => parent_ui.visuals().strong_text_color(),
             UiLabelStyle::Color(color) => color,
             UiLabelStyle::Error => parent_ui.style().visuals.strong_text_color(),
         };

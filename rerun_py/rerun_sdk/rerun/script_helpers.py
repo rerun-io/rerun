@@ -51,7 +51,7 @@ def script_add_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
-    parser.add_argument("--url", type=str, default=None, help="Connect to this HTTP(S) URL")
+    parser.add_argument("--url", type=str, default=None, help="Connect to this Rerun URL")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "-o",

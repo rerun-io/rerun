@@ -11,6 +11,9 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
 import numpy as np
+from rerun_bindings import (
+    ChunkBatcherConfig as ChunkBatcherConfig,
+)
 from typing_extensions import deprecated
 
 import rerun as rr
@@ -19,6 +22,7 @@ from rerun.memory import MemoryRecording
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike
 
@@ -38,6 +42,7 @@ def new_recording(
     make_thread_default: bool = False,
     spawn: bool = False,
     default_enabled: bool = True,
+    batcher_config: ChunkBatcherConfig | None = None,
 ) -> RecordingStream:
     """
     Creates a new recording with a user-chosen application id (name) that can be used to log data.
@@ -98,10 +103,12 @@ def new_recording(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    batcher_config
+        Optional configuration for the chunk batcher.
 
     Returns
     -------
@@ -116,6 +123,7 @@ def new_recording(
         make_default=make_default,
         make_thread_default=make_thread_default,
         default_enabled=default_enabled,
+        batcher_config=batcher_config,
     )
 
     if spawn:
@@ -301,10 +309,11 @@ class RecordingStream:
     Micro-batching using both space and time triggers (whichever comes first) is done automatically
     in a dedicated background thread.
 
-    You can configure the frequency of the batches using the following environment variables:
+    You can configure the frequency of the batches using the `batcher_config` parameter when creating
+    the RecordingStream, or via the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
-        Flush frequency in seconds (default: `0.05` (50ms)).
+        Flush frequency in seconds (default: `0.2` (200ms)).
     - `RERUN_FLUSH_NUM_BYTES`:
         Flush threshold in bytes (default: `1048576` (1MiB)).
     - `RERUN_FLUSH_NUM_ROWS`:
@@ -321,6 +330,7 @@ class RecordingStream:
         make_thread_default: bool = False,
         default_enabled: bool = True,
         send_properties: bool = True,
+        batcher_config: ChunkBatcherConfig | None = None,
     ) -> None:
         """
         Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
@@ -382,6 +392,8 @@ class RecordingStream:
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
         send_properties
             Immediately send the recording properties to the viewer (default: True)
+        batcher_config
+            Optional configuration for the chunk batcher.
 
         Returns
         -------
@@ -410,6 +422,7 @@ class RecordingStream:
             make_thread_default=make_thread_default,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=batcher_config,
         )
 
         self._prev: RecordingStream | None = None
@@ -485,6 +498,52 @@ class RecordingStream:
     get_recording_id = get_recording_id
     is_enabled = is_enabled
 
+    def set_sinks(
+        self,
+        *sinks: LogSinkLike,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Stream data to multiple different sinks.
+
+        Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
+        use the same `url` will cause this function to throw a `ValueError`.
+
+        This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+        `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+        the sinks passed to `set_sinks` remaining active.
+
+        Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
+
+        Parameters
+        ----------
+        sinks:
+            A list of sinks to wrap.
+
+            See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        Example
+        -------
+        ```py
+        rec = rr.RecordingStream("rerun_example_tee")
+        rec.set_sinks(
+            rr.GrpcSink(),
+            rr.FileSink("data.rrd")
+        )
+        rec.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+        ```
+
+        """
+
+        from .sinks import set_sinks
+
+        set_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
+
     def connect_grpc(
         self,
         url: str | None = None,
@@ -493,14 +552,19 @@ class RecordingStream:
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
-        Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+        Connect to a remote Rerun Viewer on the given URL.
 
         This function returns immediately.
 
         Parameters
         ----------
         url:
-            The HTTP(S) URL to connect to
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
         flush_timeout_sec:
             The minimum time the SDK will wait during a flush before potentially
             dropping data if progress is not being made. Passing `None` indicates no timeout,
@@ -604,7 +668,7 @@ class RecordingStream:
         *,
         grpc_port: int | None = None,
         default_blueprint: BlueprintLike | None = None,
-        server_memory_limit: str = "75%",
+        server_memory_limit: str = "25%",
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -614,6 +678,9 @@ class RecordingStream:
         The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+        It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        on the same machine, otherwise you're potentially doubling your memory usage!
 
         Returns the URI of the server so you can connect the viewer to it.
 
@@ -643,6 +710,10 @@ class RecordingStream:
             recording=self,
         )
 
+    @deprecated(
+        """Use a combination of `serve_grpc` and `rr.serve_web_viewer` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
+    )
     def serve_web(
         self,
         *,
@@ -663,7 +734,11 @@ class RecordingStream:
 
         This function returns immediately.
 
-        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][]:
+        ```
+        server_uri = rec.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+        rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+        ```
 
         Parameters
         ----------

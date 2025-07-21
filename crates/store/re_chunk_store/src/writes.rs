@@ -28,6 +28,20 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.components().is_empty() {
+            // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
+            // chunk that went through the Sorbet migration process, and ended up with zero
+            // component columns.
+            //
+            // When that happens, the election process in the compactor will get confused, and then not
+            // only that weird empty Chunk will end up being stored, but it will also prevent the
+            // election from making progress and therefore prevent Chunks that are in dire need of
+            // compaction from being compacted.
+            //
+            // The solution is simple: just drop it.
+            return Ok(vec![]);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(
@@ -49,24 +63,7 @@ impl ChunkStore {
 
         self.insert_id += 1;
 
-        let mut chunk = Arc::clone(chunk);
-
-        // TODO(#6889): This is bad for performance, but indicators should go away all together soon anyways?
-        if chunk
-            .components()
-            .keys()
-            .any(|descr| descr.component_name.is_indicator_component())
-        {
-            let patched = chunk.patched_weak_indicator_descriptor_023_compat();
-            chunk = Arc::new(patched);
-        }
-
-        if self.id.kind == re_log_types::StoreKind::Blueprint {
-            let patched = chunk.patched_for_blueprint_021_compat();
-            chunk = Arc::new(patched);
-        }
-
-        let non_compacted_chunk = Arc::clone(&chunk); // we'll need it to create the store event
+        let non_compacted_chunk = Arc::clone(chunk); // we'll need it to create the store event
 
         let (chunk, diffs) = if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
@@ -139,7 +136,7 @@ impl ChunkStore {
                     .or_insert_with(|| chunk.id());
             }
 
-            self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(&chunk);
+            self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(chunk);
 
             let mut diffs = vec![ChunkStoreDiff::addition(
                 non_compacted_chunk, /* added */
@@ -193,7 +190,7 @@ impl ChunkStore {
                 }
             }
 
-            (Arc::clone(&chunk), diffs)
+            (Arc::clone(chunk), diffs)
         } else {
             // Temporal data: just index the chunk on every dimension of interest.
             re_tracing::profile_scope!("temporal");
@@ -201,7 +198,7 @@ impl ChunkStore {
             let (elected_chunk, chunk_or_compacted) = {
                 re_tracing::profile_scope!("election");
 
-                let elected_chunk = self.find_and_elect_compaction_candidate(&chunk);
+                let elected_chunk = self.find_and_elect_compaction_candidate(chunk);
 
                 let chunk_or_compacted = if let Some(elected_chunk) = &elected_chunk {
                     let chunk_rowid_min = chunk.row_id_range().map(|(min, _)| min);
@@ -209,7 +206,7 @@ impl ChunkStore {
 
                     let mut compacted = if elected_rowid_min < chunk_rowid_min {
                         re_tracing::profile_scope!("concat");
-                        elected_chunk.concatenated(&chunk)?
+                        elected_chunk.concatenated(chunk)?
                     } else {
                         re_tracing::profile_scope!("concat");
                         chunk.concatenated(elected_chunk)?
@@ -232,7 +229,7 @@ impl ChunkStore {
 
                     Arc::new(compacted)
                 } else {
-                    Arc::clone(&chunk)
+                    Arc::clone(chunk)
                 };
 
                 (elected_chunk, chunk_or_compacted)
@@ -350,10 +347,21 @@ impl ChunkStore {
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
-        self.chunk_ids_per_min_row_id
-            .entry(row_id_range.0)
-            .or_default()
-            .push(chunk.id());
+        // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
+        // with another one, which might or might not have modified the range.
+        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min) {
+            if self
+                .chunk_ids_per_min_row_id
+                .insert(min_row_id, chunk.id())
+                .is_some()
+            {
+                re_log::warn!(
+                    chunk_id = %chunk.id(),
+                    row_id = %row_id_range.0,
+                    "detected duplicated RowId in the data, this will lead to undefined behavior"
+                );
+            }
+        }
 
         for (name, columns) in chunk.timelines() {
             let new_typ = columns.timeline().typ();
@@ -368,30 +376,45 @@ impl ChunkStore {
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(old_typ) = self
-                .type_registry
-                .insert(component_descr.component_name, list_array.value_type())
-            {
-                if old_typ != list_array.value_type() {
-                    re_log::warn_once!(
-                        "Component column '{}' changed type from {old_typ:?} to {:?}",
-                        component_descr.component_name,
-                        list_array.value_type()
-                    );
+            if let Some(component_type) = component_descr.component_type {
+                if let Some(old_typ) = self
+                    .type_registry
+                    .insert(component_type, list_array.value_type())
+                {
+                    if old_typ != list_array.value_type() {
+                        re_log::warn_once!(
+                            "Component column '{}' changed type from {old_typ:?} to {:?}",
+                            component_type,
+                            list_array.value_type()
+                        );
+                    }
                 }
             }
 
-            let column_metadata_state = self
+            let (descr, column_metadata_state, datatype) = self
                 .per_column_metadata
                 .entry(chunk.entity_path().clone())
                 .or_default()
-                .entry(component_descr.component_name)
-                .or_default()
-                .entry(component_descr.clone())
-                .or_insert(ColumnMetadataState {
-                    is_semantically_empty: true,
-                });
+                .entry(component_descr.component)
+                .or_insert((
+                    component_descr.clone(),
+                    ColumnMetadataState {
+                        is_semantically_empty: true,
+                    },
+                    list_array.value_type().clone(),
+                ));
             {
+                if *datatype != list_array.value_type() {
+                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
+                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
+                    re_log::warn!(
+                        "Datatype of column {descr} in {} has changed from {datatype} to {}",
+                        chunk.entity_path(),
+                        list_array.value_type()
+                    );
+                    *datatype = list_array.value_type().clone();
+                }
+
                 let is_semantically_empty =
                     re_arrow_util::is_list_array_semantically_empty(list_array);
 
@@ -434,6 +457,32 @@ impl ChunkStore {
     /// The neighbor with the most points at the end of the process is elected.
     fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
+
+        {
+            // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
+            // on its own.
+
+            let ChunkStoreConfig {
+                enable_changelog: _,
+                chunk_max_bytes,
+                chunk_max_rows,
+                chunk_max_rows_if_unsorted,
+            } = self.config;
+
+            let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+            let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
+
+            let total_rows = (chunk.num_rows()) as u64;
+            let is_below_rows_threshold = if chunk.is_time_sorted() {
+                total_rows <= chunk_max_rows
+            } else {
+                total_rows <= chunk_max_rows_if_unsorted
+            };
+
+            if !(is_below_bytes_threshold && is_below_rows_threshold) {
+                return None;
+            }
+        }
 
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
@@ -519,14 +568,15 @@ impl ChunkStore {
                         }
                     }
 
-                    let chunk_id_set = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .get(&time_range.min());
-
                     // Shared start times: 2 points each.
-                    for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
-                        if check_if_chunk_below_threshold(self, chunk_id) {
-                            *candidates.entry(chunk_id).or_default() += 2;
+                    {
+                        let chunk_id_set = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get(&time_range.min());
+                        for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
+                            if check_if_chunk_below_threshold(self, chunk_id) {
+                                *candidates.entry(chunk_id).or_default() += 2;
+                            }
                         }
                     }
                 }
@@ -536,8 +586,11 @@ impl ChunkStore {
         debug_assert!(!candidates.contains_key(&chunk.id()));
 
         let mut candidates = candidates.into_iter().collect_vec();
-        candidates.sort_by_key(|(_chunk_id, points)| *points);
-        candidates.reverse();
+        {
+            re_tracing::profile_scope!("sort_candidates");
+            candidates.sort_by_key(|(_chunk_id, points)| *points);
+            candidates.reverse();
+        }
 
         candidates
             .into_iter()
@@ -558,7 +611,7 @@ impl ChunkStore {
 
         let Self {
             id,
-            info: _,
+            store_info: _,
             config: _,
             time_type_registry: _,
             type_registry: _,
@@ -584,10 +637,14 @@ impl ChunkStore {
                 .into_values()
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_static_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_static_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_static_chunk_ids.into_iter()
         };
@@ -612,10 +669,14 @@ impl ChunkStore {
                 })
                 .collect();
 
-            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
-                chunk_ids.retain(|chunk_id| !dropped_temporal_chunk_ids.contains(chunk_id));
-                !chunk_ids.is_empty()
-            });
+            for chunk_id in &dropped_temporal_chunk_ids {
+                if let Some(min_row_id) = chunks_per_chunk_id
+                    .get(chunk_id)
+                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                {
+                    chunk_ids_per_min_row_id.remove(&min_row_id);
+                }
+            }
 
             dropped_temporal_chunk_ids.into_iter()
         };
@@ -658,8 +719,13 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::{TimePoint, Timeline};
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+    use std::collections::BTreeMap;
+
+    use re_chunk::{TimeInt, TimePoint, Timeline};
+    use re_log_types::{
+        build_frame_nr, build_log_time,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
+    };
     use similar_asserts::assert_eq;
 
     use crate::ChunkStoreDiffKind;
@@ -705,22 +771,62 @@ mod tests {
         let points5 = &[MyPoint::new(5.0, 5.0)];
 
         let chunk1 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
         let chunk2 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id4, timepoint4, [points4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id6, timepoint1, [points1 as _])
-            .with_component_batches(row_id7, timepoint2, [points2 as _])
-            .with_component_batches(row_id8, timepoint3, [points3 as _])
+            .with_component_batches(
+                row_id6,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id7,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id8,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
         let chunk4 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id9, timepoint4, [points4 as _])
-            .with_component_batches(row_id10, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id9,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id10,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
 
         let chunk1 = Arc::new(chunk1);
@@ -753,16 +859,56 @@ mod tests {
             .unwrap();
 
         let expected = Chunk::builder_with_id(got.id(), entity_path.clone())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
-            .with_component_batches(row_id4, timepoint4, [points4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _])
-            .with_component_batches(row_id6, timepoint1, [points1 as _])
-            .with_component_batches(row_id7, timepoint2, [points2 as _])
-            .with_component_batches(row_id8, timepoint3, [points3 as _])
-            .with_component_batches(row_id9, timepoint4, [points4 as _])
-            .with_component_batches(row_id10, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
+            .with_component_batches(
+                row_id6,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id7,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id8,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
+            .with_component_batches(
+                row_id9,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id10,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
 
         assert_eq!(1, store.chunks_per_chunk_id.len());
@@ -782,6 +928,70 @@ mod tests {
     }
 
     #[test]
+    fn no_components() -> anyhow::Result<()> {
+        re_log::setup_logging();
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            Default::default(),
+        );
+
+        {
+            let entity_path = EntityPath::from("/nothing-at-all");
+            let chunk = Chunk::builder(entity_path.clone()).build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+        {
+            let entity_path = EntityPath::from("/static-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), TimePoint::STATIC, [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+
+        let timepoint_log = build_log_time(TimeInt::new_temporal(10).into());
+        let timepoint_frame = build_frame_nr(123);
+
+        {
+            let entity_path = EntityPath::from("/log-time-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_log], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+        {
+            let entity_path = EntityPath::from("/frame-nr-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_frame], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+        {
+            let entity_path = EntityPath::from("/both-log-frame-row-no-components");
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(RowId::new(), [timepoint_log, timepoint_frame], [])
+                .build()?;
+            let chunk = Arc::new(chunk);
+
+            let events = store.insert_chunk(&chunk)?;
+            assert!(events.is_empty());
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn static_overwrites() -> anyhow::Result<()> {
         re_log::setup_logging();
 
@@ -795,8 +1005,9 @@ mod tests {
         let row_id1_1 = RowId::new();
         let row_id2_1 = RowId::new();
         let row_id2_2 = RowId::new();
+        let row_id3_1 = RowId::new();
 
-        let timepoint_static = TimePoint::default();
+        let timepoint_static = TimePoint::STATIC;
 
         let points1 = &[MyPoint::new(1.0, 1.0)];
         let colors1 = &[MyColor::from_rgb(1, 1, 1)];
@@ -810,23 +1021,38 @@ mod tests {
             .with_component_batches(
                 row_id1_1,
                 timepoint_static.clone(),
-                [points1 as _, colors1 as _, labels1 as _],
+                [
+                    (MyPoints::descriptor_points(), points1 as _),
+                    (MyPoints::descriptor_colors(), colors1 as _),
+                    (MyPoints::descriptor_labels(), labels1 as _),
+                ],
             )
             .build()?;
         let chunk2 = Chunk::builder(entity_path.clone())
             .with_component_batches(
                 row_id2_1,
                 timepoint_static.clone(),
-                [points2 as _, colors2 as _],
+                [
+                    (MyPoints::descriptor_points(), points2 as _),
+                    (MyPoints::descriptor_colors(), colors2 as _),
+                ],
             )
             .build()?;
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id2_2, timepoint_static, [labels2 as _])
+            .with_component_batches(
+                row_id2_2,
+                timepoint_static.clone(),
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
+            .build()?;
+        let chunk4 = Chunk::builder(entity_path.clone())
+            .with_component_batches(row_id3_1, timepoint_static.clone(), [])
             .build()?;
 
         let chunk1 = Arc::new(chunk1);
         let chunk2 = Arc::new(chunk2);
         let chunk3 = Arc::new(chunk3);
+        let chunk4 = Arc::new(chunk4);
 
         let events = store.insert_chunk(&chunk1)?;
         assert!(
@@ -864,7 +1090,7 @@ mod tests {
                 && events[0].kind == ChunkStoreDiffKind::Addition
                 && events[1].chunk.id() == chunk1.id()
                 && events[1].kind == ChunkStoreDiffKind::Deletion,
-            "the final write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
+            "the third write should result in the addition of chunk3 _and_ the deletion of the now fully overwritten chunk1"
         );
 
         let stats_after = store.stats();
@@ -878,6 +1104,131 @@ mod tests {
             assert_eq!(2, num_chunks);
             assert_eq!(2, num_rows);
             assert_eq!(3, num_events);
+        }
+
+        let events = store.insert_chunk(&chunk4)?;
+        assert!(
+            events.is_empty(),
+            "the fourth write should result in no changes at all"
+        );
+
+        let stats_after = store.stats();
+        {
+            let ChunkStoreChunkStats {
+                num_chunks,
+                total_size_bytes: _,
+                num_rows,
+                num_events,
+            } = stats_after.static_chunks;
+            assert_eq!(2, num_chunks);
+            assert_eq!(2, num_rows);
+            assert_eq!(3, num_events);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn row_id_min_overwrites() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let entity_path = EntityPath::from("this/that");
+
+        let timepoint = TimePoint::default().with(Timeline::log_tick(), 42);
+
+        let row_id1_1 = RowId::new();
+        let row_id2_1 = RowId::new();
+
+        let labels1 = &[MyLabel("111".to_owned())];
+        let labels2 = &[MyLabel("222".to_owned())];
+
+        let chunk1 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id1_1,
+                timepoint.clone(),
+                [(MyPoints::descriptor_labels(), labels1 as _)],
+            )
+            .build()?;
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id2_1,
+                timepoint.clone(),
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
+            .build()?;
+
+        let chunk1 = Arc::new(chunk1);
+        let chunk2 = Arc::new(chunk2);
+
+        fn assert_chunk_ids_per_min_row_id(
+            store: &ChunkStore,
+            chunks: impl IntoIterator<Item = (RowId, ChunkId)>,
+        ) {
+            assert_eq!(
+                chunks.into_iter().collect::<BTreeMap<_, _>>(),
+                store.chunk_ids_per_min_row_id
+            );
+        }
+
+        {
+            // Insert `chunk1` then `chunk2`.
+
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                ChunkStoreConfig {
+                    enable_changelog: false,
+                    chunk_max_bytes: u64::MAX,
+                    chunk_max_rows: u64::MAX,
+                    chunk_max_rows_if_unsorted: u64::MAX,
+                },
+            );
+
+            let _ = store.insert_chunk(&chunk1)?;
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, chunk1.id())]);
+
+            let _ = store.insert_chunk(&chunk1)?; // noop
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, chunk1.id())]);
+
+            // `chunk2` gets appended to `chunk1`:
+            // * the only Row ID left is `row_id1_1`
+            // * there shouldn't be any warning of any kind
+            // * the only chunk left in the store is the new, compacted chunk
+            let _ = store.insert_chunk(&chunk2)?;
+            assert_eq!(1, store.chunks_per_chunk_id.len());
+            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
+        }
+
+        {
+            // Insert `chunk2` then `chunk1`.
+
+            let mut store = ChunkStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                ChunkStoreConfig {
+                    enable_changelog: false,
+                    chunk_max_bytes: u64::MAX,
+                    chunk_max_rows: u64::MAX,
+                    chunk_max_rows_if_unsorted: u64::MAX,
+                },
+            );
+
+            let _ = store.insert_chunk(&chunk2)?;
+            assert_chunk_ids_per_min_row_id(&store, [(row_id2_1, chunk2.id())]);
+
+            let _ = store.insert_chunk(&chunk2)?; // noop
+            assert_chunk_ids_per_min_row_id(&store, [(row_id2_1, chunk2.id())]);
+
+            // Exactly the same as before, because chunks get compacted in Row ID order, regardless
+            // of the order they are inserted in.
+            //
+            // `chunk2` gets appended to `chunk1`:
+            // * the only Row ID left is `row_id1_1`
+            // * there shouldn't be any warning of any kind
+            // * the only chunk left in the store is the new, compacted chunk
+            let _ = store.insert_chunk(&chunk1)?;
+            assert_eq!(1, store.chunks_per_chunk_id.len());
+            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
         }
 
         Ok(())

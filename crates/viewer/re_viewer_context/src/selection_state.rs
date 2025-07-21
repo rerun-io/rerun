@@ -3,9 +3,11 @@ use indexmap::IndexMap;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
 
-use crate::{ViewerContext, global_context::resolve_mono_instance_path_item};
 use re_entity_db::EntityPath;
+use re_global_context::{ViewId, resolve_mono_instance_path_item};
 use re_log_types::StoreKind;
+
+use crate::ViewerContext;
 
 use super::Item;
 
@@ -115,13 +117,29 @@ impl From<Item> for ItemCollection {
     }
 }
 
-impl<T> From<T> for ItemCollection
-where
-    T: Iterator<Item = (Item, Option<ItemContext>)>,
-{
-    #[inline]
-    fn from(value: T) -> Self {
-        Self(value.collect())
+impl ItemCollection {
+    pub fn from_items_and_context(
+        items: impl IntoIterator<Item = (Item, Option<ItemContext>)>,
+    ) -> Self {
+        Self(items.into_iter().collect())
+    }
+
+    /// Is this view the selected one (and no other)?
+    pub fn is_view_the_only_selected(&self, needle: &ViewId) -> bool {
+        let mut is_selected = false;
+        for item in self.iter_items() {
+            let item_is_view = match item {
+                Item::View(id) | Item::DataResult(id, _) => id == needle,
+                _ => false,
+            };
+
+            if item_is_view {
+                is_selected = true;
+            } else {
+                return false; // More than one view selected
+            }
+        }
+        is_selected
     }
 }
 
@@ -270,7 +288,7 @@ impl ItemCollection {
                     re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
                     re_smart_channel::SmartChannelSource::Sdk => None,
                     re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(uri) => {
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
                     re_smart_channel::SmartChannelSource::MessageProxy(uri) => {

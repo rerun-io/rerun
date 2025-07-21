@@ -25,6 +25,12 @@ namespace rerun::archetypes {
                 .value_or_throw();
         archetype.colors =
             ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        archetype.line_radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_line_radii)
+                .value_or_throw();
+        archetype.fill_mode =
+            ComponentBatch::empty<rerun::components::FillMode>(Descriptor_fill_mode)
+                .value_or_throw();
         archetype.labels =
             ComponentBatch::empty<rerun::components::Text>(Descriptor_labels).value_or_throw();
         archetype.show_labels =
@@ -38,7 +44,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Capsules3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(10);
+        columns.reserve(11);
         if (lengths.has_value()) {
             columns.push_back(lengths.value().partitioned(lengths_).value_or_throw());
         }
@@ -57,6 +63,12 @@ namespace rerun::archetypes {
         if (colors.has_value()) {
             columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
+        if (line_radii.has_value()) {
+            columns.push_back(line_radii.value().partitioned(lengths_).value_or_throw());
+        }
+        if (fill_mode.has_value()) {
+            columns.push_back(fill_mode.value().partitioned(lengths_).value_or_throw());
+        }
         if (labels.has_value()) {
             columns.push_back(labels.value().partitioned(lengths_).value_or_throw());
         }
@@ -66,10 +78,6 @@ namespace rerun::archetypes {
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<Capsules3D>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -92,6 +100,12 @@ namespace rerun::archetypes {
         if (colors.has_value()) {
             return columns(std::vector<uint32_t>(colors.value().length(), 1));
         }
+        if (line_radii.has_value()) {
+            return columns(std::vector<uint32_t>(line_radii.value().length(), 1));
+        }
+        if (fill_mode.has_value()) {
+            return columns(std::vector<uint32_t>(fill_mode.value().length(), 1));
+        }
         if (labels.has_value()) {
             return columns(std::vector<uint32_t>(labels.value().length(), 1));
         }
@@ -112,7 +126,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(10);
+        cells.reserve(11);
 
         if (archetype.lengths.has_value()) {
             cells.push_back(archetype.lengths.value());
@@ -132,6 +146,12 @@ namespace rerun {
         if (archetype.colors.has_value()) {
             cells.push_back(archetype.colors.value());
         }
+        if (archetype.line_radii.has_value()) {
+            cells.push_back(archetype.line_radii.value());
+        }
+        if (archetype.fill_mode.has_value()) {
+            cells.push_back(archetype.fill_mode.value());
+        }
         if (archetype.labels.has_value()) {
             cells.push_back(archetype.labels.value());
         }
@@ -140,11 +160,6 @@ namespace rerun {
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<Capsules3D>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

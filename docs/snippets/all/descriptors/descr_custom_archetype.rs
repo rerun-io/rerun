@@ -8,29 +8,27 @@ struct CustomPoints3D {
 impl CustomPoints3D {
     fn overridden_position_descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("user.CustomPoints3D".into()),
-            archetype_field_name: Some("custom_positions".into()),
-            component_name: "user.CustomPosition3D".into(),
+            archetype: Some("user.CustomPoints3D".into()),
+            component: "user.CustomPoints3D:custom_positions".into(),
+            component_type: Some("user.CustomPosition3D".into()),
         }
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
-        <rerun::components::Color as rerun::Component>::descriptor()
-            .or_with_archetype_name(|| "user.CustomPoints3D".into())
-            .or_with_archetype_field_name(|| "colors".into())
+        ComponentDescriptor::partial("user.CustomPoints3D:colors")
+            .or_with_archetype(|| "user.CustomPoints3D".into())
+            .or_with_component_type(<rerun::components::Color as rerun::Component>::name)
     }
 }
 
 impl rerun::AsComponents for CustomPoints3D {
     fn as_serialized_batches(&self) -> Vec<rerun::SerializedComponentBatch> {
         [
-            self.positions.serialized().map(|positions| {
-                positions.with_descriptor_override(Self::overridden_position_descriptor())
-            }),
+            self.positions
+                .serialized(Self::overridden_position_descriptor()),
             self.colors
                 .as_ref()
-                .and_then(|colors| colors.serialized())
-                .map(|colors| colors.with_descriptor_override(Self::overridden_color_descriptor())),
+                .and_then(|colors| colors.serialized(Self::overridden_color_descriptor())),
         ]
         .into_iter()
         .flatten()
@@ -82,8 +80,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();
-        // Skip the first two chunks, as they represent the `RecordingProperties`.
-        let chunks = store.iter_chunks().skip(2).collect::<Vec<_>>();
+        // Skip the first chunk, as it represent the `RecordingInfo`.
+        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();
@@ -93,14 +91,14 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let expected = vec![
             ComponentDescriptor {
-                archetype_name: Some("user.CustomPoints3D".into()),
-                archetype_field_name: Some("colors".into()),
-                component_name: "rerun.components.Color".into(),
+                archetype: Some("user.CustomPoints3D".into()),
+                component: "user.CustomPoints3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
             },
             ComponentDescriptor {
-                archetype_name: Some("user.CustomPoints3D".into()),
-                archetype_field_name: Some("custom_positions".into()),
-                component_name: "user.CustomPosition3D".into(),
+                archetype: Some("user.CustomPoints3D".into()),
+                component: "user.CustomPoints3D:custom_positions".into(),
+                component_type: Some("user.CustomPosition3D".into()),
             },
         ];
 

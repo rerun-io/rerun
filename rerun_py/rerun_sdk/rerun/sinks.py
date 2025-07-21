@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
+from rerun_bindings import (
+    FileSink as FileSink,
+    GrpcSink as GrpcSink,
+)
+from typing_extensions import deprecated
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.dataframe import Recording
@@ -25,6 +30,91 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
+LogSinkLike = Union[GrpcSink, FileSink]
+
+
+def set_sinks(
+    *sinks: LogSinkLike,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Stream data to multiple different sinks.
+
+    Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
+    use the same `url` will cause this function to throw a `ValueError`.
+
+    This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+    `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+    the sinks passed to `set_sinks` remaining active.
+
+    Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
+
+    Parameters
+    ----------
+    sinks:
+        A list of sinks to wrap.
+
+        See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+    default_blueprint:
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Example
+    -------
+    ```py
+    rr.init("rerun_example_tee")
+    rr.set_sinks(
+        rr.GrpcSink(),
+        rr.FileSink("data.rrd")
+    )
+    rr.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+    ```
+
+    """
+
+    # Check for duplicates
+    seen = set()
+    duplicates = set()
+    for sink in sinks:
+        if sink in seen:
+            duplicates.add(sink)
+        else:
+            seen.add(sink)
+    if duplicates:
+        raise ValueError(f"Duplicate sinks detected: {', '.join(str(d) for d in duplicates)}")
+
+    if not is_recording_enabled(recording):
+        logging.warning("Rerun is disabled - set_sinks() call ignored")
+        return
+
+    application_id = get_application_id(recording)  # NOLINT
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id,
+            blueprint=default_blueprint,
+        ).storage
+
+    bindings.set_sinks(
+        [*sinks],
+        default_blueprint=blueprint_storage,
+        recording=recording.to_native() if recording is not None else None,
+    )
+
+
 def connect_grpc(
     url: str | None = None,
     *,
@@ -33,14 +123,19 @@ def connect_grpc(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+    Connect to a remote Rerun Viewer on the given URL.
 
     This function returns immediately.
 
     Parameters
     ----------
     url:
-        The HTTP(S) URL to connect to
+        The URL to connect to.
+
+        The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        and the pathname must be `/proxy`.
+
+        The default is `rerun+http://127.0.0.1:9876/proxy`.
     flush_timeout_sec:
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
@@ -57,7 +152,7 @@ def connect_grpc(
 
     """
     if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - connect() call ignored")
+        logging.warning("Rerun is disabled - connect_grpc() call ignored")
         return
 
     from rerun.recording_stream import get_application_id
@@ -229,6 +324,9 @@ def serve_grpc(
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
+    It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+    on the same machine, otherwise you're potentially doubling your memory usage!
+
     Returns the URI of the server so you can connect the viewer to it.
 
     This function returns immediately. In order to keep the server running, you must keep the Python process running
@@ -280,6 +378,10 @@ def serve_grpc(
     )
 
 
+@deprecated(
+    """Use a combination of `rr.serve_grpc` and `rr.serve_web_viewer` instead.
+    See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
+)
 def serve_web(
     *,
     open_browser: bool = True,
@@ -301,6 +403,10 @@ def serve_web(
     This function returns immediately.
 
     Calling `serve_web` is equivalent to calling [`rerun.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+    ```
+    server_uri = rr.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+    rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+    ```
 
     Parameters
     ----------
@@ -437,6 +543,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
+    server_memory_limit: str = "0B",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
     default_blueprint: BlueprintLike | None = None,
@@ -460,6 +567,13 @@ def spawn(
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
+    server_memory_limit:
+        An upper limit on how much memory the gRPC server running
+        in the same process as the Rerun Viewer should use.
+        When this limit is reached, Rerun will drop the oldest data.
+        Example: `16GB` or `50%` (of system total).
+
+        Defaults to `0B`.
     hide_welcome_screen:
         Hide the normal Rerun welcome screen.
     detach_process:
@@ -481,7 +595,11 @@ def spawn(
         return
 
     _spawn_viewer(
-        port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen, detach_process=detach_process
+        port=port,
+        memory_limit=memory_limit,
+        server_memory_limit=server_memory_limit,
+        hide_welcome_screen=hide_welcome_screen,
+        detach_process=detach_process,
     )
 
     if connect:

@@ -2,13 +2,15 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{ComponentName, ViewClassIdentifier};
+use re_types::{ComponentType, ViewClassIdentifier};
 
 use crate::{
     IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
+
+use super::ViewContext;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ViewClassLayoutPriority {
@@ -62,7 +64,7 @@ pub trait ViewClass: Send + Sync {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> re_ui::Help;
+    fn help(&self, os: egui::os::OperatingSystem) -> re_ui::Help;
 
     /// Called once upon registration of the class
     ///
@@ -80,7 +82,7 @@ pub trait ViewClass: Send + Sync {
     /// Optional archetype of the View's blueprint properties.
     ///
     /// Blueprint components that only apply to the view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentType>> {
         None
     }
 
@@ -107,12 +109,15 @@ pub trait ViewClass: Send + Sync {
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
     /// of the entities (for this, use [`Self::visualizable_filter_context`]).
-    fn recommended_root_for_entities(
+    fn recommended_origin_for_entities(
         &self,
-        _entities: &IntSet<EntityPath>,
+        entities: &IntSet<EntityPath>,
         _entity_db: &re_entity_db::EntityDb,
     ) -> Option<EntityPath> {
-        Some(EntityPath::root())
+        // For example: when creating a view from a single entity, we want that
+        // entity to be the origin of the view.
+        // If we select two sibling entities, we want their parent to be the origin.
+        Some(EntityPath::common_ancestor_of(entities.iter()))
     }
 
     /// Create context object that is passed to all of this classes visualizers
@@ -221,9 +226,7 @@ pub trait ViewClass: Send + Sync {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError>;
-}
 
-pub trait ViewClassExt<'a>: ViewClass + 'a {
     /// Determines the set of visible entities for a given view.
     // TODO(andreas): This should be part of the View's (non-blueprint) state.
     // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
@@ -260,7 +263,34 @@ pub trait ViewClassExt<'a>: ViewClass + 'a {
     }
 }
 
-impl<'a> ViewClassExt<'a> for dyn ViewClass + 'a {}
+pub trait ViewClassExt<'a>: ViewClass + 'a {
+    fn view_context<'b>(
+        &self,
+        viewer_ctx: &'b ViewerContext<'b>,
+        view_id: ViewId,
+        view_state: &'b dyn ViewState,
+    ) -> ViewContext<'b>;
+}
+
+impl<'a, T> ViewClassExt<'a> for T
+where
+    T: ViewClass + 'a,
+{
+    fn view_context<'b>(
+        &self,
+        viewer_ctx: &'b ViewerContext<'b>,
+        view_id: ViewId,
+        view_state: &'b dyn ViewState,
+    ) -> ViewContext<'b> {
+        ViewContext {
+            viewer_ctx,
+            view_id,
+            view_class_identifier: T::identifier(),
+            view_state,
+            query_result: viewer_ctx.lookup_query_result(view_id),
+        }
+    }
+}
 
 /// Unserialized frame to frame state of a view.
 ///

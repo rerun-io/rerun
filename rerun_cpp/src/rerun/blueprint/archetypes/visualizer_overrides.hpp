@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -22,7 +21,8 @@ namespace rerun::blueprint::archetypes {
     /// of the visualizer system. It is not intended to be a long-term solution, but provides
     /// enough utility to be useful in the short term.
     ///
-    /// The long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>
+    /// **NOTE**: Rerun `v0.24` changed the behavior of `archetypes::VisualizerOverrides`, so that currently they only
+    /// work with time series views. We plan to bring this feature for all views in future versions.
     ///
     /// This can only be used as part of blueprints. It will have no effect if used
     /// in a regular entity.
@@ -34,19 +34,14 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> ranges;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.VisualizerOverridesIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.VisualizerOverrides";
 
         /// `ComponentDescriptor` for the `ranges` field.
         static constexpr auto Descriptor_ranges = ComponentDescriptor(
-            ArchetypeName, "ranges",
-            Loggable<rerun::blueprint::components::VisualizerOverride>::Descriptor.component_name
+            ArchetypeName, "VisualizerOverrides:ranges",
+            Loggable<rerun::blueprint::components::VisualizerOverride>::ComponentType
         );
 
       public:

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Shared state for the 3 collapsible panels.
@@ -35,19 +35,9 @@ impl PanelBlueprint {
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component_name: "rerun.blueprint.components.PanelState".into(),
-            archetype_field_name: Some("state".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+            component: "PanelBlueprint:state".into(),
+            component_type: Some("rerun.blueprint.components.PanelState".into()),
         }
     }
 }
@@ -55,31 +45,21 @@ impl PanelBlueprint {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_state()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            PanelBlueprint::descriptor_indicator(),
-            PanelBlueprint::descriptor_state(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_state()]);
 
 impl PanelBlueprint {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`PanelBlueprint`] [`::re_types_core::Archetype`]
-pub type PanelBlueprintIndicator = ::re_types_core::GenericIndicatorComponent<PanelBlueprint>;
-
 impl ::re_types_core::Archetype for PanelBlueprint {
-    type Indicator = PanelBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PanelBlueprint".into()
@@ -88,12 +68,6 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "Panel blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        PanelBlueprintIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -134,10 +108,7 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.state.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.state.clone()).flatten().collect()
     }
 }
 

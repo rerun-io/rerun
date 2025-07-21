@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The top-level description of the viewport.
@@ -59,9 +59,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.RootContainer".into(),
-            archetype_field_name: Some("root_container".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component: "ViewportBlueprint:root_container".into(),
+            component_type: Some("rerun.blueprint.components.RootContainer".into()),
         }
     }
 
@@ -71,9 +71,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.ViewMaximized".into(),
-            archetype_field_name: Some("maximized".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component: "ViewportBlueprint:maximized".into(),
+            component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.AutoLayout".into(),
-            archetype_field_name: Some("auto_layout".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component: "ViewportBlueprint:auto_layout".into(),
+            component_type: Some("rerun.blueprint.components.AutoLayout".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.AutoViews".into(),
-            archetype_field_name: Some("auto_views".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component: "ViewportBlueprint:auto_views".into(),
+            component_type: Some("rerun.blueprint.components.AutoViews".into()),
         }
     }
 
@@ -107,19 +107,9 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.ViewerRecommendationHash".into(),
-            archetype_field_name: Some("past_viewer_recommendations".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component: "ViewportBlueprint:past_viewer_recommendations".into(),
+            component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
         }
     }
 }
@@ -127,8 +117,8 @@ impl ViewportBlueprint {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ViewportBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -141,10 +131,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ViewportBlueprint::descriptor_indicator(),
             ViewportBlueprint::descriptor_root_container(),
             ViewportBlueprint::descriptor_maximized(),
             ViewportBlueprint::descriptor_auto_layout(),
@@ -154,16 +143,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl ViewportBlueprint {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`ViewportBlueprint`] [`::re_types_core::Archetype`]
-pub type ViewportBlueprintIndicator = ::re_types_core::GenericIndicatorComponent<ViewportBlueprint>;
-
 impl ::re_types_core::Archetype for ViewportBlueprint {
-    type Indicator = ViewportBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ViewportBlueprint".into()
@@ -172,12 +156,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "Viewport blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ViewportBlueprintIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -250,7 +228,6 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.root_container.clone(),
             self.maximized.clone(),
             self.auto_layout.clone(),

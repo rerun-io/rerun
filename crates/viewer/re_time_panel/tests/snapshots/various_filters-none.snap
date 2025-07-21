@@ -92,3 +92,16 @@ children:
                     highlight_sections: []
                     default_open: false
                     children: []
+      - entity_path:
+          - __properties
+        label: __properties/
+        highlight_sections: []
+        default_open: false
+        children:
+          - entity_path:
+              - __properties
+              - episode
+            label: episode
+            highlight_sections: []
+            default_open: false
+            children: []

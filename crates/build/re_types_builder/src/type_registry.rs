@@ -7,6 +7,7 @@ use anyhow::Context as _;
 use crate::{
     ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type,
     data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
+    objects::EnumIntegerType,
 };
 
 // --- Registry ---
@@ -53,7 +54,6 @@ impl TypeRegistry {
 
     fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
-        let is_enum = obj.is_enum();
         let is_arrow_transparent = obj.is_arrow_transparent();
         let num_fields = obj.fields.len();
 
@@ -95,12 +95,16 @@ impl TypeRegistry {
                 )
                 .into(),
             }
-        } else if is_enum {
-            // TODO(jleibs): The underlying type is encoded in the FBS and could be used
-            // here instead if we want non-u8 enums.
+        } else if let Some(enum_type) = obj.enum_integer_type() {
+            let datatype = match enum_type {
+                EnumIntegerType::U8 => AtomicDataType::UInt8,
+                EnumIntegerType::U16 => AtomicDataType::UInt16,
+                EnumIntegerType::U32 => AtomicDataType::UInt32,
+                EnumIntegerType::U64 => AtomicDataType::UInt64,
+            };
             LazyDatatype::Object {
                 fqname: obj.fqname.clone(),
-                datatype: LazyDatatype::Atomic(AtomicDataType::UInt8).into(),
+                datatype: LazyDatatype::Atomic(datatype).into(),
             }
         } else {
             let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);

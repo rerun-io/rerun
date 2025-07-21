@@ -42,8 +42,10 @@ arrow.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
+re_types.workspace = true
 # External dependencies:
 insta.workspace = true
 similar-asserts.workspace = true

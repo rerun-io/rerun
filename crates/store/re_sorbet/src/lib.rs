@@ -22,12 +22,14 @@ mod error;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
-mod migration;
+mod migrations;
 mod row_id_column_descriptor;
+mod schema_builder;
 mod selectors;
 mod sorbet_batch;
 mod sorbet_columns;
 mod sorbet_schema;
+pub mod timestamp_metadata;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
@@ -45,12 +47,14 @@ pub use self::{
         MissingMetadataKey,
     },
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
+    schema_builder::SchemaBuilder,
     selectors::{
         ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
     },
     sorbet_batch::SorbetBatch,
     sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors},
     sorbet_schema::SorbetSchema,
+    timestamp_metadata::TimestampMetadata,
 };
 
 /// The type of [`SorbetBatch`].
@@ -61,4 +65,30 @@ pub enum BatchType {
 
     /// Potentially multiple entities
     Dataframe,
+}
+
+/// Get the chunk ID from the metadata of the Arrow schema
+/// of a record batch containing a sorbet chunk.
+///
+/// Returns one of:
+/// * `Ok`
+/// * [`SorbetError::MissingChunkId`]
+/// * [`SorbetError::ChunkIdDeserializationError`]
+// TODO(#10343): remove this
+pub fn chunk_id_of_schema(
+    schema: &arrow::datatypes::Schema,
+) -> Result<re_types_core::ChunkId, SorbetError> {
+    let metadata = schema.metadata();
+    if let Some(chunk_id_str) = metadata
+        .get("rerun:id")
+        .or_else(|| metadata.get("rerun.id"))
+    {
+        chunk_id_str.parse().map_err(|err| {
+            SorbetError::ChunkIdDeserializationError(format!(
+                "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
+            ))
+        })
+    } else {
+        Err(SorbetError::MissingChunkId)
+    }
 }

@@ -4,7 +4,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
-use re_types::{archetypes::RecordingProperties, components::Timestamp};
+use re_types::{archetypes::RecordingInfo, components::Timestamp};
 use re_ui::{
     SyntaxHighlighting as _, icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
@@ -71,7 +71,7 @@ impl ItemTitle {
                 }
             }
 
-            // TODO(lucasmerlin): Icon? How do get the actual title? Should RedapServers be part of ViewerContext?
+            // TODO(#10566): There should be an `EntryName` in this `Item` arm.
             Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
 
             // TODO(lucasmerlin): Icon?
@@ -90,7 +90,7 @@ impl ItemTitle {
             match (
                 entity_db.app_id(),
                 entity_db
-                    .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time()),
+                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
             ) {
                 (Some(application_id), Some(started)) => {
                     let time = re_log_types::Timestamp::from(started.0)

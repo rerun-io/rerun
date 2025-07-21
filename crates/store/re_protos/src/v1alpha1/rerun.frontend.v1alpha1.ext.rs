@@ -1,7 +1,8 @@
 use re_log_types::{EntityPath, EntryId};
 
-use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
-use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::Query;
+use crate::v1alpha1::rerun_common_v1alpha1;
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{IfDuplicateBehavior, ScanParameters};
+use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---
@@ -48,6 +49,15 @@ impl TryFrom<crate::frontend::v1alpha1::ScanPartitionTableRequest> for ScanParti
     }
 }
 
+impl From<ScanPartitionTableRequest> for crate::frontend::v1alpha1::ScanPartitionTableRequest {
+    fn from(value: ScanPartitionTableRequest) -> Self {
+        Self {
+            dataset_id: Some(value.dataset_id.into()),
+            scan_parameters: value.scan_parameters.map(Into::into),
+        }
+    }
+}
+
 // --- GetDatasetSchemaRequest ---
 
 impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
@@ -63,6 +73,26 @@ impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_type
                 "dataset_id"
             ))?
             .try_into()?)
+    }
+}
+
+// --- RegisterWithDatasetRequest ---
+
+#[derive(Debug)]
+pub struct RegisterWithDatasetRequest {
+    pub dataset_id: EntryId,
+    pub data_sources: Vec<DataSource>,
+    pub on_duplicate: IfDuplicateBehavior,
+}
+
+impl From<RegisterWithDatasetRequest> for crate::frontend::v1alpha1::RegisterWithDatasetRequest {
+    fn from(value: RegisterWithDatasetRequest) -> Self {
+        Self {
+            dataset_id: Some(value.dataset_id.into()),
+            data_sources: value.data_sources.into_iter().map(Into::into).collect(),
+            on_duplicate: crate::common::v1alpha1::IfDuplicateBehavior::from(value.on_duplicate)
+                as i32,
+        }
     }
 }
 
@@ -114,5 +144,27 @@ impl TryFrom<crate::frontend::v1alpha1::GetChunksRequest> for GetChunksRequest {
 
             query: value.query.map(|q| q.try_into()).transpose()?,
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DoMaintenanceRequest {
+    pub dataset_id: Option<rerun_common_v1alpha1::EntryId>,
+    pub build_scalar_indexes: bool,
+    pub compact_fragments: bool,
+    pub cleanup_before: Option<jiff::Timestamp>,
+}
+
+impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequest {
+    fn from(value: DoMaintenanceRequest) -> Self {
+        Self {
+            dataset_id: value.dataset_id,
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
+                seconds: ts.as_second(),
+                nanos: ts.subsec_nanosecond(),
+            }),
+        }
     }
 }

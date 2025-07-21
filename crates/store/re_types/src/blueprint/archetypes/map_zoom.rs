@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration of the map view zoom level.
@@ -37,19 +37,9 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_zoom() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
-            component_name: "rerun.blueprint.components.ZoomLevel".into(),
-            archetype_field_name: Some("zoom".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.MapZoomIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            component: "MapZoom:zoom".into(),
+            component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
         }
     }
 }
@@ -57,26 +47,21 @@ impl MapZoom {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [MapZoom::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [MapZoom::descriptor_zoom()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| [MapZoom::descriptor_indicator(), MapZoom::descriptor_zoom()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [MapZoom::descriptor_zoom()]);
 
 impl MapZoom {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`MapZoom`] [`::re_types_core::Archetype`]
-pub type MapZoomIndicator = ::re_types_core::GenericIndicatorComponent<MapZoom>;
-
 impl ::re_types_core::Archetype for MapZoom {
-    type Indicator = MapZoomIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.MapZoom".into()
@@ -85,12 +70,6 @@ impl ::re_types_core::Archetype for MapZoom {
     #[inline]
     fn display_name() -> &'static str {
         "Map zoom"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        MapZoomIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -131,10 +110,7 @@ impl ::re_types_core::AsComponents for MapZoom {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.zoom.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.zoom.clone()).flatten().collect()
     }
 }
 

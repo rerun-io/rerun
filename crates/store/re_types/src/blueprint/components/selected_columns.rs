@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Describe a component column to be selected in the dataframe view.
@@ -28,8 +28,8 @@ pub struct SelectedColumns(pub crate::blueprint::datatypes::SelectedColumns);
 
 impl ::re_types_core::Component for SelectedColumns {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.SelectedColumns")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.SelectedColumns".into()
     }
 }
 

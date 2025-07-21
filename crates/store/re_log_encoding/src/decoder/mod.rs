@@ -79,6 +79,9 @@ pub enum DecodeError {
     #[error("Could not convert type from protobuf: {0}")]
     TypeConversion(#[from] re_protos::TypeConversionError),
 
+    #[error("Sorbet error: {0}")]
+    SorbetError(#[from] re_sorbet::SorbetError),
+
     #[error("Failed to read chunk: {0}")]
     Chunk(#[from] re_chunk::ChunkError),
 
@@ -257,34 +260,11 @@ impl<R: std::io::Read> Decoder<R> {
         self.size_bytes
     }
 
-    /// Peeks ahead in search of additional `FileHeader`s in the stream.
-    ///
-    /// Returns true if a valid header was found.
-    ///
-    /// No-op if the decoder wasn't initialized with [`Decoder::new_concatenated`].
-    fn peek_file_header(&mut self) -> bool {
-        match &mut self.read {
-            Reader::Raw(_) => false,
-            Reader::Buffered(read) => {
-                if read.fill_buf().map_err(DecodeError::Read).is_err() {
-                    return false;
-                }
-
-                let mut read = std::io::Cursor::new(read.buffer());
-                if FileHeader::decode(&mut read).is_err() {
-                    return false;
-                }
-
-                true
-            }
-        }
-    }
-}
-
-impl<R: std::io::Read> Iterator for Decoder<R> {
-    type Item = Result<LogMsg, DecodeError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    /// Returns the next message in the stream.
+    fn next<F, T>(&mut self, mut decoder: F) -> Option<Result<T, DecodeError>>
+    where
+        F: FnMut(&mut Reader<R>) -> Result<(u64, Option<T>), DecodeError>,
+    {
         re_tracing::profile_function!();
 
         if self.peek_file_header() {
@@ -307,11 +287,12 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         }
 
         let msg = match self.options.serializer {
-            Serializer::Protobuf => match decoder::decode(&mut self.read) {
+            Serializer::Protobuf => match decoder(&mut self.read) {
                 Ok((read_bytes, msg)) => {
                     self.size_bytes += read_bytes;
                     msg
                 }
+
                 Err(err) => match err {
                     DecodeError::Read(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
                         return None;
@@ -321,26 +302,81 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
             },
         };
 
-        let Some(mut msg) = msg else {
+        let Some(msg) = msg else {
             // we might have a concatenated stream, so we peek beyond end of file marker to see
             if self.peek_file_header() {
                 re_log::debug!(
                     "Reached end of stream, but it seems we have a concatenated file, continuing"
                 );
-                return self.next();
+                return self.next(decoder);
             }
 
             re_log::trace!("Reached end of stream, iterator complete");
             return None;
         };
 
-        if let LogMsg::SetStoreInfo(msg) = &mut msg {
-            // Propagate the protocol version from the header into the `StoreInfo` so that all
-            // parts of the app can easily access it.
-            msg.info.store_version = Some(self.version());
-        }
-
         Some(Ok(msg))
+    }
+
+    /// Peeks ahead in search of additional `FileHeader`s in the stream.
+    ///
+    /// Returns true if a valid header was found.
+    ///
+    /// No-op if the decoder wasn't initialized with [`Decoder::new_concatenated`].
+    fn peek_file_header(&mut self) -> bool {
+        match &mut self.read {
+            Reader::Raw(_) => false,
+            Reader::Buffered(read) => {
+                if read.fill_buf().map_err(DecodeError::Read).is_err() {
+                    return false;
+                }
+
+                let mut read = std::io::Cursor::new(read.buffer());
+                if FileHeader::decode(&mut read).is_err() {
+                    return false;
+                }
+
+                true
+            }
+        }
+    }
+
+    /// Returns a [`RawIterator`] over the transport-level data (Protobuf).
+    pub fn into_raw_iter(self) -> RawIterator<R> {
+        RawIterator { decoder: self }
+    }
+}
+
+/// Iterator over the transport-level data (Protobuf).
+///
+/// Application-level data (Arrow) is not decoded.
+pub struct RawIterator<R: std::io::Read> {
+    decoder: Decoder<R>,
+}
+
+impl<R: std::io::Read> RawIterator<R> {
+    /// Returns the size in bytes of the data that has been decoded up to now.
+    //
+    // TODO(jan): stop returning number of read bytes, use cursors wrapping readers instead.
+    #[inline]
+    pub fn size_bytes(&self) -> u64 {
+        self.decoder.size_bytes
+    }
+}
+
+impl<R: std::io::Read> Iterator for Decoder<R> {
+    type Item = Result<LogMsg, DecodeError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next(decoder::decode_to_app)
+    }
+}
+
+impl<R: std::io::Read> Iterator for RawIterator<R> {
+    type Item = Result<re_protos::log_msg::v1alpha1::log_msg::Msg, DecodeError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.decoder.next(decoder::decode_to_transport)
     }
 }
 
@@ -360,7 +396,7 @@ mod tests {
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
 
-        let arrow_msg = re_chunk::Chunk::builder("test_entity".into())
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
             .with_archetype(
                 re_chunk::RowId::new(),
                 re_log_types::TimePoint::default().with(

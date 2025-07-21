@@ -15,18 +15,16 @@ use ffmpeg_sidecar::{
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
+use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
 use crate::{
-    PixelFormat, Time,
+    PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
-        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
-        ffmpeg_h264::{
-            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
-            nalu::{NAL_START_CODE, NalHeader, NalUnitType},
-            sps::H264Sps,
-        },
+        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
+        ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
+    demux::ChromaSubsamplingModes,
 };
 
 use super::version::FFmpegVersionParseError;
@@ -90,11 +88,29 @@ pub enum Error {
     SpsParsing,
 }
 
-impl From<Error> for crate::decode::Error {
+impl Error {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Restarting ffmpeg can recover from some decoder internal errors.
+        matches!(
+            self,
+            Self::Ffmpeg(_) | Self::FfmpegFatal(_) | Self::UnexpectedFfmpegOutputChunk
+        )
+    }
+}
+
+impl From<Error> for DecodeError {
     fn from(err: Error) -> Self {
         Self::Ffmpeg(std::sync::Arc::new(err))
     }
 }
+
+/// In Annex-B before every NAL unit is a NAL start code.
+///
+/// This is used in Annex-B byte stream formats such as h264 files.
+/// Packet transform systems (RTP) may omit these.
+///
+/// Note that there's also a less commonly used short version with only 2 zeros: `0x00, 0x00, 0x01`.
+const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
@@ -119,10 +135,10 @@ struct FFmpegFrameInfo {
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: usize,
+    frame_nr: u32,
 
     presentation_timestamp: Time,
-    duration: Time,
+    duration: Option<Time>,
     decode_timestamp: Time,
 }
 
@@ -177,7 +193,9 @@ struct FFmpegProcessAndListener {
     write_thread: Option<std::thread::JoinHandle<()>>,
 
     /// Number of samples submitted to ffmpeg that has not yet been outputted by ffmpeg.
-    outstanding_frames: Arc<AtomicI32>,
+    ///
+    /// This counter is for debugging purposes only.
+    num_outstanding_frames: Arc<AtomicI32>,
 
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
@@ -190,47 +208,46 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
-        avcc: re_mp4::Avc1Box,
+        encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        let sps_result = H264Sps::parse_from_avcc(&avcc);
-        if let Ok(sps) = &sps_result {
-            re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
-        }
+        // TODO(andreas): should get SPS also without AVCC from ongoing stream.
 
-        let (pixel_format, ffmpeg_pix_fmt) = match sps_result.and_then(|sps| sps.pixel_layout()) {
-            Ok(layout) => {
-                let pixel_format = PixelFormat::Yuv {
-                    layout,
-                    // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
-                    //
-                    // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
-                    // Note that yuvj4xy family of formats fulfill the same function. They according to this post
-                    // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
-                    // they are still not quite passed through everywhere. So we'll just use both.
-                    range: crate::decode::YuvRange::Full,
-                    // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
-                    coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
-                };
-                let ffmpeg_pix_fmt = match layout {
-                    crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
-                    crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
-                    crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
-                    crate::decode::YuvPixelLayout::Y400 => "gray",
-                };
+        let (pixel_format, ffmpeg_pix_fmt) = if let Some(chroma_subsampling) =
+            encoding_details.as_ref().and_then(|e| e.chroma_subsampling)
+        {
+            // We always get planar layouts back from ffmpeg.
+            let (layout, ffmpeg_pix_fmt) = match chroma_subsampling {
+                ChromaSubsamplingModes::Yuv444 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V444, "yuvj444p")
+                }
+                ChromaSubsamplingModes::Yuv422 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V422, "yuvj422p")
+                }
+                ChromaSubsamplingModes::Yuv420 => {
+                    (crate::decode::YuvPixelLayout::Y_U_V420, "yuvj420p")
+                }
+                ChromaSubsamplingModes::Monochrome => (crate::decode::YuvPixelLayout::Y400, "gray"),
+            };
 
-                (pixel_format, ffmpeg_pix_fmt)
-            }
-            Err(err) => {
-                re_log::warn_once!(
-                    "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
-                );
+            let pixel_format = PixelFormat::Yuv {
+                layout,
+                // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                //
+                // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                // Note that yuvj4xy family of formats fulfill the same function. They according to this post
+                // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                // they are still not quite passed through everywhere. So we'll just use both.
+                range: crate::decode::YuvRange::Full,
+                // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+            };
 
-                // By default play it safe: let ffmpeg convert to rgba.
-                (PixelFormat::Rgba8Unorm, "rgba")
-            }
+            (pixel_format, ffmpeg_pix_fmt)
+        } else {
+            (PixelFormat::Rgba8Unorm, "rgba")
         };
 
         let mut ffmpeg_command = if let Some(ffmpeg_path) = ffmpeg_path {
@@ -280,7 +297,7 @@ impl FFmpegProcessAndListener {
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
 
-        let outstanding_frames = Arc::new(AtomicI32::new(0));
+        let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
@@ -292,7 +309,7 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
-                let outstanding_frames = outstanding_frames.clone();
+                let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
@@ -305,6 +322,8 @@ impl FFmpegProcessAndListener {
                 }
             })
             .expect("Failed to spawn ffmpeg listener thread");
+
+        let avcc = encoding_details.as_ref().and_then(|e| e.avcc()).cloned();
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
@@ -327,7 +346,7 @@ impl FFmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
-            outstanding_frames,
+            num_outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -360,7 +379,7 @@ impl FFmpegProcessAndListener {
                 },
             )
         } else {
-            self.outstanding_frames.fetch_add(1, Ordering::Relaxed);
+            self.num_outstanding_frames.fetch_add(1, Ordering::Relaxed);
 
             Ok(())
         }
@@ -395,11 +414,13 @@ impl Drop for FFmpegProcessAndListener {
         {
             let kill_result = self.ffmpeg.kill();
             let wait_result = self.ffmpeg.wait();
-            re_log::debug!(
-                "FFmpeg kill result: {:?}, wait result: {:?}",
-                kill_result,
-                wait_result
-            );
+            if kill_result.is_err() || wait_result.is_err() {
+                re_log::debug!(
+                    "FFmpeg kill result: {:?}, wait result: {:?}",
+                    kill_result,
+                    wait_result
+                );
+            }
         }
 
         // Unfortunately, even with the above measures, it can still happen that the listen threads take occasionally 100ms and more to shut down.
@@ -429,7 +450,7 @@ impl Drop for FFmpegProcessAndListener {
 
         re_log::trace!(
             "Outstanding frames after shutting down ffmpeg: {}",
-            self.outstanding_frames.load(Ordering::Relaxed)
+            self.num_outstanding_frames.load(Ordering::Relaxed)
         );
     }
 }
@@ -438,7 +459,7 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
-    avcc: &re_mp4::Avc1Box,
+    avcc: &Option<re_mp4::Avc1Box>,
 ) {
     let mut state = NaluStreamState::default();
 
@@ -449,10 +470,10 @@ fn write_ffmpeg_input(
                 // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
                 // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
                 let end_nals: Vec<u8> = [
-                    NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndSequence, 0).0],
-                    NAL_START_CODE,
-                    &[NalHeader::new(NalUnitType::EndStream, 0).0],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfSeq.id()],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfStream.id()],
                 ]
                 .concat();
                 write_bytes(ffmpeg_stdin, &end_nals).ok();
@@ -465,7 +486,15 @@ fn write_ffmpeg_input(
             }
         };
 
-        if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
+        let write_result = if let Some(avcc) = avcc {
+            write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
+        } else {
+            // If there was no AVCC box, we assume the data is already in Annex B format.
+            // TODO(andreas): feels a bit implicit, would be nice to make this more clear.
+            write_bytes(ffmpeg_stdin, &chunk.data)
+        };
+
+        if let Err(err) = write_result {
             let on_output = on_output.lock();
             if let Some(on_output) = on_output.as_ref() {
                 let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
@@ -489,68 +518,68 @@ fn write_ffmpeg_input(
 struct FrameBuffer {
     /// Received frame-infos, waiting to be matched to output frames.
     ///
-    /// Sorted by their presentation timestamp.
-    pending: BTreeMap<Time, FFmpegFrameInfo>,
+    /// Key is the frame number, making this list sorted in presentation order.
+    pending: BTreeMap<u32, FFmpegFrameInfo>,
 
-    /// Hightess DTC (Decoder timestamp) encountered so far.
-    highest_dts: Time,
+    /// The frame number of the next frame if we had any so far.
+    ///
+    /// `None` if we haven't received any frames yet since the last decoder reset.
+    next_frame_nr: Option<u32>,
 }
 
 impl FrameBuffer {
     fn new() -> Self {
         Self {
             pending: BTreeMap::new(),
-            highest_dts: Time::MIN,
+            next_frame_nr: None,
         }
     }
 
     fn on_frame(
         &mut self,
-        debug_name: &str,
         pixel_format: &PixelFormat,
         frame_info_rx: &Receiver<FFmpegFrameInfo>,
         frame: ffmpeg_sidecar::event::OutputVideoFrame,
     ) -> Option<Frame> {
+        // ffmpeg gives us raw images, but we have to pair them up with frame infos.
+        //
         // We input frames into ffmpeg in decode (DTS) order, and so that's
         // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
+        //
         // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
         // We want to accurately match the `FrameInfo` with its corresponding output frame.
         // To do that, we need to buffer frames that come out of ffmpeg.
-        //
-        // How do we know how large this buffer needs to be?
-        // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
-        // Otherwise, we'd assign the wrong PTS to the frame that just came in.
         let frame_info = loop {
-            let oldest_pts_in_buffer = self.pending.first_key_value().map(|(pts, _)| *pts);
-            let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
-            if is_caught_up {
-                // There must be an element here, otherwise we wouldn't be here.
-                #[allow(clippy::unwrap_used)]
-                break self.pending.pop_first().unwrap().1;
-            } else {
-                // We're behind:
+            let oldest_pending = self.pending.first_entry();
 
-                let Ok(frame_info) = frame_info_rx.try_recv() else {
-                    re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
-                    return None;
+            if let Some(oldest_pending) = oldest_pending {
+                let frame_info = oldest_pending.get();
+
+                let is_next_expected_frame = if let Some(next_frame_nr) = self.next_frame_nr {
+                    frame_info.frame_nr == next_frame_nr
+                } else {
+                    // This is the first frame we're receiving since the last decoder reset.
+                    // We expect to always start at a sync-frame.
+                    // Note that sync frames do _not_ imply DTS == PTS since DTS may start with a negative offset for some videos.
+                    debug_assert!(
+                        frame_info.is_sync,
+                        "Expected first received frame after a decoder reset to be a sync-frame (start of group of pictures)."
+                    );
+                    true
                 };
 
-                // If the decode timestamp did not increase, we're probably seeking backwards!
-                // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
-                // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
-                if self.highest_dts > frame_info.decode_timestamp {
-                    re_log::warn!(
-                        "Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
-                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.",
-                        self.highest_dts,
-                        frame_info.decode_timestamp
-                    );
+                if is_next_expected_frame {
+                    self.next_frame_nr = Some(frame_info.frame_nr + 1);
+                    break oldest_pending.remove_entry().1;
                 }
-                self.highest_dts = frame_info.decode_timestamp;
+            };
 
-                self.pending
-                    .insert(frame_info.presentation_timestamp, frame_info);
-            }
+            // We haven't received the frame info for this frame yet.
+            let Ok(frame_info) = frame_info_rx.recv() else {
+                re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
+                return None;
+            };
+            self.pending.insert(frame_info.frame_nr, frame_info);
         };
 
         let ffmpeg_sidecar::event::OutputVideoFrame {
@@ -580,8 +609,8 @@ impl FrameBuffer {
                 sample_idx: Some(frame_info.sample_idx),
                 frame_nr: Some(frame_info.frame_nr),
                 presentation_timestamp: frame_info.presentation_timestamp,
-                duration: frame_info.duration,
                 latest_decode_timestamp: Some(frame_info.decode_timestamp),
+                duration: frame_info.duration,
             },
         })
     }
@@ -598,43 +627,39 @@ fn read_ffmpeg_output(
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match event {
-            FfmpegEvent::Log(LogLevel::Info, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::trace!("{debug_name} decoder: {msg}");
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Warning, msg) => {
-                if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
-                }
-            }
-
-            FfmpegEvent::Log(LogLevel::Error, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Fatal, msg) => {
-                (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
-            }
-
-            FfmpegEvent::Log(LogLevel::Unknown, msg) => {
+            FfmpegEvent::Log(level, msg) => {
                 if msg.contains("system signals, hard exiting") {
                     // That was probably us, killing the process.
                     re_log::debug!("FFmpeg process for {debug_name} was killed");
                     return None;
                 }
-                if !should_ignore_log_msg(&msg) {
-                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
-                    re_log::warn_once!(
-                        "{debug_name} decoder: {}",
-                        sanitize_ffmpeg_log_message(&msg)
-                    );
+
+                let ignore = match level {
+                    LogLevel::Info | LogLevel::Unknown | LogLevel::Warning => {
+                        should_ignore_log_msg(&msg)
+                    }
+                    LogLevel::Error | LogLevel::Fatal => false,
+                };
+
+                if !ignore {
+                    let msg = sanitize_ffmpeg_log_message(&msg);
+                    match level {
+                        LogLevel::Info => {
+                            re_log::trace!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Warning | LogLevel::Unknown => {
+                            // Older ffmpeg versions don't flag their warnings as such and end up as `LogLevel::Unknown`.
+                            re_log::warn_once!("{debug_name} decoder: {msg}");
+                        }
+                        LogLevel::Error => {
+                            (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
+                        }
+                        LogLevel::Fatal => {
+                            (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
+                        }
+                    }
                 }
             }
 
@@ -706,8 +731,7 @@ fn read_ffmpeg_output(
 
                 let frame_num = ffmpeg_frame.frame_num; // sequence-number made up by ffmpeg sidecar.
 
-                let frame =
-                    buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
+                let frame = buffer.on_frame(pixel_format, frame_info_rx, ffmpeg_frame)?;
 
                 {
                     // Log
@@ -795,7 +819,6 @@ pub struct FFmpegCliH264Decoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    avcc: re_mp4::Avc1Box,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
 }
@@ -803,19 +826,11 @@ pub struct FFmpegCliH264Decoder {
 impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
-        avcc: re_mp4::Avc1Box,
+        encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
-
-        if let Some(ffmpeg_path) = &ffmpeg_path {
-            if !ffmpeg_path.is_file() {
-                return Err(Error::FFmpegNotInstalled);
-            }
-        } else if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FFmpegNotInstalled);
-        }
 
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
@@ -829,6 +844,11 @@ impl FFmpegCliH264Decoder {
                     });
                 }
             }
+
+            Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
+                return Err(Error::FFmpegNotInstalled);
+            }
+
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
                 // This happens quite often, don't fail playing video over it!
                 re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
@@ -843,14 +863,13 @@ impl FFmpegCliH264Decoder {
         let ffmpeg = FFmpegProcessAndListener::new(
             &debug_name,
             on_output.clone(),
-            avcc.clone(),
+            encoding_details,
             ffmpeg_path.as_deref(),
         )?;
 
         Ok(Self {
             debug_name,
             ffmpeg,
-            avcc,
             on_output,
             ffmpeg_path,
         })
@@ -862,7 +881,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         re_tracing::profile_function!();
 
         if let Err(err) = self.ffmpeg.submit_chunk(chunk) {
-            let err = crate::decode::Error::from(err);
+            let err = DecodeError::from(err);
 
             // Report the error on the decoding stream aswell.
             (self.on_output)(Err(err.clone()));
@@ -874,28 +893,26 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
     }
 
     fn end_of_video(&mut self) -> crate::decode::Result<()> {
-        re_log::debug!("End of video - flushing ffmpeg decoder {}", self.debug_name);
+        re_log::trace!("End of video - flushing ffmpeg decoder {}", self.debug_name);
         self.ffmpeg.end_of_video();
         Ok(())
     }
 
-    fn reset(&mut self) -> crate::decode::Result<()> {
+    fn reset(&mut self, video_descr: &VideoDataDescription) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
-        re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
+        re_log::trace!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),
-            self.avcc.clone(),
+            &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
         )?;
         Ok(())
     }
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
-        // TODO(#8848): On some videos (which??) we need to enqueue more samples, otherwise ffmpeg will not provide us with any frames.
-        // The observed behavior is that we continuously get frames that are N* frames older than what we enqueued,
-        // never reaching the frames of all currently enqueued GOPs prior.
-        // (The same happens with webcodec decoder on Safari for affected videos)
+        // Until FFmpeg's stdin isn't closed, we don't get the last few frames.
+        // By supplying more than we need we can workaround this a bit.
         //
         // *: N is 16 for ffmpeg 7.1, tested on Mac & Windows. For ffmpeg 6.1.2 on Linux it was found to be 18.
         18
@@ -927,11 +944,11 @@ fn write_avc_chunk_to_nalu_stream(
     // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
     if chunk.is_sync && !state.previous_frame_was_idr {
         for sps in &avcc.sequence_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &sps.bytes)?;
         }
         for pps in &avcc.picture_parameter_sets {
-            write_bytes(nalu_stream, NAL_START_CODE)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
             write_bytes(nalu_stream, &pps.bytes)?;
         }
         state.previous_frame_was_idr = true;
@@ -960,14 +977,14 @@ fn write_avc_chunk_to_nalu_stream(
             1 => chunk.data[buffer_offset] as usize,
 
             2 => u16::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 2)]
                     .try_into()
                     .unwrap(),
             ) as usize,
 
             4 => u32::from_be_bytes(
-                #[allow(clippy::unwrap_used)] // can't fail
+                #[expect(clippy::unwrap_used)] // can't fail
                 chunk.data[buffer_offset..(buffer_offset + 4)]
                     .try_into()
                     .unwrap(),
@@ -997,7 +1014,7 @@ fn write_avc_chunk_to_nalu_stream(
 
         let data = &chunk.data[data_start..data_end];
 
-        write_bytes(nalu_stream, NAL_START_CODE)?;
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
 
         // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
         // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
@@ -1008,19 +1025,28 @@ fn write_avc_chunk_to_nalu_stream(
         buffer_offset = data_end;
     }
 
-    // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
-    // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    write_bytes(nalu_stream, NAL_START_CODE)?;
-    write_bytes(
-        nalu_stream,
-        &[
-            NalHeader::new(NalUnitType::AccessUnitDelimiter, 3).0,
-            // Two arbitrary bytes? 0000 worked as well, but this is what
-            // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
-            0xFF,
-            0x80,
-        ],
-    )?;
+    // We observed with both Mac & Windows FFMpeg 7.1 that the following block causes spurious errors with messages like:
+    // "missing picture in access unit with size 17"
+    // "no frame!"
+    // Not adding the Access Unit Delimiters makes these go away reliably
+    // (over several test runs comparing before/after with the same video material).
+    if false {
+        // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
+        // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
+        write_bytes(
+            nalu_stream,
+            &[
+                // We use to use an IDC ("priority") of 3 here. But it doesn't seem to make much of a difference either way.
+                // Has also no effect on the errors describe above.
+                UnitType::AccessUnitDelimiter.id(),
+                // Two arbitrary bytes? 0000 worked as well, but this is what
+                // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
+                0xFF,
+                0x80,
+            ],
+        )?;
+    }
 
     Ok(())
 }
@@ -1068,16 +1094,16 @@ fn should_ignore_log_msg(msg: &str) -> bool {
 
 /// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
 fn sanitize_ffmpeg_log_message(msg: &str) -> String {
-    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+    // Make warn_once work on `[FOO @ 0x148db8000]` style warnings even if the address is different every time.
     // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
     let mut msg = msg.to_owned();
-    while let Some(start_pos) = msg.find("[swscaler @ 0x") {
+    while let Some(start_pos) = msg.find(" @ 0x") {
         if let Some(end_offset) = msg[start_pos..].find(']') {
             if start_pos + end_offset + 1 > msg.len() {
                 break;
             }
 
-            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("[swscaler]");
+            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("]");
         } else {
             // Huh, strange. Ignore it :shrug:
             break;
@@ -1096,6 +1122,11 @@ mod tests {
         assert_eq!(
             sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000]"),
             "[swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[foo#0:0/h264 @ 0x148db8000]"),
+            "[foo#0:0/h264]"
         );
 
         assert_eq!(
@@ -1127,12 +1158,12 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000 something is wrong here"),
-            "[swscaler @ 0x148db8000 something is wrong here"
+            sanitize_ffmpeg_log_message("[h264 @ 0x148db8000 something is wrong here"),
+            "[h264 @ 0x148db8000 something is wrong here"
         );
         assert_eq!(
-            sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
-            "swscaler @ 0x148db8000] something is wrong here"
+            sanitize_ffmpeg_log_message("h264 @ 0x148db8000] something is wrong here"),
+            "h264] something is wrong here"
         );
     }
 }

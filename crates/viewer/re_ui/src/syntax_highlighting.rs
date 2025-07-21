@@ -4,7 +4,7 @@ use re_entity_db::InstancePath;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, Instance,
     external::re_types_core::{
-        ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName,
+        ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
     },
 };
 
@@ -83,12 +83,7 @@ fn text_format(style: &Style) -> TextFormat {
 
 fn faint_text_format(style: &Style) -> TextFormat {
     TextFormat {
-        color: if style.visuals.dark_mode {
-            Color32::WHITE
-        } else {
-            Color32::BLACK
-        },
-
+        color: style.visuals.strong_text_color(),
         ..text_format(style)
     }
 }
@@ -143,7 +138,7 @@ impl SyntaxHighlighting for InstancePath {
     }
 }
 
-impl SyntaxHighlighting for ComponentName {
+impl SyntaxHighlighting for ComponentType {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         self.short_name().syntax_highlight_into(style, job);
     }
@@ -155,7 +150,7 @@ impl SyntaxHighlighting for ArchetypeName {
     }
 }
 
-impl SyntaxHighlighting for ArchetypeFieldName {
+impl SyntaxHighlighting for ComponentIdentifier {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         self.as_str().syntax_highlight_into(style, job);
     }

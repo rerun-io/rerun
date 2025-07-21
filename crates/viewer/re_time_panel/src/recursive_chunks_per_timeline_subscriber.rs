@@ -78,6 +78,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     fn add_chunk(&mut self, chunk: &Arc<Chunk>) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for (timeline, time_column) in chunk.timelines() {
             let chunks_per_entities = self
                 .chunks_per_timeline_per_entity
@@ -107,6 +108,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     fn remove_chunk(&mut self, chunk: &Chunk) {
         re_tracing::profile_function!();
 
+        #[expect(clippy::iter_over_hash_type)]
         for timeline in chunk.timelines().keys() {
             let Some(chunks_per_entities) = self.chunks_per_timeline_per_entity.get_mut(timeline)
             else {
@@ -181,7 +183,8 @@ mod tests {
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
     use re_log_types::{
-        ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName, example_components::MyPoint,
+        ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName,
+        example_components::{MyPoint, MyPoints},
     };
 
     use super::{EntityTimelineChunks, PathRecursiveChunksPerTimelineStoreSubscriber};
@@ -198,18 +201,25 @@ mod tests {
         // We use two timelines for which we log events on two entities, at the root and at a grandchild.
         let t0 = Timeline::new_sequence("time0");
         let t1 = Timeline::new_sequence("time1");
-        let component_batch = &[MyPoint::new(3.0, 3.0)] as _; // Generic component batch, don't care about the contents.
+        let component_batch = (
+            MyPoints::descriptor_points(),
+            &[MyPoint::new(3.0, 3.0)] as _, // Generic component batch, don't care about the contents.
+        );
 
         // Events at the root path.
         // 2x: single chunk with two events for both t0 and t1.
         for i in 1..=2 {
             store.insert_chunk(&Arc::new(
-                Chunk::builder("/".into())
-                    .with_component_batches(RowId::new(), [(t0, i), (t1, i)], [component_batch])
+                Chunk::builder("/")
+                    .with_component_batches(
+                        RowId::new(),
+                        [(t0, i), (t1, i)],
+                        [component_batch.clone()],
+                    )
                     .with_component_batches(
                         RowId::new(),
                         [(t0, i + 2), (t1, i + 2)],
-                        [component_batch],
+                        [component_batch.clone()],
                     )
                     .build()?,
             ))?;
@@ -218,13 +228,13 @@ mod tests {
         // Events at a child path.
         // One chunk with one event at t0, one chunk with two events at t1
         store.insert_chunk(&Arc::new(
-            Chunk::builder("/parent/child".into())
-                .with_component_batches(RowId::new(), [(t0, 0)], [component_batch])
+            Chunk::builder("/parent/child")
+                .with_component_batches(RowId::new(), [(t0, 0)], [component_batch.clone()])
                 .build()?,
         ))?;
         store.insert_chunk(&Arc::new(
-            Chunk::builder("/parent/child".into())
-                .with_component_batches(RowId::new(), [(t1, 1)], [component_batch])
+            Chunk::builder("/parent/child")
+                .with_component_batches(RowId::new(), [(t1, 1)], [component_batch.clone()])
                 .with_component_batches(RowId::new(), [(t1, 3)], [component_batch])
                 .build()?,
         ))?;

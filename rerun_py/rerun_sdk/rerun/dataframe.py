@@ -19,21 +19,19 @@ from rerun_bindings import (
 from rerun_bindings.types import (
     AnyColumn as AnyColumn,
     AnyComponentColumn as AnyComponentColumn,
-    ComponentLike as ComponentLike,
     ViewContentsLike as ViewContentsLike,
 )
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor
-from ._log import IndicatorComponentBatch
 from ._send_columns import TimeColumnLike, send_columns
 from .recording_stream import RecordingStream
 
-SORBET_INDEX_NAME = b"rerun.index_name"
-SORBET_ENTITY_PATH = b"rerun.entity_path"
-SORBET_ARCHETYPE_NAME = b"rerun.archetype"
-SORBET_ARCHETYPE_FIELD = b"rerun.archetype_field"
-SORBET_COMPONENT_NAME = b"rerun.component"
-RERUN_KIND = b"rerun.kind"
+SORBET_INDEX_NAME = b"rerun:index_name"
+SORBET_ENTITY_PATH = b"rerun:entity_path"
+SORBET_ARCHETYPE_NAME = b"rerun:archetype"
+SORBET_COMPONENT = b"rerun:component"
+SORBET_COMPONENT_TYPE = b"rerun:component_type"
+RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
 
@@ -61,14 +59,14 @@ class RawComponentBatchLike(ComponentColumn):
     def component_descriptor(self) -> ComponentDescriptor:
         kwargs = {}
         if SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype_name"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
-        if SORBET_COMPONENT_NAME in self.metadata:
-            kwargs["component_name"] = self.metadata[SORBET_COMPONENT_NAME].decode("utf-8")
-        if SORBET_ARCHETYPE_FIELD in self.metadata:
-            kwargs["archetype_field_name"] = self.metadata[SORBET_ARCHETYPE_FIELD].decode("utf-8")
+            kwargs["archetype"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
+        if SORBET_COMPONENT_TYPE in self.metadata:
+            kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
+        if SORBET_COMPONENT in self.metadata:
+            kwargs["component"] = self.metadata[SORBET_COMPONENT].decode("utf-8")
 
-        if "component_name" not in kwargs:
-            kwargs["component_name"] = "Unknown"
+        if "component_type" not in kwargs:
+            kwargs["component_type"] = "Unknown"
 
         return ComponentDescriptor(**kwargs)
 
@@ -77,13 +75,7 @@ class RawComponentBatchLike(ComponentColumn):
 
 
 def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
-    """
-    Coerce a single pyarrow `RecordBatch` to Rerun structure.
-
-    If this `RecordBatch` came from a call to [`RecordingView.view`][rerun.dataframe.RecordingView.view], you
-    will want to make sure the `view` call includes `include_indicator_columns = True` or else the
-    viewer will not know about the archetypes in the data.
-    """
+    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 
     indexes = []
     data: defaultdict[str, list[Any]] = defaultdict(list)
@@ -103,9 +95,6 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
             data[entity_path].append(RawComponentBatchLike(metadata, batch.column(col.name)))
             if SORBET_ARCHETYPE_NAME in metadata:
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
-    for entity_path, archetype_set in archetypes.items():
-        for archetype in archetype_set:
-            data[entity_path].append(IndicatorComponentBatch(archetype))
 
     for entity_path, columns in data.items():
         send_columns(
@@ -118,14 +107,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
 
 
 def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: Optional[RecordingStream] = None) -> None:
-    """
-    Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure.
-
-    If this `Table` came from a call to [`RecordingView.view`][rerun.dataframe.RecordingView.view], you
-    will want to make sure the `view` call includes `include_indicator_columns = True` or else the
-    viewer will not know about the archetypes in the data.
-
-    """
+    """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
     if isinstance(df, pa.Table):
         df = df.to_reader()
 

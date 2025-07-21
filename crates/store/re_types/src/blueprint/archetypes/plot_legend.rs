@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the legend of a plot.
@@ -42,9 +42,9 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: "rerun.blueprint.components.Corner2D".into(),
-            archetype_field_name: Some("corner".into()),
+            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component: "PlotLegend:corner".into(),
+            component_type: Some("rerun.blueprint.components.Corner2D".into()),
         }
     }
 
@@ -54,19 +54,9 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: "rerun.components.Visible".into(),
-            archetype_field_name: Some("visible".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component: "PlotLegend:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 }
@@ -74,8 +64,8 @@ impl PlotLegend {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [PlotLegend::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -85,26 +75,20 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            PlotLegend::descriptor_indicator(),
             PlotLegend::descriptor_corner(),
             PlotLegend::descriptor_visible(),
         ]
     });
 
 impl PlotLegend {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`PlotLegend`] [`::re_types_core::Archetype`]
-pub type PlotLegendIndicator = ::re_types_core::GenericIndicatorComponent<PlotLegend>;
-
 impl ::re_types_core::Archetype for PlotLegend {
-    type Indicator = PlotLegendIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PlotLegend".into()
@@ -113,12 +97,6 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn display_name() -> &'static str {
         "Plot legend"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        PlotLegendIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -162,14 +140,10 @@ impl ::re_types_core::AsComponents for PlotLegend {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.corner.clone(),
-            self.visible.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.corner.clone(), self.visible.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

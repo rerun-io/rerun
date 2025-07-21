@@ -10,8 +10,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // ----------------
@@ -59,7 +57,7 @@ pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
 pub use re_memory::MemoryLimit;
-pub use re_types::archetypes::RecordingProperties;
+pub use re_types::archetypes::RecordingInfo;
 
 pub use global::cleanup_if_forked_child;
 
@@ -73,6 +71,10 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn flush_blocking(&self) {
         Self::flush_blocking(self);
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ---------------
@@ -84,9 +86,12 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// sent over gRPC, written to file, etc.
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
-    pub use crate::log_sink::{BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
+        MultiSink,
+    };
 
-    pub use crate::log_sink::GrpcSink;
+    pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
@@ -109,9 +114,9 @@ pub use time::{TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
-    GenericIndicatorComponent, Loggable, LoggableBatch, NamedIndicatorComponent,
-    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
+    ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
+    Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
+    SerializedComponentColumn,
 };
 
 pub use re_byte_size::SizeBytes;
@@ -134,13 +139,14 @@ pub mod external {
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;
+    pub use re_uri;
 
     pub use re_chunk::external::*;
     pub use re_log::external::*;
     pub use re_log_types::external::*;
 
     #[cfg(feature = "data_loaders")]
-    pub use re_data_loader;
+    pub use re_data_loader::{self, external::*};
 }
 
 #[cfg(feature = "web_viewer")]

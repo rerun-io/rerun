@@ -59,6 +59,6 @@ re_format.workspace = true
 re_types = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
-insta.workspace = true
+insta = { workspace = true, features = ["filters"] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true

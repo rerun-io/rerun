@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the 3D line grid.
@@ -59,9 +59,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.components.Visible".into(),
-            archetype_field_name: Some("visible".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component: "LineGrid3D:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -71,9 +71,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.blueprint.components.GridSpacing".into(),
-            archetype_field_name: Some("spacing".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component: "LineGrid3D:spacing".into(),
+            component_type: Some("rerun.blueprint.components.GridSpacing".into()),
         }
     }
 
@@ -83,9 +83,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.components.Plane3D".into(),
-            archetype_field_name: Some("plane".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component: "LineGrid3D:plane".into(),
+            component_type: Some("rerun.components.Plane3D".into()),
         }
     }
 
@@ -95,9 +95,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.components.StrokeWidth".into(),
-            archetype_field_name: Some("stroke_width".into()),
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component: "LineGrid3D:stroke_width".into(),
+            component_type: Some("rerun.components.StrokeWidth".into()),
         }
     }
 
@@ -107,19 +107,9 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.LineGrid3DIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component: "LineGrid3D:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 }
@@ -127,8 +117,8 @@ impl LineGrid3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [LineGrid3D::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -141,10 +131,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            LineGrid3D::descriptor_indicator(),
             LineGrid3D::descriptor_visible(),
             LineGrid3D::descriptor_spacing(),
             LineGrid3D::descriptor_plane(),
@@ -154,16 +143,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl LineGrid3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`LineGrid3D`] [`::re_types_core::Archetype`]
-pub type LineGrid3DIndicator = ::re_types_core::GenericIndicatorComponent<LineGrid3D>;
-
 impl ::re_types_core::Archetype for LineGrid3D {
-    type Indicator = LineGrid3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.LineGrid3D".into()
@@ -172,12 +156,6 @@ impl ::re_types_core::Archetype for LineGrid3D {
     #[inline]
     fn display_name() -> &'static str {
         "Line grid 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        LineGrid3DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -239,7 +217,6 @@ impl ::re_types_core::AsComponents for LineGrid3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.visible.clone(),
             self.spacing.clone(),
             self.plane.clone(),

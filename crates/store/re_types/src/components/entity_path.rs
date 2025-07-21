@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A path to an entity, usually to reference some data that is part of the target entity.
@@ -26,8 +26,8 @@ pub struct EntityPath(pub crate::datatypes::EntityPath);
 
 impl ::re_types_core::Component for EntityPath {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.EntityPath")
+    fn name() -> ComponentType {
+        "rerun.components.EntityPath".into()
     }
 }
 

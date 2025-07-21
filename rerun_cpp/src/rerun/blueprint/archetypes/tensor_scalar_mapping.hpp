@@ -9,7 +9,6 @@
 #include "../../components/colormap.hpp"
 #include "../../components/gamma_correction.hpp"
 #include "../../components/magnification_filter.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -41,29 +40,24 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> gamma;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.TensorScalarMappingIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.TensorScalarMapping";
 
         /// `ComponentDescriptor` for the `mag_filter` field.
         static constexpr auto Descriptor_mag_filter = ComponentDescriptor(
-            ArchetypeName, "mag_filter",
-            Loggable<rerun::components::MagnificationFilter>::Descriptor.component_name
+            ArchetypeName, "TensorScalarMapping:mag_filter",
+            Loggable<rerun::components::MagnificationFilter>::ComponentType
         );
         /// `ComponentDescriptor` for the `colormap` field.
         static constexpr auto Descriptor_colormap = ComponentDescriptor(
-            ArchetypeName, "colormap",
-            Loggable<rerun::components::Colormap>::Descriptor.component_name
+            ArchetypeName, "TensorScalarMapping:colormap",
+            Loggable<rerun::components::Colormap>::ComponentType
         );
         /// `ComponentDescriptor` for the `gamma` field.
         static constexpr auto Descriptor_gamma = ComponentDescriptor(
-            ArchetypeName, "gamma",
-            Loggable<rerun::components::GammaCorrection>::Descriptor.component_name
+            ArchetypeName, "TensorScalarMapping:gamma",
+            Loggable<rerun::components::GammaCorrection>::ComponentType
         );
 
       public:

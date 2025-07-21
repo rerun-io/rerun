@@ -12,18 +12,22 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
-use re_types::ComponentDescriptor;
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
+use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
+use re_types::ComponentDescriptor;
+use re_types::components::{Blob, MediaType};
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{UiLayout, VariantName, ViewerContext};
+
+use crate::table_blueprint::ColumnBlueprint;
 
 #[derive(Error, Debug)]
 pub enum DisplayRecordBatchError {
@@ -34,7 +38,7 @@ pub enum DisplayRecordBatchError {
     },
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(String, ArrowDataType),
+    UnexpectedComponentColumnDataType(ComponentDescriptor, ArrowDataType),
 
     #[error(transparent)]
     DeserializationError(#[from] DeserializationError),
@@ -79,7 +83,7 @@ impl ComponentData {
                 Ok(Self::DictionaryArray { dict, values })
             }
             _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
-                descriptor.component_name.to_string(),
+                descriptor.component_descriptor(),
                 column_data.data_type().to_owned(),
             )),
         }
@@ -168,9 +172,36 @@ pub struct DisplayComponentColumn {
 
     // if available, used to pass a row id to the component UI (e.g. to cache image)
     row_ids: Option<Arc<Vec<RowId>>>,
+
+    /// The UI variant to use for this column, if any.
+    variant_name: Option<VariantName>,
 }
 
 impl DisplayComponentColumn {
+    fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
+        if self.component_descr.component_type != Some(re_types::components::Blob::name()) {
+            return None;
+        }
+
+        self.component_data
+            .row_data(row)
+            .as_ref()
+            .and_then(|data| Blob::from_arrow(data).ok())
+    }
+
+    fn is_blob_image(blob: &Blob) -> bool {
+        MediaType::guess_from_data(blob.as_ref()).is_some_and(|t| t.starts_with("image/"))
+    }
+
+    pub fn is_image(&self) -> bool {
+        self.component_descr.component_type == Some(re_types::components::Blob::name())
+            && self
+                .blobs(0)
+                .as_ref()
+                .and_then(|blobs| blobs.first())
+                .is_some_and(Self::is_blob_image)
+    }
+
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -205,42 +236,57 @@ impl DisplayComponentColumn {
                 .and_then(|row_ids| row_ids.get(row_index))
                 .copied();
 
-            // TODO(ab): we should find an alternative to using content-hashing to generate cache
-            // keys.
-            //
-            // Generate a content-based cache key if we don't have one already. This is needed
-            // because without cache key, the image thumbnail will no be displayed by the component
-            // ui.
-            if row_id.is_none()
-                && (self.component_descr.component_name == re_types::components::Blob::name())
-            {
-                re_tracing::profile_scope!("Blob hash");
+            let mut variant_name = self.variant_name;
 
-                if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
-                    .as_ref()
-                    .map(|blob| blob.first().map(|blob| blob as &[u8]))
-                {
-                    // cap the max amount of data to hash to 9 KiB
-                    const SECTION_LENGTH: usize = 3 * 1024;
+            let blob = Blob::from_arrow(&data_to_display).ok();
 
-                    // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
-                    row_id = Some(RowId::from_u128(
-                        quick_partial_hash(buffer, SECTION_LENGTH).hash64() as _,
-                    ));
+            if let Some(blob) = blob.as_ref().and_then(|b| b.first()) {
+                if Self::is_blob_image(blob) {
+                    variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
+
+                    // TODO(ab): we should find an alternative to using content-hashing to generate cache
+                    // keys.
+                    //
+                    // Generate a content-based cache key if we don't have one already. This is needed
+                    // because without cache key, the image thumbnail will no be displayed by the component
+                    // ui.
+                    if row_id.is_none() {
+                        re_tracing::profile_scope!("Blob hash");
+
+                        // cap the max amount of data to hash to 9 KiB
+                        const SECTION_LENGTH: usize = 3 * 1024;
+
+                        // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
+                        row_id = Some(RowId::from_u128(
+                            quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
+                        ));
+                    }
                 }
             }
 
-            ctx.component_ui_registry().ui_raw(
-                ctx,
-                ui,
-                UiLayout::List,
-                latest_at_query,
-                ctx.recording(),
-                &self.entity_path,
-                &self.component_descr,
-                row_id,
-                data_to_display.as_ref(),
-            );
+            if let Some(variant_name) = variant_name {
+                ctx.component_ui_registry().variant_ui_raw(
+                    ctx,
+                    ui,
+                    UiLayout::List,
+                    variant_name,
+                    &self.component_descr,
+                    row_id,
+                    data_to_display.as_ref(),
+                );
+            } else {
+                ctx.component_ui_registry().component_ui_raw(
+                    ctx,
+                    ui,
+                    UiLayout::List,
+                    latest_at_query,
+                    ctx.recording(),
+                    &self.entity_path,
+                    &self.component_descr,
+                    row_id,
+                    data_to_display.as_ref(),
+                );
+            }
         } else {
             ui.label("-");
         }
@@ -264,6 +310,7 @@ pub enum DisplayColumn {
 impl DisplayColumn {
     fn try_new(
         column_descriptor: &ColumnDescriptorRef<'_>,
+        column_blueprint: &ColumnBlueprint,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
@@ -291,6 +338,7 @@ impl DisplayColumn {
                 component_descr: desc.component_descriptor(),
                 component_data: ComponentData::try_new(desc, column_data)?,
                 row_ids: None,
+                variant_name: column_blueprint.variant_ui,
             })),
         }
     }
@@ -398,18 +446,19 @@ impl DisplayRecordBatch {
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
     pub fn try_new<'a>(
-        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
+        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, &'a ColumnBlueprint, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
         let mut num_rows = None;
         let mut batch_row_ids = None;
 
         let mut columns = data
-            .map(|(column_descriptor, column_data)| {
+            .map(|(column_descriptor, column_blueprint, column_data)| {
                 if num_rows.is_none() {
                     num_rows = Some(column_data.len());
                 }
 
-                let column = DisplayColumn::try_new(&column_descriptor, &column_data);
+                let column =
+                    DisplayColumn::try_new(&column_descriptor, column_blueprint, &column_data);
 
                 // find the batch row ids, if any
                 if batch_row_ids.is_none() {

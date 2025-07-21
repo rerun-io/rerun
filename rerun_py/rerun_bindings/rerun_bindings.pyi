@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Iterator, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Optional, Self
 
+import datafusion as dfn
 import pyarrow as pa
+from rerun.catalog import CatalogClient
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
     AnyColumn,
     AnyComponentColumn,
-    ComponentLike,
     IndexValuesLike,
     ViewContentsLike,
 )
@@ -87,9 +89,25 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def component_name(self) -> str:
+    def component_type(self) -> str | None:
         """
-        The component name.
+        The component type, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def archetype(self) -> str:
+        """
+        The archetype name, if any.
+
+        This property is read-only.
+        """
+
+    @property
+    def component(self) -> str:
+        """
+        The component.
 
         This property is read-only.
         """
@@ -109,7 +127,7 @@ class ComponentColumnSelector:
     Component columns contain the data for a specific component of an entity.
     """
 
-    def __init__(self, entity_path: str, component: ComponentLike) -> None:
+    def __init__(self, entity_path: str, component: str) -> None:
         """
         Create a new `ComponentColumnSelector`.
 
@@ -117,8 +135,8 @@ class ComponentColumnSelector:
         ----------
         entity_path : str
             The entity path to select.
-        component : ComponentLike
-            The component to select
+        component : str
+            The component to select. Example: `Points3D:positions`.
 
         """
     @property
@@ -130,9 +148,9 @@ class ComponentColumnSelector:
         """
 
     @property
-    def component_name(self) -> str:
+    def component(self) -> str:
         """
-        The component name.
+        The component.
 
         This property is read-only.
         """
@@ -162,7 +180,7 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
 
-    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: str) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -170,8 +188,8 @@ class Schema:
         ----------
         entity_path : str
             The entity path to look up.
-        component : ComponentLike
-            The component to look up.
+        component : str
+            The component to look up. Example: `Points3D:positions`.
 
         Returns
         -------
@@ -192,7 +210,7 @@ class Schema:
             The selector to look up.
 
             String arguments are expected to follow the following format:
-            `"<entity_path>:<component_name>"`
+            `"<entity_path>:<component_type>"`
 
         Returns
         -------
@@ -417,6 +435,10 @@ class RecordingView:
 
         """
 
+    @deprecated(
+        """Use `view(index=None)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
+    )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
@@ -465,16 +487,16 @@ class Recording:
     def view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: ViewContentsLike,
         include_semantically_empty_columns: bool = False,
-        include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> RecordingView:
         """
         Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
 
-        The only type of index currently supported is the name of a timeline.
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
 
         The view will only contain a single row for each unique value of the index
         that is associated with a component column that was included in the view.
@@ -485,10 +507,13 @@ class Recording:
         generally be the last value logged, as row_ids are guaranteed to be
         monotonically increasing when data is sent from a single process.
 
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
         Parameters
         ----------
-        index : str
-            The index to use for the view. This is typically a timeline name.
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
         contents : ViewContentsLike
             The content specification for the view.
 
@@ -499,10 +524,6 @@ class Recording:
             Whether to include columns that are semantically empty, by default `False`.
 
             Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_indicator_columns : bool, optional
-            Whether to include indicator columns, by default `False`.
-
-            Indicator columns are components used to represent the presence of an archetype within an entity.
         include_tombstone_columns : bool, optional
             Whether to include tombstone columns, by default `False`.
 
@@ -581,8 +602,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
-# TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust
-
+# TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
 class PyRecordingStream:
     def is_forked_child(self) -> bool:
         """
@@ -594,6 +614,120 @@ class PyRecordingStream:
 
         Calling operations such as flush or set_sink will result in an error.
         """
+
+class ChunkBatcherConfig:
+    """Defines the different batching thresholds used within the RecordingStream."""
+
+    def __init__(
+        self,
+        flush_tick: int | float | timedelta | None = None,
+        flush_num_bytes: int | None = None,
+        flush_num_rows: int | None = None,
+        chunk_max_rows_if_unsorted: int | None = None,
+    ) -> None:
+        """
+        Initialize the chunk batcher configuration.
+
+        Parameters
+        ----------
+        flush_tick : int | float | timedelta | None
+            Duration of the periodic tick, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+
+        flush_num_bytes : int | None
+            Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+
+        flush_num_rows : int | None
+            Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
+            Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+
+        chunk_max_rows_if_unsorted : int | None
+            Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
+            by default `None`.
+            Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+
+        """
+
+    @property
+    def flush_tick(self) -> timedelta:
+        """
+        Duration of the periodic tick.
+
+        Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+        """
+
+    @flush_tick.setter
+    def flush_tick(self, value: float | int | timedelta) -> None:
+        """
+        Duration of the periodic tick.
+
+        Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
+        """
+
+    @property
+    def flush_num_bytes(self) -> int:
+        """
+        Flush if the accumulated payload has a size in bytes equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+        """
+
+    @flush_num_bytes.setter
+    def flush_num_bytes(self, value: int) -> None:
+        """
+        Flush if the accumulated payload has a size in bytes equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
+        """
+
+    @property
+    def flush_num_rows(self) -> int:
+        """
+        Flush if the accumulated payload has a number of rows equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+        """
+
+    @flush_num_rows.setter
+    def flush_num_rows(self, value: int) -> None:
+        """
+        Flush if the accumulated payload has a number of rows equal or greater than this.
+
+        Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
+        """
+
+    @property
+    def chunk_max_rows_if_unsorted(self) -> int:
+        """
+        Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+
+        Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+        """
+
+    @chunk_max_rows_if_unsorted.setter
+    def chunk_max_rows_if_unsorted(self, value: int) -> None:
+        """
+        Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted.
+
+        Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
+        """
+
+    @staticmethod
+    def DEFAULT() -> ChunkBatcherConfig:
+        """Default configuration, applicable to most use cases."""
+
+    @staticmethod
+    def LOW_LATENCY() -> ChunkBatcherConfig:
+        """Low-latency configuration, preferred when streaming directly to a viewer."""
+
+    @staticmethod
+    def ALWAYS() -> ChunkBatcherConfig:
+        """Always flushes ASAP."""
+
+    @staticmethod
+    def NEVER() -> ChunkBatcherConfig:
+        """Never flushes unless manually told to (or hitting one the builtin invariants)."""
 
 class PyMemorySinkStorage:
     def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
@@ -629,6 +763,9 @@ class PyBinarySinkStorage:
 # init
 #
 
+def flush_and_cleanup_orphaned_recordings() -> None:
+    """Flush and then cleanup any orphaned recordings."""
+
 def new_recording(
     application_id: str,
     recording_id: Optional[str] = None,
@@ -636,6 +773,7 @@ def new_recording(
     make_thread_default: bool = True,
     default_enabled: bool = True,
     send_properties: bool = True,
+    batcher_config: Optional[ChunkBatcherConfig] = None,
 ) -> PyRecordingStream:
     """Create a new recording stream."""
 
@@ -656,6 +794,7 @@ def cleanup_if_forked_child() -> None:
 def spawn(
     port: int = 9876,
     memory_limit: str = ...,
+    server_memory_limit: str = ...,
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
     executable_name: str = ...,
@@ -724,6 +863,56 @@ def set_thread_local_blueprint_recording(
     """
 
 #
+# component descriptor
+#
+
+class ComponentDescriptor:
+    """
+    A `ComponentDescriptor` fully describes the semantics of a column of data.
+
+    Every component at a given entity path is uniquely identified by the
+    `component` field of the descriptor. The `archetype` and `component_type`
+    fields provide additional information about the semantics of the data.
+    """
+
+    def __init__(self, component: str, archetype: str | None = None, component_type: str | None = None) -> None:
+        """Creates a component descriptor."""
+
+    @property
+    def archetype(self) -> str | None:
+        """
+        Optional name of the `Archetype` associated with this data.
+
+        `None` if the data wasn't logged through an archetype.
+
+        Example: `rerun.archetypes.Points3D`.
+        """
+
+    @property
+    def component(self) -> str:
+        """
+        Uniquely identifies of the component associated with this data.
+
+        Example: `Points3D:positions`.
+        """
+
+    @property
+    def component_type(self) -> str | None:
+        """
+        Optional type information for this component.
+
+        Can be used to inform applications on how to interpret the data.
+
+        Example: `rerun.components.Position3D`.
+        """
+
+    def with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Unconditionally sets `archetype` and `component_type` to the given ones (if specified)."""
+
+    def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
+        """Sets `archetype` and `component_type` to the given one iff it's not already set."""
+
+#
 # sinks
 #
 
@@ -733,13 +922,65 @@ def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
 def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
     """Create a new binary stream sink, and return the associated binary stream."""
 
+class GrpcSink:
+    """
+    Used in [`rerun.RecordingStream.set_sinks`][].
+
+    Connect the recording stream to a remote Rerun Viewer on the given URL.
+    """
+
+    def __init__(self, url: str | None = None, flush_timeout_sec: float | None = None) -> None:
+        """
+        Initialize a gRPC sink.
+
+        Parameters
+        ----------
+        url:
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
+        flush_timeout_sec:
+            The minimum time the SDK will wait during a flush before potentially
+            dropping data if progress is not being made. Passing `None` indicates no timeout,
+            and can cause a call to `flush` to block indefinitely.
+
+        """
+
+class FileSink:
+    """
+    Used in [`rerun.RecordingStream.set_sinks`][].
+
+    Save the recording stream to a file.
+    """
+
+    def __init__(self, path: str | os.PathLike[str]) -> None:
+        """
+        Initialize a file sink.
+
+        Parameters
+        ----------
+        path:
+            Path to write to. The file will be overwritten.
+
+        """
+
+def set_sinks(
+    sinks: list[Any],
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Stream data to multiple sinks."""
+
 def connect_grpc(
     url: Optional[str],
     flush_timeout_sec: Optional[float] = ...,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL."""
+    """Connect the recording stream to a remote Rerun Viewer on the given URL."""
 
 def connect_grpc_blueprint(
     url: Optional[str],
@@ -817,8 +1058,7 @@ def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """
     Disconnect from remote server (if any).
 
-    Subsequent log messages will be buffered and either sent on the next call to `connect`,
-    or shown with `show`.
+    Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
 def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:
@@ -897,8 +1137,8 @@ def send_arrow_chunk(
         The entity path to log the chunk to.
     timelines: `Dict[str, arrow::Int64Array]`
         A dictionary mapping timeline names to their values.
-    components: `Dict[str, arrow::ListArray]`
-        A dictionary mapping component names to their values.
+    components: `Dict[ComponentDescriptor, arrow::ListArray]`
+        A dictionary mapping component types to their values.
     """
 
 def log_file_from_path(
@@ -941,6 +1181,9 @@ def send_recording(rrd: Recording, recording: Optional[PyRecordingStream] = None
 def version() -> str:
     """Return a verbose version string."""
 
+def is_dev_build() -> bool:
+    """Return True if the Rerun SDK is a dev/debug build."""
+
 def get_app_url() -> str:
     """
     Get an url to an instance of the web-viewer.
@@ -980,6 +1223,9 @@ def asset_video_read_frame_timestamps_nanos(
 class EntryId:
     """A unique identifier for an entry in the catalog."""
 
+    def __init__(self, id: str) -> None:
+        """Create a new `EntryId` from a string."""
+
     def __str__(self) -> str:
         """Return str(self)."""
 
@@ -993,6 +1239,9 @@ class EntryKind:
 
     def __str__(self, /) -> str:
         """Return str(self)."""
+
+    def __int__(self) -> int:
+        """int(self)"""  # noqa: D400
 
 class Entry:
     """An entry in the catalog."""
@@ -1024,7 +1273,7 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
-class Dataset(Entry):
+class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
         """Return the dataset manifest URL."""
@@ -1032,13 +1281,72 @@ class Dataset(Entry):
     def arrow_schema(self) -> pa.Schema:
         """Return the Arrow schema of the data contained in the dataset."""
 
+    def blueprint_dataset_id(self) -> EntryId | None:
+        """The ID of the associated blueprint dataset, if any."""
+
+    def blueprint_dataset(self) -> DatasetEntry | None:
+        """The associated blueprint dataset, if any."""
+
+    def default_blueprint_partition_id(self) -> str | None:
+        """The default blueprint partition ID for this dataset, if any."""
+
+    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
+        """
+        Set the default blueprint partition ID for this dataset.
+
+        Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
+        """
+
+    def partition_ids(self) -> list[str]:
+        """Returns a list of partitions IDs for the dataset."""
+
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
 
-    def partition_url(self, partition_id: str) -> str:
-        """Return the URL for the given partition."""
+    def partition_url(
+        self,
+        partition_id: str,
+        timeline: str | None = None,
+        start: datetime | int | None = None,
+        end: datetime | int | None = None,
+    ) -> str:
+        """
+        Return the URL for the given partition.
 
-    def register(self, recording_uri: str, timeout_secs: int = 60) -> None:
+        Parameters
+        ----------
+        partition_id: str
+            The ID of the partition to get the URL for.
+
+        timeline: str | None
+            The name of the timeline to display.
+
+        start: int | datetime | None
+            The start time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        end: int | datetime | None
+            The end time for the partition.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        Examples
+        --------
+        # With ticks
+        >>> start_tick, end_time = 0, 10
+        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+
+        # With timestamps
+        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+
+        Returns
+        -------
+        str
+            The URL for the given partition.
+
+        """
+
+    def register(self, recording_uri: str, timeout_secs: int = 60) -> str:
         """
         Register a RRD URI to the dataset and wait for completion.
 
@@ -1051,7 +1359,12 @@ class Dataset(Entry):
             The URI of the RRD to register
 
         timeout_secs: int
-            The timeout after which this method returns.
+            The timeout after which this method raises a `TimeoutError` if the task is not completed.
+
+        Returns
+        -------
+        partition_id: str
+            The partition ID of the registered RRD.
 
         """
 
@@ -1075,13 +1388,55 @@ class Dataset(Entry):
     def dataframe_query_view(
         self,
         *,
-        index: str,
+        index: str | None,
         contents: Any,
         include_semantically_empty_columns: bool = False,
-        include_indicator_columns: bool = False,
         include_tombstone_columns: bool = False,
     ) -> DataframeQueryView:
-        """Create a view to run a dataframe query on the dataset."""
+        """
+        Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
+
+        The only type of index currently supported is the name of a timeline, or `None` (see below
+        for details).
+
+        The view will only contain a single row for each unique value of the index
+        that is associated with a component column that was included in the view.
+        Component columns that are not included via the view contents will not
+        impact the rows that make up the view. If the same entity / component pair
+        was logged to a given index multiple times, only the most recent row will be
+        included in the view, as determined by the `row_id` column. This will
+        generally be the last value logged, as row_ids are guaranteed to be
+        monotonically increasing when data is sent from a single process.
+
+        If `None` is passed as the index, the view will contain only static columns (among those
+        specified) and no index columns. It will also contain a single row per partition.
+
+        Parameters
+        ----------
+        index : str | None
+            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
+        contents : ViewContentsLike
+            The content specification for the view.
+
+            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
+            specifying multiple content-expressions and a respective list of components to select within
+            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
+        include_semantically_empty_columns : bool, optional
+            Whether to include columns that are semantically empty, by default `False`.
+
+            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
+        include_tombstone_columns : bool, optional
+            Whether to include tombstone columns, by default `False`.
+
+            Tombstone columns are components used to represent clears. However, even without the clear
+            tombstone columns, the view will still apply the clear semantics when resolving row contents.
+
+        Returns
+        -------
+        DataframeQueryView
+            The view of the dataset.
+
+        """
 
     def create_fts_index(
         self,
@@ -1119,7 +1474,15 @@ class Dataset(Entry):
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
 
-class Table(Entry):
+    def do_maintenance(
+        self,
+        build_scalar_index: bool = False,
+        compact_fragments: bool = False,
+        cleanup_before: Optional[datetime] = None,
+    ) -> None:
+        """Perform maintenance tasks on the datasets."""
+
+class TableEntry(Entry):
     """
     A table entry in the catalog.
 
@@ -1129,8 +1492,11 @@ class Table(Entry):
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""
+
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
 class DataframeQueryView:
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
@@ -1293,41 +1659,52 @@ class DataframeQueryView:
 
         """
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
-class CatalogClient:
-    """Client for a remote Rerun catalog server."""
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
 
-    def entries(self) -> list[Entry]:
-        """Get a list of all entries in the catalog."""
+# TODO(ab): internal object, we need auto-gen stubs for these.
+class CatalogClientInternal:
+    def __init__(self, addr: str, token: str | None = None) -> None: ...
 
-    def get_dataset(self, name_or_id: str | EntryId) -> Dataset:
-        """Get a dataset by name or id."""
+    # ---
 
-    def create_dataset(self, name: str) -> Dataset:
-        """Create a new dataset with the provided name."""
+    def all_entries(self) -> list[Entry]: ...
+    def dataset_entries(self) -> list[DatasetEntry]: ...
+    def table_entries(self) -> list[TableEntry]: ...
 
-    def get_table(self, name_or_id: str | EntryId) -> Table:
-        """
-        Get a table by name or id.
+    # ---
 
-        Note: the entry table is named `__entries`.
-        """
+    def entry_names(self) -> list[str]: ...
+    def dataset_names(self) -> list[str]: ...
+    def table_names(self) -> list[str]: ...
 
-    def entries_table(self) -> Table:
-        """Get the entries table."""
+    # ---
 
-    @property
-    def ctx(self) -> Any:
-        """The DataFusion context (if available)."""
+    def get_dataset_entry(self, id: EntryId) -> DatasetEntry: ...
+    def get_table_entry(self, id: EntryId) -> TableEntry: ...
+
+    # ---
+
+    def create_dataset(self, name: str) -> DatasetEntry: ...
+    def register_table(self, name: str, url: str) -> TableEntry: ...
+    def ctx(self) -> Any: ...
+
+    # ---
+
+    def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class DataFusionTable:
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
+
+    def to_arrow_reader(self) -> pa.RecordBatchReader:
+        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
 
     @property
     def name(self) -> str:

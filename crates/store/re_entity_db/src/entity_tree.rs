@@ -7,14 +7,14 @@ use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt};
 use re_query::StorageEngineReadGuard;
-use re_types_core::ComponentName;
+use re_types_core::ComponentDescriptor;
 
 // ----------------------------------------------------------------------------
 
 /// A recursive, manually updated [`ChunkStoreSubscriber`] that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
@@ -56,10 +56,11 @@ pub struct CompactedStoreEvents {
     pub row_ids: HashSet<RowId>,
 
     /// What time points were deleted for each entity+timeline+component?
-    pub temporal: IntMap<EntityPathHash, IntMap<TimelineName, IntMap<ComponentName, Vec<TimeInt>>>>,
+    pub temporal:
+        IntMap<EntityPathHash, IntMap<TimelineName, IntMap<ComponentDescriptor, Vec<TimeInt>>>>,
 
     /// For each entity+component, how many static entries were deleted?
-    pub static_: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
+    pub static_: IntMap<EntityPathHash, IntMap<ComponentDescriptor, u64>>,
 }
 
 impl CompactedStoreEvents {
@@ -79,8 +80,8 @@ impl CompactedStoreEvents {
                     .static_
                     .entry(event.chunk.entity_path().hash())
                     .or_default();
-                for component_name in event.chunk.component_names() {
-                    *per_component.entry(component_name).or_default() +=
+                for component_descr in event.chunk.component_descriptors() {
+                    *per_component.entry(component_descr).or_default() +=
                         event.delta().unsigned_abs();
                 }
             } else {
@@ -91,9 +92,9 @@ impl CompactedStoreEvents {
                         .or_default();
                     for &time in time_column.times_raw() {
                         let per_component = per_timeline.entry(timeline).or_default();
-                        for component_name in event.chunk.component_names() {
+                        for component_descr in event.chunk.component_descriptors() {
                             per_component
-                                .entry(component_name)
+                                .entry(component_descr)
                                 .or_default()
                                 .push(TimeInt::new_temporal(time));
                         }
@@ -261,7 +262,10 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, example_components::MyPoint};
+    use re_log_types::{
+        EntityPath, StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
 
     use crate::EntityDb;
 
@@ -284,7 +288,11 @@ mod tests {
             let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
             let point = MyPoint::new(1.0, 2.0);
             let chunk = Chunk::builder(entity_path_grandchild.clone())
-                .with_component_batches(row_id, timepoint, [&[point] as _])
+                .with_component_batches(
+                    row_id,
+                    timepoint,
+                    [(MyPoints::descriptor_points(), &[point] as _)],
+                )
                 .build()?;
 
             db.add_chunk(&Arc::new(chunk))?;

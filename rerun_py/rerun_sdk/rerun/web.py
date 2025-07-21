@@ -11,6 +11,11 @@ def serve_web_viewer(*, web_port: int | None = None, open_browser: bool = True, 
     so that the spawned web viewer connects to that server.
 
     Note that this is NOT a log sink, and this does NOT host a gRPC server.
+    If you want to log data to a gRPC server and connect the web viewer to it, you can do so like this:
+    ```
+    server_uri = rr.serve_grpc()
+    rr.serve_web_viewer(connect_to=server_uri)
+    ```
 
     This function returns immediately.
     In order to keep the web server running you must keep the Python process running too.

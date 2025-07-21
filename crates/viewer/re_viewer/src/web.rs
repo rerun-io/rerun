@@ -2,12 +2,12 @@
 
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use std::rc::Rc;
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use serde::Deserialize;
-use std::rc::Rc;
-use std::str::FromStr as _;
-use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
@@ -38,6 +38,9 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, Channel>,
 
+    /// The connection registry to use for the viewer.
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+
     app_options: AppOptions,
 }
 
@@ -50,9 +53,12 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
+        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+
         Ok(Self {
             runner: eframe::WebRunner::new(),
             tx_channels: Default::default(),
+            connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
     }
@@ -93,11 +99,19 @@ impl WebHandle {
             ..Default::default()
         };
 
+        let connection_registry = self.connection_registry.clone();
         self.runner
             .start(
                 canvas,
                 web_options,
-                Box::new(move |cc| Ok(Box::new(create_app(main_thread_token, cc, app_options)?))),
+                Box::new(move |cc| {
+                    Ok(Box::new(create_app(
+                        main_thread_token,
+                        cc,
+                        connection_registry,
+                        app_options,
+                    )?))
+                }),
             )
             .await?;
 
@@ -188,12 +202,15 @@ impl WebHandle {
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
         if let Some(rx) = url_to_receiver(
+            &self.connection_registry,
             app.egui_ctx.clone(),
             follow_if_http,
             url.to_owned(),
             app.command_sender.clone(),
         ) {
             app.add_log_receiver(rx);
+            app.egui_ctx
+                .request_repaint_after(std::time::Duration::from_millis(10));
         }
     }
 
@@ -206,6 +223,9 @@ impl WebHandle {
         if let Some(store_hub) = app.store_hub.as_mut() {
             store_hub.remove_recording_by_uri(url);
         }
+
+        app.egui_ctx
+            .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
     /// Open a new channel for streaming data.
@@ -324,15 +344,22 @@ impl WebHandle {
                 }
             };
 
-            let encoded = match stream_reader.collect::<Result<Vec<_>, _>>() {
-                Ok(encoded) => encoded,
+            let mut batches = match stream_reader.collect::<Result<Vec<_>, _>>() {
+                Ok(batches) => batches,
                 Err(err) => {
                     re_log::error_once!("Could not read from IPC stream: {err}");
                     return;
                 }
             };
 
-            let msg = match from_arrow_encoded(&encoded[0]) {
+            if batches.len() != 1 {
+                re_log::warn_once!("Expected exactly one record batch, got {}", batches.len());
+                return;
+            }
+
+            let record_batch = batches.remove(0);
+
+            let msg = match from_arrow_encoded(record_batch) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error_once!("Failed to decode Arrow message: {err}");
@@ -638,6 +665,8 @@ pub struct AppOptions {
 
     notebook: Option<bool>,
     persist: Option<bool>,
+
+    fallback_token: Option<String>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -672,6 +701,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
@@ -692,7 +722,18 @@ fn create_app(
 
         notebook,
         persist,
+
+        fallback_token,
     } = app_options;
+
+    if let Some(fallback_token) = fallback_token {
+        match re_auth::Jwt::try_from(fallback_token) {
+            Ok(token) => connection_registry.set_fallback_token(token),
+            Err(err) => {
+                re_log::warn!("Failed to parse JWT token: {err}");
+            }
+        };
+    }
 
     let enable_history = enable_history.unwrap_or(false);
 
@@ -741,6 +782,7 @@ fn create_app(
         &app_env,
         startup_options,
         cc,
+        Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
 
@@ -756,6 +798,7 @@ fn create_app(
         let follow_if_http = false;
         for url in urls.into_inner() {
             if let Some(receiver) = url_to_receiver(
+                app.connection_registry(),
                 cc.egui_ctx.clone(),
                 follow_if_http,
                 url,
@@ -787,19 +830,11 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
-    let mut metadata = data.schema().metadata().clone();
-    let id = metadata
+pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+    let id = data
+        .schema_metadata_mut()
         .remove("__table_id")
         .ok_or("encoded record batch is missing `__table_id` metadata.")?;
-
-    let data = RecordBatch::try_new(
-        Arc::new(arrow::datatypes::Schema::new_with_metadata(
-            data.schema().fields().clone(),
-            metadata,
-        )),
-        data.columns().to_vec(),
-    )?;
 
     Ok(TableMsg {
         id: TableId::new(id),
@@ -874,7 +909,7 @@ mod tests {
         };
 
         let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
-        let decoded = from_arrow_encoded(&encoded).expect("from concatenated failed");
+        let decoded = from_arrow_encoded(encoded).expect("from concatenated failed");
 
         assert_eq!(msg, decoded);
     }

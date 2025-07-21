@@ -83,7 +83,7 @@ pub struct PickingContext {
     pub camera_plane_from_ui: egui::emath::RectTransform,
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
-    pub ray_in_world: re_math::Ray3,
+    pub ray_in_world: macaw::Ray3,
 }
 
 impl PickingContext {
@@ -193,13 +193,8 @@ fn picking_gpu(
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 
-    // Only look at newest available result, discard everything else.
-    let mut gpu_picking_result = None;
-    while let Some(picking_result) =
-        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
-    {
-        gpu_picking_result = Some(picking_result);
-    }
+    let gpu_picking_result =
+        PickingLayerProcessor::readback_result::<()>(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // First, figure out where on the rect the cursor is by now.
@@ -282,7 +277,7 @@ fn picking_textured_rects<'a>(
             continue; // extent_u and extent_v are parallel. Shouldn't happen.
         };
 
-        let rect_plane = re_math::Plane3::from_normal_point(normal, rect.top_left_corner_position);
+        let rect_plane = macaw::Plane3::from_normal_point(normal, rect.top_left_corner_position);
 
         // TODO(andreas): Interaction radius is currently ignored for rects.
         let (intersect, t) =

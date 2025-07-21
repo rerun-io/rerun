@@ -141,7 +141,7 @@ pub fn render_image(
     let target_config = re_renderer::view_builder::TargetConfiguration {
         name: debug_name,
         resolution_in_pixel,
-        view_from_world: re_math::IsoTransform::from_translation(-top_left_position.extend(0.0)),
+        view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
         projection_from_view: re_renderer::view_builder::Projection::Orthographic {
             camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
             vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,

@@ -45,13 +45,14 @@ jobs:
           filters: |
             cpp_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - crates/top/rerun_c/**/*
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
-              - scripts/ci/*
-              - '**/*.hpp'
+              - scripts/ci/**/*
               - '**/*.cpp'
-              - '**/CMakeLists.txt'
+              - '**/*.hpp'
               - '**/*cmake'
+              - '**/CMakeLists.txt'
 
             docs_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
@@ -76,9 +77,9 @@ jobs:
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
+              - crates/viewer/re_ui/data/**/* # parts of data are imported into the viewer and has ramifications on various tests
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
-              - scripts/ci/*
               - "**/*.rs"
               - "**/*.toml"
 
@@ -203,6 +204,16 @@ jobs:
     needs: [build-web]
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  upload-js:
+    name: "Upload JS"
+    needs: [build-js]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_upload_js.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}

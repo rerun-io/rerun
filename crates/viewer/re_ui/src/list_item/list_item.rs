@@ -3,7 +3,7 @@
 use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
 
 use crate::{
-    DesignTokens, Scale, UiExt as _, design_tokens_of,
+    DesignTokens, UiExt as _, design_tokens_of,
     list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
 };
 
@@ -76,113 +76,75 @@ impl Default for ListItem {
 /// Implemented after <https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1>
 #[derive(Debug, Clone, Copy)]
 pub struct ListVisuals {
-    theme: egui::Theme,
-    hovered: bool,
-    selected: bool,
-    active: bool,
-    interactive: bool,
+    pub theme: egui::Theme,
+    pub hovered: bool,
+    pub selected: bool,
+    pub active: bool,
+    pub interactive: bool,
+    pub strong: bool,
 }
 
 impl ListVisuals {
     pub fn bg_color(self, visuals: &egui::Visuals) -> Option<Color32> {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    Some(visuals.selection.bg_fill)
-                } else if self.hovered {
-                    Some(design_tokens.color_table.gray(Scale::S250))
-                } else if self.active {
-                    Some(design_tokens.color_table.gray(Scale::S200))
-                } else {
-                    None
-                }
-            }
-
-            egui::Theme::Light => {
-                if self.selected {
-                    Some(visuals.selection.bg_fill)
-                } else if self.hovered {
-                    Some(design_tokens.color_table.gray(Scale::S900))
-                } else if self.active {
-                    Some(design_tokens.color_table.gray(Scale::S800))
-                } else {
-                    None
-                }
-            }
+        if self.selected {
+            Some(visuals.selection.bg_fill)
+        } else if self.hovered {
+            Some(design_tokens.list_item_hovered_bg)
+        } else if self.active {
+            Some(design_tokens.list_item_active_bg)
+        } else {
+            None
         }
     }
 
     pub fn text_color(self) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S800)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S1000)
-                } else if !self.interactive {
-                    design_tokens.color_table.gray(Scale::S550)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S800)
-                } else {
-                    design_tokens.color_table.gray(Scale::S700)
-                }
+        if self.selected {
+            if self.hovered {
+                design_tokens.text_color_on_primary_hovered
+            } else {
+                design_tokens.text_color_on_primary
             }
-
-            egui::Theme::Light => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S100)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S0)
-                } else if !self.interactive {
-                    design_tokens.color_table.gray(Scale::S550)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S250)
-                } else {
-                    design_tokens.color_table.gray(Scale::S350)
-                }
-            }
+        } else if self.active {
+            design_tokens.list_item_active_text
+        } else if !self.interactive {
+            design_tokens.list_item_noninteractive_text
+        } else if self.hovered {
+            design_tokens.list_item_hovered_text
+        } else if self.strong {
+            design_tokens.list_item_strong_text
+        } else {
+            design_tokens.list_item_default_text
         }
     }
 
     pub fn icon_tint(self) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S600)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S800)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S600)
-                } else {
-                    design_tokens.label_button_icon_color()
-                }
-            }
-            egui::Theme::Light => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S250)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S300)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S400)
-                } else {
-                    design_tokens.label_button_icon_color()
-                }
-            }
+        if self.selected {
+            design_tokens.icon_color_on_primary
+        } else if self.active {
+            design_tokens.list_item_active_icon
+        } else if self.hovered {
+            design_tokens.list_item_hovered_icon
+        } else {
+            design_tokens.list_item_default_icon
         }
     }
 
     pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
-        if self.selected && icon_hovered {
-            design_tokens.color_table.blue(Scale::S800)
+        if self.selected {
+            if icon_hovered {
+                design_tokens.icon_color_on_primary_hovered
+            } else {
+                design_tokens.icon_color_on_primary
+            }
         } else if icon_hovered {
-            design_tokens.color_table.gray(Scale::S800)
+            design_tokens.list_item_hovered_text
         } else {
             self.icon_tint()
         }
@@ -191,10 +153,7 @@ impl ListVisuals {
     fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
-            match self.theme {
-                egui::Theme::Dark => design_tokens.color_table.gray(Scale::S700),
-                egui::Theme::Light => design_tokens.color_table.gray(Scale::S250),
-            }
+            design_tokens.list_item_collapse_default
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
@@ -292,7 +251,7 @@ impl ListItem {
         self
     }
 
-    /// Set the item's vertical offset to `DesignTokens::list_header_vertical_offset()`.
+    /// Set the item's vertical offset to [`DesignTokens::list_header_vertical_offset`].
     /// For best results, use this with [`super::LabelContent::header`].
     #[inline]
     pub fn header(mut self) -> Self {
@@ -328,10 +287,11 @@ impl ListItem {
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
+            let tokens = ui.tokens();
             self.ui(
                 ui,
                 None,
-                DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding(),
+                tokens.small_icon_size.x + tokens.text_to_icon_padding(),
                 Box::new(content),
             )
         })
@@ -393,6 +353,8 @@ impl ListItem {
             default_open,
         );
 
+        let tokens = ui.tokens();
+
         // enable collapsing arrow
         let openness = state.openness(ui.ctx());
         self.collapse_openness = Some(openness);
@@ -415,7 +377,7 @@ impl ListItem {
             .scope(|ui| {
                 if indented {
                     ui.spacing_mut().indent =
-                        DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                        tokens.small_icon_size.x + tokens.text_to_icon_padding();
                     state.show_body_indented(&response.response, ui, |ui| add_children(ui))
                 } else {
                     state.show_body_unindented(ui, |ui| add_children(ui))
@@ -451,13 +413,17 @@ impl ListItem {
             render_offscreen,
         } = self;
 
+        let tokens = ui.tokens();
+
         if y_offset != 0.0 {
             ui.add_space(y_offset);
             height -= y_offset;
         }
 
+        let collapsing_triangle_size = tokens.collapsing_triangle_size();
+
         let collapse_extra = if collapse_openness.is_some() {
-            DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
+            collapsing_triangle_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -533,6 +499,7 @@ impl ListItem {
             selected,
             active,
             interactive,
+            strong: false,
         };
 
         let mut collapse_response = None;
@@ -543,11 +510,10 @@ impl ListItem {
         if let Some(openness) = collapse_openness {
             let triangle_pos = egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * DesignTokens::collapsing_triangle_area().y,
+                rect.center().y - 0.5 * collapsing_triangle_size.y,
             )
             .round_to_pixels(ui.pixels_per_point());
-            let triangle_rect =
-                egui::Rect::from_min_size(triangle_pos, DesignTokens::collapsing_triangle_area());
+            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),
@@ -586,7 +552,7 @@ impl ListItem {
             let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
-                let stroke = ui.design_tokens().drop_target_container_stroke();
+                let stroke = tokens.drop_target_container_stroke;
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(

@@ -1,9 +1,9 @@
+use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
-use re_log_types::LogMsg;
 use re_redap_browser::{
-    EXAMPLES_ORIGIN, EntryKind, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
+    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
 };
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::ItemMenuButton;
 use re_ui::{UiExt as _, UiLayout, list_item};
 use re_viewer_context::{
@@ -16,7 +16,6 @@ use crate::app_state::WelcomeScreenState;
 /// Also shows the currently loading receivers.
 pub fn recordings_panel_ui(
     ctx: &ViewerContext<'_>,
-    rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
     servers: &RedapServers,
@@ -43,13 +42,13 @@ pub fn recordings_panel_ui(
 
                     // Show currently loading things after.
                     // They will likely end up here as recordings soon.
-                    loading_receivers_ui(ctx, rx, ui);
+                    loading_receivers_ui(ctx, ui);
                 });
             });
         });
 }
 
-fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
+fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
         .storage_context
         .bundle
@@ -57,21 +56,9 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         .filter_map(|store| store.data_source.clone())
         .collect();
 
-    for source in rx.sources() {
-        let string = match source.as_ref() {
-            // We only show things we know are very-soon-to-be recordings:
-            SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-            SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
-            SmartChannelSource::RedapGrpcStream(uri) => format!("Loading {uri}…"),
-
-            SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::MessageProxy { .. }
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::Stdin => {
-                // These show up in the top panel - see `top_panel.rs`.
-                continue;
-            }
+    for source in ctx.connected_receivers.sources() {
+        let Some(string) = source.loading_string() else {
+            continue;
         };
 
         // Only show if we don't have a recording for this source,
@@ -84,10 +71,10 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                 ui,
                 re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
                     let resp = ui
-                        .small_icon_button(&re_ui::icons::REMOVE)
+                        .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
                         .on_hover_text("Disconnect from this source");
                     if resp.clicked() {
-                        rx.remove(&source);
+                        ctx.connected_receivers.remove(&source);
                     }
                     resp
                 }),
@@ -106,11 +93,11 @@ fn recording_list_ui(
     welcome_screen_state: &WelcomeScreenState,
     servers: &RedapServers,
 ) {
-    let re_redap_browser::SortDatasetsResults {
+    let re_entity_db::SortDatasetsResults {
         remote_recordings,
         example_recordings,
         local_recordings,
-    } = re_redap_browser::sort_datasets(ctx);
+    } = ctx.storage_context.bundle.sort_recordings_by_class();
 
     servers.server_list_ui(ctx, ui, remote_recordings);
 
@@ -118,7 +105,7 @@ fn recording_list_ui(
     if ctx.storage_context.tables.is_empty()
         && servers.is_empty()
         && local_recordings.is_empty()
-        && welcome_screen_state.hide
+        && welcome_screen_state.hide_examples
     {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -142,11 +129,11 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ui,
                             ctx,
-                            &EntryKind::Local(app_id.clone()),
+                            &DatasetKind::Local(app_id.clone()),
                             entity_dbs,
                         );
                     }
-                    for table_id in ctx.storage_context.tables.keys() {
+                    for table_id in ctx.storage_context.tables.keys().sorted() {
                         table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
                     }
                 },
@@ -163,13 +150,17 @@ fn recording_list_ui(
     // Always show welcome screen last, if at all:
     if (ctx
         .app_options()
-        .include_welcome_screen_button_in_recordings_panel
-        && !welcome_screen_state.hide)
+        .include_rerun_examples_button_in_recordings_panel
+        && !welcome_screen_state.hide_examples)
         || !example_recordings.is_empty()
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
         let selected = ctx.selection().contains_item(&item);
-        let list_item = ui.list_item().header().selected(selected);
+        let active = matches!(
+            ctx.display_mode(),
+            DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+        );
+        let list_item = ui.list_item().header().selected(selected).active(active);
         let title = list_item::LabelContent::header("Rerun examples");
         let response = if example_recordings.is_empty() {
             list_item.show_flat(ui, title)
@@ -185,7 +176,7 @@ fn recording_list_ui(
                             dataset_and_its_recordings_ui(
                                 ui,
                                 ctx,
-                                &EntryKind::Local(app_id.clone()),
+                                &DatasetKind::Local(app_id.clone()),
                                 entity_dbs,
                             );
                         }
@@ -209,7 +200,7 @@ fn recording_list_ui(
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::list_item::ItemButton as _;
-    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, "Add…", |ui| {
         if re_ui::UICommand::Open
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()

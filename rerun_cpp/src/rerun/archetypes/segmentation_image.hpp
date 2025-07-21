@@ -11,7 +11,6 @@
 #include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
 #include "../image_utils.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -90,33 +89,28 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.SegmentationImageIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SegmentationImage";
 
         /// `ComponentDescriptor` for the `buffer` field.
         static constexpr auto Descriptor_buffer = ComponentDescriptor(
-            ArchetypeName, "buffer",
-            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:buffer",
+            Loggable<rerun::components::ImageBuffer>::ComponentType
         );
         /// `ComponentDescriptor` for the `format` field.
         static constexpr auto Descriptor_format = ComponentDescriptor(
-            ArchetypeName, "format",
-            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:format",
+            Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity",
-            Loggable<rerun::components::Opacity>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from segmentation_image_ext.cpp:

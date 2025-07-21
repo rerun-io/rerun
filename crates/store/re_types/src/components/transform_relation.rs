@@ -17,7 +17,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies relation a spatial transform describes.
@@ -42,8 +42,8 @@ pub enum TransformRelation {
 
 impl ::re_types_core::Component for TransformRelation {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TransformRelation")
+    fn name() -> ComponentType {
+        "rerun.components.TransformRelation".into()
     }
 }
 

@@ -1,7 +1,11 @@
+use jiff::SignedDuration;
+use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
+
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
+use re_smart_channel::SmartChannelSource;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -33,6 +37,12 @@ impl crate::DataUi for EntityDb {
             {
                 ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
                 ui.label(self.store_id().to_string());
+                ui.end_row();
+            }
+
+            if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetDataUri { partition_id, .. }, .. }) = &self.data_source {
+                ui.grid_left_hand_label("Partition ID");
+                ui.label(partition_id.to_string());
                 ui.end_row();
             }
 
@@ -74,16 +84,43 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(latest_row_id) = self.latest_row_id() {
-                if let Ok(nanos_since_epoch) =
-                    i64::try_from(latest_row_id.nanos_since_epoch())
-                {
-                    let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
-                    ui.grid_left_hand_label("Modified");
-                    ui.label(time.format(ctx.app_options().timestamp_format));
-                    ui.end_row();
+            let show_last_modified_time = !ctx.global_context.is_test; // Hide in tests because it is non-deterministic (it's based on `RowId`).
+            if show_last_modified_time {
+                if let Some(latest_row_id) = self.latest_row_id() {
+                    if let Ok(nanos_since_epoch) =
+                        i64::try_from(latest_row_id.nanos_since_epoch())
+                    {
+                        let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
+                        ui.grid_left_hand_label("Modified");
+                        ui.label(time.format(ctx.app_options().timestamp_format));
+                        ui.end_row();
+                    }
                 }
             }
+
+            if let Some(tl_name) = self.timelines().keys()
+                .find(|k| **k == re_log_types::TimelineName::log_time())
+            {
+                if let Some(range) = self.time_range_for(tl_name) {
+                    let delta_ns = (range.max() - range.min()).as_i64();
+                    if delta_ns > 0 {
+                        let duration = SignedDuration::from_nanos(delta_ns);
+
+                        let printer = SpanPrinter::new()
+                            .fractional(Some(FractionalUnit::Second))
+                            .precision(Some(2));
+
+                        let pretty = printer.duration_to_string(&duration);
+
+
+                        ui.grid_left_hand_label("Duration");
+                        ui.label(pretty)
+                            .on_hover_text("Duration between earliest and latest log_time.");
+                        ui.end_row();
+                    }
+                }
+            }
+
 
             {
                 ui.grid_left_hand_label("Size");
@@ -111,8 +148,8 @@ impl crate::DataUi for EntityDb {
                     re_format::format_uint(chunk_max_rows_if_unsorted),
                     re_format::format_bytes(chunk_max_bytes as _),
                 ))
-                .on_hover_text(
-                    unindent::unindent(&format!("\
+                    .on_hover_text(
+                        unindent::unindent(&format!("\
                         The current compaction configuration for this recording is to merge chunks until they \
                         reach either a maximum of {} rows ({} if unsorted) or {}, whichever comes first.
 
@@ -138,14 +175,14 @@ impl crate::DataUi for EntityDb {
                         `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
                         make future runs cheaper.
                         ",
-                        re_format::format_uint(chunk_max_rows),
-                        re_format::format_uint(chunk_max_rows_if_unsorted),
-                        re_format::format_bytes(chunk_max_bytes as _),
-                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
-                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
-                        ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
-                    )),
-                );
+                                                    re_format::format_uint(chunk_max_rows),
+                                                    re_format::format_uint(chunk_max_rows_if_unsorted),
+                                                    re_format::format_bytes(chunk_max_bytes as _),
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                                                    ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
+                        )),
+                    );
                 ui.end_row();
             }
 
@@ -161,9 +198,12 @@ impl crate::DataUi for EntityDb {
 
         match self.store_kind() {
             StoreKind::Recording => {
-                if store_id.as_ref() == hub.active_recording_id() {
-                    ui.add_space(8.0);
-                    ui.label("This is the active recording.");
+                if false {
+                    // Just confusing and unnecessary to show this.
+                    if store_id.as_ref() == hub.active_recording_id() {
+                        ui.add_space(8.0);
+                        ui.label("This is the active recording.");
+                    }
                 }
             }
             StoreKind::Blueprint => {

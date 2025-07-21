@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
-
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
@@ -57,6 +56,7 @@ impl ChunkSchema {
         row_id: RowIdColumnDescriptor,
         indices: Vec<IndexColumnDescriptor>,
         components: Vec<ComponentColumnDescriptor>,
+        timestamps: crate::TimestampMetadata,
     ) -> Self {
         Self {
             sorbet: SorbetSchema {
@@ -72,6 +72,7 @@ impl ChunkSchema {
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,
+                timestamps,
             },
             chunk_columns: ChunkColumnDescriptors {
                 row_id,
@@ -102,6 +103,12 @@ impl ChunkSchema {
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
+    }
+
+    /// Is this chunk static?
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.chunk_columns.indices.is_empty()
     }
 
     /// The heap size of this chunk in bytes, if known.
@@ -137,15 +144,6 @@ impl From<&ChunkSchema> for ArrowSchema {
             metadata: chunk_schema.arrow_batch_metadata(),
             fields: chunk_schema.arrow_fields().into(),
         }
-    }
-}
-
-impl TryFrom<&ArrowSchema> for ChunkSchema {
-    type Error = SorbetError;
-
-    fn try_from(arrow_schema: &ArrowSchema) -> Result<Self, Self::Error> {
-        let sorbet_schema = SorbetSchema::try_from(arrow_schema)?;
-        Self::try_from(sorbet_schema)
     }
 }
 

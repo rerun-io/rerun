@@ -8,7 +8,6 @@
 #include "../../component_column.hpp"
 #include "../../components/interactive.hpp"
 #include "../../components/visible.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -38,23 +37,18 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> visible;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.EntityBehaviorIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.EntityBehavior";
 
         /// `ComponentDescriptor` for the `interactive` field.
         static constexpr auto Descriptor_interactive = ComponentDescriptor(
-            ArchetypeName, "interactive",
-            Loggable<rerun::components::Interactive>::Descriptor.component_name
+            ArchetypeName, "EntityBehavior:interactive",
+            Loggable<rerun::components::Interactive>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "EntityBehavior:visible",
+            Loggable<rerun::components::Visible>::ComponentType
         );
 
       public:

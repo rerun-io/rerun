@@ -3,26 +3,48 @@ use std::any::{Any, TypeId};
 use ahash::HashMap;
 use parking_lot::Mutex;
 use re_chunk_store::ChunkStoreEvent;
+use re_log_types::StoreId;
 
 /// Does memoization of different objects for the immediate mode UI.
-#[derive(Default)]
-pub struct Caches(Mutex<HashMap<TypeId, Box<dyn Cache>>>);
+pub struct Caches {
+    caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
+    store_id: StoreId,
+}
 
 impl Caches {
-    /// Call once per frame to potentially flush the cache(s).
-    ///
-    /// `renderer_active_frame_idx`: The global frame index as reported by [`re_renderer::RenderContext::active_frame_idx`].
-    pub fn begin_frame(&self, renderer_active_frame_idx: u64) {
-        re_tracing::profile_function!();
-        for cache in self.0.lock().values_mut() {
-            cache.begin_frame(renderer_active_frame_idx);
+    /// Creates a new instance of `Caches` associated with a specific store.
+    pub fn new(store_id: StoreId) -> Self {
+        Self {
+            caches: Mutex::new(HashMap::default()),
+            store_id,
         }
+    }
+
+    /// Call once per frame to potentially flush the cache(s).
+    pub fn begin_frame(&self) {
+        re_tracing::profile_function!();
+
+        #[expect(clippy::iter_over_hash_type)]
+        for cache in self.caches.lock().values_mut() {
+            cache.begin_frame();
+        }
+    }
+
+    pub fn total_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+        self.caches
+            .lock()
+            .values()
+            .map(|cache| cache.bytes_used())
+            .sum()
     }
 
     /// Attempt to free up memory.
     pub fn purge_memory(&self) {
         re_tracing::profile_function!();
-        for cache in self.0.lock().values_mut() {
+
+        #[expect(clippy::iter_over_hash_type)]
+        for cache in self.caches.lock().values_mut() {
             cache.purge_memory();
         }
     }
@@ -33,8 +55,17 @@ impl Caches {
     pub fn on_store_events(&self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        for cache in self.0.lock().values_mut() {
-            cache.on_store_events(events);
+        let relevant_events = events
+            .iter()
+            .filter(|event| event.store_id == self.store_id)
+            .collect::<Vec<_>>();
+        if relevant_events.is_empty() {
+            return;
+        }
+
+        #[expect(clippy::iter_over_hash_type)]
+        for cache in self.caches.lock().values_mut() {
+            cache.on_store_events(&relevant_events);
         }
     }
 
@@ -44,7 +75,7 @@ impl Caches {
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
         #[allow(clippy::unwrap_or_default)] // or_default doesn't work here.
         f(self
-            .0
+            .caches
             .lock()
             .entry(TypeId::of::<C>())
             .or_insert(Box::<C>::default())
@@ -59,9 +90,10 @@ impl Caches {
 /// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/cache/index.html>).
 pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
-    ///
-    /// `_renderer_active_frame_idx`: The global frame index as reported by [`re_renderer::RenderContext::active_frame_idx`].
-    fn begin_frame(&mut self, _renderer_active_frame_idx: u64) {}
+    fn begin_frame(&mut self) {}
+
+    /// Total memory used by this cache, in bytes.
+    fn bytes_used(&self) -> u64;
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
@@ -69,12 +101,10 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// React to the chunk store's changelog, if needed.
     ///
     /// Useful to e.g. invalidate unreachable data.
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    /// Since caches are created per store, each cache consistently receives events only for the same store.
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         _ = events;
     }
-
-    // TODO(andreas): Track bytes used for each cache and show in the memory panel!
-    //fn bytes_used(&self) -> usize;
 
     /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn Any;

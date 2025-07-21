@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Controls the distance to the near clip plane in 3D scene units.
@@ -37,19 +37,9 @@ impl NearClipPlane {
     #[inline]
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component_name: "rerun.blueprint.components.NearClipPlane".into(),
-            archetype_field_name: Some("near_clip_plane".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+            component: "NearClipPlane:near_clip_plane".into(),
+            component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
         }
     }
 }
@@ -57,31 +47,21 @@ impl NearClipPlane {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [NearClipPlane::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [NearClipPlane::descriptor_near_clip_plane()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            NearClipPlane::descriptor_indicator(),
-            NearClipPlane::descriptor_near_clip_plane(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [NearClipPlane::descriptor_near_clip_plane()]);
 
 impl NearClipPlane {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`NearClipPlane`] [`::re_types_core::Archetype`]
-pub type NearClipPlaneIndicator = ::re_types_core::GenericIndicatorComponent<NearClipPlane>;
-
 impl ::re_types_core::Archetype for NearClipPlane {
-    type Indicator = NearClipPlaneIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.NearClipPlane".into()
@@ -90,12 +70,6 @@ impl ::re_types_core::Archetype for NearClipPlane {
     #[inline]
     fn display_name() -> &'static str {
         "Near clip plane"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        NearClipPlaneIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -138,8 +112,7 @@ impl ::re_types_core::AsComponents for NearClipPlane {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.near_clip_plane.clone()]
-            .into_iter()
+        std::iter::once(self.near_clip_plane.clone())
             .flatten()
             .collect()
     }

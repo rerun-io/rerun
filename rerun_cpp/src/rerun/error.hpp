@@ -41,7 +41,7 @@ namespace rerun {
         InvalidSocketAddress,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
-        InvalidArchetypeField,
+        InvalidComponent,
         FileRead,
         InvalidServerUrl,
         InvalidMemoryLimit,

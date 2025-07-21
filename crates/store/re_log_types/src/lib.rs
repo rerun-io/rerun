@@ -344,6 +344,21 @@ impl LogMsg {
             }
         }
     }
+
+    /// If we are an [`ArrowMsg`], return a mutable reference to the underlying
+    /// [`ArrowRecordBatch`].
+    pub fn arrow_record_batch_mut(&mut self) -> Option<&mut ArrowRecordBatch> {
+        match self {
+            Self::ArrowMsg(_, arrow_msg) => Some(&mut arrow_msg.batch),
+            _ => None,
+        }
+    }
+
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        if let Some(record_batch) = self.arrow_record_batch_mut() {
+            record_batch.schema_metadata_mut().insert(key, value);
+        }
+    }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);

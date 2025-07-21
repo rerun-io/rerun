@@ -3,10 +3,14 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod default_views;
+mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;

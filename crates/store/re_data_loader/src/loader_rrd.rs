@@ -272,7 +272,6 @@ impl std::io::Read for RetryableFileReader {
 #[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
-        #[allow(clippy::disallowed_methods)]
         loop {
             crossbeam::select! {
                 // Periodically check for SIGINT.

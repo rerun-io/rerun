@@ -1,13 +1,12 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
-use tinystl::StlData;
 
-use crate::{CpuModel, RenderContext, mesh};
+use crate::{CpuModel, DebugLabel, RenderContext, mesh};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
     #[error("Error loading STL mesh: {0}")]
-    TinyStl(tinystl::Error),
+    StlIoError(std::io::Error),
 
     #[error(transparent)]
     MeshError(#[from] mesh::MeshError),
@@ -20,40 +19,49 @@ pub fn load_stl_from_buffer(
 ) -> Result<CpuModel, StlImportError> {
     re_tracing::profile_function!();
 
-    let cursor = std::io::Cursor::new(buffer);
-    let StlData {
-        name,
-        triangles,
-        normals,
-        ..
-    } = StlData::read_buffer(std::io::BufReader::new(cursor)).map_err(StlImportError::TinyStl)?;
+    let mut cursor = std::io::Cursor::new(buffer);
+    let reader = stl_io::create_stl_reader(&mut cursor).map_err(StlImportError::StlIoError)?;
+
+    // TODO(hmeyer/stl_io#26): use optional name from ascii stl files.
+    // https://github.com/hmeyer/stl_io/pull/26
+    let name = DebugLabel::from("");
+
+    let (normals, triangles): (Vec<_>, Vec<_>) = reader
+        .into_iter()
+        .map(|triangle| triangle.unwrap())
+        .map(|triangle| {
+            (
+                [triangle.normal.0, triangle.normal.0, triangle.normal.0],
+                [
+                    triangle.vertices[0].0,
+                    triangle.vertices[1].0,
+                    triangle.vertices[2].0,
+                ],
+            )
+        })
+        .unzip();
 
     let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
-        label: name.clone().into(),
+        label: name.clone(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
     };
 
     let mesh = mesh::CpuMesh {
-        label: name.into(),
+        label: name.clone(),
         triangle_indices: (0..num_vertices as u32)
             .tuples::<(_, _, _)>()
             .map(glam::UVec3::from)
             .collect::<Vec<_>>(),
-        vertex_positions: bytemuck::cast_slice(&triangles).to_vec(),
+
+        vertex_positions: bytemuck::cast_vec(triangles),
 
         // Normals on STL are per triangle, not per vertex.
         // Yes, this makes STL always look faceted.
-        vertex_normals: normals
-            .into_iter()
-            .flat_map(|n| {
-                let n = glam::Vec3::from_array(n);
-                [n, n, n]
-            })
-            .collect(),
+        vertex_normals: bytemuck::cast_vec(normals),
 
         // STL has neither colors nor texcoords.
         vertex_colors: vec![crate::Rgba32Unmul::WHITE; num_vertices],

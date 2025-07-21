@@ -1,6 +1,11 @@
 //! This example demonstrates how to use the Rerun Rust SDK to log raw 3D meshes (so-called
 //! "triangle soups") and their transform hierarchy.
 //!
+//! Note that while this example loads GLTF meshes to illustrate
+//! [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites,
+//! you can also send various kinds of mesh assets
+//! directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
+//!
 //! Usage:
 //! ```
 //! cargo run -p raw_mesh <path_to_gltf_scene>

@@ -49,6 +49,9 @@ impl ChunkUi {
 
     // Return `true` if the user wants to exit the chunk viewer.
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+        let tokens = ui.tokens();
+
+        let table_style = re_ui::TableStyle::Dense;
         let should_exit = self.chunk_info_ui(ui);
 
         //
@@ -101,7 +104,7 @@ impl ChunkUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     let response = ui
-                        .button(component_desc.component_name.short_name())
+                        .button(component_desc.component.as_str())
                         .on_hover_ui(|ui| {
                             ui.label(format!("{datatype}\n\nClick header to copy"));
                         });
@@ -178,13 +181,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(re_ui::DesignTokens::table_line_height(), header_ui)
+                    .header(tokens.table_row_height(table_style), header_ui)
                     .body(|body| {
-                        body.rows(
-                            re_ui::DesignTokens::table_line_height(),
-                            row_ids.len(),
-                            row_ui,
-                        );
+                        body.rows(tokens.table_row_height(table_style), row_ids.len(), row_ui);
                     });
             });
 

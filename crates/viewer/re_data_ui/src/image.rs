@@ -1,6 +1,7 @@
-use egui::{NumExt as _, Vec2};
+use egui::{Button, NumExt as _, Vec2};
 
 use re_renderer::renderer::ColormappedTexture;
+use re_ui::icons;
 use re_viewer_context::{
     ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
     gpu_bridge::{self, image_to_gpu},
@@ -9,7 +10,7 @@ use re_viewer_context::{
 /// Show a button letting the user copy the image
 pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
     if ui
-        .button("Copy image")
+        .add(Button::image_and_text(icons::COPY.as_image(), "Copy image"))
         .on_hover_text("Copy image to system clipboard")
         .clicked()
     {
@@ -65,7 +66,11 @@ pub fn texture_preview_ui(
     texture: ColormappedTexture,
 ) -> egui::Response {
     if ui_layout.is_single_line() {
-        let preview_size = Vec2::splat(ui.available_height());
+        let height = ui.available_height();
+        let [texture_width, texture_height] = texture.width_height();
+        let width =
+            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
+        let preview_size = Vec2::new(width, height);
         ui.allocate_ui_with_layout(
             preview_size,
             egui::Layout::centered_and_justified(egui::Direction::TopDown),

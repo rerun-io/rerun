@@ -272,20 +272,20 @@ class Mesh3D(Mesh3DExt, Archetype):
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "vertex_positions": vertex_positions,
-            "triangle_indices": triangle_indices,
-            "vertex_normals": vertex_normals,
-            "vertex_colors": vertex_colors,
-            "vertex_texcoords": vertex_texcoords,
-            "albedo_factor": albedo_factor,
-            "albedo_texture_buffer": albedo_texture_buffer,
-            "albedo_texture_format": albedo_texture_format,
-            "class_ids": class_ids,
+            "Mesh3D:vertex_positions": vertex_positions,
+            "Mesh3D:triangle_indices": triangle_indices,
+            "Mesh3D:vertex_normals": vertex_normals,
+            "Mesh3D:vertex_colors": vertex_colors,
+            "Mesh3D:vertex_texcoords": vertex_texcoords,
+            "Mesh3D:albedo_factor": albedo_factor,
+            "Mesh3D:albedo_texture_buffer": albedo_texture_buffer,
+            "Mesh3D:albedo_texture_format": albedo_texture_format,
+            "Mesh3D:class_ids": class_ids,
         }
         columns = []
 
@@ -294,7 +294,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -314,8 +314,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     vertex_positions: components.Position3DBatch | None = field(
         metadata={"component": True},

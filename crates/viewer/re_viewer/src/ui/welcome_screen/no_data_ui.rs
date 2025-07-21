@@ -1,6 +1,6 @@
 use egui::Ui;
 
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 
 /// Show a minimal welcome section.
 pub fn no_data_ui(ui: &mut egui::Ui) {
@@ -10,7 +10,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
                 egui::RichText::new(super::welcome_section::WELCOME_SCREEN_TITLE)
                     .weak()
                     .line_height(Some(36.0))
-                    .text_style(re_ui::DesignTokens::welcome_screen_h2()),
+                    .text_style(DesignTokens::welcome_screen_h2()),
             )
             .wrap(),
         );
@@ -26,7 +26,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().weak_text_color())
-                            .text_style(re_ui::DesignTokens::welcome_screen_body()),
+                            .text_style(DesignTokens::welcome_screen_body()),
                     )
                     .wrap(),
                 );
@@ -43,7 +43,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
             .button(
                 egui::RichText::new("Go to documentation →")
                     .weak()
-                    .text_style(re_ui::DesignTokens::welcome_screen_body()),
+                    .text_style(DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 /// Information about the build of a Rust crate.
 ///
 /// Create this with [`crate::build_info!`].
@@ -9,28 +11,28 @@
 /// - `git` is not installed
 /// - the user downloaded rerun as a tarball and then imported via a `path = …` import
 /// - others?
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct BuildInfo {
     /// `CARGO_PKG_NAME`
-    pub crate_name: &'static str,
+    pub crate_name: Cow<'static, str>,
 
     /// Space-separated names of all features enabled for this crate.
-    pub features: &'static str,
+    pub features: Cow<'static, str>,
 
     /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
     pub version: super::CrateVersion,
 
     /// The raw version string of the Rust compiler used, or an empty string.
-    pub rustc_version: &'static str,
+    pub rustc_version: Cow<'static, str>,
 
     /// The raw version string of the LLVM toolchain used, or an empty string.
-    pub llvm_version: &'static str,
+    pub llvm_version: Cow<'static, str>,
 
     /// Git commit hash, or empty string.
-    pub git_hash: &'static str,
+    pub git_hash: Cow<'static, str>,
 
     /// Current git branch, or empty string.
-    pub git_branch: &'static str,
+    pub git_branch: Cow<'static, str>,
 
     /// True if we are building within the rerun repository workspace.
     ///
@@ -40,14 +42,14 @@ pub struct BuildInfo {
     /// Target architecture and OS
     ///
     /// Example: `xaarch64-apple-darwin`
-    pub target_triple: &'static str,
+    pub target_triple: Cow<'static, str>,
 
     /// ISO 8601 / RFC 3339 build time.
     ///
     /// Example: `"2023-02-23T19:33:26Z"`
     ///
     /// Empty if unknown.
-    pub datetime: &'static str,
+    pub datetime: Cow<'static, str>,
 }
 
 impl BuildInfo {
@@ -55,7 +57,7 @@ impl BuildInfo {
         if self.git_hash.is_empty() {
             format!("v{}", self.version)
         } else {
-            self.git_hash.to_owned()
+            self.git_hash.to_string()
         }
     }
 
@@ -157,8 +159,8 @@ impl CrateVersion {
 #[test]
 fn crate_version_from_build_info_string() {
     let build_info = BuildInfo {
-        crate_name: "re_build_info",
-        features: "default extra",
+        crate_name: "re_build_info".into(),
+        features: "default extra".into(),
         version: CrateVersion {
             major: 0,
             minor: 10,
@@ -168,13 +170,13 @@ fn crate_version_from_build_info_string() {
                 commit: None,
             }),
         },
-        rustc_version: "1.76.0 (d5c2e9c34 2023-09-13)",
-        llvm_version: "16.0.5",
-        git_hash: "",
-        git_branch: "",
+        rustc_version: "1.76.0 (d5c2e9c34 2023-09-13)".into(),
+        llvm_version: "16.0.5".into(),
+        git_hash: "".into(),
+        git_branch: "".into(),
         is_in_rerun_workspace: true,
-        target_triple: "x86_64-unknown-linux-gnu",
-        datetime: "",
+        target_triple: "x86_64-unknown-linux-gnu".into(),
+        datetime: "".into(),
     };
 
     let build_info_str = build_info.to_string();

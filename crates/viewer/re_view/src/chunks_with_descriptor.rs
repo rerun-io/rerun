@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use re_chunk_store::{
-    Chunk,
+    Chunk, Span,
     external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
@@ -34,7 +34,7 @@ impl ChunksWithDescriptor<'_> {
 ///
 /// Note that the descriptor is not owned, but borrowed here since it's typically returned
 /// only by iterating over a [`ChunksWithDescriptor`].
-// TODO(#9903): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
+// TODO(#10460): Chunk descriptor referencing should be made trivial so that it doesn't matter whether we borrow or copy it.
 #[derive(Debug, Clone)]
 pub struct ChunkWithDescriptor<'chunk, 'descriptor> {
     pub chunk: &'chunk Chunk,
@@ -63,7 +63,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + 'chunk + use<'chunk, C>> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + 'chunk + use<'chunk, C>> {
         self.chunk.iter_component::<C>(self.descriptor)
     }
 

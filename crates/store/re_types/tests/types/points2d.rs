@@ -11,44 +11,35 @@ fn roundtrip() {
             components::Position2D::new(1.0, 2.0), //
             components::Position2D::new(3.0, 4.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_positions())),
+        .serialized(Points2D::descriptor_positions()),
         radii: vec![
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_radii())),
+        .serialized(Points2D::descriptor_radii()),
         colors: vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_colors())),
+        .serialized(Points2D::descriptor_colors()),
         labels: vec![
             components::Text::from("hello"),  //
             components::Text::from("friend"), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_labels())),
+        .serialized(Points2D::descriptor_labels()),
         draw_order: components::DrawOrder::from(300.0)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Points2D::descriptor_draw_order())),
+            .serialized(Points2D::descriptor_draw_order()),
         class_ids: vec![
             components::ClassId::from(126), //
             components::ClassId::from(127), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_class_ids())),
+        .serialized(Points2D::descriptor_class_ids()),
         keypoint_ids: vec![
             components::KeypointId::from(2), //
             components::KeypointId::from(3), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points2D::descriptor_keypoint_ids())),
-        show_labels: ShowLabels::from(false)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Points2D::descriptor_show_labels())),
+        .serialized(Points2D::descriptor_keypoint_ids()),
+        show_labels: ShowLabels::from(false).serialized(Points2D::descriptor_show_labels()),
     };
 
     let arch = Points2D::new([(1.0, 2.0), (3.0, 4.0)])

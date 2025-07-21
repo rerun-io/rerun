@@ -9,7 +9,6 @@
 #include "../components/draw_order.hpp"
 #include "../components/entity_path.hpp"
 #include "../components/video_timestamp.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -24,6 +23,8 @@ namespace rerun::archetypes {
     /// To show an entire video, a video frame reference for each frame of the video should be logged.
     ///
     /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+    ///
+    /// TODO(#10422): `archetypes::VideoFrameReference` does not yet work with `archetypes::VideoStream`.
     ///
     /// ## Examples
     ///
@@ -64,10 +65,6 @@ namespace rerun::archetypes {
     ///     for (size_t i = 0; i <frame_timestamps_ns.size(); i++) {
     ///         video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
     ///     }
-    ///     auto video_frame_reference_indicators =
-    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-    ///             static_cast<uint32_t>(video_timestamps.size())
-    ///         );
     ///
     ///     rec.send_columns(
     ///         "video",
@@ -138,28 +135,23 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.VideoFrameReferenceIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoFrameReference";
 
         /// `ComponentDescriptor` for the `timestamp` field.
         static constexpr auto Descriptor_timestamp = ComponentDescriptor(
-            ArchetypeName, "timestamp",
-            Loggable<rerun::components::VideoTimestamp>::Descriptor.component_name
+            ArchetypeName, "VideoFrameReference:timestamp",
+            Loggable<rerun::components::VideoTimestamp>::ComponentType
         );
         /// `ComponentDescriptor` for the `video_reference` field.
         static constexpr auto Descriptor_video_reference = ComponentDescriptor(
-            ArchetypeName, "video_reference",
-            Loggable<rerun::components::EntityPath>::Descriptor.component_name
+            ArchetypeName, "VideoFrameReference:video_reference",
+            Loggable<rerun::components::EntityPath>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "VideoFrameReference:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public:

@@ -25,30 +25,25 @@ pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
+mod component_batch;
 mod component_descriptor;
 mod id;
 mod loggable;
-mod loggable_batch;
 pub mod reflection;
 mod result;
 mod tuid;
 mod view;
 
 pub use self::{
-    archetype::{
-        Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
-        GenericIndicatorComponent, NamedIndicatorComponent,
-    },
+    archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
     arrow_string::ArrowString,
     as_components::AsComponents,
+    component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
     component_descriptor::ComponentDescriptor,
     id::{ChunkId, RowId},
     loggable::{
-        Component, ComponentDescriptorSet, ComponentName, DatatypeName, Loggable,
+        Component, ComponentDescriptorSet, ComponentType, DatatypeName, Loggable,
         UnorderedComponentDescriptorSet,
-    },
-    loggable_batch::{
-        ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
@@ -149,11 +144,11 @@ macro_rules! static_assert_struct_has_fields {
 /// merely be logged, not returned (except in debug builds, where all errors panic).
 #[doc(hidden)] // public so we can access it from re_types too
 #[allow(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
-pub fn try_serialize_field<C: crate::Component>(
+pub fn try_serialize_field<L: Loggable>(
     descriptor: ComponentDescriptor,
-    instances: impl IntoIterator<Item = impl Into<C>>,
+    instances: impl IntoIterator<Item = impl Into<L>>,
 ) -> Option<SerializedComponentBatch> {
-    let res = C::to_arrow(
+    let res = L::to_arrow(
         instances
             .into_iter()
             .map(|v| std::borrow::Cow::Owned(v.into())),
@@ -180,30 +175,4 @@ pub fn try_serialize_field<C: crate::Component>(
             None
         }
     }
-}
-
-/// Internal serialization helper for code-generated archetypes.
-///
-/// This generates a correctly sized [`SerializedComponentColumn`] for a given indicator, where the
-/// specified `num_rows` value represents the number of rows in the column.
-#[doc(hidden)] // public so we can access it from re_types too
-pub fn indicator_column<A: Archetype>(
-    num_rows: usize,
-) -> SerializationResult<SerializedComponentColumn> {
-    let SerializedComponentColumn {
-        list_array,
-        descriptor,
-    } = A::indicator().into();
-
-    let (field, _offsets, values, _nulls) = list_array.into_parts();
-
-    let offsets = arrow::buffer::OffsetBuffer::new_zeroed(num_rows);
-    let nulls = None;
-
-    arrow::array::ListArray::try_new(field, offsets, values, nulls)
-        .map(|list_array| SerializedComponentColumn {
-            list_array,
-            descriptor,
-        })
-        .map_err(Into::into)
 }

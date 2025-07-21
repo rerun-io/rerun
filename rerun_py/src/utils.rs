@@ -1,6 +1,7 @@
+use std::ffi::CString;
 use std::{future::Future, sync::OnceLock};
 
-use pyo3::Python;
+use pyo3::{Python, prelude::*};
 use tokio::runtime::Runtime;
 
 /// Utility to get the Tokio Runtime from Python
@@ -15,6 +16,12 @@ pub(crate) fn get_tokio_runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"))
 }
 
+/// `f` should do very little work besides spawning tasks and awaiting them.
+///
+/// See [this] for more information.
+///
+/// [this]: https://docs.rs/tokio/latest/tokio/runtime/struct.Runtime.html#non-worker-future
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn wait_for_future<F>(py: Python<'_>, f: F) -> F::Output
 where
     F: Future + Send,
@@ -22,4 +29,22 @@ where
 {
     let runtime: &Runtime = get_tokio_runtime();
     py.allow_threads(|| runtime.block_on(f))
+}
+
+/// Issues a warning to python runtime
+pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
+/// Logs a warning using rerun logging system and issues the warning to python runtime.
+#[allow(dead_code)]
+pub fn py_rerun_warn(msg: &str) -> PyResult<()> {
+    let cmsg = CString::new(msg)?;
+    py_rerun_warn_cstr(&cmsg)
 }

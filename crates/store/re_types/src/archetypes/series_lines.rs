@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for one or more line series in a chart.
@@ -122,9 +122,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -134,9 +134,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: "rerun.components.StrokeWidth".into(),
-            archetype_field_name: Some("widths".into()),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:widths".into(),
+            component_type: Some("rerun.components.StrokeWidth".into()),
         }
     }
 
@@ -146,9 +146,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: "rerun.components.Name".into(),
-            archetype_field_name: Some("names".into()),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:names".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -158,9 +158,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: "rerun.components.SeriesVisible".into(),
-            archetype_field_name: Some("visible_series".into()),
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:visible_series".into(),
+            component_type: Some("rerun.components.SeriesVisible".into()),
         }
     }
 
@@ -170,19 +170,9 @@ impl SeriesLines {
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesLines".into()),
-            component_name: "rerun.components.AggregationPolicy".into(),
-            archetype_field_name: Some("aggregation_policy".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.SeriesLinesIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:aggregation_policy".into(),
+            component_type: Some("rerun.components.AggregationPolicy".into()),
         }
     }
 }
@@ -190,8 +180,8 @@ impl SeriesLines {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [SeriesLines::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -204,10 +194,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            SeriesLines::descriptor_indicator(),
             SeriesLines::descriptor_colors(),
             SeriesLines::descriptor_widths(),
             SeriesLines::descriptor_names(),
@@ -217,16 +206,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl SeriesLines {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`SeriesLines`] [`::re_types_core::Archetype`]
-pub type SeriesLinesIndicator = ::re_types_core::GenericIndicatorComponent<SeriesLines>;
-
 impl ::re_types_core::Archetype for SeriesLines {
-    type Indicator = SeriesLinesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.SeriesLines".into()
@@ -235,12 +219,6 @@ impl ::re_types_core::Archetype for SeriesLines {
     #[inline]
     fn display_name() -> &'static str {
         "Series lines"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        SeriesLinesIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -304,7 +282,6 @@ impl ::re_types_core::AsComponents for SeriesLines {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.colors.clone(),
             self.widths.clone(),
             self.names.clone(),
@@ -401,12 +378,7 @@ impl SeriesLines {
                 .map(|aggregation_policy| aggregation_policy.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

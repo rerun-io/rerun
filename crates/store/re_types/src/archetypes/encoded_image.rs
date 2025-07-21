@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image encoded as e.g. a JPEG or PNG.
@@ -74,9 +74,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: "rerun.components.Blob".into(),
-            archetype_field_name: Some("blob".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -86,9 +86,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: "rerun.components.MediaType".into(),
-            archetype_field_name: Some("media_type".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 
@@ -98,9 +98,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: "rerun.components.Opacity".into(),
-            archetype_field_name: Some("opacity".into()),
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -110,19 +110,9 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.EncodedImageIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 }
@@ -130,13 +120,8 @@ impl EncodedImage {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_blob()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            EncodedImage::descriptor_media_type(),
-            EncodedImage::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_media_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -146,28 +131,22 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             EncodedImage::descriptor_blob(),
             EncodedImage::descriptor_media_type(),
-            EncodedImage::descriptor_indicator(),
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
         ]
     });
 
 impl EncodedImage {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`EncodedImage`] [`::re_types_core::Archetype`]
-pub type EncodedImageIndicator = ::re_types_core::GenericIndicatorComponent<EncodedImage>;
-
 impl ::re_types_core::Archetype for EncodedImage {
-    type Indicator = EncodedImageIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.EncodedImage".into()
@@ -176,12 +155,6 @@ impl ::re_types_core::Archetype for EncodedImage {
     #[inline]
     fn display_name() -> &'static str {
         "Encoded image"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        EncodedImageIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -241,7 +214,6 @@ impl ::re_types_core::AsComponents for EncodedImage {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.blob.clone(),
             self.media_type.clone(),
             self.opacity.clone(),
@@ -329,12 +301,7 @@ impl EncodedImage {
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

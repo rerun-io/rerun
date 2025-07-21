@@ -3,7 +3,7 @@ mod forward_decl;
 mod includes;
 mod method;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr as _};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
@@ -16,7 +16,7 @@ use crate::{
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
-    objects::ObjectClass,
+    objects::{EnumIntegerType, ObjectClass},
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -428,7 +428,7 @@ impl QuotedObject {
                     unimplemented!();
                 }
             },
-            ObjectClass::Enum => {
+            ObjectClass::Enum(_) => {
                 if !hpp_type_extensions.is_empty() {
                     reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
                 }
@@ -458,7 +458,6 @@ impl QuotedObject {
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
-        hpp_includes.insert_rerun("indicator_component.hpp");
 
         let field_declarations = obj
             .fields
@@ -516,6 +515,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let field_name = field_name(obj_field);
+                let component = format!("{}:{field_name}", obj.name);
                 let comment = quote_doc_comment(&format!(
                     "`ComponentDescriptor` for the `{field_name}` field."
                 ));
@@ -536,7 +536,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #comment
                     static constexpr auto #constant_name = ComponentDescriptor(
-                        ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
+                        ArchetypeName, #component, Loggable<#field_type>::ComponentType
                     );
                 }
             })
@@ -673,8 +673,7 @@ impl QuotedObject {
                 name_and_parameters: quote! { columns(const Collection<uint32_t>& lengths_) },
             },
             definition_body: {
-                // Plus 1 for the indicator column.
-                let num_fields = quote_integer(obj.fields.len() + 1);
+                let num_fields = quote_integer(obj.fields.len());
                 let push_back_columns = obj.fields.iter().map(|field| {
                     let field_ident = field_name_ident(field);
                     quote! {
@@ -688,10 +687,6 @@ impl QuotedObject {
                     std::vector<ComponentColumn> columns;
                     columns.reserve(#num_fields);
                     #(#push_back_columns)*
-                    columns.push_back(
-                        ComponentColumn::from_indicators<#archetype_type_ident>(static_cast<uint32_t>(lengths_.size()))
-                            .value_or_throw()
-                    );
                     return columns;
                 }
             },
@@ -745,11 +740,6 @@ impl QuotedObject {
             .iter()
             .map(|m| m.to_cpp_tokens(&quote!(#archetype_type_ident)));
 
-        let indicator_comment = quote_doc_comment(
-            "Indicator component, used to identify the archetype when converting to a list of components.",
-        );
-        let indicator_component_fqname =
-            format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecated_notice = quote_deprecated_notice(obj);
         let name_doc_string =
@@ -784,7 +774,7 @@ impl QuotedObject {
         //   -> this means that there's no non-move constructors/assignments
         // * we really want to make sure that the object is movable, therefore creating a move ctor
         //   -> this means that there's no implicit move assignment.
-        // Therefore, we have to define all five move/copy  constructors/assignments.
+        // Therefore, we have to define all five move/copy constructors/assignments.
         let hpp = quote! {
             #hpp_includes
 
@@ -796,12 +786,6 @@ impl QuotedObject {
                     #(#field_declarations;)*
 
                 public:
-                    static constexpr const char IndicatorComponentName[] = #indicator_component_fqname;
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                    #indicator_comment
-                    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
-
                     #NEWLINE_TOKEN
                     #name_doc_string
                     static constexpr const char ArchetypeName[] = #archetype_name;
@@ -1471,17 +1455,23 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let enum_value = obj_field.enum_value.unwrap();
                 let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_ident(obj_field);
-
-                // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-                let arrow_type_index = Literal::usize_unsuffixed(enum_value as _);
+                let enum_value = proc_macro2::Literal::from_str(
+                    &obj.enum_integer_type()
+                        .expect("enums must have an integer type")
+                        .format_value(
+                            obj_field
+                                .enum_or_union_variant_value
+                                .expect("enums fields must have values"),
+                        ),
+                )
+                .unwrap();
 
                 quote! {
                     #NEWLINE_TOKEN
                     #docstring
-                    #field_name = #arrow_type_index
+                    #field_name = #enum_value
                 }
             })
             .collect_vec();
@@ -1495,6 +1485,13 @@ impl QuotedObject {
             &mut hpp_declarations,
         );
 
+        let enum_integer_type = match obj.enum_integer_type().unwrap() {
+            EnumIntegerType::U8 => quote!(uint8_t),
+            EnumIntegerType::U16 => quote!(uint16_t),
+            EnumIntegerType::U32 => quote!(uint32_t),
+            EnumIntegerType::U64 => quote!(uint64_t),
+        };
+
         let hpp = quote! {
             #hpp_includes
 
@@ -1502,7 +1499,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                enum class #deprecated_notice #type_ident : uint8_t {
+                enum class #deprecated_notice #type_ident : #enum_integer_type {
                     #(#field_declarations,)*
                 };
             }
@@ -1831,7 +1828,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         quote!(archetypes)
     };
 
-    let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
+    let num_fields = quote_integer(obj.fields.len());
     let push_batches = obj.fields.iter().map(|field| {
         let field_name_ident = field_name_ident(field);
 
@@ -1857,11 +1854,6 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
-            {
-                auto result = ComponentBatch::from_indicator<#type_ident>();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return rerun::take_ownership(std::move(cells));
@@ -1952,8 +1944,8 @@ fn quote_fill_arrow_array_builder(
                 }
             }
 
-            // C-style enum, encoded as a sparse arrow union
-            ObjectClass::Enum => {
+            // C-style enum, encoded as arrow integer array.
+            ObjectClass::Enum(_) => {
                 quote! {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -2681,10 +2673,9 @@ fn quote_arrow_datatype(
                     ObjectClass::Struct => {
                         quote!(arrow::struct_({ #(#quoted_fields,)* }))
                     }
-                    ObjectClass::Enum => {
-                        quote! {
-                            arrow::uint8()
-                        }
+                    ObjectClass::Enum(integer_type) => {
+                        let integer_type = integer_type.to_type();
+                        quote_arrow_datatype(&integer_type, objects, includes, false)
                     }
                     ObjectClass::Union => {
                         quote! {
@@ -2787,8 +2778,6 @@ fn quote_loggable_hpp_and_cpp(
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 
-    hpp_includes.insert_rerun("component_descriptor.hpp");
-
     let (deprecation_ignore_start, deprecation_ignore_end) =
         quote_deprecation_ignore_start_and_end(hpp_includes, obj.is_deprecated());
 
@@ -2801,7 +2790,7 @@ fn quote_loggable_hpp_and_cpp(
             #hide_from_docs_comment
             template<>
             struct #loggable_type_name {
-                static constexpr ComponentDescriptor Descriptor = #fqname;
+                static constexpr std::string_view ComponentType = #fqname;
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #(#methods_hpp)*

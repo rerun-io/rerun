@@ -97,12 +97,12 @@ Of course, this will only take us so far. In the future we plan on caching queri
 
 Here is an overview of the crates included in the project:
 
-<picture>
-  <img src="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1200w.png">
+ <picture>
+  <img src="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/full.png" alt="Diagram of all crates in the Rerun ecosystem.">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -140,6 +140,7 @@ Update instructions:
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
 | re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui       | Rich table widget over DataFusion.                                                                         |
+| re_global_context     | Rerun state that is shared with most top-level crates.                                                     |
 | re_selection_panel    | The UI for the selection panel.                                                                            |
 | re_view               | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart     | A View that shows a single bar chart.                                                                      |
@@ -225,12 +226,21 @@ Update instructions:
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
 | re_memory          | Run-time memory tracking and profiling.                                              |
+| re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
+| re_span            | An integer range that always has a non-negative length                               |
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |
 | re_uri             | Parsing and constructing of Rerun URIs                                               |
 | re_video           | Video decoding library                                                               |
+
+### Test crates
+
+| Crate              | Description                                                   |
+| ------------------ | ------------------------------------------------------------- |
+| re_test_context    | Provides a test context that builds on `re_viewer_context.    |
+| re_test_viewport   | Extends the `re_test_context` with viewport-related features. |
 
 ### Dependencies and docs
 

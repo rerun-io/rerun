@@ -4,7 +4,7 @@ use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{UiExt as _, list_item};
+use crate::{UiExt as _, icons, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]
@@ -23,7 +23,7 @@ struct InnerState {
 impl Default for InnerState {
     fn default() -> Self {
         let mut random_bytes = [0u8; 8];
-        getrandom::getrandom(&mut random_bytes).expect("Couldn't get random bytes");
+        getrandom::fill(&mut random_bytes).expect("Couldn't get random bytes");
 
         Self {
             filter_query: String::new(),
@@ -111,13 +111,9 @@ impl FilterState {
         ui: &mut egui::Ui,
         section_title: impl Into<egui::WidgetText>,
     ) -> Option<egui::Response> {
-        let mut button_clicked = false;
+        let mut toggle_search_clicked = false;
 
-        let icon = if self.inner_state.is_none() {
-            &crate::icons::SEARCH
-        } else {
-            &crate::icons::CLOSE
-        };
+        let is_searching = self.inner_state.is_some();
 
         // precompute the title layout such that we know the size we need for the list item content
         let section_title = section_title.into();
@@ -132,50 +128,68 @@ impl FilterState {
         let mut title_response = None;
 
         list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
-            ui.list_item().interactive(false).show_flat(
-                ui,
-                list_item::CustomContent::new(|ui, _| {
-                    if self.inner_state.is_some()
-                        && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
-                    {
-                        self.inner_state = None;
-                    }
-
-                    if let Some(inner_state) = self.inner_state.as_mut() {
-                        // we add additional spacing for aesthetic reasons (active text edits have a
-                        // fat border)
-                        ui.spacing_mut().text_edit_width =
-                            (ui.max_rect().width() - 10.0).at_least(0.0);
-
-                        // TODO(ab): ideally _all_ text edits would be styled this way, but we
-                        // require egui support for that (https://github.com/emilk/egui/issues/3284)
-                        ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                        ui.visuals_mut().widgets.active.expansion = 0.0;
-                        ui.visuals_mut().widgets.open.expansion = 0.0;
-                        ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
-                        ui.visuals_mut().selection.stroke.width = 1.0;
-
-                        let response = egui::TextEdit::singleline(&mut inner_state.filter_query)
-                            .lock_focus(true)
-                            .ui(ui);
-
-                        if self.request_focus {
-                            self.request_focus = false;
-                            response.request_focus();
+            ui.list_item()
+                .interactive(false)
+                .force_background(ui.tokens().section_header_color)
+                .show_flat(
+                    ui,
+                    list_item::CustomContent::new(|ui, _| {
+                        if self.inner_state.is_some()
+                            && ui.input_mut(|i| {
+                                i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+                            })
+                        {
+                            self.inner_state = None;
                         }
-                    } else {
-                        title_response = Some(ui.label(galley));
-                    }
-                })
-                .with_content_width(text_width)
-                .action_button(icon, || {
-                    button_clicked = true;
-                }),
-            );
+
+                        if let Some(inner_state) = self.inner_state.as_mut() {
+                            // we add additional spacing for aesthetic reasons (active text edits have a
+                            // fat border)
+                            ui.spacing_mut().text_edit_width =
+                                (ui.max_rect().width() - 10.0).at_least(0.0);
+
+                            // TODO(ab): ideally _all_ text edits would be styled this way, but we
+                            // require egui support for that (https://github.com/emilk/egui/issues/3284)
+                            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                            ui.visuals_mut().widgets.active.expansion = 0.0;
+                            ui.visuals_mut().widgets.open.expansion = 0.0;
+                            ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
+                            ui.visuals_mut().selection.stroke.width = 1.0;
+
+                            let response =
+                                egui::TextEdit::singleline(&mut inner_state.filter_query)
+                                    .lock_focus(true)
+                                    .ui(ui);
+
+                            if self.request_focus {
+                                self.request_focus = false;
+                                response.request_focus();
+                            }
+                        } else {
+                            title_response = Some(ui.label(galley));
+                        }
+                    })
+                    .with_content_width(text_width)
+                    .action_button(
+                        if is_searching {
+                            &icons::CLOSE
+                        } else {
+                            &icons::SEARCH
+                        },
+                        if is_searching {
+                            "Stop search"
+                        } else {
+                            "Search"
+                        },
+                        || {
+                            toggle_search_clicked = true;
+                        },
+                    ),
+                );
         });
 
         // defer button handling because we can't mutably borrow `self` in both closures above
-        if button_clicked {
+        if toggle_search_clicked {
             if self.inner_state.is_none() {
                 self.activate("");
             } else {
@@ -219,11 +233,11 @@ impl FilterState {
                 ui.horizontal(|ui| {
                     ui.set_height(19.0);
 
-                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&crate::icons::SEARCH));
+                    ui.add_enabled_ui(false, |ui| ui.small_icon_button(&icons::SEARCH, "Search"));
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if !inner_state.filter_query.is_empty()
-                            && ui.small_icon_button(&crate::icons::CLOSE).clicked()
+                            && ui.small_icon_button(&icons::CLOSE, "Close").clicked()
                         {
                             *inner_state = Default::default();
                         }
@@ -416,6 +430,7 @@ pub struct PathRanges {
 impl PathRanges {
     /// Merge another [`Self`].
     pub fn merge(&mut self, other: Self) {
+        #[expect(clippy::iter_over_hash_type)] // We sort on remove
         for (part_index, part_ranges) in other.ranges {
             self.ranges
                 .entry(part_index)

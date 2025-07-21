@@ -3,6 +3,8 @@
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod color;
 mod datatype_uis;
 mod entity_path;
@@ -17,8 +19,8 @@ mod plane3d;
 mod radius;
 mod resolution;
 mod response_utils;
-mod timeline;
 mod transforms;
+mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
@@ -32,24 +34,32 @@ use datatype_uis::{
     view_view_id,
 };
 
-use re_types::blueprint::components::{RootContainer, ViewMaximized};
-use re_types::components::{SeriesVisible, Timestamp};
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
-        GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane, ViewFit,
+        BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
+        ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
+        RootContainer, ViewFit, ViewMaximized,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Position2D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-        TransformRelation, Translation3D, ValueRange, Visible,
+        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
+        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Range1D, Scale3D,
+        SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
+        ValueRange, VideoCodec, Visible,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
+
+// ---
+
+pub const REDAP_URI_BUTTON_VARIANT: &str = "redap_uri";
+
+pub const REDAP_ENTRY_KIND_VARIANT: &str = "redap_entry_kind";
+
+pub const REDAP_THUMBNAIL_VARIANT: &str = "redap_thumbnail";
 
 // ----
 
@@ -74,9 +84,10 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GridSpacing>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<LinearSpeed>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
-    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
     registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
@@ -111,8 +122,10 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Eye3DKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<LinkAxis>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
             MapProvider,
@@ -121,6 +134,17 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     );
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<VideoCodec>(|ctx, ui, value| {
+        // Hack to make this field never editable.
+        // Editing the codec rarely makes sense and isn't supported by the visualizer.
+        // (to change this we'd have to do a blueprint query, but `VideoStreamCache` needs more context for that
+        // and the result is almost certainly just decoding failure)
+        edit_view_enum(
+            ctx,
+            ui,
+            &mut re_viewer_context::MaybeMutRef::Ref(value.as_ref()),
+        )
+    });
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     // Vec2 components:
@@ -145,8 +169,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // `Colormap` _is_ an enum, but its custom editor is far better.
     registry.add_singleline_edit_or_view(colormap_edit_or_view_ui);
-
-    registry.add_singleline_edit_or_view(timeline::edit_timeline_name);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
@@ -177,6 +199,14 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(plane3d::edit_or_view_plane3d);
     registry.add_multiline_edit_or_view(plane3d::multiline_edit_or_view_plane3d);
+
+    // --------------------------------------------------------------------------------
+    // All variant UIs:
+    // --------------------------------------------------------------------------------
+
+    registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
+    registry.add_variant_ui(REDAP_ENTRY_KIND_VARIANT, variant_uis::redap_entry_kind);
+    registry.add_variant_ui(REDAP_THUMBNAIL_VARIANT, variant_uis::redap_thumbnail);
 
     registry
 }

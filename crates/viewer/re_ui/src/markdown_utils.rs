@@ -24,16 +24,8 @@ pub struct ModifiersMarkdown<'a>(pub egui::Modifiers, pub &'a egui::Context);
 
 impl Display for ModifiersMarkdown<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let is_mac = matches!(
-            self.1.os(),
-            egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
-        );
-
-        write!(
-            f,
-            "`{}`",
-            egui::ModifierNames::NAMES.format(&self.0, is_mac)
-        )
+        let Self(modifiers, ctx) = self;
+        write!(f, "`{}`", ctx.format_modifiers(*modifiers))
     }
 }
 

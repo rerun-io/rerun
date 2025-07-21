@@ -21,7 +21,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> TensorScalarMapping::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(3);
         if (mag_filter.has_value()) {
             columns.push_back(mag_filter.value().partitioned(lengths_).value_or_throw());
         }
@@ -31,10 +31,6 @@ namespace rerun::blueprint::archetypes {
         if (gamma.has_value()) {
             columns.push_back(gamma.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<TensorScalarMapping>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
         return columns;
     }
 
@@ -60,7 +56,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
         if (archetype.mag_filter.has_value()) {
             cells.push_back(archetype.mag_filter.value());
@@ -70,11 +66,6 @@ namespace rerun {
         }
         if (archetype.gamma.has_value()) {
             cells.push_back(archetype.gamma.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<TensorScalarMapping>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

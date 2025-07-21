@@ -72,7 +72,7 @@ You can then run examples from the repository, either by making the Pixi shell a
 
 Respectively, to build a wheel instead for manual install use:
 ```sh
-pixi run py-wheel --release
+pixi run py-build-wheel
 ```
 
 Refer to [BUILD.md](../BUILD.md) for details on the various different build options of the Rerun Viewer and SDKs for all target languages.

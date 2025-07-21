@@ -34,3 +34,8 @@ The protocol supports basic commands that the `viewer` can send to the `app`, su
 
 First start the Rerun SDK app with `cargo run -p custom_callback --bin custom_callback_app`,
 and then start the extended viewer with `cargo run -p custom_callback --bin custom_callback_viewer`.
+
+## Relationship with Viewer callbacks
+
+The [`re_viewer`] crate also exposes some baseline Viewer events through the [`StartupOptions.on_event`](https://docs.rs/re_viewer/latest/re_viewer/struct.StartupOptions.html#structfield.on_event) field,
+which can exist alongside your own events from widgets added by extending the UI.

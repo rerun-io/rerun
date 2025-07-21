@@ -15,6 +15,9 @@ struct PendingReadbackRange {
     identifier: GpuReadbackIdentifier,
     buffer_range: Range<wgpu::BufferAddress>,
     user_data: GpuReadbackUserDataStorage,
+
+    /// The frame index when the readback was scheduled.
+    scheduled_frame_index: u64,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -161,6 +164,7 @@ impl Chunk {
         size_in_bytes: wgpu::BufferAddress,
         identifier: GpuReadbackIdentifier,
         user_data: GpuReadbackUserDataStorage,
+        scheduled_frame_index: u64,
     ) -> GpuReadbackBuffer {
         debug_assert!(size_in_bytes <= self.remaining_capacity());
 
@@ -170,6 +174,7 @@ impl Chunk {
             identifier,
             buffer_range: buffer_range.clone(),
             user_data,
+            scheduled_frame_index,
         });
 
         let buffer = GpuReadbackBuffer {
@@ -297,7 +302,7 @@ impl GpuReadbackBelt {
             }
         };
 
-        let buffer_slice = chunk.allocate(size_in_bytes, identifier, user_data);
+        let buffer_slice = chunk.allocate(size_in_bytes, identifier, user_data, self.frame_index);
         self.active_chunks.push(chunk);
 
         buffer_slice
@@ -326,7 +331,8 @@ impl GpuReadbackBelt {
 
     /// Should be called at the beginning of a new frame.
     ///
-    /// Discards stale data that hasn't been received by [`GpuReadbackBelt::readback_data`] for more than a frame.
+    /// Discards stale data that hasn't been received by
+    /// [`GpuReadbackBelt::readback_next_available`]/[`GpuReadbackBelt::readback_newest_available`] for more than a frame.
     pub fn begin_frame(&mut self, frame_index: u64) {
         // Make sure each frame has at least one `receive_chunk` call before it ends (from the pov of the readback belt).
         // It's important to do this before bumping the frame index, because we want to mark all these chunks as "old"
@@ -358,23 +364,82 @@ impl GpuReadbackBelt {
         }
     }
 
-    /// Try to receive a pending data readback with the given identifier and the given user data type.
+    /// Try to receive a pending data readback with the given identifier and user data type,
+    /// calling a callback on the first result that is available.
     ///
-    /// Returns the oldest received data with the given identifier & type.
-    /// This is *almost certainly* also the oldest scheduled readback. But there is no *strict* guarantee for this.
+    /// *Most likely* subsequent calls will return data from newer submissions. But there is no *strict* guarantee for this.
     /// It could in theory happen that a readback is scheduled after a previous one, but finishes before it!
+    /// While there's no documented case of this reordering ever happening, your data handling code should handle this gracefully.
     ///
     /// ATTENTION: Do NOT assume any alignment on the slice passed to `on_data_received`.
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).
-    pub fn readback_data<UserDataType: 'static>(
+    ///
+    /// Note that [`Self::begin_frame`] will discard stale data automatically, preventing leaks for any
+    /// scheduled reads that are never queried.
+    // TODO(andreas): Can above mentioned reordering _actually_ happen? How contrived does a setup have to be for this?
+    pub fn readback_next_available<UserDataType: 'static, Ret>(
         &mut self,
         identifier: GpuReadbackIdentifier,
-        callback: impl FnOnce(&[u8], Box<UserDataType>),
-    ) {
+        callback: impl FnOnce(&[u8], Box<UserDataType>) -> Ret,
+    ) -> Option<Ret> {
+        re_tracing::profile_function!();
+
+        self.receive_chunks();
+        self.readback_next_available_internal(identifier, callback)
+            .map(|(_, result)| result)
+    }
+
+    /// Try to receive a pending data readback with the given identifier and user data type,
+    /// calling a callback on all results that are available, but returning only the callback result that is associated with
+    /// the newest scheduled read.
+    ///
+    /// *Most likely* subsequent calls will return data from newer submissions. But there is no *strict* guarantee for this.
+    /// It could in theory happen that a readback is scheduled after a previous one, but finishes before it!
+    /// While there's no documented case of this reordering ever happening, your data handling code should handle this gracefully.
+    ///
+    /// Note that [`Self::begin_frame`] will discard stale data automatically, preventing leaks for any
+    /// scheduled reads that are never queried.
+    ///
+    /// # Implementation notes
+    ///
+    /// The callback being called for all results and not just the newest is an artifact of our zero-copy implementation:
+    /// Whenever inspecting a result, we hold a pointer directly to the mapped GPU data.
+    /// Moving on to the next result without discarding the previous means we'd potentially have two pointers
+    /// to the same mapped GPU buffer. This is possible, but inevitably leads to more `unsafe` & more complex code
+    /// for something that is expected to be a very rare occurrence.
+    //
+    // TODO(andreas): Can above mentioned reordering _actually_ happen? How contrived does a setup have to be for this?
+    pub fn readback_newest_available<UserDataType: 'static, Ret>(
+        &mut self,
+        identifier: GpuReadbackIdentifier,
+        callback: impl Fn(&[u8], Box<UserDataType>) -> Ret,
+    ) -> Option<Ret> {
         re_tracing::profile_function!();
 
         self.receive_chunks();
 
+        let mut last_result = None;
+        let mut last_scheduled_frame_index = 0;
+
+        while let Some((scheduled_frame_index, result)) =
+            self.readback_next_available_internal::<UserDataType, Ret>(identifier, &callback)
+        {
+            // There could be several results from the same frame. Use the most recently received one in that case.
+            if scheduled_frame_index >= last_scheduled_frame_index {
+                last_result = Some(result);
+                last_scheduled_frame_index = scheduled_frame_index;
+            }
+        }
+
+        last_result
+    }
+
+    /// Returns result + frame index for when the request was scheduled.
+    fn readback_next_available_internal<UserDataType: 'static, Ret>(
+        &mut self,
+        identifier: GpuReadbackIdentifier,
+        callback: impl FnOnce(&[u8], Box<UserDataType>) -> Ret,
+    ) -> Option<(u64, Ret)> {
         // Search for the user data in the readback chunks.
         // A linear search is suited best since we expect both the number of pending chunks (typically just one or two!)
         // as well as the number of readbacks per chunk to be small!
@@ -385,21 +450,26 @@ impl GpuReadbackBelt {
                     continue;
                 }
 
-                {
+                let (result, scheduled_frame_index) = {
                     let range = chunk.ranges_in_use.swap_remove(range_index);
                     let slice = chunk.buffer.slice(range.buffer_range.clone());
                     let data = slice.get_mapped_range();
-                    callback(&data, range.user_data.downcast::<UserDataType>().unwrap());
-                }
+                    (
+                        callback(&data, range.user_data.downcast::<UserDataType>().unwrap()),
+                        range.scheduled_frame_index,
+                    )
+                };
 
                 // If this was the last range from this chunk, the chunk is ready for re-use!
                 if chunk.ranges_in_use.is_empty() {
                     let chunk = self.received_chunks.swap_remove(chunk_index);
                     self.reuse_chunk(chunk);
                 }
-                return;
+                return Some((scheduled_frame_index, result));
             }
         }
+
+        None
     }
 
     /// Check if any new chunks are ready to be read.

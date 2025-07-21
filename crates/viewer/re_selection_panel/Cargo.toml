@@ -15,9 +15,6 @@ include.workspace = true
 [lints]
 workspace = true
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
 re_case.workspace = true
 re_chunk_store.workspace = true
@@ -44,3 +41,7 @@ nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
 static_assertions.workspace = true
+
+[dev-dependencies]
+re_component_ui.workspace = true
+re_test_context.workspace = true

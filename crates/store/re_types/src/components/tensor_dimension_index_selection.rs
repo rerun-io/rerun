@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies a concrete index on a tensor dimension.
@@ -26,8 +26,8 @@ pub struct TensorDimensionIndexSelection(pub crate::datatypes::TensorDimensionIn
 
 impl ::re_types_core::Component for TensorDimensionIndexSelection {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorDimensionIndexSelection")
+    fn name() -> ComponentType {
+        "rerun.components.TensorDimensionIndexSelection".into()
     }
 }
 

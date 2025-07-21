@@ -101,6 +101,14 @@ impl ResolvedTimeRange {
     }
 
     #[inline]
+    pub fn intersection(&self, other: Self) -> Option<Self> {
+        self.intersects(other).then(|| Self {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        })
+    }
+
+    #[inline]
     pub fn union(&self, other: Self) -> Self {
         Self {
             min: self.min.min(other.min),

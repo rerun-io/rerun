@@ -107,7 +107,7 @@ pub enum Meta {
 }
 
 impl Meta {
-    pub const fn to_byte(self) -> u8 {
+    pub fn to_byte(self) -> u8 {
         match self {
             Self::Rc(value) => value | meta::RC,
             Self::Alpha(value) => value | meta::ALPHA,

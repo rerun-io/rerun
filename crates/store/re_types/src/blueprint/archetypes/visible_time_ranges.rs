@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures what range of each timeline is shown on a view.
@@ -45,19 +45,9 @@ impl VisibleTimeRanges {
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-            component_name: "rerun.blueprint.components.VisibleTimeRange".into(),
-            archetype_field_name: Some("ranges".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+            component: "VisibleTimeRanges:ranges".into(),
+            component_type: Some("rerun.blueprint.components.VisibleTimeRange".into()),
         }
     }
 }
@@ -65,31 +55,21 @@ impl VisibleTimeRanges {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VisibleTimeRanges::descriptor_ranges()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VisibleTimeRanges::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            VisibleTimeRanges::descriptor_ranges(),
-            VisibleTimeRanges::descriptor_indicator(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisibleTimeRanges::descriptor_ranges()]);
 
 impl VisibleTimeRanges {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`VisibleTimeRanges`] [`::re_types_core::Archetype`]
-pub type VisibleTimeRangesIndicator = ::re_types_core::GenericIndicatorComponent<VisibleTimeRanges>;
-
 impl ::re_types_core::Archetype for VisibleTimeRanges {
-    type Indicator = VisibleTimeRangesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.VisibleTimeRanges".into()
@@ -98,12 +78,6 @@ impl ::re_types_core::Archetype for VisibleTimeRanges {
     #[inline]
     fn display_name() -> &'static str {
         "Visible time ranges"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        VisibleTimeRangesIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -144,10 +118,7 @@ impl ::re_types_core::AsComponents for VisibleTimeRanges {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.ranges.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.ranges.clone()).flatten().collect()
     }
 }
 

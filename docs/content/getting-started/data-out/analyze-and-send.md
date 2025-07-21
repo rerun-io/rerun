@@ -32,7 +32,7 @@ rr.init(
     recording.application_id(),
     recording_id=recording.recording_id(),
 )
-rr.connect()
+rr.connect_grpc()
 ```
 
 _Note_: When automating data analysis, it is typically preferable to log the results to an distinct RRD file next to the source RRD (using `rr.save()`). In such a situation, it is also valid to use the same app ID and recording ID. This allows opening both the source and result RRDs in the viewer, which will display data from both files under the same recording.

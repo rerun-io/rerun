@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The layout share of a row in the container.
@@ -30,8 +30,8 @@ pub struct RowShare(
 
 impl ::re_types_core::Component for RowShare {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.RowShare")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.RowShare".into()
     }
 }
 

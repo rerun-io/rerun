@@ -27,10 +27,14 @@ impl Navigation {
         self.history.push(display_mode);
     }
 
-    pub fn replace(&mut self, display_mode: DisplayMode) -> Option<DisplayMode> {
+    pub fn replace(&mut self, new_mode: DisplayMode) -> Option<DisplayMode> {
         let previous = self.history.pop();
-        re_log::trace!("Navigated from {previous:?} to {display_mode:?}");
-        self.history.push(display_mode);
+
+        if previous.as_ref().is_none_or(|prev| prev != &new_mode) {
+            re_log::trace!("Navigated from {previous:?} to {new_mode:?}");
+        }
+
+        self.history.push(new_mode);
         previous
     }
 

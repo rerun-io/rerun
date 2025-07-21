@@ -158,7 +158,7 @@ def log_lidar_and_ego_pose(
             ),
             rr.GeoPoints(lat_lon=position_lat_lon, radii=rr.Radius.ui_points(8.0), colors=0xFF0000FF),
         )
-        # TODO(#6889): We don't want the radius for the trajectory line to be the same as the radius of the points.
+        # TODO(#10632): We don't want the radius for the trajectory line to be the same as the radius of the points.
         # However, rr.GeoPoints uses the same `rr.components.Radius` for this, so these two archetypes would influence each other
         # if logged on the same entity. In the future, they will have different tags, which will allow them to live side by side.
         rr.log(

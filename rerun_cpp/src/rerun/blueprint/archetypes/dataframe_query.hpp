@@ -11,7 +11,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -45,38 +44,33 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> select;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.DataframeQueryIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.DataframeQuery";
 
         /// `ComponentDescriptor` for the `timeline` field.
         static constexpr auto Descriptor_timeline = ComponentDescriptor(
-            ArchetypeName, "timeline",
-            Loggable<rerun::blueprint::components::TimelineName>::Descriptor.component_name
+            ArchetypeName, "DataframeQuery:timeline",
+            Loggable<rerun::blueprint::components::TimelineName>::ComponentType
         );
         /// `ComponentDescriptor` for the `filter_by_range` field.
         static constexpr auto Descriptor_filter_by_range = ComponentDescriptor(
-            ArchetypeName, "filter_by_range",
-            Loggable<rerun::blueprint::components::FilterByRange>::Descriptor.component_name
+            ArchetypeName, "DataframeQuery:filter_by_range",
+            Loggable<rerun::blueprint::components::FilterByRange>::ComponentType
         );
         /// `ComponentDescriptor` for the `filter_is_not_null` field.
         static constexpr auto Descriptor_filter_is_not_null = ComponentDescriptor(
-            ArchetypeName, "filter_is_not_null",
-            Loggable<rerun::blueprint::components::FilterIsNotNull>::Descriptor.component_name
+            ArchetypeName, "DataframeQuery:filter_is_not_null",
+            Loggable<rerun::blueprint::components::FilterIsNotNull>::ComponentType
         );
         /// `ComponentDescriptor` for the `apply_latest_at` field.
         static constexpr auto Descriptor_apply_latest_at = ComponentDescriptor(
-            ArchetypeName, "apply_latest_at",
-            Loggable<rerun::blueprint::components::ApplyLatestAt>::Descriptor.component_name
+            ArchetypeName, "DataframeQuery:apply_latest_at",
+            Loggable<rerun::blueprint::components::ApplyLatestAt>::ComponentType
         );
         /// `ComponentDescriptor` for the `select` field.
         static constexpr auto Descriptor_select = ComponentDescriptor(
-            ArchetypeName, "select",
-            Loggable<rerun::blueprint::components::SelectedColumns>::Descriptor.component_name
+            ArchetypeName, "DataframeQuery:select",
+            Loggable<rerun::blueprint::components::SelectedColumns>::ComponentType
         );
 
       public:

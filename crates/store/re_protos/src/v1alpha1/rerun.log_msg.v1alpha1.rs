@@ -56,6 +56,9 @@ pub struct ArrowMsg {
     /// The ID of the store that this message is for.
     #[prost(message, optional, tag = "1")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// If the payload is a chunk, this is its ID. Otherwise empty.
+    #[prost(message, optional, tag = "6")]
+    pub chunk_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     /// Compression algorithm used.
     #[prost(enumeration = "Compression", tag = "2")]
     pub compression: i32,
@@ -65,8 +68,8 @@ pub struct ArrowMsg {
     #[prost(enumeration = "Encoding", tag = "4")]
     pub encoding: i32,
     /// Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
-    #[prost(bytes = "vec", tag = "5")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "5")]
+    pub payload: ::prost::bytes::Bytes,
 }
 impl ::prost::Name for ArrowMsg {
     const NAME: &'static str = "ArrowMsg";
@@ -156,8 +159,8 @@ impl ::prost::Name for StoreSource {
 /// This exists to that we can implement conversions on the newtype for convenience.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreSourceExtra {
-    #[prost(bytes = "vec", tag = "1")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "1")]
+    pub payload: ::prost::bytes::Bytes,
 }
 impl ::prost::Name for StoreSourceExtra {
     const NAME: &'static str = "StoreSourceExtra";

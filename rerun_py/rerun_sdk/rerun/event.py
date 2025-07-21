@@ -14,6 +14,7 @@ from typing import Literal, Union
 class ViewerEventBase:
     application_id: str
     recording_id: str
+    partition_id: str | None
 
 
 # Selection item types with proper type discrimination
@@ -95,8 +96,25 @@ class SelectionChangeEvent(ViewerEventBase):
     items: list[SelectionItem]
 
 
+@dataclass
+class RecordingOpenEvent(ViewerEventBase):
+    @property
+    def type(self) -> Literal["recording_open"]:
+        return "recording_open"
+
+    source: str
+    version: str | None
+
+
 # Union type for all possible event types
-ViewerEvent = Union[PlayEvent, PauseEvent, TimeUpdateEvent, TimelineChangeEvent, SelectionChangeEvent]
+ViewerEvent = Union[
+    PlayEvent,
+    PauseEvent,
+    TimeUpdateEvent,
+    TimelineChangeEvent,
+    SelectionChangeEvent,
+    RecordingOpenEvent,
+]
 
 
 def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
@@ -105,17 +123,19 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
     event_type: str = data["type"]
     app_id: str = data["application_id"]
     recording_id: str = data["recording_id"]
+    partition_id: str | None = data.get("partition_id", None)
 
     if event_type == "play":
-        return PlayEvent(application_id=app_id, recording_id=recording_id)
+        return PlayEvent(application_id=app_id, recording_id=recording_id, partition_id=partition_id)
 
     elif event_type == "pause":
-        return PauseEvent(application_id=app_id, recording_id=recording_id)
+        return PauseEvent(application_id=app_id, recording_id=recording_id, partition_id=partition_id)
 
     elif event_type == "time_update":
         return TimeUpdateEvent(
             application_id=app_id,
             recording_id=recording_id,
+            partition_id=partition_id,
             time=data["time"],
         )
 
@@ -123,6 +143,7 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
         return TimelineChangeEvent(
             application_id=app_id,
             recording_id=recording_id,
+            partition_id=partition_id,
             timeline=data["timeline"],
             time=data["time"],
         )
@@ -157,7 +178,17 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
         return SelectionChangeEvent(
             application_id=app_id,
             recording_id=recording_id,
+            partition_id=partition_id,
             items=items,
+        )
+
+    elif event_type == "recording_open":
+        return RecordingOpenEvent(
+            application_id=app_id,
+            recording_id=recording_id,
+            partition_id=partition_id,
+            source=data["source"],
+            version=data.get("version", None),
         )
 
     else:

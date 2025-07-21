@@ -63,6 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ViewerEventKind::SelectionChange { items } => {
                         shared_state.current_selection = items;
                     }
+                    ViewerEventKind::RecordingOpen { .. } => {}
                 }
             })
         }),
@@ -85,6 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                None,
                 re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
             rerun_app.add_log_receiver(rx);

@@ -1,7 +1,7 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::Arrows3D,
     components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D},
 };
@@ -71,7 +71,7 @@ impl Arrows3DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, "Arrows3D");
+                .single_entity_transform_required(entity_path, Arrows3D::name());
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
@@ -79,7 +79,7 @@ impl Arrows3DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
             let origins = clamped_or(data.origins, &Position3D::ZERO);
 

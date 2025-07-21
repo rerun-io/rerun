@@ -1,13 +1,15 @@
 //! This crates implements the Redap browser feature, including the communication and UI aspects of
 //! it.
 
-mod add_server_modal;
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod context;
 mod entries;
+mod server_modal;
 mod servers;
 mod tables_session_context;
 
-pub use entries::{EntryKind, SortDatasetsResults, dataset_and_its_recordings_ui, sort_datasets};
+pub use entries::{DatasetKind, dataset_and_its_recordings_ui};
 use re_uri::Scheme;
 pub use servers::RedapServers;
 use std::sync::LazyLock;

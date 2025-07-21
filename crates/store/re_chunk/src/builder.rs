@@ -24,16 +24,16 @@ pub struct ChunkBuilder {
 impl Chunk {
     /// Initializes a new [`ChunkBuilder`].
     #[inline]
-    pub fn builder(entity_path: EntityPath) -> ChunkBuilder {
-        ChunkBuilder::new(ChunkId::new(), entity_path)
+    pub fn builder(entity_path: impl Into<EntityPath>) -> ChunkBuilder {
+        ChunkBuilder::new(ChunkId::new(), entity_path.into())
     }
 
     /// Initializes a new [`ChunkBuilder`].
     ///
     /// The final [`Chunk`] will have the specified `id`.
     #[inline]
-    pub fn builder_with_id(id: ChunkId, entity_path: EntityPath) -> ChunkBuilder {
-        ChunkBuilder::new(id, entity_path)
+    pub fn builder_with_id(id: ChunkId, entity_path: impl Into<EntityPath>) -> ChunkBuilder {
+        ChunkBuilder::new(id, entity_path.into())
     }
 }
 
@@ -79,9 +79,9 @@ impl ChunkBuilder {
                 .with_row(cell.value);
         }
 
-        for (component_name, array) in components {
+        for (component_descr, array) in components {
             self.components
-                .entry(component_name)
+                .entry(component_descr)
                 .or_default()
                 .push(array);
         }
@@ -125,21 +125,41 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
+    /// Add the serialized value of a single component to the chunk.
+    pub fn with_component<Component: re_types_core::Component>(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> re_types_core::SerializationResult<Self> {
+        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        Ok(self.with_serialized_batches(
+            row_id,
+            timepoint,
+            vec![re_types_core::SerializedComponentBatch {
+                descriptor: component_descr,
+                array: Component::to_arrow([std::borrow::Cow::Borrowed(value)])?,
+            }],
+        ))
+    }
+
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
     pub fn with_component_batch(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batch: &dyn ComponentBatch,
+        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
     ) -> Self {
         self.with_row(
             row_id,
             timepoint,
             component_batch
+                .1
                 .to_arrow()
                 .ok()
-                .map(|array| (component_batch.descriptor().into_owned(), array)),
+                .map(|array| (component_batch.0, array)),
         )
     }
 
@@ -149,17 +169,19 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn ComponentBatch)>,
     ) -> Self {
         self.with_row(
             row_id,
             timepoint,
-            component_batches.into_iter().filter_map(|component_batch| {
-                component_batch
-                    .to_arrow()
-                    .ok()
-                    .map(|array| (component_batch.descriptor().into_owned(), array))
-            }),
+            component_batches
+                .into_iter()
+                .filter_map(|(component_descr, component_batch)| {
+                    component_batch
+                        .to_arrow()
+                        .ok()
+                        .map(|array| (component_descr, array))
+                }),
         )
     }
 

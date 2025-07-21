@@ -1,14 +1,15 @@
 use re_types::{
+    Archetype as _,
     archetypes::EncodedImage,
     components::{DrawOrder, MediaType, Opacity},
     image::ImageKind,
 };
-use re_view::{HybridResults, diff_component_filter};
+use re_view::HybridResults;
 use re_viewer_context::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
-    MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -39,30 +40,9 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
     }
 }
 
-struct ImageMediaTypeFilter;
-
-impl DataBasedVisualizabilityFilter for ImageMediaTypeFilter {
-    /// Marks entities only as "maybe visualizable" for `EncodedImage` if they have an image media type.
-    ///
-    /// Otherwise the image encoder might be suggested for other blobs like video.
-    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |media_type: &re_types::components::MediaType| {
-            media_type.is_image()
-        }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
-        })
-    }
-}
-
 impl VisualizerSystem for EncodedImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
-    }
-
-    fn data_based_visualizability_filter(
-        &self,
-    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
-        Some(Box::new(ImageMediaTypeFilter))
     }
 
     fn filter_visualizable_entities(
@@ -157,18 +137,14 @@ impl EncodedImageVisualizer {
                 .and_then(|media_types| media_types.first().cloned())
                 .map(|media_type| MediaType(media_type.into()));
 
-            let image = ctx
-                .viewer_ctx
-                .store_context
-                .caches
-                .entry(|c: &mut ImageDecodeCache| {
-                    c.entry(
-                        tensor_data_row_id,
-                        &EncodedImage::descriptor_blob(),
-                        blob,
-                        media_type.as_ref(),
-                    )
-                });
+            let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+                c.entry(
+                    tensor_data_row_id,
+                    &EncodedImage::descriptor_blob(),
+                    blob,
+                    media_type.as_ref(),
+                )
+            });
 
             let image = match image {
                 Ok(image) => image,
@@ -183,28 +159,31 @@ impl EncodedImageVisualizer {
             let opacity: Option<&Opacity> =
                 opacities.and_then(|opacity| opacity.first().map(bytemuck::cast_ref));
             let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
                 &image,
                 colormap,
                 multiplicative_tint,
-                "EncodedImage",
-                &mut self.data,
+                EncodedImage::name(),
             ) {
-                self.data.pickable_rects.push(PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: None,
+                self.data.add_pickable_rect(
+                    PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Image {
+                            image,
+                            depth_meter: None,
+                        },
                     },
-                });
+                    spatial_ctx.view_class_identifier,
+                );
             }
         }
     }
@@ -214,7 +193,7 @@ impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         // Color images should be transparent whenever they're on top of other images,
         // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() else {
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };
 

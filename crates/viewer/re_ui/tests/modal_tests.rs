@@ -36,7 +36,7 @@ pub fn test_modal_list_item_should_match_snapshot() {
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Property content")
                         .value_color(&egui::Color32::RED.to_array())
-                        .action_button(&re_ui::icons::EDIT, || {}),
+                        .action_button(&re_ui::icons::EDIT, "Edit", || {}),
                 );
             });
         },

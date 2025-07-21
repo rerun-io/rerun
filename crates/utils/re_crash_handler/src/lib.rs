@@ -17,8 +17,9 @@ static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
 /// NOTE: only install these in binaries!
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
+#[allow(clippy::needless_pass_by_value)]
 pub fn install_crash_handlers(build_info: BuildInfo) {
-    install_panic_hook(build_info);
+    install_panic_hook(build_info.clone());
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(not(target_os = "windows"))]
@@ -70,19 +71,16 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
             #[cfg(feature = "analytics")]
             {
-                if let Ok(analytics) =
-                    re_analytics::Analytics::new(std::time::Duration::from_millis(1))
-                {
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
                     analytics.record(re_analytics::event::CrashPanic {
-                        build_info: _build_info,
+                        build_info: _build_info.clone(),
                         callstack,
                         // Don't include panic message, because it can contain sensitive information,
                         // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
                         message: None,
                         file_line,
                     });
-
-                    std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
+                    analytics.flush_blocking();
                 }
             }
 
@@ -179,7 +177,7 @@ fn install_signal_handler(build_info: BuildInfo) {
 
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
         #[cfg(feature = "analytics")]
-        if let Some(build_info) = *BUILD_INFO.lock() {
+        if let Some(build_info) = BUILD_INFO.lock().clone() {
             send_signal_analytics(build_info, signal_name, callstack);
         }
 
@@ -201,14 +199,13 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
             analytics.record(re_analytics::event::CrashSignal {
                 build_info,
                 signal: signal_name.to_owned(),
                 callstack,
             });
-
-            std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
+            analytics.flush_blocking();
         }
     }
 

@@ -6,26 +6,27 @@ use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
     EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
-    example_components::MyPoint, external::re_types_core::Component as _,
+    example_components::{MyPoint, MyPoints},
 };
+use re_test_context::TestContext;
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline, test_context::TestContext};
+use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]
 pub fn time_panel_two_sections_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
             for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
-                    [(MyPoint::descriptor(), Some(&points1 as _))],
+                    [(MyPoints::descriptor_points(), Some(&points1 as _))],
                 );
             }
 
@@ -45,7 +46,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 #[test]
 pub fn time_panel_dense_data_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -57,7 +58,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
         rng_seed.wrapping_mul(0x2545_f491_4f6c_dd1d)
     };
 
-    test_context.log_entity("/entity".into(), |mut builder| {
+    test_context.log_entity("/entity", |mut builder| {
         for frame in 0..1_000 {
             if rng() & 0b1 == 0 {
                 continue;
@@ -66,7 +67,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(frame)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
         }
 
@@ -102,15 +103,15 @@ pub fn time_panel_filter_test_active_query_should_match_snapshot() {
 #[allow(clippy::unwrap_used)]
 pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_name: &str) {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
 
             builder
@@ -118,11 +119,11 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     }
 
     for i in 0..2 {
-        test_context.log_entity(format!("/path/{i}").into(), |mut builder| {
+        test_context.log_entity(format!("/path/{i}"), |mut builder| {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
 
             builder
@@ -148,7 +149,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
 
     for timeline in ["timeline_a", "timeline_b"] {
         for time in [0, 5, i64::MAX] {
-            let mut test_context = TestContext::default();
+            let mut test_context = TestContext::new();
 
             log_data_for_various_entity_kinds_tests(&mut test_context);
 
@@ -184,7 +185,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
 pub fn test_focused_item_is_focused() {
     TimePanel::ensure_registered_subscribers();
 
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
 
     log_data_for_various_entity_kinds_tests(&mut test_context);
 
@@ -288,7 +289,7 @@ fn run_time_panel_and_save_snapshot(
                     );
                 }
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );

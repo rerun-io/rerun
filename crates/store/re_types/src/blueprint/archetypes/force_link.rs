@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
@@ -45,9 +45,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: "rerun.blueprint.components.Enabled".into(),
-            archetype_field_name: Some("enabled".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component: "ForceLink:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,9 +57,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_distance() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: "rerun.blueprint.components.ForceDistance".into(),
-            archetype_field_name: Some("distance".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component: "ForceLink:distance".into(),
+            component_type: Some("rerun.blueprint.components.ForceDistance".into()),
         }
     }
 
@@ -69,19 +69,9 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: "rerun.blueprint.components.ForceIterations".into(),
-            archetype_field_name: Some("iterations".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component: "ForceLink:iterations".into(),
+            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
         }
     }
 }
@@ -89,8 +79,8 @@ impl ForceLink {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ForceLink::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -101,10 +91,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ForceLink::descriptor_indicator(),
             ForceLink::descriptor_enabled(),
             ForceLink::descriptor_distance(),
             ForceLink::descriptor_iterations(),
@@ -112,16 +101,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     });
 
 impl ForceLink {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`ForceLink`] [`::re_types_core::Archetype`]
-pub type ForceLinkIndicator = ::re_types_core::GenericIndicatorComponent<ForceLink>;
-
 impl ::re_types_core::Archetype for ForceLink {
-    type Indicator = ForceLinkIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ForceLink".into()
@@ -130,12 +114,6 @@ impl ::re_types_core::Archetype for ForceLink {
     #[inline]
     fn display_name() -> &'static str {
         "Force link"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ForceLinkIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -189,7 +167,6 @@ impl ::re_types_core::AsComponents for ForceLink {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.enabled.clone(),
             self.distance.clone(),
             self.iterations.clone(),

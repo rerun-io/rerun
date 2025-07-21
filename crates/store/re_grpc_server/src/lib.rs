@@ -1,4 +1,4 @@
-//! Server implementation of an in-memory Storage Node.
+//! Server implementation of an in-memory Storage Node ("proxy").
 
 pub mod shutdown;
 
@@ -49,6 +49,40 @@ pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 const MESSAGE_QUEUE_CAPACITY: usize =
     (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
 
+/// Wrapper with a nicer error message
+#[derive(Debug)]
+pub struct TonicStatusError(pub tonic::Status);
+
+impl std::fmt::Display for TonicStatusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(emilk): duplicated in `re_grpc_client`
+        let status = &self.0;
+
+        write!(f, "gRPC error")?;
+
+        if status.code() != tonic::Code::Unknown {
+            write!(f, ", code: '{}'", status.code())?;
+        }
+        if !status.message().is_empty() {
+            write!(f, ", message: {:?}", status.message())?;
+        }
+        // Binary data - not useful.
+        // if !status.details().is_empty() {
+        //     write!(f, ", details: {:?}", status.details())?;
+        // }
+        if !status.metadata().is_empty() {
+            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
+        }
+        Ok(())
+    }
+}
+
+impl From<tonic::Status> for TonicStatusError {
+    fn from(value: tonic::Status) -> Self {
+        Self(value)
+    }
+}
+
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
 /// Start a Rerun server, listening on `addr`.
@@ -81,8 +115,7 @@ async fn serve_impl(
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
     let tcp_listener = TcpListener::bind(addr).await?;
-    let incoming =
-        TcpIncoming::from_listener(tcp_listener, true, None).map_err(|err| anyhow::anyhow!(err))?;
+    let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
 
     let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
         format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
@@ -299,8 +332,16 @@ pub fn spawn_with_recv(
                 }
             };
             match msg {
-                Ok(msg) => {
-                    if channel_log_tx.send(msg).is_err() {
+                Ok(mut log_msg) => {
+                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
+                    // Note that this function is only called by the viewer
+                    // (that's what the message-receiver is connected to).
+                    log_msg.insert_arrow_record_batch_metadata(
+                        re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
+                        re_sorbet::timestamp_metadata::now_timestamp(),
+                    );
+
+                    if channel_log_tx.send(log_msg).is_err() {
                         re_log::debug!(
                             "message proxy smart channel receiver closed, closing sender"
                         );
@@ -485,6 +526,11 @@ impl EventLoop {
     fn handle_msg(&mut self, msg: LogMsgProto) {
         self.broadcast_log_tx.send(msg.clone()).ok();
 
+        if self.is_history_disabled() {
+            // no need to gc or maintain history
+            return;
+        }
+
         self.gc_if_using_too_much_ram();
 
         let Some(inner) = &msg.msg else {
@@ -526,11 +572,20 @@ impl EventLoop {
     fn handle_table(&mut self, table: TableMsgProto) {
         self.broadcast_table_tx.send(table.clone()).ok();
 
+        if self.is_history_disabled() {
+            // no need to gc or maintain history
+            return;
+        }
+
         self.gc_if_using_too_much_ram();
 
         let approx_size_bytes = table.total_size_bytes();
         self.ordered_message_bytes += approx_size_bytes;
         self.ordered_message_queue.push_back(Msg::Table(table));
+    }
+
+    fn is_history_disabled(&self) -> bool {
+        self.server_memory_limit.max_bytes.is_some_and(|b| b == 0)
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
@@ -749,7 +804,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 }
 
                 Err(err) => {
-                    re_log::error!("Error while receiving messages: {err}");
+                    re_log::error!("Error while receiving messages: {}", TonicStatusError(err));
                     break;
                 }
             }
@@ -864,7 +919,7 @@ mod tests {
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
+                re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(
@@ -913,7 +968,7 @@ mod tests {
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
+                re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
                         re_log_types::TimePoint::default().with(
@@ -952,7 +1007,7 @@ mod tests {
                             .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
                     )
                     .serve_with_incoming_shutdown(
-                        TcpIncoming::from_listener(tcp_listener, true, None).unwrap(),
+                        TcpIncoming::from(tcp_listener).with_nodelay(Some(true)),
                         completion.wait(),
                     )
                     .await

@@ -16,14 +16,13 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
-/// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
-/// Some of its component are repeated here for convenience.
-/// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+/// If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
+/// Orienting and placing boxes forms a separate transform that is applied prior to [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D].
 ///
 /// ## Example
 ///
@@ -72,19 +71,16 @@ pub struct Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub centers: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the boxes.
@@ -102,7 +98,10 @@ pub struct Boxes3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
@@ -118,9 +117,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.HalfSize3D".into(),
-            archetype_field_name: Some("half_sizes".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:half_sizes".into(),
+            component_type: Some("rerun.components.HalfSize3D".into()),
         }
     }
 
@@ -130,9 +129,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseTranslation3D".into(),
-            archetype_field_name: Some("centers".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:centers".into(),
+            component_type: Some("rerun.components.PoseTranslation3D".into()),
         }
     }
 
@@ -142,9 +141,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseRotationAxisAngle".into(),
-            archetype_field_name: Some("rotation_axis_angles".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:rotation_axis_angles".into(),
+            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
         }
     }
 
@@ -154,9 +153,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.PoseRotationQuat".into(),
-            archetype_field_name: Some("quaternions".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:quaternions".into(),
+            component_type: Some("rerun.components.PoseRotationQuat".into()),
         }
     }
 
@@ -166,9 +165,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -178,9 +177,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -190,9 +189,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.FillMode".into(),
-            archetype_field_name: Some("fill_mode".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:fill_mode".into(),
+            component_type: Some("rerun.components.FillMode".into()),
         }
     }
 
@@ -202,9 +201,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -214,9 +213,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -226,19 +225,9 @@ impl Boxes3D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.Boxes3DIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.Boxes3D".into()),
+            component: "Boxes3D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 }
@@ -246,14 +235,8 @@ impl Boxes3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Boxes3D::descriptor_half_sizes()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Boxes3D::descriptor_centers(),
-            Boxes3D::descriptor_colors(),
-            Boxes3D::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [Boxes3D::descriptor_centers(), Boxes3D::descriptor_colors()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -268,13 +251,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 11usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Boxes3D::descriptor_half_sizes(),
             Boxes3D::descriptor_centers(),
             Boxes3D::descriptor_colors(),
-            Boxes3D::descriptor_indicator(),
             Boxes3D::descriptor_rotation_axis_angles(),
             Boxes3D::descriptor_quaternions(),
             Boxes3D::descriptor_radii(),
@@ -286,16 +268,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 11usize]> =
     });
 
 impl Boxes3D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 11usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
-/// Indicator component for the [`Boxes3D`] [`::re_types_core::Archetype`]
-pub type Boxes3DIndicator = ::re_types_core::GenericIndicatorComponent<Boxes3D>;
-
 impl ::re_types_core::Archetype for Boxes3D {
-    type Indicator = Boxes3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Boxes3D".into()
@@ -304,12 +281,6 @@ impl ::re_types_core::Archetype for Boxes3D {
     #[inline]
     fn display_name() -> &'static str {
         "Boxes 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Boxes3DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -404,7 +375,6 @@ impl ::re_types_core::AsComponents for Boxes3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.half_sizes.clone(),
             self.centers.clone(),
             self.rotation_axis_angles.clone(),
@@ -548,12 +518,7 @@ impl Boxes3D {
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -602,7 +567,6 @@ impl Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_centers(
         mut self,
@@ -615,7 +579,6 @@ impl Boxes3D {
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
@@ -633,7 +596,6 @@ impl Boxes3D {
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_quaternions(
         mut self,
@@ -696,7 +658,10 @@ impl Boxes3D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

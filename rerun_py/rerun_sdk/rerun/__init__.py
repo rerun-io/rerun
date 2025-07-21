@@ -8,8 +8,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.24.0-alpha.1+dev"
-__version_info__ = (0, 24, 0, "alpha.1")
+__version__ = "0.25.0-alpha.1+dev"
+__version_info__ = (0, 25, 0, "alpha.1")
 
 
 if sys.version_info < (3, 9):  # noqa: UP036
@@ -43,7 +43,6 @@ from ._image_encoded import (
 )
 from ._log import (
     AsComponents as AsComponents,
-    IndicatorComponentBatch as IndicatorComponentBatch,
     escape_entity_path_part as escape_entity_path_part,
     log as log,
     log_file_from_contents as log_file_from_contents,
@@ -77,6 +76,7 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
@@ -101,6 +101,7 @@ from .archetypes import (
     TextLog as TextLog,
     Transform3D as Transform3D,
     VideoFrameReference as VideoFrameReference,
+    VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (
@@ -119,6 +120,7 @@ from .components import (
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
     TransformRelation as TransformRelation,
+    VideoCodec as VideoCodec,
 )
 from .datatypes import (
     Angle as Angle,
@@ -151,6 +153,7 @@ from .memory import (
 )
 from .recording_stream import (
     BinaryStream as BinaryStream,
+    ChunkBatcherConfig as ChunkBatcherConfig,
     RecordingStream as RecordingStream,
     binary_stream as binary_stream,
     get_application_id as get_application_id,
@@ -171,6 +174,8 @@ from .script_helpers import (
     script_teardown as script_teardown,
 )
 from .sinks import (
+    FileSink as FileSink,
+    GrpcSink as GrpcSink,
     connect_grpc as connect_grpc,
     disconnect as disconnect,
     save as save,
@@ -178,6 +183,7 @@ from .sinks import (
     send_recording as send_recording,
     serve_grpc as serve_grpc,
     serve_web as serve_web,
+    set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
 )
@@ -222,6 +228,10 @@ def init(
     Without an active recording, all methods of the SDK will turn into no-ops.
 
     For more advanced use cases, e.g. multiple recordings setups, see [`rerun.RecordingStream`][].
+
+    To deal with accumulation of recording state when calling init() multiple times, this function will
+    have the side-effect of flushing all existing recordings. After flushing, any recordings which
+    are otherwise orphaned will also be destructed to free resources, close open file-descriptors, etc.
 
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
@@ -272,7 +282,7 @@ def init(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
@@ -304,6 +314,11 @@ def init(
     # Always check whether we are a forked child when calling init. This should have happened
     # via `_register_on_fork` but it's worth being conservative.
     cleanup_if_forked_child()
+
+    # Rerun is being re-initialized. We may have recordings from a previous call to init that are lingering.
+    # Clean them up now to avoid memory leaks. This could cause a problem if we call rr.init() from inside a
+    # destructor during shutdown, but that seems like a fair compromise.
+    bindings.flush_and_cleanup_orphaned_recordings()
 
     if recording_id is not None:
         recording_id = str(recording_id)

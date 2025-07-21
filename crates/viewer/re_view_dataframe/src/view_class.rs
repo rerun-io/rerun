@@ -50,7 +50,7 @@ impl ViewClass for DataframeView {
         &re_ui::icons::VIEW_DATAFRAME
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Dataframe view")
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
             .markdown(
@@ -152,8 +152,8 @@ Configure in the selection panel:
             filtered_index_values: None,
             using_index_values: None,
             include_semantically_empty_columns: false,
-            include_indicator_columns: false,
             include_tombstone_columns: false,
+            include_static_columns: re_chunk_store::StaticColumnSelection::Both,
         };
 
         let view_columns = query_engine
@@ -181,9 +181,10 @@ Configure in the selection panel:
 
 fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
     let full_view_rect = ui.available_rect_before_wrap();
+    let tokens = ui.tokens();
 
     egui::Frame::new()
-        .inner_margin(re_ui::DesignTokens::view_padding())
+        .inner_margin(tokens.view_padding())
         .show(ui, |ui| {
             ui.warning_label("Unknown timeline");
 
@@ -211,5 +212,5 @@ re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| DataframeView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| DataframeView.help(ctx));
 }

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a single view.
@@ -52,9 +52,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_name: "rerun.blueprint.components.ViewClass".into(),
-            archetype_field_name: Some("class_identifier".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component: "ViewBlueprint:class_identifier".into(),
+            component_type: Some("rerun.blueprint.components.ViewClass".into()),
         }
     }
 
@@ -64,9 +64,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_name: "rerun.components.Name".into(),
-            archetype_field_name: Some("display_name".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component: "ViewBlueprint:display_name".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -76,9 +76,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_name: "rerun.blueprint.components.ViewOrigin".into(),
-            archetype_field_name: Some("space_origin".into()),
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component: "ViewBlueprint:space_origin".into(),
+            component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
         }
     }
 
@@ -88,19 +88,9 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component_name: "rerun.components.Visible".into(),
-            archetype_field_name: Some("visible".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component: "ViewBlueprint:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 }
@@ -108,8 +98,8 @@ impl ViewBlueprint {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_class_identifier()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -120,11 +110,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ViewBlueprint::descriptor_class_identifier(),
-            ViewBlueprint::descriptor_indicator(),
             ViewBlueprint::descriptor_display_name(),
             ViewBlueprint::descriptor_space_origin(),
             ViewBlueprint::descriptor_visible(),
@@ -132,16 +121,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     });
 
 impl ViewBlueprint {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`ViewBlueprint`] [`::re_types_core::Archetype`]
-pub type ViewBlueprintIndicator = ::re_types_core::GenericIndicatorComponent<ViewBlueprint>;
-
 impl ::re_types_core::Archetype for ViewBlueprint {
-    type Indicator = ViewBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ViewBlueprint".into()
@@ -150,12 +134,6 @@ impl ::re_types_core::Archetype for ViewBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "View blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ViewBlueprintIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -217,7 +195,6 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.class_identifier.clone(),
             self.display_name.clone(),
             self.space_origin.clone(),

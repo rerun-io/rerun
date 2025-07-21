@@ -27,6 +27,7 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
         re_viewer::AppEnvironment::from_store_source(&store_source),
         startup_options,
         msgs,
+        None,
         re_viewer::AsyncRuntimeHandle::new_native(runtime.handle().clone()),
     )
 }

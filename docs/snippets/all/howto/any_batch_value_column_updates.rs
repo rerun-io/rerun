@@ -18,14 +18,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(arrow::array::Float64Array::from_iter(
             (0..STEPS).map(|v| ((v as f64) / 10.0).sin()),
         )),
-        rerun::ComponentDescriptor::new("custom_component_single"),
+        rerun::ComponentDescriptor::partial("custom_component_single"),
     );
 
     let ten_per_timestamp = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::Float64Array::from_iter((0..STEPS).flat_map(
             |_| (0..STEPS * 10).map(|v| ((v as f64) / 100.0).cos()),
         ))),
-        rerun::ComponentDescriptor::new("custom_component_multi"),
+        rerun::ComponentDescriptor::partial("custom_component_multi"),
     );
 
     rec.send_columns(

@@ -35,7 +35,7 @@ impl ChunkListMode {
     ) -> Option<()> {
         let all_timelines = chunk_store.timelines();
         let all_entities = chunk_store.all_entities_sorted();
-        let all_components = chunk_store.all_components();
+        let all_components = chunk_store.all_components_sorted();
 
         let current_timeline = match self {
             Self::All => all_timelines.values().next().copied()?,
@@ -143,13 +143,13 @@ impl ChunkListMode {
 
                 ui.label("component:");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
-                egui::ComboBox::new("component_name", "")
+                egui::ComboBox::new("component_type", "")
                     .selected_text(current_component.display_name())
                     .height(500.0)
                     .show_ui(ui, |ui| {
-                        for component_name in all_components {
-                            if ui.button(component_name.display_name()).clicked() {
-                                *query_component = component_name;
+                        for component_type in all_components {
+                            if ui.button(component_type.display_name()).clicked() {
+                                *query_component = component_type;
                             }
                         }
                     });

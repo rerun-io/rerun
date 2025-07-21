@@ -22,3 +22,59 @@ impl std::ops::DerefMut for Float64 {
         &mut self.0
     }
 }
+
+impl From<half::f16> for Float64 {
+    #[inline]
+    fn from(value: half::f16) -> Self {
+        Self(value.to_f64())
+    }
+}
+
+impl From<f32> for Float64 {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<i8> for Float64 {
+    #[inline]
+    fn from(value: i8) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<i16> for Float64 {
+    #[inline]
+    fn from(value: i16) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<i32> for Float64 {
+    #[inline]
+    fn from(value: i32) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<u8> for Float64 {
+    #[inline]
+    fn from(value: u8) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<u16> for Float64 {
+    #[inline]
+    fn from(value: u16) -> Self {
+        Self(value as f64)
+    }
+}
+
+impl From<u32> for Float64 {
+    #[inline]
+    fn from(value: u32) -> Self {
+        Self(value as f64)
+    }
+}

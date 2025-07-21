@@ -47,7 +47,10 @@ See the [Pixi installation guide](https://prefix.dev/docs/pixi/overview#installa
 
 If you want to use `pixi` to manage dependencies in your own project, you can simply run `pixi init` in the root of your
 project folder. This will create a `pixi.toml` file that manages the project. After that you can run
-`pixi add arrow-cpp==10.0.1` to add arrow-cpp as a dependency to your project.
+`pixi add arrow-cpp==18.0.0` to add arrow-cpp as a dependency to your project.
+
+If you install the `rerun-sdk` Python package into the same environment, take care to pick a compatible arrow version.
+On Linux & Mac you can check the current arrow version for instance using `curl -s https://pypi.org/pypi/rerun-sdk/json  | jq -r | grep pyarrow`.
 
 Now, any Pixi tasks added to your project will have access to the `arrow-cpp` library.
 
@@ -69,9 +72,6 @@ pixi run example
 ```
 
 ### Known issues
-
-⚠️ [#4050](https://github.com/rerun-io/rerun/issues/4050) `arrow-cpp` needs to be held back to 10.0.1 to avoid conflicts
-with the `rerun-sdk` package when installed in the same Pixi environment.
 
 ⚠️ On Windows Pixi only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes.
 For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html)

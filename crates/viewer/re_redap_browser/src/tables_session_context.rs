@@ -1,14 +1,15 @@
 //! Helper to maintain a [`SessionContext`] with the tables of a remote server.
 
+use std::pin::Pin;
 use std::sync::Arc;
 
+use datafusion::catalog::TableProvider;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::redap;
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::{ConnectionError, ConnectionRegistryHandle};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
@@ -52,19 +53,18 @@ pub struct TablesSessionContext {
 
 impl TablesSessionContext {
     pub fn new(
+        connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
         let ctx = Arc::new(SessionContext::new());
 
-        let registered_tables = {
-            RequestedObject::new_with_repaint(
-                runtime,
-                egui_ctx.clone(),
-                register_all_table_entries(ctx.clone(), origin.clone()),
-            )
-        };
+        let registered_tables = RequestedObject::new_with_repaint(
+            runtime,
+            egui_ctx.clone(),
+            register_all_table_entries(ctx.clone(), connection_registry, origin.clone()),
+        );
 
         Self {
             ctx,
@@ -80,11 +80,13 @@ impl TablesSessionContext {
 
 async fn register_all_table_entries(
     ctx: Arc<SessionContext>,
+    connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
 ) -> Result<Vec<Table>, SessionContextError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
+        .inner()
         .find_entries(FindEntriesRequest {
             filter: Some(EntryFilter {
                 id: None,
@@ -101,44 +103,59 @@ async fn register_all_table_entries(
 
     let mut registered_tables = vec![];
 
+    type ResultFuture = dyn Send
+        + Future<
+            Output = (
+                Result<Arc<dyn TableProvider>, DataFusionError>,
+                EntryDetails,
+            ),
+        >;
+    let mut futures: Vec<Pin<Box<ResultFuture>>> = vec![];
     for entry in entries {
-        let table_provider = match entry.kind {
-            EntryKind::Dataset => Some(
-                PartitionTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
-                )
-                .into_provider()
-                .await?,
-            ),
+        let client = client.clone();
+        #[expect(clippy::match_same_arms)]
+        match entry.kind {
+            // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
+            // some reason, this failure is silent but blocks other tables from being registered.
+            // Since we don't need these tables yet, we just skip them for now.
+            EntryKind::BlueprintDataset => {}
 
-            EntryKind::Table => Some(
-                TableEntryTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
-                    entry.id,
+            EntryKind::Dataset => futures.push(Box::pin(async move {
+                (
+                    PartitionTableProvider::new(client, entry.id)
+                        .into_provider()
+                        .await,
+                    entry,
                 )
-                .into_provider()
-                .await?,
-            ),
+            })),
+            EntryKind::Table => futures.push(Box::pin(async move {
+                (
+                    TableEntryTableProvider::new(client, entry.id)
+                        .into_provider()
+                        .await,
+                    entry,
+                )
+            })),
 
             // TODO(ab): these do not exist yet
-            EntryKind::DatasetView | EntryKind::TableView => None,
+            EntryKind::DatasetView | EntryKind::TableView => {}
 
             EntryKind::Unspecified => {
                 return Err(
                     TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32)).into(),
                 );
             }
-        };
-
-        if let Some(table_provider) = table_provider {
-            ctx.register_table(&entry.name, table_provider)?;
-
-            registered_tables.push(Table {
-                entry_id: entry.id,
-                name: entry.name,
-            });
         }
+    }
+
+    for (result, entry) in futures::future::join_all(futures).await {
+        let table_provider = result?;
+        ctx.register_table(&entry.name, table_provider)?;
+
+        registered_tables.push(Table {
+            entry_id: entry.id,
+            name: entry.name,
+        });
     }
 
     Ok(registered_tables)

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use re_analytics::Event;
 use re_analytics::Properties;
 use re_analytics::{Analytics, AnalyticsEvent};
@@ -7,7 +5,7 @@ use re_analytics::{Analytics, AnalyticsEvent};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
-    let analytics = Analytics::new(Duration::from_secs(3))?;
+    let analytics = Analytics::global_or_init().expect("Failed to initialize analytics");
     let application_id = "end_to_end_example".to_owned();
     let recording_id = uuid::Uuid::new_v4().simple().to_string();
 

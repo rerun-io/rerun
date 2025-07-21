@@ -5,8 +5,8 @@
 /// See for instance <https://github.com/rerun-io/rerun/issues/4415>.
 #[test]
 fn test_row_id_order() {
-    let mut batcher_config = rerun::log::ChunkBatcherConfig::NEVER;
-    batcher_config.hooks.on_insert = Some(std::sync::Arc::new(|rows| {
+    let mut hooks = re_chunk::BatcherHooks::NONE;
+    hooks.on_insert = Some(std::sync::Arc::new(|rows| {
         if let [.., penultimate, ultimate] = rows {
             assert!(
                 penultimate.row_id <= ultimate.row_id,
@@ -15,7 +15,7 @@ fn test_row_id_order() {
         }
     }));
     let (rec, _mem_storage) = rerun::RecordingStreamBuilder::new("rerun_example_test")
-        .batcher_config(batcher_config)
+        .batcher_hooks(hooks)
         .memory()
         .unwrap();
 

@@ -17,6 +17,11 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_rrd_from_http;
 
+pub mod external {
+    #[cfg(feature = "decoder")]
+    pub use lz4_flex;
+}
+
 // ---------------------------------------------------------------------
 
 #[cfg(feature = "encoder")]

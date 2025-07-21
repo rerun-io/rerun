@@ -9,11 +9,8 @@ fn roundtrip() {
 
     let expected = TextDocument {
         text: Text::from("This is the contents of the text document.")
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(TextDocument::descriptor_text())),
-        media_type: MediaType::markdown()
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(TextDocument::descriptor_media_type())),
+            .serialized(TextDocument::descriptor_text()),
+        media_type: MediaType::markdown().serialized(TextDocument::descriptor_media_type()),
     };
 
     let arch = TextDocument::new("This is the contents of the text document.")

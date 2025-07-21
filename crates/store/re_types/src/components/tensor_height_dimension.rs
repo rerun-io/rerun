@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies which dimension to use for height.
@@ -26,8 +26,8 @@ pub struct TensorHeightDimension(pub crate::datatypes::TensorDimensionSelection)
 
 impl ::re_types_core::Component for TensorHeightDimension {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorHeightDimension")
+    fn name() -> ComponentType {
+        "rerun.components.TensorHeightDimension".into()
     }
 }
 

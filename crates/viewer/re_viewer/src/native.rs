@@ -14,6 +14,12 @@ pub fn run_native_app(
     app_creator: AppCreator,
     force_wgpu_backend: Option<&str>,
 ) -> eframe::Result {
+    if crate::docker_detection::is_docker() {
+        re_log::warn_once!(
+            "It looks like you are running the Rerun Viewer inside a Docker container. This is not officially supported, and may lead to performance issues and bugs. See https://github.com/rerun-io/rerun/issues/6835 for more.",
+        );
+    }
+
     let native_options = eframe_options(force_wgpu_backend);
 
     let window_title = "Rerun Viewer";
@@ -88,6 +94,7 @@ pub fn run_native_viewer_with_messages(
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
+    connection_registry: Option<re_grpc_client::ConnectionRegistryHandle>,
     async_runtime: AsyncRuntimeHandle,
 ) -> eframe::Result {
     let (tx, rx) = re_smart_channel::smart_channel(
@@ -108,6 +115,7 @@ pub fn run_native_viewer_with_messages(
                 &app_env,
                 startup_options,
                 cc,
+                connection_registry,
                 async_runtime,
             );
             app.add_log_receiver(rx);

@@ -19,7 +19,7 @@ rr.send_blueprint(
     rrb.TimeSeriesView(
         overrides={
             "trig/sin": [
-                rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints),
+                rrb.VisualizerOverrides([rrb.visualizers.SeriesLines, rrb.visualizers.SeriesPoints]),
             ],
         },
     ),

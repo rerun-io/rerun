@@ -32,7 +32,7 @@ use super::get_or_create_texture;
 ///
 /// If the key changes, we upload a new texture.
 fn generate_texture_key(image: &ImageInfo) -> u64 {
-    // We need to inclde anything that, if changes, should result in a new texture being uploaded.
+    // We need to include anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
         buffer_content_hash,
         buffer: _, // we hash `blob_row_id` instead; much faster!
@@ -246,7 +246,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
+    // TODO(#10648): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);

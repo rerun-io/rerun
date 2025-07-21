@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the background of a view.
@@ -38,9 +38,9 @@ impl Background {
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "rerun.blueprint.components.BackgroundKind".into(),
-            archetype_field_name: Some("kind".into()),
+            archetype: Some("rerun.blueprint.archetypes.Background".into()),
+            component: "Background:kind".into(),
+            component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
         }
     }
 
@@ -50,19 +50,9 @@ impl Background {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.Background".into()),
+            component: "Background:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 }
@@ -70,32 +60,26 @@ impl Background {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Background::descriptor_kind()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Background::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Background::descriptor_color()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Background::descriptor_kind(),
-            Background::descriptor_indicator(),
             Background::descriptor_color(),
         ]
     });
 
 impl Background {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`Background`] [`::re_types_core::Archetype`]
-pub type BackgroundIndicator = ::re_types_core::GenericIndicatorComponent<Background>;
-
 impl ::re_types_core::Archetype for Background {
-    type Indicator = BackgroundIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.Background".into()
@@ -104,12 +88,6 @@ impl ::re_types_core::Archetype for Background {
     #[inline]
     fn display_name() -> &'static str {
         "Background"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        BackgroundIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -153,14 +131,10 @@ impl ::re_types_core::AsComponents for Background {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.kind.clone(),
-            self.color.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.kind.clone(), self.color.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

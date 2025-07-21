@@ -38,3 +38,7 @@ half.workspace = true
 ndarray.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
+
+[dev-dependencies]
+re_test_context.workspace = true
+re_test_viewport.workspace = true

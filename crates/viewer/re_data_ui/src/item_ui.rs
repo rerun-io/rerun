@@ -6,7 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
 use re_types::{
-    archetypes::RecordingProperties,
+    archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
@@ -693,12 +693,12 @@ pub fn entity_db_button_ui(
     };
 
     let recording_name = if let Some(recording_name) =
-        entity_db.recording_property::<Name>(&RecordingProperties::descriptor_name())
+        entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
     } else {
         entity_db
-            .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time())
+            .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             .map(|started| {
                 re_log_types::Timestamp::from(started.0)
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
@@ -724,19 +724,21 @@ pub fn entity_db_button_ui(
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
-            let resp =
-                ui.small_icon_button(&icons::CLOSE_SMALL)
-                    .on_hover_text(match store_id.kind {
-                        re_log_types::StoreKind::Recording => {
-                            "Close this recording (unsaved data will be lost)"
-                        }
-                        re_log_types::StoreKind::Blueprint => {
-                            "Close this blueprint (unsaved data will be lost)"
-                        }
-                    });
+            let resp = ui
+                .small_icon_button(&icons::CLOSE_SMALL, "Close recording")
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseEntry(store_id.clone().into()));
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        store_id.clone().into(),
+                    ));
             }
             resp
         });
@@ -779,7 +781,9 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
+                .send_system(SystemCommand::ActivateRecordingOrTable(
+                    store_id.clone().into(),
+                ));
         }
     }
 
@@ -800,11 +804,13 @@ pub fn table_id_button_ui(
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL)
+                .small_icon_button(&icons::CLOSE_SMALL, "Close table")
                 .on_hover_text("Close this table (all data will be lost)");
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseEntry(table_id.clone().into()));
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        table_id.clone().into(),
+                    ));
             }
             resp
         });
@@ -813,7 +819,7 @@ pub fn table_id_button_ui(
     let mut list_item = ui
         .list_item()
         .selected(ctx.selection().contains_item(&item))
-        .active(ctx.active_table_id == Some(table_id));
+        .active(ctx.active_table_id() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
@@ -833,7 +839,9 @@ pub fn table_id_button_ui(
 
     if response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
+            .send_system(SystemCommand::ActivateRecordingOrTable(
+                table_id.clone().into(),
+            ));
     }
     ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

@@ -44,7 +44,7 @@ impl VisualizerSystem for SeriesLinesSystem {
             .queried
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.indicators = [archetypes::SeriesLines::descriptor_indicator()].into();
+        query_info.relevant_archetypes = std::iter::once(archetypes::SeriesLines::name()).collect();
 
         query_info
     }
@@ -84,7 +84,7 @@ impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLinesSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
+        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A monochrome or color image.
@@ -158,9 +158,9 @@ impl Image {
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.ImageBuffer".into(),
-            archetype_field_name: Some("buffer".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:buffer".into(),
+            component_type: Some("rerun.components.ImageBuffer".into()),
         }
     }
 
@@ -170,9 +170,9 @@ impl Image {
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.ImageFormat".into(),
-            archetype_field_name: Some("format".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:format".into(),
+            component_type: Some("rerun.components.ImageFormat".into()),
         }
     }
 
@@ -182,9 +182,9 @@ impl Image {
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.Opacity".into(),
-            archetype_field_name: Some("opacity".into()),
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -194,19 +194,9 @@ impl Image {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.ImageIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.Image".into()),
+            component: "Image:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 }
@@ -214,34 +204,28 @@ impl Image {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| [Image::descriptor_buffer(), Image::descriptor_format()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Image::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| [Image::descriptor_opacity(), Image::descriptor_draw_order()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Image::descriptor_buffer(),
             Image::descriptor_format(),
-            Image::descriptor_indicator(),
             Image::descriptor_opacity(),
             Image::descriptor_draw_order(),
         ]
     });
 
 impl Image {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`Image`] [`::re_types_core::Archetype`]
-pub type ImageIndicator = ::re_types_core::GenericIndicatorComponent<Image>;
-
 impl ::re_types_core::Archetype for Image {
-    type Indicator = ImageIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Image".into()
@@ -250,12 +234,6 @@ impl ::re_types_core::Archetype for Image {
     #[inline]
     fn display_name() -> &'static str {
         "Image"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ImageIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -313,7 +291,6 @@ impl ::re_types_core::AsComponents for Image {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.buffer.clone(),
             self.format.clone(),
             self.opacity.clone(),
@@ -404,12 +381,7 @@ impl Image {
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

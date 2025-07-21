@@ -16,15 +16,14 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video binary.
 ///
-/// Only MP4 containers with AV1 are generally supported,
-/// though the web viewer supports more video codecs, depending on browser.
+/// Only MP4 containers are currently supported.
 ///
-/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+/// See <https://rerun.io/docs/reference/video> for codec support and more general information.
 ///
 /// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///
@@ -146,9 +145,9 @@ impl AssetVideo {
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_name: "rerun.components.Blob".into(),
-            archetype_field_name: Some("blob".into()),
+            archetype: Some("rerun.archetypes.AssetVideo".into()),
+            component: "AssetVideo:blob".into(),
+            component_type: Some("rerun.components.Blob".into()),
         }
     }
 
@@ -158,19 +157,9 @@ impl AssetVideo {
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-            component_name: "rerun.components.MediaType".into(),
-            archetype_field_name: Some("media_type".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.AssetVideoIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.AssetVideo".into()),
+            component: "AssetVideo:media_type".into(),
+            component_type: Some("rerun.components.MediaType".into()),
         }
     }
 }
@@ -178,37 +167,26 @@ impl AssetVideo {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [AssetVideo::descriptor_blob()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            AssetVideo::descriptor_media_type(),
-            AssetVideo::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [AssetVideo::descriptor_media_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             AssetVideo::descriptor_blob(),
             AssetVideo::descriptor_media_type(),
-            AssetVideo::descriptor_indicator(),
         ]
     });
 
 impl AssetVideo {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`AssetVideo`] [`::re_types_core::Archetype`]
-pub type AssetVideoIndicator = ::re_types_core::GenericIndicatorComponent<AssetVideo>;
-
 impl ::re_types_core::Archetype for AssetVideo {
-    type Indicator = AssetVideoIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.AssetVideo".into()
@@ -217,12 +195,6 @@ impl ::re_types_core::Archetype for AssetVideo {
     #[inline]
     fn display_name() -> &'static str {
         "Asset video"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        AssetVideoIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -268,14 +240,10 @@ impl ::re_types_core::AsComponents for AssetVideo {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.blob.clone(),
-            self.media_type.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.blob.clone(), self.media_type.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -339,12 +307,7 @@ impl AssetVideo {
                 .map(|media_type| media_type.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

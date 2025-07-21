@@ -35,6 +35,9 @@ mod v1alpha1 {
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
+    #[path = "./rerun.log_msg.v1alpha1.ext.rs"]
+    pub mod rerun_log_msg_v1alpha1_ext;
+
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
@@ -84,7 +87,6 @@ pub mod manifest_registry {
         /// with "rerun_" to avoid conflicts with user-defined fields.
         pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_PARTITION_MANIFEST_UPDATED_AT_FIELD_NAME: &str = "rerun_partition_manifest_updated_at";
-        pub const DATASET_MANIFEST_PARTITION_MANIFEST_URL_FIELD_NAME: &str = "rerun_partition_manifest_url";
         pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
@@ -318,7 +320,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self { payload } = self;
 
-            payload.heap_size_bytes()
+            payload.len() as _
         }
     }
 
@@ -336,6 +338,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self {
                 store_id,
+                chunk_id,
                 compression,
                 uncompressed_size,
                 encoding,
@@ -343,10 +346,11 @@ mod sizes {
             } = self;
 
             store_id.heap_size_bytes()
+                + chunk_id.heap_size_bytes()
                 + compression.heap_size_bytes()
                 + uncompressed_size.heap_size_bytes()
                 + encoding.heap_size_bytes()
-                + payload.heap_size_bytes()
+                + payload.len() as u64
         }
     }
 
@@ -373,7 +377,8 @@ mod sizes {
                 payload,
             } = self;
 
-            encoder_version.heap_size_bytes() + payload.heap_size_bytes()
+            encoder_version.heap_size_bytes()
+                + payload.as_ref().map_or(0, |payload| payload.len() as u64)
         }
     }
 }

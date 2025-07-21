@@ -1,8 +1,6 @@
 use ahash::HashSet;
-use egui::{Context, Frame, Id, Margin, RichText, Stroke, Style};
+use egui::{Color32, Context, Frame, Id, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
-
-pub const CELL_MARGIN: Margin = Margin::symmetric(8, 6);
 
 /// This applies some fixes so that the column resize bar is correctly displayed.
 ///
@@ -18,17 +16,19 @@ pub fn apply_table_style_fixes(style: &mut Style) {
     let design_tokens = design_tokens_of(theme);
 
     style.visuals.widgets.hovered.bg_stroke =
-        Stroke::new(1.0, design_tokens.table_interaction_hovered_bg_stroke());
+        Stroke::new(1.0, design_tokens.table_interaction_hovered_bg_stroke);
     style.visuals.widgets.active.bg_stroke =
-        Stroke::new(1.0, design_tokens.table_interaction_active_bg_stroke());
-    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(
-        1.0,
-        design_tokens.table_interaction_noninteractive_bg_stroke(),
-    );
+        Stroke::new(1.0, design_tokens.table_interaction_active_bg_stroke);
+    // regular vertical lines are drawn in cell_ui to allow cells to be connected
+    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.0, Color32::TRANSPARENT);
 }
 
-pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Response {
-    header_ui(ui, |ui| {
+pub fn header_title(
+    ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
+    title: impl Into<RichText>,
+) -> egui::Response {
+    header_ui(ui, table_style, false, |ui| {
         ui.monospace(title.into().strong());
     })
     .response
@@ -36,22 +36,30 @@ pub fn header_title(ui: &mut egui::Ui, title: impl Into<RichText>) -> egui::Resp
 
 pub fn header_ui<R>(
     ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
+    connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new()
-        .inner_margin(CELL_MARGIN)
-        .fill(ui.design_tokens().table_header_bg_fill())
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            content(ui)
-        });
+    let rect = ui.max_rect();
+    ui.painter()
+        .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
-    let rect = response.response.rect;
+    let response = Frame::new()
+        .inner_margin(ui.tokens().header_cell_margin(table_style))
+        .show(ui, content);
+
+    if !connected_to_next_cell {
+        ui.painter().vline(
+            rect.max.x - 1.0,
+            rect.y_range(),
+            Stroke::new(1.0, ui.tokens().table_header_stroke_color),
+        );
+    }
 
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
-        Stroke::new(1.0, ui.design_tokens().table_header_stroke_color()),
+        Stroke::new(1.0, ui.tokens().table_header_stroke_color),
     );
 
     response
@@ -59,23 +67,28 @@ pub fn header_ui<R>(
 
 pub fn cell_ui<R>(
     ui: &mut egui::Ui,
+    table_style: re_ui::TableStyle,
+    connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let response = Frame::new().inner_margin(CELL_MARGIN).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        content(ui)
-    });
+    let response = Frame::new()
+        .inner_margin(ui.tokens().table_cell_margin(table_style))
+        .show(ui, content);
 
-    let rect = response.response.rect;
+    let rect = ui.max_rect();
+
+    if !connected_to_next_cell {
+        ui.painter().vline(
+            rect.max.x - 1.0,
+            rect.y_range(),
+            Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
+        );
+    }
 
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
-        Stroke::new(
-            1.0,
-            ui.design_tokens()
-                .table_interaction_noninteractive_bg_stroke(),
-        ),
+        Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
     );
 
     response
@@ -99,6 +112,10 @@ impl ColumnConfig {
 
     pub fn new_with_visible(id: Id, name: String, visible: bool) -> Self {
         Self { id, name, visible }
+    }
+
+    pub fn id(&self) -> Id {
+        self.id
     }
 }
 
@@ -178,15 +195,15 @@ impl TableConfig {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         let response = egui_dnd::dnd(ui, "Columns").show(
             self.columns.iter_mut(),
-            |ui, item, handle, _state| {
-                let visible = item.visible;
+            |ui, column, handle, _state| {
+                let visible = column.visible;
                 egui::Sides::new().show(
                     ui,
                     |ui| {
                         handle.ui(ui, |ui| {
                             ui.small_icon(&icons::DND_HANDLE, None);
                         });
-                        let mut label = RichText::new(&item.name);
+                        let mut label = RichText::new(&column.name);
                         if visible {
                             label = label.strong();
                         } else {
@@ -195,15 +212,13 @@ impl TableConfig {
                         ui.label(label);
                     },
                     |ui| {
-                        if ui
-                            .small_icon_button(if item.visible {
-                                &icons::VISIBLE
-                            } else {
-                                &icons::INVISIBLE
-                            })
-                            .clicked()
-                        {
-                            item.visible = !item.visible;
+                        let (icon, alt_text) = if column.visible {
+                            (&icons::VISIBLE, "Hide column")
+                        } else {
+                            (&icons::INVISIBLE, "Show column")
+                        };
+                        if ui.small_icon_button(icon, alt_text).clicked() {
+                            column.visible = !column.visible;
                         }
                     },
                 );

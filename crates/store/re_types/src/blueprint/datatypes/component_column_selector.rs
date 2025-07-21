@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Describe a component column to be selected in the dataframe view.
@@ -28,6 +28,9 @@ pub struct ComponentColumnSelector {
     pub entity_path: crate::datatypes::EntityPath,
 
     /// The name of the component.
+    ///
+    /// This acts as the component name in the context of a given `entity_path`
+    /// An example for this would be `Points3D:positions`, for the `positions` field in [`archetypes::Points3D`][crate::archetypes::Points3D].
     pub component: crate::datatypes::Utf8,
 }
 

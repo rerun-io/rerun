@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a container.
@@ -72,9 +72,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_container_kind() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.ContainerKind".into(),
-            archetype_field_name: Some("container_kind".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:container_kind".into(),
+            component_type: Some("rerun.blueprint.components.ContainerKind".into()),
         }
     }
 
@@ -84,9 +84,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.components.Name".into(),
-            archetype_field_name: Some("display_name".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:display_name".into(),
+            component_type: Some("rerun.components.Name".into()),
         }
     }
 
@@ -96,9 +96,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_contents() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.IncludedContent".into(),
-            archetype_field_name: Some("contents".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:contents".into(),
+            component_type: Some("rerun.blueprint.components.IncludedContent".into()),
         }
     }
 
@@ -108,9 +108,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_col_shares() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.ColumnShare".into(),
-            archetype_field_name: Some("col_shares".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:col_shares".into(),
+            component_type: Some("rerun.blueprint.components.ColumnShare".into()),
         }
     }
 
@@ -120,9 +120,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_row_shares() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.RowShare".into(),
-            archetype_field_name: Some("row_shares".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:row_shares".into(),
+            component_type: Some("rerun.blueprint.components.RowShare".into()),
         }
     }
 
@@ -132,9 +132,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_active_tab() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.ActiveTab".into(),
-            archetype_field_name: Some("active_tab".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:active_tab".into(),
+            component_type: Some("rerun.blueprint.components.ActiveTab".into()),
         }
     }
 
@@ -144,9 +144,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.components.Visible".into(),
-            archetype_field_name: Some("visible".into()),
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:visible".into(),
+            component_type: Some("rerun.components.Visible".into()),
         }
     }
 
@@ -156,19 +156,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_grid_columns() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "rerun.blueprint.components.GridColumns".into(),
-            archetype_field_name: Some("grid_columns".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component: "ContainerBlueprint:grid_columns".into(),
+            component_type: Some("rerun.blueprint.components.GridColumns".into()),
         }
     }
 }
@@ -176,8 +166,8 @@ impl ContainerBlueprint {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [ContainerBlueprint::descriptor_container_kind()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ContainerBlueprint::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -192,11 +182,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ContainerBlueprint::descriptor_container_kind(),
-            ContainerBlueprint::descriptor_indicator(),
             ContainerBlueprint::descriptor_display_name(),
             ContainerBlueprint::descriptor_contents(),
             ContainerBlueprint::descriptor_col_shares(),
@@ -208,17 +197,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     });
 
 impl ContainerBlueprint {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]
-pub type ContainerBlueprintIndicator =
-    ::re_types_core::GenericIndicatorComponent<ContainerBlueprint>;
-
 impl ::re_types_core::Archetype for ContainerBlueprint {
-    type Indicator = ContainerBlueprintIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ContainerBlueprint".into()
@@ -227,12 +210,6 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn display_name() -> &'static str {
         "Container blueprint"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ContainerBlueprintIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -316,7 +293,6 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.container_kind.clone(),
             self.display_name.clone(),
             self.contents.clone(),

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An individual query expression used to filter a set of [`datatypes::EntityPath`][crate::datatypes::EntityPath]s.
@@ -37,8 +37,8 @@ pub struct QueryExpression(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for QueryExpression {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.QueryExpression")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.QueryExpression".into()
     }
 }
 

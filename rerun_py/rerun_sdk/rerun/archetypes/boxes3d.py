@@ -25,9 +25,8 @@ class Boxes3D(Boxes3DExt, Archetype):
     """
     **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
-    Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
-    Some of its component are repeated here for convenience.
-    If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
+    Orienting and placing boxes forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
 
     Example
     -------
@@ -118,17 +117,14 @@ class Boxes3D(Boxes3DExt, Archetype):
             Optional center positions of the boxes.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the boxes.
         radii:
@@ -141,7 +137,10 @@ class Boxes3D(Boxes3DExt, Archetype):
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
 
@@ -209,17 +208,14 @@ class Boxes3D(Boxes3DExt, Archetype):
             Optional center positions of the boxes.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the boxes.
         radii:
@@ -232,7 +228,10 @@ class Boxes3D(Boxes3DExt, Archetype):
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
 
@@ -255,21 +254,21 @@ class Boxes3D(Boxes3DExt, Archetype):
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "radii": radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Boxes3D:half_sizes": half_sizes,
+            "Boxes3D:centers": centers,
+            "Boxes3D:rotation_axis_angles": rotation_axis_angles,
+            "Boxes3D:quaternions": quaternions,
+            "Boxes3D:colors": colors,
+            "Boxes3D:radii": radii,
+            "Boxes3D:fill_mode": fill_mode,
+            "Boxes3D:labels": labels,
+            "Boxes3D:show_labels": show_labels,
+            "Boxes3D:class_ids": class_ids,
         }
         columns = []
 
@@ -278,7 +277,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -298,8 +297,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": True},
@@ -318,7 +316,6 @@ class Boxes3D(Boxes3DExt, Archetype):
     # Optional center positions of the boxes.
     #
     # If not specified, the centers will be at (0, 0, 0).
-    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -330,7 +327,6 @@ class Boxes3D(Boxes3DExt, Archetype):
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -342,7 +338,6 @@ class Boxes3D(Boxes3DExt, Archetype):
     # Rotations via quaternion.
     #
     # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -390,7 +385,10 @@ class Boxes3D(Boxes3DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

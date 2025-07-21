@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
@@ -64,7 +64,10 @@ pub struct GraphNodes {
     /// Optional text labels for the node.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional radii for nodes.
@@ -78,9 +81,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_node_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.GraphNode".into(),
-            archetype_field_name: Some("node_ids".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:node_ids".into(),
+            component_type: Some("rerun.components.GraphNode".into()),
         }
     }
 
@@ -90,9 +93,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.Position2D".into(),
-            archetype_field_name: Some("positions".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:positions".into(),
+            component_type: Some("rerun.components.Position2D".into()),
         }
     }
 
@@ -102,9 +105,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -114,9 +117,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -126,9 +129,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -138,19 +141,9 @@ impl GraphNodes {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.GraphNodesIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.GraphNodes".into()),
+            component: "GraphNodes:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 }
@@ -158,8 +151,8 @@ impl GraphNodes {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_node_ids()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -172,11 +165,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GraphNodes::descriptor_node_ids(),
-            GraphNodes::descriptor_indicator(),
             GraphNodes::descriptor_positions(),
             GraphNodes::descriptor_colors(),
             GraphNodes::descriptor_labels(),
@@ -186,16 +178,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     });
 
 impl GraphNodes {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
-/// Indicator component for the [`GraphNodes`] [`::re_types_core::Archetype`]
-pub type GraphNodesIndicator = ::re_types_core::GenericIndicatorComponent<GraphNodes>;
-
 impl ::re_types_core::Archetype for GraphNodes {
-    type Indicator = GraphNodesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GraphNodes".into()
@@ -204,12 +191,6 @@ impl ::re_types_core::Archetype for GraphNodes {
     #[inline]
     fn display_name() -> &'static str {
         "Graph nodes"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GraphNodesIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -277,7 +258,6 @@ impl ::re_types_core::AsComponents for GraphNodes {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.node_ids.clone(),
             self.positions.clone(),
             self.colors.clone(),
@@ -385,12 +365,7 @@ impl GraphNodes {
                 .map(|radii| radii.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -458,7 +433,10 @@ impl GraphNodes {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

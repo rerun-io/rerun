@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Distance to the near clip plane used for `Spatial2DView`.
@@ -31,8 +31,8 @@ pub struct NearClipPlane(
 
 impl ::re_types_core::Component for NearClipPlane {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.NearClipPlane")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.NearClipPlane".into()
     }
 }
 

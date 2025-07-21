@@ -87,6 +87,30 @@ VALID_TIMESTAMP_CASES = [
         ),
     ),
     (
+        np.array([0, 1, 2, 3]),
+        pa.array(
+            [
+                np.datetime64("1970-01-01T00:00:00", "ns"),
+                np.datetime64("1970-01-01T00:00:01", "ns"),
+                np.datetime64("1970-01-01T00:00:02", "ns"),
+                np.datetime64("1970-01-01T00:00:03", "ns"),
+            ],
+            type=pa.timestamp("ns"),
+        ),
+    ),
+    (
+        np.array([0.0, 1.5, 2.25, 3.0]),
+        pa.array(
+            [
+                np.datetime64("1970-01-01T00:00:00", "ns"),
+                np.datetime64("1970-01-01T00:00:01.50", "ns"),
+                np.datetime64("1970-01-01T00:00:02.25", "ns"),
+                np.datetime64("1970-01-01T00:00:03", "ns"),
+            ],
+            type=pa.timestamp("ns"),
+        ),
+    ),
+    (
         [datetime(2020, 1, 1, 0, 0, 0), datetime(2020, 1, 1, 0, 0, 1)],
         pa.array(
             [

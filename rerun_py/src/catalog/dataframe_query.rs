@@ -1,30 +1,34 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use arrow::array::RecordBatchReader;
 use arrow::datatypes::Schema;
+use arrow::pyarrow::PyArrowType;
+use arrow::record_batch::RecordBatchIterator;
 use datafusion::catalog::TableProvider;
+use datafusion::prelude::SessionContext;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+use tracing::instrument;
 
-use re_chunk::ComponentName;
-use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk::ComponentIdentifier;
+use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{PyDataset, to_py_err};
-use crate::dataframe::ComponentLike;
-use crate::utils::get_tokio_runtime;
+use crate::catalog::{PyDatasetEntry, to_py_err};
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
-    dataset: Py<PyDataset>,
+    dataset: Py<PyDatasetEntry>,
 
     query_expression: QueryExpression,
 
@@ -35,26 +39,23 @@ pub struct PyDataframeQueryView {
 }
 
 impl PyDataframeQueryView {
-    #[expect(clippy::fn_params_excessive_bools)]
+    #[instrument(skip(dataset, contents, py))]
     pub fn new(
-        dataset: Py<PyDataset>,
-        index: String,
+        dataset: Py<PyDatasetEntry>,
+        index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
-        include_indicator_columns: bool,
         include_tombstone_columns: bool,
         py: Python<'_>,
     ) -> PyResult<Self> {
+        // Static only implies:
+        // - we include only static columns in the contents
+        // - we only return one row per partition, with the static data
+        let static_only = index.is_none();
+
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
-        let schema = {
-            let dataset_py = dataset.borrow(py);
-            let entry = dataset_py.as_super();
-            let dataset_id = entry.details.id;
-            let mut connection = entry.client.borrow(py).connection().clone();
-
-            connection.get_dataset_schema(py, dataset_id)?
-        };
+        let schema = PyDatasetEntry::fetch_arrow_schema(&dataset.borrow(py))?;
 
         // TODO(jleibs): Check schema for the index name
 
@@ -66,9 +67,13 @@ impl PyDataframeQueryView {
             query_expression: QueryExpression {
                 view_contents: Some(view_contents),
                 include_semantically_empty_columns,
-                include_indicator_columns,
                 include_tombstone_columns,
-                filtered_index: Some(index.into()),
+                include_static_columns: if static_only {
+                    re_chunk_store::StaticColumnSelection::StaticOnly
+                } else {
+                    re_chunk_store::StaticColumnSelection::Both
+                },
+                filtered_index: index.map(Into::into),
                 filtered_index_range: None,
                 filtered_index_values: None,
                 using_index_values: None,
@@ -142,14 +147,8 @@ impl PyDataframeQueryView {
     ///
     ///     The original view will not be modified.
     fn filter_range_sequence(&self, py: Python<'_>, start: i64, end: i64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed a sequence.
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this check? If so, how can we accomplish it?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not a sequence.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
@@ -209,14 +208,8 @@ impl PyDataframeQueryView {
     ///
     ///     The original view will not be modified.
     fn filter_range_secs(&self, py: Python<'_>, start: f64, end: f64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed temporal
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this check? If so, how can we accomplish it?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not temporal.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
@@ -257,14 +250,8 @@ impl PyDataframeQueryView {
     ///
     ///     The original view will not be modified.
     fn filter_range_nanos(&self, py: Python<'_>, start: i64, end: i64) -> PyResult<Self> {
+        // TODO(emilk): it would be nice to add a check here that the index type is indeed a sequence.
         match self.query_expression.filtered_index.as_ref() {
-            // TODO(#9084): do we need this?
-            // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
-            //     return Err(PyValueError::new_err(format!(
-            //         "Index for {} is not temporal.",
-            //         filtered_index.name()
-            //     )));
-            // }
             Some(_) => {}
 
             None => {
@@ -396,46 +383,12 @@ impl PyDataframeQueryView {
     }
 
     /// Returns a DataFusion table provider capsule.
+    #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
-        let dataset = self_.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let mut connection = entry.client.borrow(py).connection().clone();
-
-        //
-        // Fetch relevant chunks
-        //
-
-        let chunk_stores = connection.get_chunks_for_dataframe_query(
-            py,
-            dataset_id,
-            &self_.query_expression.view_contents,
-            self_.query_expression.min_latest_at(),
-            self_.query_expression.max_range(),
-            self_.partition_ids.as_slice(),
-        )?;
-
-        let query_engines = chunk_stores
-            .into_iter()
-            .map(|(partition_id, chunk_store)| {
-                let store_handle = ChunkStoreHandle::new(chunk_store);
-                let query_engine = QueryEngine::new(
-                    store_handle.clone(),
-                    QueryCache::new_handle(store_handle.clone()),
-                );
-
-                (partition_id, query_engine)
-            })
-            .collect();
-
-        let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engines, self_.query_expression.clone())
-                .map_err(to_py_err)?
-                .try_into()
-                .map_err(to_py_err)?;
+        let provider = self_.as_table_provider(py)?;
 
         let capsule_name = cr"datafusion_table_provider".into();
 
@@ -445,7 +398,37 @@ impl PyDataframeQueryView {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Convert this view to a [`pyarrow.RecordBatchReader`][].
+    #[instrument(skip_all)]
+    fn to_arrow_reader<'py>(
+        self_: PyRef<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let table_provider = self_.as_table_provider(py)?;
+        let schema = table_provider.schema();
+
+        let session_context = SessionContext::new();
+        session_context
+            .register_table("__table__", table_provider)
+            .map_err(to_py_err)?;
+
+        let record_batches = wait_for_future(py, async move {
+            session_context
+                .table("__table__")
+                .await
+                .map_err(to_py_err)?
+                .collect()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        let reader = RecordBatchIterator::new(record_batches.into_iter().map(Result::Ok), schema);
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
     /// Register this view to the global DataFusion context and return a DataFrame.
+    #[instrument(skip_all)]
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
@@ -470,12 +453,69 @@ impl PyDataframeQueryView {
 
         Ok(df)
     }
+
+    /// Get the relevant chunk_ids for this view.
+    #[instrument(skip_all)]
+    fn get_chunk_ids<'py>(
+        self_: PyRef<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let dataset = self_.dataset.borrow(py);
+        let entry = dataset.as_super();
+        let dataset_id = entry.details.id;
+        let connection = entry.client.borrow(py).connection().clone();
+
+        // Fetch relevant chunks
+        connection.get_chunk_ids_for_dataframe_query(
+            py,
+            dataset_id,
+            &self_.query_expression,
+            self_.partition_ids.as_slice(),
+        )
+    }
+}
+
+impl PyDataframeQueryView {
+    fn as_table_provider(&self, py: Python<'_>) -> PyResult<Arc<dyn TableProvider>> {
+        let dataset = self.dataset.borrow(py);
+        let entry = dataset.as_super();
+        let dataset_id = entry.details.id;
+        let connection = entry.client.borrow(py).connection().clone();
+
+        //
+        // Fetch relevant chunks
+        //
+
+        let chunk_stores = connection.get_chunks_for_dataframe_query(
+            py,
+            dataset_id,
+            &self.query_expression,
+            self.partition_ids.as_slice(),
+        )?;
+
+        let query_engines = chunk_stores
+            .into_iter()
+            .map(|(partition_id, store_handle)| {
+                let query_engine = QueryEngine::new(
+                    store_handle.clone(),
+                    QueryCache::new_handle(store_handle.clone()),
+                );
+
+                (partition_id, query_engine)
+            })
+            .collect();
+
+        DataframeQueryTableProvider::new(query_engines, &self.query_expression)
+            .map_err(to_py_err)?
+            .try_into()
+            .map_err(to_py_err)
+    }
 }
 
 /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
 ///
 /// ```python
-/// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+/// ViewContentsLike = Union[str, Dict[str, Union[str, Sequence[str]]]]
 /// ```
 ///
 /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
@@ -506,7 +546,7 @@ fn extract_contents_expr(
     let mut known_components = BTreeMap::<EntityPath, BTreeSet<ComponentDescriptor>>::new();
 
     for component in &component_descriptors {
-        // We need to resolve the component name to the best one in the schema
+        // We need to resolve the component type to the best one in the schema
         // (e.g. "color" -> "rerun.color")
         known_components
             .entry(component.entity_path.clone())
@@ -535,7 +575,7 @@ fn extract_contents_expr(
 
         Ok(contents)
     } else if let Ok(dict) = expr.downcast::<PyDict>() {
-        // `Union[ComponentLike, Sequence[ComponentLike]]]`
+        // `Union[str, Sequence[str]]]`
 
         let mut contents = ViewContentsSelector::default();
 
@@ -552,30 +592,22 @@ fn extract_contents_expr(
                     ))
                 })?.resolve_without_substitutions();
 
-            let component_strs: BTreeSet<String> = if let Ok(component) =
-                value.extract::<ComponentLike>()
+            let component_strs: BTreeSet<ComponentIdentifier> = if let Ok(component) =
+                value.extract::<String>()
             {
-                std::iter::once(component.0).collect()
-            } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
-                components.into_iter().map(|c| c.0).collect()
+                std::iter::once(component.into()).collect()
+            } else if let Ok(components) = value.extract::<Vec<String>>() {
+                components.into_iter().map(Into::into).collect()
             } else {
                 return Err(PyTypeError::new_err(format!(
-                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a `str` or Sequence[str]."
                 )));
             };
 
             let mut key_contents = known_components
                 .keys()
                 .filter(|p| path_filter.matches(p))
-                .map(|entity_path| {
-                    let components: BTreeSet<ComponentName> = component_strs
-                        .iter()
-                        .map(|component_name| {
-                            find_best_component(&known_components, entity_path, component_name)
-                        })
-                        .collect();
-                    (entity_path.clone(), Some(components))
-                })
+                .map(|entity_path| (entity_path.clone(), Some(component_strs.clone())))
                 .collect();
 
             contents.append(&mut key_contents);
@@ -587,20 +619,4 @@ fn extract_contents_expr(
             "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
         ));
     }
-}
-
-fn find_best_component(
-    mapping: &BTreeMap<EntityPath, BTreeSet<ComponentDescriptor>>,
-    entity_path: &EntityPath,
-    component_name: &str,
-) -> ComponentName {
-    mapping
-        .get(entity_path)
-        .and_then(|components| {
-            components
-                .iter()
-                .find(|component| component.component_name.matches(component_name))
-        })
-        .map(|component| component.component_name)
-        .unwrap_or_else(|| ComponentName::new(component_name))
 }

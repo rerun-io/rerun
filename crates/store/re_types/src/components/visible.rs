@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether the container, view, entity or instance is currently visible.
@@ -26,8 +26,8 @@ pub struct Visible(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for Visible {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Visible")
+    fn name() -> ComponentType {
+        "rerun.components.Visible".into()
     }
 }
 

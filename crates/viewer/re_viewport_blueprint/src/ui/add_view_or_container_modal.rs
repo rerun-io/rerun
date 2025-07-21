@@ -2,7 +2,7 @@
 
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    ContainerId, RecommendedView, ViewerContext, blueprint_id_to_tile_id, icon_for_container_kind,
+    ContainerId, ViewerContext, blueprint_id_to_tile_id, icon_for_container_kind,
 };
 
 use crate::{ViewBlueprint, ViewportBlueprint};
@@ -108,7 +108,7 @@ fn modal_ui(
     for view in ctx
         .view_class_registry()
         .iter_registry()
-        .map(|entry| ViewBlueprint::new(entry.identifier, RecommendedView::root()))
+        .map(|entry| ViewBlueprint::new_with_root_wildcard(entry.identifier))
     {
         let icon = view.class(ctx.view_class_registry()).icon();
         let title = view.class(ctx.view_class_registry()).display_name();
@@ -174,7 +174,7 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
                     ((row_height - icon_size.y) / 2.0) as i8,
                 ), // should be 62x42 when combined with icon size
                 corner_radius: egui::CornerRadius::same(thumbnail_rounding),
-                fill: ui.design_tokens().thumbnail_background_color(),
+                fill: ui.tokens().thumbnail_background_color,
                 ..Default::default()
             }
             .show(ui, thumbnail_content);

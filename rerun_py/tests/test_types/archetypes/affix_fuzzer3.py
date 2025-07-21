@@ -220,29 +220,29 @@ class AffixFuzzer3(Archetype):
                 fuzz2018=fuzz2018,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "fuzz2001": fuzz2001,
-            "fuzz2002": fuzz2002,
-            "fuzz2003": fuzz2003,
-            "fuzz2004": fuzz2004,
-            "fuzz2005": fuzz2005,
-            "fuzz2006": fuzz2006,
-            "fuzz2007": fuzz2007,
-            "fuzz2008": fuzz2008,
-            "fuzz2009": fuzz2009,
-            "fuzz2010": fuzz2010,
-            "fuzz2011": fuzz2011,
-            "fuzz2012": fuzz2012,
-            "fuzz2013": fuzz2013,
-            "fuzz2014": fuzz2014,
-            "fuzz2015": fuzz2015,
-            "fuzz2016": fuzz2016,
-            "fuzz2017": fuzz2017,
-            "fuzz2018": fuzz2018,
+            "AffixFuzzer3:fuzz2001": fuzz2001,
+            "AffixFuzzer3:fuzz2002": fuzz2002,
+            "AffixFuzzer3:fuzz2003": fuzz2003,
+            "AffixFuzzer3:fuzz2004": fuzz2004,
+            "AffixFuzzer3:fuzz2005": fuzz2005,
+            "AffixFuzzer3:fuzz2006": fuzz2006,
+            "AffixFuzzer3:fuzz2007": fuzz2007,
+            "AffixFuzzer3:fuzz2008": fuzz2008,
+            "AffixFuzzer3:fuzz2009": fuzz2009,
+            "AffixFuzzer3:fuzz2010": fuzz2010,
+            "AffixFuzzer3:fuzz2011": fuzz2011,
+            "AffixFuzzer3:fuzz2012": fuzz2012,
+            "AffixFuzzer3:fuzz2013": fuzz2013,
+            "AffixFuzzer3:fuzz2014": fuzz2014,
+            "AffixFuzzer3:fuzz2015": fuzz2015,
+            "AffixFuzzer3:fuzz2016": fuzz2016,
+            "AffixFuzzer3:fuzz2017": fuzz2017,
+            "AffixFuzzer3:fuzz2018": fuzz2018,
         }
         columns = []
 
@@ -251,7 +251,7 @@ class AffixFuzzer3(Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -271,8 +271,7 @@ class AffixFuzzer3(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": True},

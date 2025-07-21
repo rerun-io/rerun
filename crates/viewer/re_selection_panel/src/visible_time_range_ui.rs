@@ -166,7 +166,7 @@ fn query_range_ui(
 This feature controls the time range used to display data in the view.
 
 Notes:
-- The settings are inherited from the parent entity or enclosing view if not overridden.
+- The settings are inherited from the enclosing view if not overridden.
 - Visible time range properties are stored on a per-timeline basis.
 - The data current as of the time range starting time is included.";
 
@@ -180,8 +180,7 @@ Notes:
                     .on_hover_text(if is_view {
                         "Default query range settings for this kind of view"
                     } else {
-                        "Query range settings inherited from parent entity or enclosing \
-                        view"
+                        "Query range settings inherited from enclosing view"
                     });
                 ui.re_radio_value(has_individual_time_range, true, "Override")
                     .on_hover_text(if is_view {

@@ -10,7 +10,6 @@
 #include "../../components/tensor_dimension_index_selection.hpp"
 #include "../../components/tensor_height_dimension.hpp"
 #include "../../components/tensor_width_dimension.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -47,35 +46,29 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> slider;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.TensorSliceSelectionIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.TensorSliceSelection";
 
         /// `ComponentDescriptor` for the `width` field.
         static constexpr auto Descriptor_width = ComponentDescriptor(
-            ArchetypeName, "width",
-            Loggable<rerun::components::TensorWidthDimension>::Descriptor.component_name
+            ArchetypeName, "TensorSliceSelection:width",
+            Loggable<rerun::components::TensorWidthDimension>::ComponentType
         );
         /// `ComponentDescriptor` for the `height` field.
         static constexpr auto Descriptor_height = ComponentDescriptor(
-            ArchetypeName, "height",
-            Loggable<rerun::components::TensorHeightDimension>::Descriptor.component_name
+            ArchetypeName, "TensorSliceSelection:height",
+            Loggable<rerun::components::TensorHeightDimension>::ComponentType
         );
         /// `ComponentDescriptor` for the `indices` field.
         static constexpr auto Descriptor_indices = ComponentDescriptor(
-            ArchetypeName, "indices",
-            Loggable<rerun::components::TensorDimensionIndexSelection>::Descriptor.component_name
+            ArchetypeName, "TensorSliceSelection:indices",
+            Loggable<rerun::components::TensorDimensionIndexSelection>::ComponentType
         );
         /// `ComponentDescriptor` for the `slider` field.
         static constexpr auto Descriptor_slider = ComponentDescriptor(
-            ArchetypeName, "slider",
-            Loggable<rerun::blueprint::components::TensorDimensionIndexSlider>::Descriptor
-                .component_name
+            ArchetypeName, "TensorSliceSelection:slider",
+            Loggable<rerun::blueprint::components::TensorDimensionIndexSlider>::ComponentType
         );
 
       public:

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
@@ -116,7 +116,10 @@ pub struct LineStrips3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
@@ -132,9 +135,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_strips() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.LineStrip3D".into(),
-            archetype_field_name: Some("strips".into()),
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:strips".into(),
+            component_type: Some("rerun.components.LineStrip3D".into()),
         }
     }
 
@@ -144,9 +147,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -156,9 +159,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -168,9 +171,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -180,9 +183,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -192,19 +195,9 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.LineStrips3DIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.LineStrips3D".into()),
+            component: "LineStrips3D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 }
@@ -212,12 +205,11 @@ impl LineStrips3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [LineStrips3D::descriptor_strips()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             LineStrips3D::descriptor_radii(),
             LineStrips3D::descriptor_colors(),
-            LineStrips3D::descriptor_indicator(),
         ]
     });
 
@@ -230,13 +222,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             LineStrips3D::descriptor_strips(),
             LineStrips3D::descriptor_radii(),
             LineStrips3D::descriptor_colors(),
-            LineStrips3D::descriptor_indicator(),
             LineStrips3D::descriptor_labels(),
             LineStrips3D::descriptor_show_labels(),
             LineStrips3D::descriptor_class_ids(),
@@ -244,16 +235,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     });
 
 impl LineStrips3D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
-/// Indicator component for the [`LineStrips3D`] [`::re_types_core::Archetype`]
-pub type LineStrips3DIndicator = ::re_types_core::GenericIndicatorComponent<LineStrips3D>;
-
 impl ::re_types_core::Archetype for LineStrips3D {
-    type Indicator = LineStrips3DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.LineStrips3D".into()
@@ -262,12 +248,6 @@ impl ::re_types_core::Archetype for LineStrips3D {
     #[inline]
     fn display_name() -> &'static str {
         "Line strips 3D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        LineStrips3DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -335,7 +315,6 @@ impl ::re_types_core::AsComponents for LineStrips3D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.strips.clone(),
             self.radii.clone(),
             self.colors.clone(),
@@ -443,12 +422,7 @@ impl LineStrips3D {
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -519,7 +493,10 @@ impl LineStrips3D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

@@ -1,6 +1,5 @@
-use egui::{Align2, Color32, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
+use egui::{Align2, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
 
-use crate::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].
@@ -10,7 +9,7 @@ use crate::{DesignTokens, TopBarStyle};
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
-    fn design_tokens(&self) -> &'static DesignTokens {
+    fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
     }
 
@@ -66,7 +65,7 @@ pub trait ContextExt {
     /// Text colored to indicate success.
     #[must_use]
     fn success_text(&self, text: impl Into<String>) -> egui::RichText {
-        egui::RichText::new(text).color(SUCCESS_COLOR)
+        egui::RichText::new(text).color(self.tokens().success_text_color)
     }
 
     /// Text colored to indicate a warning.
@@ -90,6 +89,7 @@ pub trait ContextExt {
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+        let tokens = self.tokens();
         let egui_zoom_factor = self.ctx().zoom_factor();
         let fullscreen = self
             .ctx()
@@ -98,17 +98,8 @@ pub trait ContextExt {
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
-        let make_room_for_window_buttons = !style_like_web && {
-            #[cfg(target_os = "macos")]
-            {
-                crate::FULLSIZE_CONTENT && !fullscreen
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                _ = fullscreen;
-                false
-            }
-        };
+        let make_room_for_window_buttons =
+            !style_like_web && cfg!(target_os = "macos") && crate::FULLSIZE_CONTENT && !fullscreen;
 
         let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
@@ -122,7 +113,7 @@ pub trait ContextExt {
             // …but never shrink below the native button height when zoomed out.
             height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
-            DesignTokens::top_bar_height() - DesignTokens::top_bar_margin().sum().y
+            tokens.top_bar_height() - tokens.top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
@@ -147,9 +138,16 @@ pub trait ContextExt {
                 .translate(-Vec2::splat(16.0));
             let mut mesh = Mesh::with_texture(texture.id);
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+            mesh.add_rect_with_uv(rect, uv, self.ctx().tokens().strong_fg_color);
             self.ctx().debug_painter().add(Shape::mesh(mesh));
         }
+    }
+
+    /// Whether to show extra information in the UI, e.g. in tooltips.
+    ///
+    /// This is controlled by holding the `Alt` key down.
+    fn show_extras(&self) -> bool {
+        self.ctx().input(|input| input.modifiers.alt)
     }
 }
 

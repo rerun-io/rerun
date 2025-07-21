@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
@@ -77,9 +77,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_line_strings() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_name: "rerun.components.GeoLineString".into(),
-            archetype_field_name: Some("line_strings".into()),
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+            component: "GeoLineStrings:line_strings".into(),
+            component_type: Some("rerun.components.GeoLineString".into()),
         }
     }
 
@@ -89,9 +89,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+            component: "GeoLineStrings:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -101,19 +101,9 @@ impl GeoLineStrings {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.GeoLineStringsIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+            component: "GeoLineStrings:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 }
@@ -121,39 +111,32 @@ impl GeoLineStrings {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GeoLineStrings::descriptor_line_strings()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoLineStrings::descriptor_radii(),
             GeoLineStrings::descriptor_colors(),
-            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GeoLineStrings::descriptor_line_strings(),
             GeoLineStrings::descriptor_radii(),
             GeoLineStrings::descriptor_colors(),
-            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
 impl GeoLineStrings {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`GeoLineStrings`] [`::re_types_core::Archetype`]
-pub type GeoLineStringsIndicator = ::re_types_core::GenericIndicatorComponent<GeoLineStrings>;
-
 impl ::re_types_core::Archetype for GeoLineStrings {
-    type Indicator = GeoLineStringsIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GeoLineStrings".into()
@@ -162,12 +145,6 @@ impl ::re_types_core::Archetype for GeoLineStrings {
     #[inline]
     fn display_name() -> &'static str {
         "Geo line strings"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GeoLineStringsIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -221,7 +198,6 @@ impl ::re_types_core::AsComponents for GeoLineStrings {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.line_strings.clone(),
             self.radii.clone(),
             self.colors.clone(),
@@ -302,12 +278,7 @@ impl GeoLineStrings {
                 .map(|colors| colors.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

@@ -10,7 +10,6 @@
 #include "../../component_column.hpp"
 #include "../../components/name.hpp"
 #include "../../components/visible.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -45,33 +44,28 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> visible;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ViewBlueprintIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewBlueprint";
 
         /// `ComponentDescriptor` for the `class_identifier` field.
         static constexpr auto Descriptor_class_identifier = ComponentDescriptor(
-            ArchetypeName, "class_identifier",
-            Loggable<rerun::blueprint::components::ViewClass>::Descriptor.component_name
+            ArchetypeName, "ViewBlueprint:class_identifier",
+            Loggable<rerun::blueprint::components::ViewClass>::ComponentType
         );
         /// `ComponentDescriptor` for the `display_name` field.
         static constexpr auto Descriptor_display_name = ComponentDescriptor(
-            ArchetypeName, "display_name",
-            Loggable<rerun::components::Name>::Descriptor.component_name
+            ArchetypeName, "ViewBlueprint:display_name",
+            Loggable<rerun::components::Name>::ComponentType
         );
         /// `ComponentDescriptor` for the `space_origin` field.
         static constexpr auto Descriptor_space_origin = ComponentDescriptor(
-            ArchetypeName, "space_origin",
-            Loggable<rerun::blueprint::components::ViewOrigin>::Descriptor.component_name
+            ArchetypeName, "ViewBlueprint:space_origin",
+            Loggable<rerun::blueprint::components::ViewOrigin>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "ViewBlueprint:visible",
+            Loggable<rerun::components::Visible>::ComponentType
         );
 
       public:

@@ -48,12 +48,14 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // an array with millions of values.
         if let Some(entries) = array.downcast_array_ref::<ListArray>() {
             if entries.len() == 1 {
-                return arrow_ui(ui, ui_layout, entries.values());
+                // Don't use `values` since this may contain values before and after the single blob we want to display.
+                return arrow_ui(ui, ui_layout, &entries.value(0));
             }
         }
         if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
             if entries.len() == 1 {
-                return arrow_ui(ui, ui_layout, entries.values());
+                // Don't use `values` since this may contain values before and after the single blob we want to display.
+                return arrow_ui(ui, ui_layout, &entries.value(0));
             }
         }
 

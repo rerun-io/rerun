@@ -1,17 +1,16 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_view_spatial::SpatialView3D;
-use re_viewer_context::test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_transform_clamping() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     {
-        test_context.log_entity("boxes/clamped_colors".into(), |builder| {
+        test_context.log_entity("boxes/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -20,7 +19,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("boxes/ignored_colors".into(), |builder| {
+        test_context.log_entity("boxes/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -32,26 +31,30 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("boxes/more_transforms_than_sizes".into(), |builder| {
+        test_context.log_entity("boxes/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
-                        [(0.0, 5.0, 0.0)],
-                        [(1.0, 1.0, 1.0)],
+                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
+                        [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
                     .with_colors([0x0000FFFF]),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
+                    // Note that the scale is applied _after_ the translation.
+                    // This means that the scales "scales the translation".
+                    // Prior to 0.24, the translation and the scale were on "the same transform",
+                    // therefore we'd apply scale first.
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
 
-        test_context.log_entity("boxes/no_primaries".into(), |builder| {
+        test_context.log_entity("boxes/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -70,7 +73,7 @@ pub fn test_transform_clamping() {
     }
 
     {
-        test_context.log_entity("spheres/clamped_colors".into(), |builder| {
+        test_context.log_entity("spheres/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -82,7 +85,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/ignored_colors".into(), |builder| {
+        test_context.log_entity("spheres/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
@@ -94,7 +97,7 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/more_transforms_than_sizes".into(), |builder| {
+        test_context.log_entity("spheres/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -113,7 +116,7 @@ pub fn test_transform_clamping() {
                 )
         });
 
-        test_context.log_entity("spheres/no_primaries".into(), |builder| {
+        test_context.log_entity("spheres/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
@@ -138,22 +141,6 @@ pub fn test_transform_clamping() {
         "transform_clamping",
         egui::vec2(300.0, 300.0),
     );
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    // Make sure we can draw stuff in the hover tables.
-    test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
-    // Also register the legacy UIs.
-    re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
-
-    test_context
 }
 
 #[allow(clippy::unwrap_used)]
@@ -198,34 +185,8 @@ fn run_view_ui_and_save_snapshot(
         let mut harness = test_context
             .setup_kittest_for_rendering()
             .with_size(size)
-            .build(|ctx| {
-                re_ui::apply_style_and_install_loaders(ctx);
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    test_context.run(ctx, |ctx| {
-                        let view_class = ctx
-                            .view_class_registry()
-                            .get_class_or_log_error(SpatialView3D::identifier());
-
-                        let view_blueprint = ViewBlueprint::try_from_db(
-                            view_id,
-                            ctx.store_context.blueprint,
-                            ctx.blueprint_query,
-                        )
-                        .expect("we just created that view");
-
-                        let mut view_states = test_context.view_states.lock();
-
-                        let view_state = view_states.get_mut_or_create(view_id, view_class);
-                        let (view_query, system_execution_output) =
-                            re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-                        view_class
-                            .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                            .expect("failed to run view ui");
-                    });
-
-                    test_context.handle_system_commands();
-                });
+            .build_ui(|ui| {
+                test_context.run_with_single_view(ui, view_id);
             });
 
         {
@@ -250,14 +211,13 @@ fn run_view_ui_and_save_snapshot(
                 modifiers: egui::Modifiers::default(),
             });
             harness.run_steps(10);
-            let broken_percent_threshold = 0.0037;
-            let num_pixels = (size.x * size.y).ceil() as u64;
+            let broken_pixels_fraction = 0.0045;
 
-            use re_viewer_context::test_context::HarnessExt as _;
-            harness.snapshot_with_broken_pixels_threshold(
+            harness.snapshot_options(
                 &name,
-                num_pixels,
-                broken_percent_threshold,
+                &SnapshotOptions::new().failed_pixel_count_threshold(
+                    (size.x * size.y * broken_pixels_fraction).round() as usize,
+                ),
             );
         }
     }

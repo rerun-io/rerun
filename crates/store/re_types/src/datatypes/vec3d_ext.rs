@@ -63,6 +63,20 @@ impl<'a> From<&'a [f32; 3]> for Vec3D {
     }
 }
 
+impl From<[f64; 3]> for Vec3D {
+    #[inline]
+    fn from([x, y, z]: [f64; 3]) -> Self {
+        Self([x as f32, y as f32, z as f32])
+    }
+}
+
+impl<'a> From<&'a [f64; 3]> for Vec3D {
+    #[inline]
+    fn from([x, y, z]: &'a [f64; 3]) -> Self {
+        Self([*x as f32, *y as f32, *z as f32])
+    }
+}
+
 impl<Idx> std::ops::Index<Idx> for Vec3D
 where
     Idx: std::slice::SliceIndex<[f32]>,

@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef};
+use arrow::datatypes::TimeUnit;
 
-use crate::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
+use crate::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -22,37 +23,6 @@ pub trait Enum:
 pub struct Reflection {
     pub components: ComponentReflectionMap,
     pub archetypes: ArchetypeReflectionMap,
-}
-
-impl Reflection {
-    /// Find an [`ArchetypeReflection`] based on its short name.
-    ///
-    /// Useful when the only information available is the short name, e.g. when inferring archetype
-    /// names from an indicator component.
-    //TODO(#6889): tagged component will contain a fully qualified archetype name, so this function
-    // will be unnecessary.
-    pub fn archetype_reflection_from_short_name(
-        &self,
-        short_name: &str,
-    ) -> Option<&ArchetypeReflection> {
-        // note: this mirrors `ArchetypeName::short_name`'s implementation
-        self.archetypes
-            .get(&ArchetypeName::from(short_name))
-            .or_else(|| {
-                self.archetypes.get(&ArchetypeName::from(format!(
-                    "rerun.archetypes.{short_name}"
-                )))
-            })
-            .or_else(|| {
-                self.archetypes.get(&ArchetypeName::from(format!(
-                    "rerun.blueprint.archetypes.{short_name}"
-                )))
-            })
-            .or_else(|| {
-                self.archetypes
-                    .get(&ArchetypeName::from(format!("rerun.{short_name}")))
-            })
-    }
 }
 
 /// Computes a placeholder for a given arrow datatype.
@@ -79,22 +49,90 @@ pub fn generic_placeholder_for_datatype(
         DataType::Boolean => Arc::new(array::BooleanArray::from_iter([Some(false)])),
         DataType::Int8 => Arc::new(array::Int8Array::from_iter([0])),
         DataType::Int16 => Arc::new(array::Int16Array::from_iter([0])),
+        DataType::Int32 => Arc::new(array::Int32Array::from_iter([0])),
+        DataType::Int64 => Arc::new(array::Int64Array::from_iter([0])),
 
-        DataType::Int32
-        | DataType::Date32
-        | DataType::Time32(_)
-        | DataType::Interval(IntervalUnit::YearMonth) => {
-            // TODO(andreas): Do we have to further distinguish these types? They do share the physical type.
-            Arc::new(array::Int32Array::from_iter([0]))
-        }
-        DataType::Int64
-        | DataType::Date64
-        | DataType::Timestamp(_, _)
-        | DataType::Time64(_)
-        | DataType::Duration(_) => {
-            // TODO(andreas): Do we have to further distinguish these types? They do share the physical type.
-            Arc::new(array::Int64Array::from_iter([0]))
-        }
+        DataType::Date32 => Arc::new(array::Date32Array::from_iter([Some(0)])),
+
+        DataType::Date64 => Arc::new(array::Date64Array::from_iter([Some(0)])),
+
+        DataType::Interval(interval_unit) => match interval_unit {
+            IntervalUnit::YearMonth => {
+                Arc::new(array::IntervalYearMonthArray::from_iter([Some(0)]))
+            }
+            IntervalUnit::DayTime => Arc::new(array::IntervalDayTimeArray::from_iter([Some(
+                types::IntervalDayTime::new(0, 0),
+            )])),
+            IntervalUnit::MonthDayNano => {
+                Arc::new(array::IntervalMonthDayNanoArray::from_iter([Some(
+                    types::IntervalMonthDayNano::new(0, 0, 0),
+                )]))
+            }
+        },
+
+        DataType::Timestamp(time_unit, _) => match time_unit {
+            TimeUnit::Second => Arc::new(array::TimestampSecondArray::new(vec![0].into(), None)),
+
+            TimeUnit::Millisecond => {
+                Arc::new(array::TimestampMillisecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Microsecond => {
+                Arc::new(array::TimestampMicrosecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Nanosecond => {
+                Arc::new(array::TimestampNanosecondArray::new(vec![0].into(), None))
+            }
+        },
+
+        DataType::Time32(time_unit) => match time_unit {
+            TimeUnit::Second => Arc::new(array::Time32SecondArray::new(vec![0].into(), None)),
+
+            TimeUnit::Millisecond => {
+                Arc::new(array::Time32MillisecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Microsecond | TimeUnit::Nanosecond => {
+                re_log::debug_once!(
+                    "Attempted to create a placeholder for out-of-spec datatype: {datatype:?}"
+                );
+                array::new_empty_array(datatype)
+            }
+        },
+
+        DataType::Time64(time_unit) => match time_unit {
+            TimeUnit::Microsecond => {
+                Arc::new(array::Time64MicrosecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Nanosecond => {
+                Arc::new(array::Time64NanosecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Second | TimeUnit::Millisecond => {
+                re_log::debug_once!(
+                    "Attempted to create a placeholder for out-of-spec datatype: {datatype:?}"
+                );
+                array::new_empty_array(datatype)
+            }
+        },
+
+        DataType::Duration(time_unit) => match time_unit {
+            TimeUnit::Second => Arc::new(array::DurationSecondArray::new(vec![0].into(), None)),
+
+            TimeUnit::Millisecond => {
+                Arc::new(array::DurationMillisecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Microsecond => {
+                Arc::new(array::DurationMicrosecondArray::new(vec![0].into(), None))
+            }
+
+            TimeUnit::Nanosecond => {
+                Arc::new(array::DurationNanosecondArray::new(vec![0].into(), None))
+            }
+        },
 
         DataType::UInt8 => Arc::new(array::UInt8Array::from_iter([0])),
         DataType::UInt16 => Arc::new(array::UInt16Array::from_iter([0])),
@@ -103,17 +141,6 @@ pub fn generic_placeholder_for_datatype(
         DataType::Float16 => Arc::new(array::Float16Array::from_iter([half::f16::ZERO])),
         DataType::Float32 => Arc::new(array::Float32Array::from_iter([0.0])),
         DataType::Float64 => Arc::new(array::Float64Array::from_iter([0.0])),
-
-        DataType::Interval(IntervalUnit::DayTime) => {
-            Arc::new(array::IntervalDayTimeArray::from(vec![
-                types::IntervalDayTime::new(0, 0),
-            ]))
-        }
-        DataType::Interval(IntervalUnit::MonthDayNano) => {
-            Arc::new(array::IntervalMonthDayNanoArray::from(vec![
-                types::IntervalMonthDayNano::new(0, 0, 0),
-            ]))
-        }
 
         DataType::Binary => Arc::new(array::GenericBinaryArray::<i32>::from_vec(vec![&[]])),
         DataType::LargeBinary => Arc::new(array::GenericBinaryArray::<i64>::from_vec(vec![&[]])),
@@ -203,8 +230,13 @@ pub fn generic_placeholder_for_datatype(
             arrow::datatypes::i256::ZERO,
         ])),
 
-        DataType::FixedSizeBinary { .. }
-        | DataType::Dictionary { .. }
+        DataType::FixedSizeBinary(length) => Arc::new(array::FixedSizeBinaryArray::new(
+            *length,
+            vec![0u8; *length as usize].into(),
+            None,
+        )),
+
+        DataType::Dictionary { .. }
         | DataType::Union { .. }
         | DataType::Map { .. }
         | DataType::BinaryView
@@ -220,7 +252,7 @@ pub fn generic_placeholder_for_datatype(
 }
 
 /// Runtime reflection about components.
-pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentName, ComponentReflection>;
+pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentType, ComponentReflection>;
 
 /// Information about a Rerun [`component`](crate::Component), generated by codegen.
 #[derive(Clone, Debug)]
@@ -289,14 +321,14 @@ impl ArchetypeReflection {
 /// Additional information about an archetype's field.
 #[derive(Clone, Debug)]
 pub struct ArchetypeFieldReflection {
-    /// The name of the field (i.e. same as `ComponentDescriptor::archetype_field_name`).
-    pub name: ArchetypeFieldName,
+    /// The name of the field.
+    pub name: &'static str,
 
     /// The name of the field in human case.
     pub display_name: &'static str,
 
     /// The type of the field (it's always a component).
-    pub component_name: ComponentName,
+    pub component_type: ComponentType,
 
     /// Markdown docstring for the field (not for the component type).
     pub docstring_md: &'static str,
@@ -310,9 +342,102 @@ impl ArchetypeFieldReflection {
     #[inline]
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
         ComponentDescriptor {
-            component_name: self.component_name,
-            archetype_field_name: Some(self.name),
-            archetype_name: Some(archetype_name),
+            component_type: Some(self.component_type),
+            component: format!("{}:{}", archetype_name.short_name(), self.name).into(),
+            archetype: Some(archetype_name),
         }
+    }
+}
+
+/// An extension of [`ComponentDescriptor`] that helps handling components that are
+/// built into Rerun.
+///
+/// Note that in general, [`ComponentDescriptor::archetype`] does not place any
+/// constraints on the [`ComponentDescriptor::component`] field, which can be arbitrary.
+///
+/// Components that are built into the Rerun viewer follow the convention that
+/// the `component` field starts with the short name of its archetype.
+pub trait ComponentDescriptorExt {
+    /// Returns the field name of a Rerun-builtin type.
+    ///
+    /// This is the result of stripping the Rerun-builtin [`ArchetypeName`]
+    /// from [`ComponentDescriptor::component`].
+    fn archetype_field_name(&self) -> &str;
+
+    /// Unconditionally sets [`ComponentDescriptor::archetype`] to the given one.
+    ///
+    /// Following the viewer's conventions, this also changes the archetype
+    /// part of [`ComponentDescriptor::component`].
+    fn with_builtin_archetype(self, archetype: ArchetypeName) -> Self;
+
+    /// Sets [`ComponentDescriptor::archetype`] to the given one iff it's not already set.
+    ///
+    /// Following the viewer's conventions, this also changes the archetype
+    /// part of [`ComponentDescriptor::component`].
+    fn or_with_builtin_archetype(self, archetype: impl Fn() -> ArchetypeName) -> Self;
+}
+
+/// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
+///
+/// Mainly used as a convenience function to create [`ComponentDescriptor`]s for
+/// Rerun-builtin types. In general, the [`ArchetypeName`] does not place any restrictions
+/// on the contents of [`ComponentIdentifier`].
+#[inline]
+fn with_field(archetype: ArchetypeName, field_name: impl AsRef<str>) -> ComponentIdentifier {
+    format!("{}:{}", archetype.short_name(), field_name.as_ref()).into()
+}
+
+impl ComponentDescriptorExt for ComponentDescriptor {
+    fn archetype_field_name(&self) -> &str {
+        self.archetype
+            .and_then(|archetype| {
+                self.component
+                    .strip_prefix(&format!("{}:", archetype.short_name()))
+            })
+            .unwrap_or_else(|| self.component.as_str())
+    }
+
+    #[inline]
+    fn with_builtin_archetype(mut self, archetype: ArchetypeName) -> Self {
+        {
+            let field_name = self.archetype_field_name();
+            self.component = with_field(archetype, field_name);
+        }
+        self.archetype = Some(archetype);
+        self
+    }
+
+    #[inline]
+    fn or_with_builtin_archetype(mut self, archetype: impl Fn() -> ArchetypeName) -> Self {
+        if self.archetype.is_none() {
+            let archetype = archetype();
+            self.component = with_field(archetype, self.component);
+            self.archetype = Some(archetype);
+        }
+        self
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::ArchetypeName;
+
+    use super::{with_field, ComponentDescriptor, ComponentDescriptorExt as _};
+
+    #[test]
+    fn component_descriptor_manipulation() {
+        let archetype_name: ArchetypeName = "rerun.archetypes.MyExample".into();
+        let descr = ComponentDescriptor {
+            archetype: Some(archetype_name),
+            component: with_field(archetype_name, "test"),
+            component_type: Some("user.Whatever".into()),
+        };
+        assert_eq!(descr.archetype_field_name(), "test");
+        assert_eq!(descr.display_name(), "MyExample:test");
+
+        let archetype_name: ArchetypeName = "rerun.archetypes.MyOtherExample".into();
+        let descr = descr.with_builtin_archetype(archetype_name);
+        assert_eq!(descr.archetype_field_name(), "test");
+        assert_eq!(descr.display_name(), "MyOtherExample:test");
     }
 }

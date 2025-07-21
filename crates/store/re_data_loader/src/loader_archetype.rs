@@ -2,7 +2,6 @@ use itertools::Either;
 
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimePoint};
-use re_types::Archetype;
 use re_types::ComponentBatch;
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
@@ -214,28 +213,14 @@ fn load_video(
                 .to_arrow_list_array()
                 .map_err(re_chunk::ChunkError::from)?;
 
-            // Indicator column.
-            let video_frame_reference_indicators =
-                <VideoFrameReference as Archetype>::Indicator::new_array(video_timestamps.len());
-            let video_frame_reference_indicators_list_array = video_frame_reference_indicators
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
-
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.clone(),
                 std::iter::once((*video_timeline.name(), time_column)).collect(),
-                [
-                    (
-                        VideoFrameReference::indicator().descriptor.clone(),
-                        video_frame_reference_indicators_list_array,
-                    ),
-                    (
-                        VideoFrameReference::descriptor_timestamp(),
-                        video_timestamp_list_array,
-                    ),
-                ]
-                .into_iter()
+                std::iter::once((
+                    VideoFrameReference::descriptor_timestamp(),
+                    video_timestamp_list_array,
+                ))
                 .collect(),
             )?)
         }

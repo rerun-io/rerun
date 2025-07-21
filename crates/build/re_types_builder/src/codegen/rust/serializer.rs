@@ -4,6 +4,7 @@ use quote::{format_ident, quote};
 use crate::{
     Object, Objects, TypeRegistry,
     data_type::{AtomicDataType, DataType, UnionMode},
+    objects::EnumIntegerType,
 };
 
 use super::{
@@ -71,6 +72,13 @@ pub fn quote_arrow_serializer(
         );
 
         let quoted_validity = quoted_validity(validity_dst);
+        let repr_type = match obj.enum_integer_type() {
+            Some(EnumIntegerType::U8) => quote!(u8),
+            Some(EnumIntegerType::U16) => quote!(u16),
+            Some(EnumIntegerType::U32) => quote!(u32),
+            Some(EnumIntegerType::U64) => quote!(u64),
+            None => unreachable!("enums must have an integer type"),
+        };
 
         quote! {{
             let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
@@ -79,7 +87,7 @@ pub fn quote_arrow_serializer(
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
 
                     let datum = datum
-                    .map(|datum| *datum as u8);
+                    .map(|datum| *datum as #repr_type);
 
                     (datum.is_some(), datum)
                 })

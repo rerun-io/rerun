@@ -22,7 +22,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> GeoPoints::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(4);
         if (positions.has_value()) {
             columns.push_back(positions.value().partitioned(lengths_).value_or_throw());
         }
@@ -35,10 +35,6 @@ namespace rerun::archetypes {
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<GeoPoints>(static_cast<uint32_t>(lengths_.size()))
-                .value_or_throw()
-        );
         return columns;
     }
 
@@ -66,7 +62,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(4);
 
         if (archetype.positions.has_value()) {
             cells.push_back(archetype.positions.value());
@@ -79,11 +75,6 @@ namespace rerun {
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());
-        }
-        {
-            auto result = ComponentBatch::from_indicator<GeoPoints>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
         }
 
         return rerun::take_ownership(std::move(cells));

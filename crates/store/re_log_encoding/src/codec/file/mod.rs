@@ -1,12 +1,12 @@
 #[cfg(feature = "decoder")]
-pub(crate) mod decoder;
+pub mod decoder;
 #[cfg(feature = "encoder")]
-pub(crate) mod encoder;
+pub mod encoder;
 
 #[allow(dead_code)] // used behind feature flag
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]
-pub(crate) enum MessageKind {
+pub enum MessageKind {
     #[default]
     End = Self::END,
     SetStoreInfo = Self::SET_STORE_INFO,

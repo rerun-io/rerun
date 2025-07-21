@@ -2,7 +2,10 @@
 *.zip -text diff
 Cargo.lock linguist-generated=false
 pixi.lock linguist-generated=true
-# git-lfs stuff
+# git-lfs:
+**/*.urdf filter=lfs diff=lfs merge=lfs -text
+**/*.stl filter=lfs diff=lfs merge=lfs -text
 **/snapshots/**/*.png filter=lfs diff=lfs merge=lfs -text
+tests/assets/video/*.h264 filter=lfs diff=lfs merge=lfs -text
 tests/assets/video/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text

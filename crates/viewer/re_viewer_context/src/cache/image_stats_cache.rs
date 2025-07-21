@@ -1,6 +1,7 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_types::{Component as _, components, image::ImageKind};
 
@@ -24,7 +25,12 @@ impl Cache for ImageStatsCache {
         // Purging the image stats is not worth it - these are very small objects!
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    /// Total memory used by this cache, in bytes.
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
+    }
+
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let cache_key_removed: HashSet<(StoredBlobCacheKey, ImageKind)> = events
@@ -35,9 +41,9 @@ impl Cache for ImageStatsCache {
                         event
                             .chunk
                             .component_descriptors()
-                            .filter(|descr| descr.component_name == components::Blob::name())
+                            .filter(|descr| descr.component_type == Some(components::Blob::name()))
                             .flat_map(|descr| {
-                                let kind = ImageKind::from_archetype_name(descr.archetype_name);
+                                let kind = ImageKind::from_archetype_name(descr.archetype);
                                 event.chunk.row_ids().map(move |row_id| {
                                     (StoredBlobCacheKey::new(row_id, &descr), kind)
                                 })

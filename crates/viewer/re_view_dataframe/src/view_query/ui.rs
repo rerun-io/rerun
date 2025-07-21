@@ -7,14 +7,9 @@ use re_log_types::{
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
-use re_types_core::ComponentName;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
-
-// TODO(#6889): This should be a `ComponentDescriptorSet`, but we first need to figure out
-//              how to handle descriptors for dataframe view queries in general.
-type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 // UI implementation
 impl Query {
@@ -71,9 +66,14 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Start")
-                    .action_button_with_enabled(&re_ui::icons::RESET, start != TimeInt::MIN, || {
-                        reset_start = true;
-                    })
+                    .action_button_with_enabled(
+                        &re_ui::icons::RESET,
+                        "Reset",
+                        start != TimeInt::MIN,
+                        || {
+                            reset_start = true;
+                        },
+                    )
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(
@@ -106,9 +106,14 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("End")
-                    .action_button_with_enabled(&re_ui::icons::RESET, end != TimeInt::MAX, || {
-                        reset_to = true;
-                    })
+                    .action_button_with_enabled(
+                        &re_ui::icons::RESET,
+                        "Reset",
+                        end != TimeInt::MAX,
+                        || {
+                            reset_to = true;
+                        },
+                    )
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(
@@ -165,21 +170,16 @@ impl Query {
 
         let original_filter_is_not_null = self.filter_is_not_null_raw()?;
 
-        let (mut active, filter_entity, filter_component) = original_filter_is_not_null
+        let (mut active, filter) = original_filter_is_not_null
             .as_ref()
-            .map(|filter| {
-                (
-                    filter.active(),
-                    Some(filter.entity_path()),
-                    Some(filter.component_name()),
-                )
-            })
-            .unwrap_or((false, None, None));
+            .map(|filter| (filter.active(), Some(filter.column_selector())))
+            .unwrap_or((false, None));
 
         //
         // Filter active?
         //
 
+        let before_active = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
             ui.re_checkbox(&mut active, "Filter rows where column is not null:")
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
@@ -194,17 +194,19 @@ impl Query {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Entity")
-                        .value_text(filter_entity.unwrap_or_else(EntityPath::root).to_string()),
+                    list_item::PropertyContent::new("Entity").value_text(
+                        filter
+                            .as_ref()
+                            .map(|f| f.entity_path.clone())
+                            .unwrap_or_else(EntityPath::root)
+                            .to_string(),
+                    ),
                 )
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Component").value_text(
-                        filter_component
-                            .unwrap_or_else(|| ComponentName::from("-"))
-                            .short_name(),
-                    ),
+                    list_item::PropertyContent::new("Component")
+                        .value_text(filter.as_ref().map(|f| f.component.as_str()).unwrap_or("-")),
                 )
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
             });
@@ -218,8 +220,13 @@ impl Query {
 
         let all_entities = all_pov_entities_for_view(ctx, view_id, timeline);
 
-        let mut filter_entity = filter_entity
-            .and_then(|entity| all_entities.contains(&entity).then_some(entity))
+        let mut filter_entity = filter
+            .as_ref()
+            .and_then(|filter| {
+                all_entities
+                    .contains(&filter.entity_path)
+                    .then_some(filter.entity_path.clone())
+            })
             .or_else(|| all_entities.iter().next().cloned())
             .unwrap_or_else(EntityPath::root);
 
@@ -233,51 +240,22 @@ impl Query {
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
-        // The list of suggested components is built as follows:
-        // - consider all indicator components
-        // - for the matching archetypes, take all required components
-        // - keep those that are actually present
-        let suggested_components = || {
-            all_components
-                .iter()
-                .filter_map(|c| {
-                    c.component_name
-                        .indicator_component_archetype_short_name()
-                        .and_then(|archetype_short_name| {
-                            ctx.reflection()
-                                .archetype_reflection_from_short_name(&archetype_short_name)
-                        })
-                })
-                .flat_map(|archetype_reflection| {
-                    archetype_reflection
-                        .required_fields()
-                        .map(|field| field.component_name)
-                })
-                .filter(|c| {
-                    all_components
-                        .iter()
-                        // TODO(#6889): Should we filter by the component descriptor instead?
-                        .any(|descr| &descr.component_name == c)
-                })
-                .collect::<ComponentNameSet>()
-        };
-
         // If the currently saved component, we auto-switch it to a reasonable one.
-        let mut filter_component = filter_component
-            .and_then(|component| {
+        let mut filter_component = filter
+            .and_then(|component_sel| {
                 all_components
                     .iter()
-                    // TODO(#6889): Should we filter by the component descriptor instead?
-                    .any(|descr| descr.component_name == component)
-                    .then_some(component)
+                    .any(|descr| descr.component.as_str() == component_sel.component)
+                    .then_some(component_sel.component.into())
             })
-            .or_else(|| suggested_components().first().copied())
-            .unwrap_or_else(|| ComponentName::from("-"));
+            .or_else(|| all_components.iter().map(|descr| descr.component).next());
 
         //
         // UI for filter entity and component
         //
 
+        let before_filter_entity = filter_entity.clone();
+        let before_filter_component = filter_component;
         ui.add_enabled_ui(active, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
 
@@ -297,14 +275,13 @@ impl Query {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Component").value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
-                        .selected_text(filter_component.short_name())
+                        .selected_text(filter_component.map_or("-", |c| c.as_str()))
                         .show_ui(ui, |ui| {
                             for descr in all_components {
-                                let label = descr.display_name();
                                 ui.selectable_value(
                                     &mut filter_component,
-                                    descr.component_name,
-                                    label,
+                                    Some(descr.component),
+                                    descr.component.as_str(),
                                 );
                             }
                         });
@@ -312,15 +289,23 @@ impl Query {
             );
         });
 
-        //
         // Save filter if changed
-        //
+        if before_active != active
+            || before_filter_entity != filter_entity
+            || before_filter_component != filter_component
+        {
+            // Filters out the placeholder component.
+            if let Some(filter_component) = filter_component {
+                let filter_is_not_null = components::FilterIsNotNull::new(
+                    active,
+                    &filter_entity,
+                    filter_component.to_string(),
+                );
 
-        let filter_is_not_null =
-            components::FilterIsNotNull::new(active, &filter_entity, filter_component);
-
-        if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
-            self.save_filter_is_not_null(ctx, &filter_is_not_null);
+                if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
+                    self.save_filter_is_not_null(ctx, &filter_is_not_null);
+                }
+            }
         }
 
         Ok(())

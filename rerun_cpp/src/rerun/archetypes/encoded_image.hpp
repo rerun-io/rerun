@@ -10,7 +10,6 @@
 #include "../components/draw_order.hpp"
 #include "../components/media_type.hpp"
 #include "../components/opacity.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -72,32 +71,27 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.EncodedImageIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.EncodedImage";
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+            ArchetypeName, "EncodedImage:blob", Loggable<rerun::components::Blob>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type",
-            Loggable<rerun::components::MediaType>::Descriptor.component_name
+            ArchetypeName, "EncodedImage:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity",
-            Loggable<rerun::components::Opacity>::Descriptor.component_name
+            ArchetypeName, "EncodedImage:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "EncodedImage:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from encoded_image_ext.cpp:

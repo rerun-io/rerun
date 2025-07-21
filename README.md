@@ -32,9 +32,9 @@ import rerun as rr  # pip install rerun-sdk
 
 rr.init("rerun_example_app")
 
-rr.connect()  # Connect to a remote viewer
-# rr.spawn()  # Spawn a child process with a viewer and connect
+rr.spawn()  # Spawn a child process with a viewer and connect
 # rr.save("recording.rrd")  # Stream all logs to disk
+# rr.connect_grpc()  # Connect to a remote viewer
 
 # Associate subsequent data with 42 on the “frame” timeline
 rr.set_time("frame", sequence=42)

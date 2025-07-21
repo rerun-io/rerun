@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <chrono>
@@ -21,10 +20,9 @@
 namespace rerun::archetypes {
     /// **Archetype**: A video binary.
     ///
-    /// Only MP4 containers with AV1 are generally supported,
-    /// though the web viewer supports more video codecs, depending on browser.
+    /// Only MP4 containers are currently supported.
     ///
-    /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+    /// See <https://rerun.io/docs/reference/video> for codec support and more general information.
     ///
     /// In order to display a video, you also need to log a `archetypes::VideoFrameReference` for each frame.
     ///
@@ -67,10 +65,6 @@ namespace rerun::archetypes {
     ///     for (size_t i = 0; i <frame_timestamps_ns.size(); i++) {
     ///         video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
     ///     }
-    ///     auto video_frame_reference_indicators =
-    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-    ///             static_cast<uint32_t>(video_timestamps.size())
-    ///         );
     ///
     ///     rec.send_columns(
     ///         "video",
@@ -126,22 +120,17 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> media_type;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.AssetVideoIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.AssetVideo";
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+            ArchetypeName, "AssetVideo:blob", Loggable<rerun::components::Blob>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type",
-            Loggable<rerun::components::MediaType>::Descriptor.component_name
+            ArchetypeName, "AssetVideo:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
 
       public: // START of extensions from asset_video_ext.cpp:

@@ -44,7 +44,8 @@ impl VisualizerSystem for SeriesPointsSystem {
             .queried
             .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
-        query_info.indicators = [archetypes::SeriesPoints::descriptor_indicator()].into();
+        query_info.relevant_archetypes =
+            std::iter::once(archetypes::SeriesPoints::name()).collect();
 
         query_info
     }
@@ -84,7 +85,7 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
+        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()

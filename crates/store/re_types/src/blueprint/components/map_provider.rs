@@ -17,7 +17,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Name of the map provider to be used in Map views.
@@ -40,8 +40,8 @@ pub enum MapProvider {
 
 impl ::re_types_core::Component for MapProvider {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.MapProvider")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.MapProvider".into()
     }
 }
 

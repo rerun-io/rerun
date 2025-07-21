@@ -8,6 +8,8 @@ A time series view for scalars over time, for use with [`archetypes.Scalars`](ht
 
 ## Properties
 
+### `axis_x`
+Configures the horizontal axis of the plot.
 ### `axis_y`
 Configures the vertical axis of the plot.
 

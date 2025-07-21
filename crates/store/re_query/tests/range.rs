@@ -162,9 +162,12 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     let row_id3_2 = RowId::new();
     let points3_2 = vec![MyPoint::new(11.0, 21.0), MyPoint::new(31.0, 41.0)];
     let points3_2_serialized = points3_2
-        .serialized()
-        .unwrap()
-        .with_archetype_name("MyPoints2".into());
+        .serialized(re_types::ComponentDescriptor {
+            archetype: Some("MyPoints2".into()),
+            component: "points2".into(),
+            component_type: Some(<MyPoint as re_types_core::Component>::name()),
+        })
+        .unwrap();
     let chunk = Chunk::builder(entity_path.clone())
         .with_archetype(row_id3_1, timepoint3, &MyPoints::new(points3_1.clone()))
         .with_archetype(row_id3_2, timepoint3, &points3_2_serialized)
@@ -533,7 +536,7 @@ fn invalidation() {
 
         let row_id1 = RowId::new();
         let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let chunk1 = Chunk::builder(entity_path.into())
+        let chunk1 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id1,
                 present_data_timepoint.clone(),
@@ -545,7 +548,7 @@ fn invalidation() {
 
         let row_id2 = RowId::new();
         let colors2 = vec![MyColor::from_rgb(1, 2, 3)];
-        let chunk2 = Chunk::builder(entity_path.into())
+        let chunk2 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id2,
                 present_data_timepoint.clone(),
@@ -575,7 +578,7 @@ fn invalidation() {
         // Modify the PoV component
         let row_id3 = RowId::new();
         let points3 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
-        let chunk3 = Chunk::builder(entity_path.into())
+        let chunk3 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id3,
                 present_data_timepoint.clone(),
@@ -604,7 +607,7 @@ fn invalidation() {
         // Modify the optional component
         let row_id4 = RowId::new();
         let colors4 = vec![MyColor::from_rgb(4, 5, 6), MyColor::from_rgb(7, 8, 9)];
-        let chunk4 = Chunk::builder(entity_path.into())
+        let chunk4 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id4,
                 present_data_timepoint.clone(),
@@ -636,7 +639,7 @@ fn invalidation() {
         // Modify the PoV component
         let points5 = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
         let row_id5 = RowId::new();
-        let chunk5 = Chunk::builder(entity_path.into())
+        let chunk5 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id5,
                 past_data_timepoint.clone(),
@@ -675,7 +678,7 @@ fn invalidation() {
         // Modify the optional component
         let row_id6 = RowId::new();
         let colors6 = vec![MyColor::from_rgb(10, 11, 12), MyColor::from_rgb(13, 14, 15)];
-        let chunk6 = Chunk::builder(entity_path.into())
+        let chunk6 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id6,
                 past_data_timepoint.clone(),
@@ -712,7 +715,7 @@ fn invalidation() {
         // Modify the PoV component
         let row_id7 = RowId::new();
         let points7 = vec![MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)];
-        let chunk7 = Chunk::builder(entity_path.into())
+        let chunk7 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id7,
                 future_data_timepoint.clone(),
@@ -748,7 +751,7 @@ fn invalidation() {
         // Modify the optional component
         let row_id8 = RowId::new();
         let colors8 = vec![MyColor::from_rgb(16, 17, 18)];
-        let chunk8 = Chunk::builder(entity_path.into())
+        let chunk8 = Chunk::builder(entity_path)
             .with_archetype(
                 row_id8,
                 future_data_timepoint.clone(),
@@ -845,7 +848,7 @@ fn invalidation_of_future_optionals() {
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let chunk1 = Chunk::builder(entity_path.into())
+    let chunk1 = Chunk::builder(entity_path)
         .with_archetype(row_id1, static_, &MyPoints::new(points1.clone()))
         .build()
         .unwrap();
@@ -866,7 +869,7 @@ fn invalidation_of_future_optionals() {
 
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk2 = Chunk::builder(entity_path.into())
+    let chunk2 = Chunk::builder(entity_path)
         .with_archetype(
             row_id2,
             frame2,
@@ -890,7 +893,7 @@ fn invalidation_of_future_optionals() {
 
     let row_id3 = RowId::new();
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
-    let chunk3 = Chunk::builder(entity_path.into())
+    let chunk3 = Chunk::builder(entity_path)
         .with_archetype(
             row_id3,
             frame3,
@@ -915,7 +918,7 @@ fn invalidation_of_future_optionals() {
 
     let row_id4 = RowId::new();
     let colors4 = vec![MyColor::from_rgb(0, 255, 0)];
-    let chunk4 = Chunk::builder(entity_path.into())
+    let chunk4 = Chunk::builder(entity_path)
         .with_archetype(
             row_id4,
             frame3,
@@ -957,7 +960,7 @@ fn invalidation_static() {
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let chunk1 = Chunk::builder(entity_path.into())
+    let chunk1 = Chunk::builder(entity_path)
         .with_archetype(row_id1, static_.clone(), &MyPoints::new(points1.clone()))
         .build()
         .unwrap();
@@ -978,7 +981,7 @@ fn invalidation_static() {
 
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk2 = Chunk::builder(entity_path.into())
+    let chunk2 = Chunk::builder(entity_path)
         .with_archetype(
             row_id2,
             static_.clone(),
@@ -1002,7 +1005,7 @@ fn invalidation_static() {
 
     let row_id3 = RowId::new();
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
-    let chunk3 = Chunk::builder(entity_path.into())
+    let chunk3 = Chunk::builder(entity_path)
         .with_archetype(
             row_id3,
             static_,

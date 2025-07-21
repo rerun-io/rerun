@@ -89,7 +89,7 @@ impl<'a> SectionCollapsingHeader<'a> {
             content = content
                 .with_buttons(|ui| {
                     let button_response = button.map(|button| button.ui(ui));
-                    let help_response = help.map(|help| ui.help_hover_button().on_hover_ui(help));
+                    let help_response = help.map(|help| ui.help_button(help));
 
                     match (button_response, help_response) {
                         (Some(button_response), Some(help_response)) => {
@@ -104,7 +104,7 @@ impl<'a> SectionCollapsingHeader<'a> {
 
         let resp = list_item::ListItem::new()
             .interactive(true)
-            .force_background(ui.design_tokens().section_collapsing_header_color())
+            .force_background(ui.tokens().section_header_color)
             .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
                 //TODO(ab): this space is not desirable when the content actually is list items
                 ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.

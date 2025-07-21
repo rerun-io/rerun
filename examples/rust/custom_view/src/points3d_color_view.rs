@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)] // It's just an example
+
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 use rerun::external::{
     egui,
@@ -81,7 +83,7 @@ impl ViewClass for ColorCoordinatesView {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Color coordinates view")
             .markdown("A demo view that shows colors as coordinates on a 2D plane.")
     }
@@ -276,7 +278,7 @@ fn color_space_ui(
                 highlight.hover,
                 highlight.selection != SelectionHighlight::None,
             ) {
-                (HoverHighlight::None, false) => (egui::Color32::BLACK, 2.0),
+                (HoverHighlight::None, false) => (ui.style().visuals.extreme_bg_color, 2.0),
                 (HoverHighlight::None, true) => (ui.style().visuals.selection.bg_fill, 8.0),
                 (HoverHighlight::Hovered, ..) => (ui.style().visuals.widgets.hovered.bg_fill, 8.0),
             };

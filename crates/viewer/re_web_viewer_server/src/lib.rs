@@ -95,7 +95,7 @@ struct WebViewerServerInner {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
     #[cfg(feature = "analytics")]
-    analytics: Option<re_analytics::Analytics>,
+    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl WebViewerServer {
@@ -127,13 +127,7 @@ impl WebViewerServer {
             num_wasm_served: Default::default(),
 
             #[cfg(feature = "analytics")]
-            analytics: match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
-                Ok(analytics) => Some(analytics),
-                Err(err) => {
-                    re_log::error!(%err, "failed to initialize analytics SDK");
-                    None
-                }
-            },
+            analytics: re_analytics::Analytics::global_or_init(),
         });
 
         let inner_copy = inner.clone();

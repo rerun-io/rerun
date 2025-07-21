@@ -2,9 +2,6 @@
 //!
 //! Views that show entities in a 2D or 3D spatial relationship.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 mod contexts;
 mod eye;
 mod heuristics;
@@ -31,6 +28,7 @@ mod visualizers;
 
 mod transform_cache;
 
+pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
@@ -39,9 +37,8 @@ pub(crate) use pinhole::Pinhole;
 
 // ---
 
-use re_viewer_context::{ImageDecodeCache, ViewerContext};
+use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
-use re_renderer::RenderContext;
 use re_types::{
     archetypes,
     blueprint::{archetypes::Background, components::BackgroundKind},
@@ -123,26 +120,20 @@ fn resolution_of_image_at(
 }
 
 pub(crate) fn configure_background(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     background: &ViewProperty,
-    render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
-    state: &dyn re_viewer_context::ViewState,
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 
-    let kind: BackgroundKind = background.component_or_fallback(
-        ctx,
-        view_system,
-        state,
-        &Background::descriptor_kind(),
-    )?;
+    let kind: BackgroundKind =
+        background.component_or_fallback(ctx, view_system, &Background::descriptor_kind())?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
             Some(
                 renderer::GenericSkyboxDrawData::new(
-                    render_ctx,
+                    ctx.render_ctx(),
                     renderer::GenericSkyboxType::GradientDark,
                 )
                 .into(),
@@ -153,7 +144,7 @@ pub(crate) fn configure_background(
         BackgroundKind::GradientBright => Ok((
             Some(
                 renderer::GenericSkyboxDrawData::new(
-                    render_ctx,
+                    ctx.render_ctx(),
                     renderer::GenericSkyboxType::GradientBright,
                 )
                 .into(),
@@ -165,7 +156,6 @@ pub(crate) fn configure_background(
             let color: Color = background.component_or_fallback(
                 ctx,
                 view_system,
-                state,
                 &Background::descriptor_color(),
             )?;
             Ok((None, color.into()))

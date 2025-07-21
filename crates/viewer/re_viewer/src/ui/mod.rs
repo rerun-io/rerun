@@ -1,3 +1,4 @@
+mod memory_history;
 mod mobile_warning_ui;
 mod recordings_panel;
 mod rerun_menu;

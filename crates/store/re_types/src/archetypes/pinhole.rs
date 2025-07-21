@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
@@ -148,9 +148,9 @@ impl Pinhole {
     #[inline]
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.PinholeProjection".into(),
-            archetype_field_name: Some("image_from_camera".into()),
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:image_from_camera".into(),
+            component_type: Some("rerun.components.PinholeProjection".into()),
         }
     }
 
@@ -160,9 +160,9 @@ impl Pinhole {
     #[inline]
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.Resolution".into(),
-            archetype_field_name: Some("resolution".into()),
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:resolution".into(),
+            component_type: Some("rerun.components.Resolution".into()),
         }
     }
 
@@ -172,9 +172,9 @@ impl Pinhole {
     #[inline]
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.ViewCoordinates".into(),
-            archetype_field_name: Some("camera_xyz".into()),
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:camera_xyz".into(),
+            component_type: Some("rerun.components.ViewCoordinates".into()),
         }
     }
 
@@ -184,19 +184,9 @@ impl Pinhole {
     #[inline]
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.ImagePlaneDistance".into(),
-            archetype_field_name: Some("image_plane_distance".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.PinholeIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:image_plane_distance".into(),
+            component_type: Some("rerun.components.ImagePlaneDistance".into()),
         }
     }
 }
@@ -204,13 +194,8 @@ impl Pinhole {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Pinhole::descriptor_image_from_camera()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Pinhole::descriptor_resolution(),
-            Pinhole::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Pinhole::descriptor_resolution()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -220,28 +205,22 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_image_from_camera(),
             Pinhole::descriptor_resolution(),
-            Pinhole::descriptor_indicator(),
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
         ]
     });
 
 impl Pinhole {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
-/// Indicator component for the [`Pinhole`] [`::re_types_core::Archetype`]
-pub type PinholeIndicator = ::re_types_core::GenericIndicatorComponent<Pinhole>;
-
 impl ::re_types_core::Archetype for Pinhole {
-    type Indicator = PinholeIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Pinhole".into()
@@ -250,12 +229,6 @@ impl ::re_types_core::Archetype for Pinhole {
     #[inline]
     fn display_name() -> &'static str {
         "Pinhole"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        PinholeIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -322,7 +295,6 @@ impl ::re_types_core::AsComponents for Pinhole {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.image_from_camera.clone(),
             self.resolution.clone(),
             self.camera_xyz.clone(),
@@ -413,12 +385,7 @@ impl Pinhole {
                 .map(|image_plane_distance| image_plane_distance.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

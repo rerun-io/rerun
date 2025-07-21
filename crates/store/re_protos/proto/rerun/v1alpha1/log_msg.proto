@@ -52,6 +52,9 @@ message ArrowMsg {
   // The ID of the store that this message is for.
   rerun.common.v1alpha1.StoreId store_id = 1;
 
+  // If the payload is a chunk, this is its ID. Otherwise empty.
+  optional rerun.common.v1alpha1.Tuid chunk_id = 6;
+
   // Compression algorithm used.
   Compression compression = 2;
 

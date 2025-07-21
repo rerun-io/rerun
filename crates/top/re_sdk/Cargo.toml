@@ -59,6 +59,7 @@ re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
+re_tracing.workspace = true
 re_types.workspace = true
 re_uri.workspace = true
 
@@ -87,6 +88,7 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
 similar-asserts.workspace = true
 
 

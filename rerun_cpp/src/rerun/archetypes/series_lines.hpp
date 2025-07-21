@@ -11,7 +11,6 @@
 #include "../components/name.hpp"
 #include "../components/series_visible.hpp"
 #include "../components/stroke_width.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -107,36 +106,31 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> aggregation_policy;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.SeriesLinesIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesLines";
 
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "SeriesLines:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `widths` field.
         static constexpr auto Descriptor_widths = ComponentDescriptor(
-            ArchetypeName, "widths",
-            Loggable<rerun::components::StrokeWidth>::Descriptor.component_name
+            ArchetypeName, "SeriesLines:widths",
+            Loggable<rerun::components::StrokeWidth>::ComponentType
         );
         /// `ComponentDescriptor` for the `names` field.
         static constexpr auto Descriptor_names = ComponentDescriptor(
-            ArchetypeName, "names", Loggable<rerun::components::Name>::Descriptor.component_name
+            ArchetypeName, "SeriesLines:names", Loggable<rerun::components::Name>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
-            ArchetypeName, "visible_series",
-            Loggable<rerun::components::SeriesVisible>::Descriptor.component_name
+            ArchetypeName, "SeriesLines:visible_series",
+            Loggable<rerun::components::SeriesVisible>::ComponentType
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
-            ArchetypeName, "aggregation_policy",
-            Loggable<rerun::components::AggregationPolicy>::Descriptor.component_name
+            ArchetypeName, "SeriesLines:aggregation_policy",
+            Loggable<rerun::components::AggregationPolicy>::ComponentType
         );
 
       public: // START of extensions from series_lines_ext.cpp:

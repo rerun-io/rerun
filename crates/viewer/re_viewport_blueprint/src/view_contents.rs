@@ -634,8 +634,11 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
-    use re_log_types::{StoreId, TimePoint, Timeline, example_components::MyPoint};
-    use re_viewer_context::{StoreContext, VisualizableEntities, blueprint_timeline};
+    use re_log_types::{
+        StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
+    use re_viewer_context::{Caches, StoreContext, VisualizableEntities, blueprint_timeline};
 
     use super::*;
 
@@ -654,8 +657,12 @@ mod tests {
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
             let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
-            let chunk = Chunk::builder(entity_path.into())
-                .with_component_batch(row_id, timepoint.clone(), &[point] as _)
+            let chunk = Chunk::builder(entity_path)
+                .with_component_batch(
+                    row_id,
+                    timepoint.clone(),
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
                 .build()
                 .unwrap();
 
@@ -684,7 +691,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Default::default(),
+            caches: &Caches::new(recording.store_id()),
             should_enable_heuristics: false,
         };
 

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The length of an axis in local units of the space.
@@ -26,8 +26,8 @@ pub struct AxisLength(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for AxisLength {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AxisLength")
+    fn name() -> ComponentType {
+        "rerun.components.AxisLength".into()
     }
 }
 

@@ -42,6 +42,7 @@ from .lat_lon import LatLon, LatLonBatch
 from .length import Length, LengthBatch
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike
+from .linear_speed import LinearSpeed, LinearSpeedBatch
 from .magnification_filter import (
     MagnificationFilter,
     MagnificationFilterArrayLike,
@@ -92,6 +93,8 @@ from .triangle_indices import TriangleIndices, TriangleIndicesBatch
 from .value_range import ValueRange, ValueRangeBatch
 from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
+from .video_codec import VideoCodec, VideoCodecArrayLike, VideoCodecBatch, VideoCodecLike
+from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
@@ -173,6 +176,8 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DBatch",
     "LineStrip3DLike",
+    "LinearSpeed",
+    "LinearSpeedBatch",
     "MagnificationFilter",
     "MagnificationFilterArrayLike",
     "MagnificationFilterBatch",
@@ -259,6 +264,12 @@ __all__ = [
     "Vector2DBatch",
     "Vector3D",
     "Vector3DBatch",
+    "VideoCodec",
+    "VideoCodecArrayLike",
+    "VideoCodecBatch",
+    "VideoCodecLike",
+    "VideoSample",
+    "VideoSampleBatch",
     "VideoTimestamp",
     "VideoTimestampBatch",
     "ViewCoordinates",

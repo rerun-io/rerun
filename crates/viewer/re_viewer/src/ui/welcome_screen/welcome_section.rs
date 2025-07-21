@@ -1,6 +1,4 @@
-use egui::{Ui, hex_color};
-
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
@@ -14,9 +12,9 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
     ui.vertical(|ui| {
         let (style, line_height) = if ui.available_width() > 400.0 {
-            (re_ui::DesignTokens::welcome_screen_h1(), 50.0)
+            (DesignTokens::welcome_screen_h1(), 50.0)
         } else {
-            (re_ui::DesignTokens::welcome_screen_h2(), 36.0)
+            (DesignTokens::welcome_screen_h2(), 36.0)
         };
 
         ui.add(
@@ -31,7 +29,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
 
         ui.add_space(18.0);
 
-        let bullet_text = |ui: &mut Ui, text: &str| {
+        let bullet_text = |ui: &mut egui::Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
                 ui.bullet(ui.visuals().strong_text_color());
@@ -40,7 +38,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().widgets.active.text_color())
-                            .text_style(re_ui::DesignTokens::welcome_screen_body()),
+                            .text_style(DesignTokens::welcome_screen_body()),
                     )
                     .wrap(),
                 );
@@ -53,19 +51,10 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         }
 
         ui.add_space(9.0);
-        if ui
-            .button(
-                egui::RichText::new("Go to documentation →")
-                    .color(hex_color!("#60A0FF"))
-                    .text_style(re_ui::DesignTokens::welcome_screen_body()),
-            )
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .clicked()
-        {
-            ui.ctx().open_url(egui::output::OpenUrl {
-                url: DOCS_URL.to_owned(),
-                new_tab: true,
-            });
-        }
+
+        ui.scope(|ui| {
+            ui.style_mut().override_text_style = Some(DesignTokens::welcome_screen_body());
+            ui.re_hyperlink("Go to documentation", DOCS_URL, true);
+        });
     });
 }

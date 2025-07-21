@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -24,8 +24,8 @@ pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
 
 impl ::re_types_core::Component for AffixFuzzer20 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer20")
+    fn name() -> ComponentType {
+        "rerun.testing.components.AffixFuzzer20".into()
     }
 }
 

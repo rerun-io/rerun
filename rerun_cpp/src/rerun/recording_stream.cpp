@@ -3,6 +3,7 @@
 #include "c/rerun.h"
 #include "component_batch.hpp"
 #include "config.hpp"
+#include "log_sink.hpp"
 #include "sdk_info.hpp"
 #include "string_utils.hpp"
 
@@ -104,6 +105,19 @@ namespace rerun {
                 return current_recording;
             }
         }
+    }
+
+    Error RecordingStream::try_set_sinks(const LogSink* sinks, uint32_t num_sinks) const {
+        rr_error status = {};
+
+        std::vector<rr_log_sink> c_sinks;
+        c_sinks.reserve(num_sinks);
+        for (uint32_t i = 0; i < num_sinks; i++) {
+            c_sinks.push_back(detail::to_rr_log_sink(sinks[i]));
+        }
+        rr_recording_stream_set_sinks(_id, c_sinks.data(), num_sinks, &status);
+
+        return status;
     }
 
     Error RecordingStream::connect_grpc(std::string_view url, float flush_timeout_sec) const {
@@ -340,8 +354,8 @@ namespace rerun {
     Error RecordingStream::try_send_recording_name(std::string_view name) const {
         rr_error status = {};
         log_static(
-            this->RECORDING_PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingProperties::update_fields().with_name(name.data())
+            this->PROPERTIES_ENTITY_PATH,
+            rerun::archetypes::RecordingInfo::update_fields().with_name(name.data())
         );
         return status;
     }
@@ -349,8 +363,8 @@ namespace rerun {
     Error RecordingStream::try_send_recording_start_time_nanos(int64_t nanos) const {
         rr_error status = {};
         log_static(
-            this->RECORDING_PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingProperties::update_fields().with_start_time(nanos)
+            this->PROPERTIES_ENTITY_PATH,
+            rerun::archetypes::RecordingInfo::update_fields().with_start_time(nanos)
         );
         return status;
     }

@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::{RenderContext, renderer::GpuMeshInstance};
-use re_types::{archetypes::Mesh3D, components::ImageFormat};
+use re_types::{Archetype as _, archetypes::Mesh3D, components::ImageFormat};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
@@ -60,33 +60,31 @@ impl Mesh3DVisualizer {
                 continue;
             }
 
-            let mesh = ctx
-                .viewer_ctx
-                .store_context
-                .caches
-                .entry(|c: &mut MeshCache| {
-                    let key = MeshCacheKey {
-                        versioned_instance_path_hash: picking_instance_hash
-                            .versioned(primary_row_id),
-                        query_result_hash: data.query_result_hash,
-                        media_type: None,
-                    };
+            let mesh = ctx.store_ctx().caches.entry(|c: &mut MeshCache| {
+                let key = MeshCacheKey {
+                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    query_result_hash: data.query_result_hash,
+                    media_type: None,
+                };
 
-                    c.entry(
-                        &entity_path.to_string(),
-                        key.clone(),
-                        AnyMesh::Mesh {
-                            mesh: data.native_mesh,
-                            texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
-                        },
-                        render_ctx,
-                    )
-                });
+                c.entry(
+                    &entity_path.to_string(),
+                    key.clone(),
+                    AnyMesh::Mesh {
+                        mesh: data.native_mesh,
+                        texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
+                    },
+                    render_ctx,
+                )
+            });
 
             if let Some(mesh) = mesh {
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): We should formalize this kind of hybrid joining better.
-                for &world_from_instance in &ent_context.transform_info.reference_from_instances {
+                for &world_from_instance in ent_context
+                    .transform_info
+                    .reference_from_instances(Mesh3D::name())
+                {
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_instance * entity_from_mesh;
@@ -224,13 +222,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    ctx,
-                    ctx.viewer_ctx.render_ctx(),
-                    &mut instances,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, ctx.render_ctx(), &mut instances, spatial_ctx, data);
 
                 Ok(())
             },

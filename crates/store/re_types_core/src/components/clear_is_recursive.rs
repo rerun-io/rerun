@@ -16,7 +16,7 @@
 use crate::try_serialize_field;
 use crate::SerializationResult;
 use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentName};
+use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: Configures how a clear operation should behave - recursive or not.
@@ -28,8 +28,8 @@ pub struct ClearIsRecursive(
 
 impl crate::Component for ClearIsRecursive {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ClearIsRecursive")
+    fn name() -> ComponentType {
+        "rerun.components.ClearIsRecursive".into()
     }
 }
 

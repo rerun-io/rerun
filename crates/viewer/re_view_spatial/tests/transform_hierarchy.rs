@@ -1,19 +1,18 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_view_spatial::SpatialView3D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_transform_hierarchy() {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
 
     // The Rerun logo obj's convention is y up.
-    test_context.log_entity("/".into(), |builder| {
+    test_context.log_entity("/", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
@@ -27,7 +26,7 @@ pub fn test_transform_hierarchy() {
 
         let mut path: EntityPath = "/".into();
 
-        path = path.join(&"translate".into());
+        path = path / "translate";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -36,7 +35,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"translate_back".into());
+        path = path / "translate_back";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -45,7 +44,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"scale".into());
+        path = path / "scale";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -54,7 +53,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"scale_back_mat3x3".into());
+        path = path / "scale_back_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -67,7 +66,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_axis_origin".into());
+        path = path / "rotate_axis_origin";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -81,7 +80,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_quat".into());
+        path = path / "rotate_quat";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -96,7 +95,7 @@ pub fn test_transform_hierarchy() {
             )
         });
 
-        path = path.join(&"rotate_mat3x3".into());
+        path = path / "rotate_mat3x3";
         test_context.log_entity(path.clone(), |builder| {
             builder.with_archetype(
                 RowId::new(),
@@ -122,7 +121,7 @@ pub fn test_transform_hierarchy() {
                 .unwrap();
             let obj_path = workspace_dir.join("tests/assets/rerun.obj");
 
-            path = path.join(&"asset".into());
+            path = path / "asset";
             test_context.log_entity(path.clone(), |builder| {
                 builder.with_archetype(
                     RowId::new(),
@@ -144,23 +143,10 @@ pub fn test_transform_hierarchy() {
     );
 }
 
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
-
-    test_context
-}
-
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView3D::identifier(),
-            RecommendedView::root(),
-        );
+        let view_blueprint =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
 
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
@@ -183,34 +169,8 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(SpatialView3D::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
         });
 
     {
@@ -248,15 +208,15 @@ fn run_view_ui_and_save_snapshot(
 
             harness.run_steps(8);
 
-            let broken_percent_threshold = 0.0036;
-            let num_pixels = (size.x * size.y).ceil() as u64;
+            let broken_pixels_fraction = 0.004;
 
-            use re_viewer_context::test_context::HarnessExt as _;
-            success = harness.try_snapshot_with_broken_pixels_threshold(
-                &name,
-                num_pixels,
-                broken_percent_threshold,
+            let options = SnapshotOptions::new().failed_pixel_count_threshold(
+                (size.x * size.y * broken_pixels_fraction).round() as usize,
             );
+
+            if harness.try_snapshot_options(&name, &options).is_err() {
+                success = false;
+            }
         }
         assert!(success, "one or more snapshots failed");
     }

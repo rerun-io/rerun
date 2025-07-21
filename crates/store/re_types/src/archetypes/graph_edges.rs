@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of edges in a graph.
@@ -70,9 +70,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_name: "rerun.components.GraphEdge".into(),
-            archetype_field_name: Some("edges".into()),
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
+            component: "GraphEdges:edges".into(),
+            component_type: Some("rerun.components.GraphEdge".into()),
         }
     }
 
@@ -82,19 +82,9 @@ impl GraphEdges {
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-            component_name: "rerun.components.GraphType".into(),
-            archetype_field_name: Some("graph_type".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.GraphEdgesIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.GraphEdges".into()),
+            component: "GraphEdges:graph_type".into(),
+            component_type: Some("rerun.components.GraphType".into()),
         }
     }
 }
@@ -102,37 +92,26 @@ impl GraphEdges {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_edges()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            GraphEdges::descriptor_graph_type(),
-            GraphEdges::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_graph_type()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             GraphEdges::descriptor_edges(),
             GraphEdges::descriptor_graph_type(),
-            GraphEdges::descriptor_indicator(),
         ]
     });
 
 impl GraphEdges {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`GraphEdges`] [`::re_types_core::Archetype`]
-pub type GraphEdgesIndicator = ::re_types_core::GenericIndicatorComponent<GraphEdges>;
-
 impl ::re_types_core::Archetype for GraphEdges {
-    type Indicator = GraphEdgesIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.GraphEdges".into()
@@ -141,12 +120,6 @@ impl ::re_types_core::Archetype for GraphEdges {
     #[inline]
     fn display_name() -> &'static str {
         "Graph edges"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        GraphEdgesIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -192,14 +165,10 @@ impl ::re_types_core::AsComponents for GraphEdges {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.edges.clone(),
-            self.graph_type.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.edges.clone(), self.graph_type.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -263,12 +232,7 @@ impl GraphEdges {
                 .map(|graph_type| graph_type.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

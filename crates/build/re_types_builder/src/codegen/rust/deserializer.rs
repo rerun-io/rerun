@@ -93,8 +93,8 @@ pub fn quote_arrow_deserializer(
 
             // We should never hit this unwrap or it means the enum-processing at
             // the fbs layer is totally broken.
-            let enum_value = obj_field.enum_value.unwrap();
-            let quoted_enum_value = proc_macro2::Literal::u8_unsuffixed(enum_value);
+            let enum_value = obj_field.enum_or_union_variant_value.unwrap();
+            let quoted_enum_value = proc_macro2::Literal::u64_unsuffixed(enum_value);
 
             quote! {
                 Some(#quoted_enum_value) => Ok(Some(Self::#quoted_obj_field_type))

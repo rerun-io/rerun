@@ -101,6 +101,7 @@ class TimeSeriesView(View):
             AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
+        axis_x: blueprint_archetypes.TimeAxis | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
@@ -143,6 +144,8 @@ class TimeSeriesView(View):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
+        axis_x:
+            Configures the horizontal axis of the plot.
         axis_y:
             Configures the vertical axis of the plot.
         plot_legend:
@@ -156,6 +159,11 @@ class TimeSeriesView(View):
         """
 
         properties: dict[str, AsComponents] = {}
+        if axis_x is not None:
+            if not isinstance(axis_x, blueprint_archetypes.TimeAxis):
+                axis_x = blueprint_archetypes.TimeAxis(axis_x)
+            properties["TimeAxis"] = axis_x
+
         if axis_y is not None:
             if not isinstance(axis_y, blueprint_archetypes.ScalarAxis):
                 axis_y = blueprint_archetypes.ScalarAxis(axis_y)

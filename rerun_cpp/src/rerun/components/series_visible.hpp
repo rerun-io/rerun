@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../component_descriptor.hpp"
 #include "../datatypes/bool.hpp"
 #include "../result.hpp"
 
@@ -13,7 +12,7 @@
 namespace rerun::components {
     /// **Component**: Like `components::Visible`, but for time series.
     ///
-    /// TODO(#6889): This is a temporary workaround. Right now we can't use `components::Visible` since it would conflict with the entity-wide visibility state.
+    /// TODO(#10632): This is a temporary workaround. Right now we can't use `components::Visible` since it would conflict with the entity-wide visibility state.
     struct SeriesVisible {
         rerun::datatypes::Bool visible;
 
@@ -47,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::SeriesVisible> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.components.SeriesVisible";
+        static constexpr std::string_view ComponentType = "rerun.components.SeriesVisible";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

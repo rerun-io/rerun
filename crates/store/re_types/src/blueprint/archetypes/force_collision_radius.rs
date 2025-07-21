@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
@@ -45,9 +45,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_name: "rerun.blueprint.components.Enabled".into(),
-            archetype_field_name: Some("enabled".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component: "ForceCollisionRadius:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,9 +57,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_name: "rerun.blueprint.components.ForceStrength".into(),
-            archetype_field_name: Some("strength".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component: "ForceCollisionRadius:strength".into(),
+            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
         }
     }
 
@@ -69,19 +69,9 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_name: "rerun.blueprint.components.ForceIterations".into(),
-            archetype_field_name: Some("iterations".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component: "ForceCollisionRadius:iterations".into(),
+            component_type: Some("rerun.blueprint.components.ForceIterations".into()),
         }
     }
 }
@@ -89,8 +79,8 @@ impl ForceCollisionRadius {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ForceCollisionRadius::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -101,10 +91,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ForceCollisionRadius::descriptor_indicator(),
             ForceCollisionRadius::descriptor_enabled(),
             ForceCollisionRadius::descriptor_strength(),
             ForceCollisionRadius::descriptor_iterations(),
@@ -112,17 +101,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     });
 
 impl ForceCollisionRadius {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`ForceCollisionRadius`] [`::re_types_core::Archetype`]
-pub type ForceCollisionRadiusIndicator =
-    ::re_types_core::GenericIndicatorComponent<ForceCollisionRadius>;
-
 impl ::re_types_core::Archetype for ForceCollisionRadius {
-    type Indicator = ForceCollisionRadiusIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ForceCollisionRadius".into()
@@ -131,12 +114,6 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
     #[inline]
     fn display_name() -> &'static str {
         "Force collision radius"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ForceCollisionRadiusIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -190,7 +167,6 @@ impl ::re_types_core::AsComponents for ForceCollisionRadius {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.enabled.clone(),
             self.strength.clone(),
             self.iterations.clone(),

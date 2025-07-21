@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -25,18 +24,13 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> scaling;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.TensorViewFitIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TensorViewFit";
 
         /// `ComponentDescriptor` for the `scaling` field.
         static constexpr auto Descriptor_scaling = ComponentDescriptor(
-            ArchetypeName, "scaling",
-            Loggable<rerun::blueprint::components::ViewFit>::Descriptor.component_name
+            ArchetypeName, "TensorViewFit:scaling",
+            Loggable<rerun::blueprint::components::ViewFit>::ComponentType
         );
 
       public:

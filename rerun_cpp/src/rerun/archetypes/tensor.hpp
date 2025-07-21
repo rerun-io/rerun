@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/value_range.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -70,22 +69,17 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> value_range;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Tensor";
 
         /// `ComponentDescriptor` for the `data` field.
         static constexpr auto Descriptor_data = ComponentDescriptor(
-            ArchetypeName, "data",
-            Loggable<rerun::components::TensorData>::Descriptor.component_name
+            ArchetypeName, "Tensor:data", Loggable<rerun::components::TensorData>::ComponentType
         );
         /// `ComponentDescriptor` for the `value_range` field.
         static constexpr auto Descriptor_value_range = ComponentDescriptor(
-            ArchetypeName, "value_range",
-            Loggable<rerun::components::ValueRange>::Descriptor.component_name
+            ArchetypeName, "Tensor:value_range",
+            Loggable<rerun::components::ValueRange>::ComponentType
         );
 
       public: // START of extensions from tensor_ext.cpp:

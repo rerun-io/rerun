@@ -1,6 +1,6 @@
 use egui::{NumExt as _, Ui};
 
-use crate::DesignTokens;
+use crate::UiExt as _;
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 
 /// Control how the [`CustomContent`] advertises its width.
@@ -77,39 +77,51 @@ impl<'a> CustomContent<'a> {
 
     /// Helper to add an [`super::ItemActionButton`] to the right of the item.
     ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.action_button_with_enabled(icon, true, on_click)
+        self.action_button_with_enabled(icon, alt_text, true, on_click)
     }
 
     /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button_with_enabled(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.button(super::ItemActionButton::new(icon, on_click).enabled(enabled))
+        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn menu_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, add_contents))
+        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
     }
 }
 
@@ -121,12 +133,11 @@ impl ListItemContent for CustomContent<'_> {
             button,
         } = *self;
 
-        let button_dimension =
-            DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+        let tokens = ui.tokens();
+        let button_dimension = tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
 
         let content_width = if button.is_some() {
-            (context.rect.width() - button_dimension - DesignTokens::text_to_icon_padding())
-                .at_least(0.0)
+            (context.rect.width() - button_dimension - tokens.text_to_icon_padding()).at_least(0.0)
         } else {
             context.rect.width()
         };
@@ -168,9 +179,10 @@ impl ListItemContent for CustomContent<'_> {
             CustomContentDesiredWidth::DesiredWidth(desired_width) => desired_width,
             CustomContentDesiredWidth::ContentWidth(mut content_width) => {
                 if self.button.is_some() {
-                    content_width += DesignTokens::small_icon_size().x
+                    let tokens = ui.tokens();
+                    content_width += tokens.small_icon_size.x
                         + 2.0 * ui.spacing().button_padding.x
-                        + DesignTokens::text_to_icon_padding();
+                        + tokens.text_to_icon_padding();
                 }
                 DesiredWidth::AtLeast(content_width)
             }

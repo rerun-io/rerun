@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
@@ -80,9 +80,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("text".into()),
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:text".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -92,9 +92,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.TextLogLevel".into(),
-            archetype_field_name: Some("level".into()),
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:level".into(),
+            component_type: Some("rerun.components.TextLogLevel".into()),
         }
     }
 
@@ -104,19 +104,9 @@ impl TextLog {
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("color".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.TextLogIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.TextLog".into()),
+            component: "TextLog:color".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 }
@@ -124,33 +114,27 @@ impl TextLog {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextLog::descriptor_text()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level(), TextLog::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [TextLog::descriptor_color()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             TextLog::descriptor_text(),
             TextLog::descriptor_level(),
-            TextLog::descriptor_indicator(),
             TextLog::descriptor_color(),
         ]
     });
 
 impl TextLog {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`TextLog`] [`::re_types_core::Archetype`]
-pub type TextLogIndicator = ::re_types_core::GenericIndicatorComponent<TextLog>;
-
 impl ::re_types_core::Archetype for TextLog {
-    type Indicator = TextLogIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.TextLog".into()
@@ -159,12 +143,6 @@ impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn display_name() -> &'static str {
         "Text log"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        TextLogIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -211,15 +189,10 @@ impl ::re_types_core::AsComponents for TextLog {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.text.clone(),
-            self.level.clone(),
-            self.color.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.text.clone(), self.level.clone(), self.color.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -291,12 +264,7 @@ impl TextLog {
                 .map(|color| color.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

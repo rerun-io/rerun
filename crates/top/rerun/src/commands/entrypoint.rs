@@ -117,13 +117,14 @@ Example: `16GB` or `50%` (of system total)."
 
     #[clap(
         long,
-        default_value = "25%",
+        default_value = None,
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total)."
+Example: `16GB` or `50%` (of system total).
+Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
     )]
-    server_memory_limit: String,
+    server_memory_limit: Option<String>,
 
     #[clap(
         long,
@@ -163,6 +164,8 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
+    ///
+    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_web: bool,
 
@@ -170,12 +173,19 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
+    ///
+    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_grpc: bool,
 
     /// Do not attempt to start a new server, instead try to connect to an existing one.
     ///
-    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    /// Optionally accepts a URL to a gRPC server.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
     #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,
@@ -571,7 +581,8 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    re_crash_handler::install_crash_handlers(build_info);
+    #[cfg(not(all(not(target_arch = "wasm32"), feature = "perf_telemetry")))]
+    re_crash_handler::install_crash_handlers(build_info.clone());
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
@@ -588,6 +599,9 @@ where
         println!("Video features: {}", re_video::build_info().features);
         return Ok(0);
     }
+
+    #[cfg(feature = "native_viewer")]
+    let profiler = run_profiler(&args);
 
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
@@ -620,12 +634,52 @@ where
             }
         }
     } else {
+        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+        let mut _telemetry = {
+            // Safety: anything touching the env is unsafe, tis what it is.
+            #[expect(unsafe_code)]
+            unsafe {
+                std::env::set_var("OTEL_SERVICE_NAME", "rerun");
+            }
+
+            // NOTE: We're just parsing the environment, hence the `vec![]` for CLI flags.
+            use re_perf_telemetry::external::clap::Parser as _;
+            let args = re_perf_telemetry::TelemetryArgs::parse_from::<_, String>(vec![]);
+
+            // Remember: telemetry must be init in a Tokio context.
+            tokio_runtime.block_on(async {
+                re_perf_telemetry::Telemetry::init(
+                    args,
+                    re_perf_telemetry::TelemetryDropBehavior::Shutdown,
+                )
+                // Perf telemetry is a developer tool, it's not compiled into final user builds.
+                .expect("could not start perf telemetry")
+            })
+
+            // TODO(tokio-rs/tracing#3239): The viewer will crash on exit because of what appears
+            // to be a design flaw in `tracing-subscriber`'s shutdown implementation, specifically
+            // it assumes that all the relevant thread-local state will be dropped in the proper
+            // order, when really it won't and there's no way to guarantee that.
+            // See <https://github.com/tokio-rs/tracing/issues/3239>.
+            //
+            // What happens in practice will depend on what you and all your dependencies are
+            // doing. This problem has been seen before specifically for egui apps [1], but really
+            // it has nothing to do with egui per se.
+            // [1]: <https://github.com/smol-rs/polling/issues/231>
+            //
+            // Since this is a very niche feature only meant to be used for deep performance work,
+            // I think this is fine for now (and I don't think there's anything we can do from
+            // userspace anyhow, this is a pure `tracing` issue, unrelated to `re_perf_telemetry`).
+        };
+
         run_impl(
             main_thread_token,
             build_info,
             call_source,
             args,
             tokio_runtime.handle(),
+            #[cfg(feature = "native_viewer")]
+            profiler,
         )
     };
 
@@ -654,9 +708,10 @@ fn run_impl(
     call_source: CallSource,
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
+    #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
-    #[cfg(feature = "native_viewer")]
-    let profiler = run_profiler(&args);
+    //TODO(#10068): populate token passed with `--token`
+    let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
     #[cfg(feature = "server")]
     let mut is_another_server_running = false;
@@ -712,12 +767,24 @@ fn run_impl(
     #[cfg(feature = "server")]
     let server_memory_limit = {
         re_log::debug!("Parsing memory limit for gRPC server");
-        re_memory::MemoryLimit::parse(&args.server_memory_limit)
+        let value = match &args.server_memory_limit {
+            Some(v) => v.as_str(),
+            None => {
+                // When spawning just a server, we don't want the memory limit to be 0.
+                if args.serve || args.serve_web || args.serve_grpc {
+                    "25%"
+                } else {
+                    "0B"
+                }
+            }
+        };
+        re_log::debug!("Server memory limit: {value}");
+        re_memory::MemoryLimit::parse(value)
             .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
     };
 
     #[allow(unused_variables)]
-    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+    let (command_sender, command_receiver) = re_global_context::command_channel();
 
     // Where do we get the data from?
     let mut redap_uris: Vec<_> = Vec::new();
@@ -731,8 +798,10 @@ fn run_impl(
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) =
-                data_sources[0].clone()
+            if let DataSource::RerunGrpcStream {
+                uri: re_uri::RedapUri::Proxy(uri),
+                ..
+            } = data_sources[0].clone()
             {
                 // Special case! We are connecting a web-viewer to a gRPC address.
                 // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
@@ -754,7 +823,7 @@ fn run_impl(
 
         let command_sender = command_sender.clone();
         let on_cmd = Box::new(move |cmd| {
-            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            use re_global_context::{SystemCommand, SystemCommandSender as _};
             match cmd {
                 re_data_source::DataSourceCommand::SetLoopSelection {
                     recording_id,
@@ -773,8 +842,11 @@ fn run_impl(
         #[allow(unused_mut)]
         let mut rxs_logs = data_sources
             .into_iter()
-            .filter_map(
-                |data_source| match data_source.stream(on_cmd.clone(), None) {
+            .filter_map(|data_source| {
+                // TODO(#10093): this is problematic because the connection registry's token have
+                // not yet been deserialized from persistence (this is done later by `App`. So if
+                // this requires such a token, it will fail even though it'd succeed later.
+                match data_source.stream(&connection_registry, on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
 
                     Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
@@ -788,8 +860,8 @@ fn run_impl(
                     }
 
                     Err(err) => Some(Err(err)),
-                },
-            )
+                }
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         #[cfg(feature = "server")]
@@ -997,6 +1069,7 @@ fn run_impl(
                         &call_source.app_env(),
                         startup_options,
                         cc,
+                        Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                         (command_sender, command_receiver),
                     );

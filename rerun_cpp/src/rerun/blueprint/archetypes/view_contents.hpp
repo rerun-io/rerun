@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -64,18 +63,13 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> query;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ViewContentsIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewContents";
 
         /// `ComponentDescriptor` for the `query` field.
         static constexpr auto Descriptor_query = ComponentDescriptor(
-            ArchetypeName, "query",
-            Loggable<rerun::blueprint::components::QueryExpression>::Descriptor.component_name
+            ArchetypeName, "ViewContents:query",
+            Loggable<rerun::blueprint::components::QueryExpression>::ComponentType
         );
 
       public:

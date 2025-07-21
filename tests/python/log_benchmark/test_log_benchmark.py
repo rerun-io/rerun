@@ -57,7 +57,7 @@ def log_image(image: npt.NDArray[np.uint8], num_log_calls: int) -> None:
 
 @pytest.mark.parametrize(
     ["image_dimension", "image_channels", "num_log_calls"],
-    [pytest.param(16_384, 4, 4, id="16384^2px-4channels-4calls")],
+    [pytest.param(1024, 4, 20_000, id="1024^2px-4channels-20000calls")],
 )
 def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, num_log_calls: int) -> None:
     rr.init("rerun_example_benchmark_image")

@@ -29,7 +29,7 @@ nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
-ellipsis_expression = re.compile(r"[\[(<].*\.\.\..*[\])>]")
+ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 ellipsis_import = re.compile(r"from \.\.\.")
 ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
@@ -609,7 +609,7 @@ def test_lint_workspace_deps() -> None:
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }
-        glam = "0.28"
+        glam = "0.30"
         """,
     ]
 
@@ -1257,7 +1257,7 @@ def main() -> None:
                 num_errors += lint_file(filepath, args)
     else:
         for root, dirs, files in os.walk(".", topdown=True):
-            dirs[:] = [d for d in dirs if not should_ignore(d)]
+            dirs[:] = [d for d in dirs if not should_ignore(os.path.join(root, d))]
 
             for filename in files:
                 extension = filename.split(".")[-1]

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 2D arrows with optional colors, radii, labels, etc.
@@ -74,7 +74,10 @@ pub struct Arrows2D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<SerializedComponentBatch>,
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     pub show_labels: Option<SerializedComponentBatch>,
 
     /// An optional floating point value that specifies the 2D drawing order.
@@ -95,9 +98,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_vectors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.Vector2D".into(),
-            archetype_field_name: Some("vectors".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:vectors".into(),
+            component_type: Some("rerun.components.Vector2D".into()),
         }
     }
 
@@ -107,9 +110,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_origins() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.Position2D".into(),
-            archetype_field_name: Some("origins".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:origins".into(),
+            component_type: Some("rerun.components.Position2D".into()),
         }
     }
 
@@ -119,9 +122,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:radii".into(),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 
@@ -131,9 +134,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:colors".into(),
+            component_type: Some("rerun.components.Color".into()),
         }
     }
 
@@ -143,9 +146,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.Text".into(),
-            archetype_field_name: Some("labels".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:labels".into(),
+            component_type: Some("rerun.components.Text".into()),
         }
     }
 
@@ -155,9 +158,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.ShowLabels".into(),
-            archetype_field_name: Some("show_labels".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:show_labels".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
         }
     }
 
@@ -167,9 +170,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 
@@ -179,19 +182,9 @@ impl Arrows2D {
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.Arrows2DIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.Arrows2D".into()),
+            component: "Arrows2D:class_ids".into(),
+            component_type: Some("rerun.components.ClassId".into()),
         }
     }
 }
@@ -199,13 +192,8 @@ impl Arrows2D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Arrows2D::descriptor_vectors()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Arrows2D::descriptor_origins(),
-            Arrows2D::descriptor_indicator(),
-        ]
-    });
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Arrows2D::descriptor_origins()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -219,12 +207,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Arrows2D::descriptor_vectors(),
             Arrows2D::descriptor_origins(),
-            Arrows2D::descriptor_indicator(),
             Arrows2D::descriptor_radii(),
             Arrows2D::descriptor_colors(),
             Arrows2D::descriptor_labels(),
@@ -235,16 +222,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     });
 
 impl Arrows2D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`Arrows2D`] [`::re_types_core::Archetype`]
-pub type Arrows2DIndicator = ::re_types_core::GenericIndicatorComponent<Arrows2D>;
-
 impl ::re_types_core::Archetype for Arrows2D {
-    type Indicator = Arrows2DIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Arrows2D".into()
@@ -253,12 +235,6 @@ impl ::re_types_core::Archetype for Arrows2D {
     #[inline]
     fn display_name() -> &'static str {
         "Arrows 2D"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        Arrows2DIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -336,7 +312,6 @@ impl ::re_types_core::AsComponents for Arrows2D {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.vectors.clone(),
             self.origins.clone(),
             self.radii.clone(),
@@ -462,12 +437,7 @@ impl Arrows2D {
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -557,7 +527,10 @@ impl Arrows2D {
         self
     }
 
-    /// Optional choice of whether the text labels should be shown by default.
+    /// Whether the text labels should be shown.
+    ///
+    /// If not set, labels will automatically appear when there is exactly one label for this entity
+    /// or the number of instances on this entity is under a certain threshold.
     #[inline]
     pub fn with_show_labels(
         mut self,

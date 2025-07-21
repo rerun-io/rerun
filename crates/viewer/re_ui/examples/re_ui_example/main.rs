@@ -3,13 +3,12 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::Modifiers;
-use egui::containers::menu;
-use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
-    filter_widget::FilterState, list_item, maybe_plus, modifiers_text,
+    filter_widget::FilterState, list_item,
 };
-use re_ui::{icon_text, icons, notifications};
+use re_ui::{IconText, filter_widget::format_matching_text};
+use re_ui::{icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -151,12 +150,14 @@ impl eframe::App for ExampleApp {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let tokens = egui_ctx.tokens();
+
         self.show_text_logs_as_notifications();
 
         self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(egui_ctx.design_tokens().bottom_panel_frame())
+            .frame(egui_ctx.tokens().bottom_panel_frame())
             .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -202,6 +203,9 @@ impl eframe::App for ExampleApp {
             ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
                 ui.toggle_switch(8.0, &mut self.dummy_bool);
+                ui.help_button(|ui| {
+                    ui.label("This some help text.");
+                });
             });
             ui.label(format!("Latest command: {}", self.latest_cmd));
 
@@ -244,9 +248,13 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
-                    ui.weak("empty");
-                }))
+                .button(list_item::ItemMenuButton::new(
+                    &re_ui::icons::ADD,
+                    "Add",
+                    |ui| {
+                        ui.weak("empty");
+                    },
+                ))
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
@@ -304,12 +312,9 @@ impl eframe::App for ExampleApp {
                     // revert change by `list_item_scope`
                     ui.spacing_mut().item_spacing.y = y_spacing;
                     egui::TopBottomPanel::top("left_panel_top_bar")
-                        .exact_height(re_ui::DesignTokens::title_bar_height())
+                        .exact_height(tokens.title_bar_height())
                         .frame(egui::Frame {
-                            inner_margin: egui::Margin::symmetric(
-                                re_ui::DesignTokens::view_padding(),
-                                0,
-                            ),
+                            inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
@@ -318,9 +323,7 @@ impl eframe::App for ExampleApp {
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
                             egui::Frame {
-                                inner_margin: egui::Margin::same(
-                                    re_ui::DesignTokens::view_padding(),
-                                ),
+                                inner_margin: egui::Margin::same(tokens.view_padding()),
                                 ..Default::default()
                             }
                             .show(ui, left_panel_bottom_section_ui);
@@ -399,7 +402,7 @@ impl ExampleApp {
         let top_bar_style = egui_ctx.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(egui_ctx.design_tokens().top_panel_frame())
+            .frame(egui_ctx.tokens().top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -422,7 +425,7 @@ impl ExampleApp {
                     }
                 }
 
-                menu::Bar::new().ui(ui, |ui| {
+                egui::MenuBar::new().ui(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 
@@ -458,7 +461,7 @@ impl ExampleApp {
                 &mut self.show_left_panel,
             );
 
-            notifications::notification_toggle_button(ui, &mut self.notifications);
+            self.notifications.notification_toggle_button(ui);
         });
     }
 }
@@ -485,6 +488,10 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         _tile_id: egui_tiles::TileId,
         _pane: &mut Tab,
     ) -> egui_tiles::UiResponse {
+        ui.help_button(|ui| {
+            ui.label("This some help text.");
+        });
+
         egui::Frame::new().inner_margin(4.0).show(ui, |ui| {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
@@ -493,16 +500,16 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.label("Help").on_hover_ui(|ui| {
                 Help::new("Help example")
                     .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-                    .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+                    .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(
                         "Zoom",
-                        icon_text!(
-                            modifiers_text(Modifiers::COMMAND, ui.ctx()),
-                            maybe_plus(ui.ctx()),
-                            icons::SCROLL
+                        IconText::from_modifiers_and(
+                            ui.ctx().os(),
+                            Modifiers::COMMAND,
+                            icons::SCROLL,
                         ),
                     )
-                    .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+                    .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
                     .ui(ui);
             });
 
@@ -513,6 +520,12 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
             ui.error_label("This is an example of a long error label.");
             ui.warning_label("This is an example of a long warning label.");
+            ui.success_label("This is an example of a long success label.");
+            ui.info_label("This is an example of a long info label.");
+        });
+
+        ui.help_button(|ui| {
+            ui.label("This some help text.");
         });
 
         Default::default()
@@ -535,8 +548,8 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
     }
 
     /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::DesignTokens::title_bar_height()
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?

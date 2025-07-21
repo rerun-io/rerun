@@ -21,6 +21,11 @@ Configuration for the 3D line grid.
 * `plane`: In what plane the grid is drawn.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
+### `eye_controls`
+Configuration for the 3D eye
+
+* `kind`: The kind of the eye for the spatial 3D view.
+* `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -53,6 +58,7 @@ snippet: views/spatial3d
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
@@ -71,4 +77,5 @@ snippet: views/spatial3d
 * [`Points2D`](../archetypes/points2d.md) (if logged under a projection)
 * [`SegmentationImage`](../archetypes/segmentation_image.md) (if logged under a projection)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md) (if logged under a projection)
+* [`VideoStream`](../archetypes/video_stream.md) (if logged under a projection)
 

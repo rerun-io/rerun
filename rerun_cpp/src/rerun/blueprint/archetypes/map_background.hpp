@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -27,18 +26,13 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> provider;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.MapBackgroundIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.MapBackground";
 
         /// `ComponentDescriptor` for the `provider` field.
         static constexpr auto Descriptor_provider = ComponentDescriptor(
-            ArchetypeName, "provider",
-            Loggable<rerun::blueprint::components::MapProvider>::Descriptor.component_name
+            ArchetypeName, "MapBackground:provider",
+            Loggable<rerun::blueprint::components::MapProvider>::ComponentType
         );
 
       public:

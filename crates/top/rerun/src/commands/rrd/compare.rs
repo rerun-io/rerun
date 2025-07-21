@@ -27,6 +27,10 @@ pub struct CompareCommand {
     /// If specified, dumps both .rrd files as tables.
     #[clap(long, default_value_t = false)]
     full_dump: bool,
+
+    /// If specified, the comparison will ignore chunks without components.
+    #[clap(long, default_value_t = false)]
+    ignore_chunks_without_components: bool,
 }
 
 impl CompareCommand {
@@ -40,6 +44,7 @@ impl CompareCommand {
             path_to_rrd2,
             unordered,
             full_dump,
+            ignore_chunks_without_components,
         } = self;
 
         re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
@@ -47,10 +52,10 @@ impl CompareCommand {
         let path_to_rrd1 = PathBuf::from(path_to_rrd1);
         let path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
-        let (app_id1, chunks1) =
-            load_chunks(&path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
-        let (app_id2, chunks2) =
-            load_chunks(&path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
+        let (app_id1, chunks1) = load_chunks(&path_to_rrd1, *ignore_chunks_without_components)
+            .with_context(|| format!("path: {path_to_rrd1:?}"))?;
+        let (app_id2, chunks2) = load_chunks(&path_to_rrd2, *ignore_chunks_without_components)
+            .with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
         if *full_dump {
             println!("{app_id1}");
@@ -101,6 +106,9 @@ impl CompareCommand {
                     width: Some(800),
                     include_metadata: true,
                     include_column_metadata: true,
+                    trim_field_names: false,
+                    trim_metadata_keys: false,
+                    trim_metadata_values: false,
                 },
             )
             .to_string()
@@ -134,6 +142,7 @@ impl CompareCommand {
 /// Fails if there are more than one data recordings present in the rrd file.
 fn load_chunks(
     path_to_rrd: &Path,
+    ignore_chunks_without_components: bool,
 ) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
     use re_entity_db::EntityDb;
     use re_log_types::StoreId;
@@ -179,6 +188,16 @@ fn load_chunks(
             .app_id()
             .cloned()
             .unwrap_or_else(re_log_types::ApplicationId::unknown),
-        engine.store().iter_chunks().map(Arc::clone).collect_vec(),
+        engine
+            .store()
+            .iter_chunks()
+            .filter_map(|c| {
+                if ignore_chunks_without_components {
+                    (c.num_components() > 0).then_some(c.clone())
+                } else {
+                    Some(c.clone())
+                }
+            })
+            .collect_vec(),
     ))
 }

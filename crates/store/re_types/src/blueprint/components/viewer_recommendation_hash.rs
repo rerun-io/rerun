@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Hash of a viewer recommendation.
@@ -30,8 +30,8 @@ pub struct ViewerRecommendationHash(pub crate::datatypes::UInt64);
 
 impl ::re_types_core::Component for ViewerRecommendationHash {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ViewerRecommendationHash")
+    fn name() -> ComponentType {
+        "rerun.blueprint.components.ViewerRecommendationHash".into()
     }
 }
 

@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
@@ -45,9 +45,9 @@ impl ForceManyBody {
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.Enabled".into(),
-            archetype_field_name: Some("enabled".into()),
+            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component: "ForceManyBody:enabled".into(),
+            component_type: Some("rerun.blueprint.components.Enabled".into()),
         }
     }
 
@@ -57,19 +57,9 @@ impl ForceManyBody {
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.ForceStrength".into(),
-            archetype_field_name: Some("strength".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component: "ForceManyBody:strength".into(),
+            component_type: Some("rerun.blueprint.components.ForceStrength".into()),
         }
     }
 }
@@ -77,8 +67,8 @@ impl ForceManyBody {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [ForceManyBody::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -88,26 +78,20 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ForceManyBody::descriptor_indicator(),
             ForceManyBody::descriptor_enabled(),
             ForceManyBody::descriptor_strength(),
         ]
     });
 
 impl ForceManyBody {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`ForceManyBody`] [`::re_types_core::Archetype`]
-pub type ForceManyBodyIndicator = ::re_types_core::GenericIndicatorComponent<ForceManyBody>;
-
 impl ::re_types_core::Archetype for ForceManyBody {
-    type Indicator = ForceManyBodyIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.ForceManyBody".into()
@@ -116,12 +100,6 @@ impl ::re_types_core::Archetype for ForceManyBody {
     #[inline]
     fn display_name() -> &'static str {
         "Force many body"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ForceManyBodyIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -165,14 +143,10 @@ impl ::re_types_core::AsComponents for ForceManyBody {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            self.enabled.clone(),
-            self.strength.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [self.enabled.clone(), self.strength.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

@@ -102,7 +102,7 @@ CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 def test_arrows3d_columnar() -> None:
     for input, expected in CASES:
         data = [*rr.Arrows3D.columns(vectors=input, origins=np.zeros_like(input))]
-        assert np.allclose(np.asarray(data[1].as_arrow_array().to_pylist()), np.asarray(expected))
+        assert np.allclose(np.asarray(data[0].as_arrow_array().to_pylist()), np.asarray(expected))
 
 
 if __name__ == "__main__":

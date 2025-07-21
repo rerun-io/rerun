@@ -204,7 +204,9 @@ fn clears() -> anyhow::Result<()> {
                 query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
-                got_clear.serialized().map(|batch| batch.array)
+                got_clear
+                    .serialized(Clear::descriptor_is_recursive())
+                    .map(|batch| batch.array)
             );
 
             // child1
@@ -272,7 +274,9 @@ fn clears() -> anyhow::Result<()> {
                 query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
-                got_clear.serialized().map(|batch| batch.array)
+                got_clear
+                    .serialized(Clear::descriptor_is_recursive())
+                    .map(|batch| batch.array)
             );
 
             // child1
@@ -307,7 +311,14 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let instance = MyIndex(0);
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(row_id, timepoint, [&[instance] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(
+                    re_log_types::example_components::MyIndex::partial_descriptor(),
+                    &[instance] as _,
+                )],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -318,7 +329,7 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_parent,
                 &query,
-                &instance.descriptor(),
+                &MyIndex::partial_descriptor(),
             )
             .unwrap();
             similar_asserts::assert_eq!(instance, got_instance);
@@ -331,7 +342,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &instance.descriptor()
+                    &MyIndex::partial_descriptor(),
                 )
                 .is_none()
             );
@@ -573,7 +584,9 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
-            got_clear.serialized().map(|batch| batch.array)
+            got_clear
+                .serialized(Clear::descriptor_is_recursive())
+                .map(|batch| batch.array)
         );
     }
 
@@ -605,7 +618,9 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
-            got_clear.serialized().map(|batch| batch.array)
+            got_clear
+                .serialized(Clear::descriptor_is_recursive())
+                .map(|batch| batch.array)
         );
     }
 

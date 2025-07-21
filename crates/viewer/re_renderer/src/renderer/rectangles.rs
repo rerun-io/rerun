@@ -47,7 +47,7 @@ pub enum TextureFilterMin {
 }
 
 /// Describes how the color information is encoded in the texture.
-// TODO(#7608): to be replaced by re_renderer based on-input conversion.
+// TODO(#10648): to be replaced by re_renderer based on-input conversion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     /// Do BGR(A)->RGB(A) conversion is in the shader.
@@ -162,6 +162,25 @@ pub struct TexturedRect {
     pub colormapped_texture: ColormappedTexture,
 
     pub options: RectangleOptions,
+}
+
+impl TexturedRect {
+    /// Returns axis aligned bounding box for this rectangle.
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        let left_top = self.top_left_corner_position;
+        let extent_u = self.extent_u;
+        let extent_v = self.extent_v;
+
+        macaw::BoundingBox::from_points(
+            [
+                left_top,
+                left_top + extent_u,
+                left_top + extent_v,
+                left_top + extent_v + extent_u,
+            ]
+            .into_iter(),
+        )
+    }
 }
 
 #[derive(Clone)]

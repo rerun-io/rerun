@@ -276,16 +276,16 @@ class SeriesLines(Archetype):
                 aggregation_policy=aggregation_policy,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "colors": colors,
-            "widths": widths,
-            "names": names,
-            "visible_series": visible_series,
-            "aggregation_policy": aggregation_policy,
+            "SeriesLines:colors": colors,
+            "SeriesLines:widths": widths,
+            "SeriesLines:names": names,
+            "SeriesLines:visible_series": visible_series,
+            "SeriesLines:aggregation_policy": aggregation_policy,
         }
         columns = []
 
@@ -294,7 +294,7 @@ class SeriesLines(Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
                 elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
@@ -314,8 +314,7 @@ class SeriesLines(Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     colors: components.ColorBatch | None = field(
         metadata={"component": True},

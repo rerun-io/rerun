@@ -1,5 +1,5 @@
 use re_log_types::StoreKind;
-use re_types::{archetypes::RecordingProperties, components::Timestamp};
+use re_types::{archetypes::RecordingInfo, components::Timestamp};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
@@ -48,12 +48,14 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        let start_time_descr = RecordingProperties::descriptor_start_time();
-        recordings
-            .sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>(&start_time_descr));
+        let start_time_descr = RecordingInfo::descriptor_start_time();
+        recordings.sort_by_key(|entity_db| {
+            entity_db.recording_info_property::<Timestamp>(&start_time_descr)
+        });
         // TODO(grtlr): Blueprints don't have a time yet. But do we even need that?
-        blueprints
-            .sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>(&start_time_descr));
+        blueprints.sort_by_key(|entity_db| {
+            entity_db.recording_info_property::<Timestamp>(&start_time_descr)
+        });
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;

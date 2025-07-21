@@ -6,8 +6,9 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use tracing::instrument;
 
-use re_grpc_client::redap::RedapClient;
+use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
@@ -19,14 +20,23 @@ use re_protos::{
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PartitionTableProvider {
-    client: RedapClient,
+    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
+    client: ConnectionClient,
     dataset_id: EntryId,
 }
 
+impl std::fmt::Debug for PartitionTableProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartitionTableProvider")
+            .field("dataset_id", &self.dataset_id)
+            .finish()
+    }
+}
+
 impl PartitionTableProvider {
-    pub fn new(client: RedapClient, dataset_id: EntryId) -> Self {
+    pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
 
@@ -40,6 +50,7 @@ impl PartitionTableProvider {
 impl GrpcStreamToTable for PartitionTableProvider {
     type GrpcStreamData = ScanPartitionTableResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetPartitionTableSchemaRequest {
             dataset_id: Some(self.dataset_id.into()),
@@ -48,18 +59,21 @@ impl GrpcStreamToTable for PartitionTableProvider {
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            make_future_send(async move { Ok(client.get_partition_table_schema(request).await) })
-                .await?
-                .map_err(|err| DataFusionError::External(Box::new(err)))?
-                .into_inner()
-                .schema
-                .ok_or(DataFusionError::External(
-                    "Schema missing from GetPartitionTableSchema response".into(),
-                ))?
-                .try_into()?,
+            make_future_send(async move {
+                Ok(client.inner().get_partition_table_schema(request).await)
+            })
+            .await?
+            .map_err(|err| DataFusionError::External(Box::new(err)))?
+            .into_inner()
+            .schema
+            .ok_or(DataFusionError::External(
+                "Schema missing from GetPartitionTableSchema response".into(),
+            ))?
+            .try_into()?,
         ))
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
@@ -70,7 +84,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.scan_partition_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_partition_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

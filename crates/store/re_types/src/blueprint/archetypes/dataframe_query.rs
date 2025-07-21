@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The query for the dataframe view.
@@ -51,9 +51,9 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_timeline() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.TimelineName".into(),
-            archetype_field_name: Some("timeline".into()),
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:timeline".into(),
+            component_type: Some("rerun.blueprint.components.TimelineName".into()),
         }
     }
 
@@ -63,9 +63,9 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_filter_by_range() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.FilterByRange".into(),
-            archetype_field_name: Some("filter_by_range".into()),
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:filter_by_range".into(),
+            component_type: Some("rerun.blueprint.components.FilterByRange".into()),
         }
     }
 
@@ -75,9 +75,9 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
-            archetype_field_name: Some("filter_is_not_null".into()),
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:filter_is_not_null".into(),
+            component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
         }
     }
 
@@ -87,9 +87,9 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
-            archetype_field_name: Some("apply_latest_at".into()),
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:apply_latest_at".into(),
+            component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
         }
     }
 
@@ -99,19 +99,9 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_select() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.SelectedColumns".into(),
-            archetype_field_name: Some("select".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:select".into(),
+            component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
         }
     }
 }
@@ -119,8 +109,8 @@ impl DataframeQuery {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [DataframeQuery::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -133,10 +123,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            DataframeQuery::descriptor_indicator(),
             DataframeQuery::descriptor_timeline(),
             DataframeQuery::descriptor_filter_by_range(),
             DataframeQuery::descriptor_filter_is_not_null(),
@@ -146,16 +135,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     });
 
 impl DataframeQuery {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`DataframeQuery`] [`::re_types_core::Archetype`]
-pub type DataframeQueryIndicator = ::re_types_core::GenericIndicatorComponent<DataframeQuery>;
-
 impl ::re_types_core::Archetype for DataframeQuery {
-    type Indicator = DataframeQueryIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.DataframeQuery".into()
@@ -164,12 +148,6 @@ impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn display_name() -> &'static str {
         "Dataframe query"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        DataframeQueryIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -235,7 +213,6 @@ impl ::re_types_core::AsComponents for DataframeQuery {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.timeline.clone(),
             self.filter_by_range.clone(),
             self.filter_is_not_null.clone(),

@@ -1,25 +1,23 @@
 use std::sync::Arc;
 
-use arrow::array::Array;
 use arrow::{
-    array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
+    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::EntityPath;
-
-use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
-use crate::common::v1alpha1::ComponentDescriptor;
-use crate::manifest_registry::v1alpha1::{
-    CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
-    RegisterWithDatasetResponse, ScanPartitionTableResponse,
-};
-use crate::{TypeConversionError, invalid_field, missing_field};
-
+use re_log_types::{EntityPath, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
+use crate::manifest_registry::v1alpha1::{
+    CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
+    RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
+};
+use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
+use crate::{TypeConversionError, invalid_field, missing_field};
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -28,6 +26,10 @@ pub struct QueryDatasetRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
+    pub exclude_static_data: bool,
+    pub exclude_temporal_data: bool,
     pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
     pub query: Option<Query>,
 }
@@ -69,6 +71,13 @@ impl TryFrom<crate::manifest_registry::v1alpha1::QueryDatasetRequest> for QueryD
                 })
                 .collect::<Result<Vec<_>, _>>()?,
 
+            select_all_entity_paths: value.select_all_entity_paths,
+
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+
             scan_parameters: value
                 .scan_parameters
                 .map(|params| params.try_into())
@@ -102,23 +111,11 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
                     index: latest_at
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
-                        .ok_or_else(|| {
-                            tonic::Status::invalid_argument("index is required for latest_at query")
-                        })?,
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name)),
                     at: latest_at
                         .at
-                        .ok_or_else(|| tonic::Status::invalid_argument("at is required"))?,
-                    fuzzy_descriptors: latest_at
-                        // TODO(cmc): I shall bring that back into a more structured form later.
-                        // .into_iter()
-                        // .map(|desc| FuzzyComponentDescriptor {
-                        //     archetype_name: desc.archetype_name.map(Into::into),
-                        //     archetype_field_name: desc.archetype_field_name.map(Into::into),
-                        //     component_name: desc.component_name.map(Into::into),
-                        // })
-                        // .collect(),
-                        .fuzzy_descriptors,
+                        .map(|at| TimeInt::new_temporal(at))
+                        .unwrap_or_else(|| TimeInt::STATIC),
                 })
             })
             .transpose()?;
@@ -141,16 +138,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         .ok_or_else(|| {
                             tonic::Status::invalid_argument("index is required for range query")
                         })?,
-                    fuzzy_descriptors: range
-                        // TODO(cmc): I shall bring that back into a more structured form later.
-                        // .into_iter()
-                        // .map(|desc| FuzzyComponentDescriptor {
-                        //     archetype_name: desc.archetype_name.map(Into::into),
-                        //     archetype_field_name: desc.archetype_field_name.map(Into::into),
-                        //     component_name: desc.component_name.map(Into::into),
-                        // })
-                        // .collect(),
-                        .fuzzy_descriptors,
                 })
             })
             .transpose()?;
@@ -173,16 +160,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
 impl From<Query> for crate::manifest_registry::v1alpha1::Query {
     fn from(value: Query) -> Self {
         crate::manifest_registry::v1alpha1::Query {
-            latest_at: value.latest_at.map(|latest_at| {
-                crate::manifest_registry::v1alpha1::QueryLatestAt {
-                    index: Some({
-                        let timeline: TimelineName = latest_at.index.into();
-                        timeline.into()
-                    }),
-                    at: Some(latest_at.at),
-                    fuzzy_descriptors: latest_at.fuzzy_descriptors,
-                }
-            }),
+            latest_at: value.latest_at.map(Into::into),
             range: value
                 .range
                 .map(|range| crate::manifest_registry::v1alpha1::QueryRange {
@@ -191,7 +169,6 @@ impl From<Query> for crate::manifest_registry::v1alpha1::Query {
                         timeline.into()
                     }),
                     index_range: Some(range.index_range.into()),
-                    fuzzy_descriptors: range.fuzzy_descriptors,
                 }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
             columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
@@ -211,6 +188,10 @@ pub struct GetChunksRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
     pub entity_paths: Vec<EntityPath>,
+    pub select_all_entity_paths: bool,
+    pub fuzzy_descriptors: Vec<String>,
+    pub exclude_static_data: bool,
+    pub exclude_temporal_data: bool,
     pub query: Option<Query>,
 }
 
@@ -251,37 +232,60 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
                 })
                 .collect::<Result<Vec<_>, _>>()?,
 
+            select_all_entity_paths: value.select_all_entity_paths,
+
+            fuzzy_descriptors: value.fuzzy_descriptors,
+
+            exclude_static_data: value.exclude_static_data,
+            exclude_temporal_data: value.exclude_temporal_data,
+
             query: value.query.map(|q| q.try_into()).transpose()?,
         })
     }
 }
 
-/// A `ComponentDescriptor` meant for querying: all fields are optional.
-///
-/// This acts as a pattern matcher.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FuzzyComponentDescriptor {
-    pub archetype_name: Option<re_chunk::ArchetypeName>,
-    pub archetype_field_name: Option<re_chunk::ArchetypeFieldName>,
-    pub component_name: Option<re_chunk::ComponentName>,
-}
-
 #[derive(Debug, Clone)]
 pub struct QueryLatestAt {
-    pub index: String,
-    pub at: i64,
-    pub fuzzy_descriptors: Vec<String>,
-    // TODO(cmc): I shall bring that back into a more structured form later.
-    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+    /// Index name (timeline) to query.
+    ///
+    /// Use `None` for static only data.
+    pub index: Option<String>,
+
+    /// The timestamp to query at.
+    ///
+    /// Use `TimeInt::STATIC` to query for static only data.
+    pub at: TimeInt,
+}
+
+impl QueryLatestAt {
+    pub fn new_static() -> Self {
+        Self {
+            index: None,
+            at: TimeInt::STATIC,
+        }
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.index.is_none()
+    }
+}
+
+impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
+    fn from(value: QueryLatestAt) -> Self {
+        crate::manifest_registry::v1alpha1::QueryLatestAt {
+            index: value.index.map(|index| {
+                let timeline: TimelineName = index.into();
+                timeline.into()
+            }),
+            at: Some(value.at.as_i64()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct QueryRange {
     pub index: String,
     pub index_range: re_log_types::ResolvedTimeRange,
-    pub fuzzy_descriptors: Vec<String>,
-    // TODO(cmc): I shall bring that back into a more structured form later.
-    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
 }
 
 // --- CreatePartitionManifestsResponse ---
@@ -289,7 +293,6 @@ pub struct QueryRange {
 impl CreatePartitionManifestsResponse {
     pub const FIELD_ID: &str = "id";
     pub const FIELD_UPDATED_AT: &str = "updated_at";
-    pub const FIELD_URL: &str = "url";
     pub const FIELD_ERROR: &str = "error";
 
     /// The Arrow schema of the dataframe in [`Self::data`].
@@ -301,7 +304,6 @@ impl CreatePartitionManifestsResponse {
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
                 true,
             ),
-            Field::new(Self::FIELD_URL, DataType::Utf8, true),
             Field::new(Self::FIELD_ERROR, DataType::Utf8, true),
         ])
     }
@@ -310,7 +312,6 @@ impl CreatePartitionManifestsResponse {
     pub fn create_dataframe(
         partition_ids: Vec<String>,
         updated_ats: Vec<Option<jiff::Timestamp>>,
-        partition_manifest_urls: Vec<Option<String>>,
         errors: Vec<Option<String>>,
     ) -> arrow::error::Result<RecordBatch> {
         let updated_ats = updated_ats
@@ -322,7 +323,6 @@ impl CreatePartitionManifestsResponse {
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
             Arc::new(TimestampNanosecondArray::from(updated_ats)),
-            Arc::new(StringArray::from(partition_manifest_urls)),
             Arc::new(StringArray::from(errors)),
         ];
 
@@ -414,6 +414,15 @@ impl RegisterWithDatasetResponse {
     }
 }
 
+//TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
+#[derive(Debug)]
+pub struct RegisterWithDatasetTaskDescriptor {
+    pub partition_id: PartitionId,
+    pub partition_type: PartitionType,
+    pub storage_url: url::Url,
+    pub task_id: TaskId,
+}
+
 // --- ScanPartitionTableResponse --
 
 impl ScanPartitionTableResponse {
@@ -465,6 +474,15 @@ impl ScanPartitionTableResponse {
         ];
 
         RecordBatch::try_new(schema, columns)
+    }
+
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self.data.as_ref().ok_or_else(|| {
+            missing_field!(
+                crate::manifest_registry::v1alpha1::ScanPartitionTableResponse,
+                "data"
+            )
+        })?)
     }
 }
 
@@ -557,6 +575,24 @@ impl PartitionType {
                 ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
             )),
         }
+    }
+
+    pub fn many_from_arrow(array: &dyn Array) -> Result<Vec<Self>, TypeConversionError> {
+        let string_array = array.try_downcast_array_ref::<StringArray>()?;
+
+        (0..string_array.len())
+            .map(|i| {
+                let resource_type = string_array.value(i);
+                match resource_type {
+                    "rrd" => Ok(Self::Rrd),
+                    _ => Err(TypeConversionError::ArrowError(
+                        ArrowError::InvalidArgumentError(format!(
+                            "unknown resource type {resource_type}"
+                        )),
+                    )),
+                }
+            })
+            .collect()
     }
 }
 
@@ -687,9 +723,58 @@ impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::Ind
             entity_path: Some(value.entity_path.into()),
 
             component: Some(ComponentDescriptor {
-                archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-                archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-                component_name: Some(value.component_name.full_name().to_owned()),
+                archetype: value.archetype.map(|n| n.full_name().to_owned()),
+                component: Some(value.component.to_string()),
+                component_type: value.component_type.map(|c| c.full_name().to_owned()),
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DoMaintenanceRequest {
+    pub entry: crate::common::v1alpha1::ext::DatasetHandle,
+    pub build_scalar_indexes: bool,
+    pub compact_fragments: bool,
+    pub cleanup_before: Option<jiff::Timestamp>,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::DoMaintenanceRequest,
+    ) -> Result<Self, Self::Error> {
+        let cleanup_before = value
+            .cleanup_before
+            .map(|ts| jiff::Timestamp::new(ts.seconds, ts.nanos))
+            .transpose()?;
+
+        Ok(Self {
+            entry: value
+                .entry
+                .ok_or_else(|| {
+                    TypeConversionError::missing_field::<
+                        crate::manifest_registry::v1alpha1::DoMaintenanceRequest,
+                    >("entry")
+                })?
+                .try_into()?,
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before,
+        })
+    }
+}
+
+impl From<DoMaintenanceRequest> for crate::manifest_registry::v1alpha1::DoMaintenanceRequest {
+    fn from(value: DoMaintenanceRequest) -> Self {
+        Self {
+            entry: Some(value.entry.into()),
+            build_scalar_indexes: value.build_scalar_indexes,
+            compact_fragments: value.compact_fragments,
+            cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
+                seconds: ts.as_second(),
+                nanos: ts.subsec_nanosecond(),
             }),
         }
     }

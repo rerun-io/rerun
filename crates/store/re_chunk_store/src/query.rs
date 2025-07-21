@@ -6,11 +6,13 @@ use std::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 
-use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{
+    ArchetypeName, Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName,
+};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentDescriptorSet, ComponentName, UnorderedComponentDescriptorSet,
+    ComponentDescriptor, ComponentDescriptorSet, ComponentType, UnorderedComponentDescriptorSet,
 };
 
 use crate::{ChunkStore, store::ChunkIdSetPerTime};
@@ -57,6 +59,8 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentDescriptor`]s in the store.
+    ///
+    /// See also [`Self::all_components_sorted`].
     pub fn all_components(&self) -> IntSet<ComponentDescriptor> {
         self.static_chunk_ids_per_entity
             .values()
@@ -77,6 +81,8 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentDescriptor`]s in the store.
+    ///
+    /// See also [`Self::all_components`].
     pub fn all_components_sorted(&self) -> ComponentDescriptorSet {
         self.static_chunk_ids_per_entity
             .values()
@@ -96,7 +102,7 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
+    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
     /// Static components are always included in the results.
@@ -145,7 +151,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
+    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
     /// Static components are always included in the results.
@@ -194,7 +200,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`].
+    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`].
     ///
     /// Static components are always included in the results.
     ///
@@ -233,7 +239,7 @@ impl ChunkStore {
         }
     }
 
-    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`].
+    /// Retrieve all the [`ComponentDescriptor`]s that have been written to for a given [`EntityPath`].
     ///
     /// Static components are always included in the results.
     ///
@@ -272,11 +278,62 @@ impl ChunkStore {
         }
     }
 
-    /// Lists all [`ComponentDescriptor`]s at a given [`EntityPath`] that use a certain [`ComponentName`].
-    pub fn entity_component_descriptors_with_name(
+    /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ComponentIdentifier`].
+    pub fn entity_component_descriptor(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        archetype_name: Option<ArchetypeName>,
+        identifier: ComponentIdentifier,
+    ) -> Option<ComponentDescriptor> {
+        let matches = |descr: &&ComponentDescriptor| {
+            descr.component == identifier && descr.archetype == archetype_name
+        };
+
+        let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
+        let static_components_descr =
+            static_chunks
+                .iter()
+                .flat_map(|static_chunks_per_component| {
+                    static_chunks_per_component.keys().filter(matches)
+                });
+
+        let temporal_chunks = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path);
+        let temporal_components_descr =
+            temporal_chunks
+                .iter()
+                .flat_map(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.iter().flat_map(
+                        |(_, temporal_chunk_ids_per_component)| {
+                            temporal_chunk_ids_per_component.keys().filter(matches)
+                        },
+                    )
+                });
+
+        let mut iter = static_components_descr.chain(temporal_components_descr);
+        let result = iter.next();
+
+        if cfg!(debug_assertions) {
+            for other in iter {
+                if result != Some(other) {
+                    re_log::error!("column is not unique: expected {result:?} found {other:?}");
+                }
+            }
+        }
+
+        result.cloned()
+    }
+
+    /// Lists all [`ComponentDescriptor`]s at a given [`EntityPath`] that use a certain [`ComponentType`].
+    ///
+    /// [`ComponentType`] alone does not uniquely identify a component, which is why this method returns a set
+    /// of [`ComponentDescriptor`]s. If you want to retrieve a specific component it's better to use
+    /// [`ChunkStore::entity_component_descriptor`].
+    pub fn entity_component_descriptors_with_type(
+        &self,
+        entity_path: &EntityPath,
+        component_type: ComponentType,
     ) -> IntSet<ComponentDescriptor> {
         let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
         let static_components_descr =
@@ -285,7 +342,7 @@ impl ChunkStore {
                 .flat_map(|static_chunks_per_component| {
                     static_chunks_per_component
                         .keys()
-                        .filter(|descr| descr.component_name == component_name)
+                        .filter(|descr| descr.component_type == Some(component_type))
                 });
 
         let temporal_chunks = self
@@ -299,7 +356,7 @@ impl ChunkStore {
                         |(_, temporal_chunk_ids_per_component)| {
                             temporal_chunk_ids_per_component
                                 .keys()
-                                .filter(|descr| descr.component_name == component_name)
+                                .filter(|descr| descr.component_type == Some(component_type))
                         },
                     )
                 });
@@ -670,8 +727,8 @@ impl ChunkStore {
                 .map(|temporal_chunk_ids_per_component| {
                     temporal_chunk_ids_per_component
                         .iter()
-                        .filter(|(component_name, _)| {
-                            !static_chunks_per_component.contains_key(component_name)
+                        .filter(|(component_type, _)| {
+                            !static_chunks_per_component.contains_key(component_type)
                         })
                         .map(|(_, chunk_id_set)| chunk_id_set)
                 })
@@ -869,8 +926,8 @@ impl ChunkStore {
                         .map(|temporal_chunk_ids_per_component| {
                             temporal_chunk_ids_per_component
                                 .iter()
-                                .filter(|(component_name, _)| {
-                                    !static_chunks_per_component.contains_key(component_name)
+                                .filter(|(component_type, _)| {
+                                    !static_chunks_per_component.contains_key(component_type)
                                 })
                                 .map(|(_, chunk_id_set)| chunk_id_set)
                         })

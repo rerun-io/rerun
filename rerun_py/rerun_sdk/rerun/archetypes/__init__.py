@@ -12,6 +12,7 @@ from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
 from .capsules3d import Capsules3D
 from .clear import Clear
+from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
@@ -27,7 +28,7 @@ from .mesh3d import Mesh3D
 from .pinhole import Pinhole
 from .points2d import Points2D
 from .points3d import Points3D
-from .recording_properties import RecordingProperties
+from .recording_info import RecordingInfo
 from .scalars import Scalars
 from .segmentation_image import SegmentationImage
 from .series_lines import SeriesLines
@@ -37,6 +38,7 @@ from .text_document import TextDocument
 from .text_log import TextLog
 from .transform3d import Transform3D
 from .video_frame_reference import VideoFrameReference
+from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
 
 __all__ = [
@@ -50,6 +52,7 @@ __all__ = [
     "Boxes3D",
     "Capsules3D",
     "Clear",
+    "Cylinders3D",
     "DepthImage",
     "Ellipsoids3D",
     "EncodedImage",
@@ -65,7 +68,7 @@ __all__ = [
     "Pinhole",
     "Points2D",
     "Points3D",
-    "RecordingProperties",
+    "RecordingInfo",
     "Scalars",
     "SegmentationImage",
     "SeriesLines",
@@ -75,5 +78,6 @@ __all__ = [
     "TextLog",
     "Transform3D",
     "VideoFrameReference",
+    "VideoStream",
     "ViewCoordinates",
 ]

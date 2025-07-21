@@ -91,9 +91,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Archetype,
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
-built-in support. When logged, each archetype also includes an _indicator component_ which captures
-the intent of the logging code and triggers the activation of the corresponding visualizers. See
-[Entities and Components](../../concepts/entity-component.md) and
+built-in support. See [Entities and Components](../../concepts/entity-component.md) and
 [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.",
@@ -460,8 +458,15 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
     for field in &object.fields {
         let mut field_string = format!("#### `{}`", field.name);
 
-        if let Some(enum_value) = field.enum_value {
-            field_string.push_str(&format!(" = {enum_value}"));
+        if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
+            if let Some(enum_integer_type) = object.enum_integer_type() {
+                field_string.push_str(&format!(
+                    " = {}",
+                    enum_integer_type.format_value(enum_or_union_variant_value)
+                ));
+            } else {
+                field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
+            }
         }
         field_string.push('\n');
 
@@ -493,7 +498,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
     if !fields.is_empty() {
         let heading = match object.class {
             crate::ObjectClass::Struct => "## Fields",
-            crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
+            crate::ObjectClass::Enum(_) | crate::ObjectClass::Union => "## Variants",
         };
         putln!(o, "{heading}");
         for field in fields {

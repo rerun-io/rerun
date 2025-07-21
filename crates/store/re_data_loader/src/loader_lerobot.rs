@@ -21,11 +21,10 @@ use re_chunk::{
 };
 use re_log_types::{ApplicationId, StoreId};
 use re_types::{
-    Archetype, Component, ComponentBatch,
     archetypes::{
-        AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
+        self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
     },
-    components::{Name, VideoTimestamp},
+    components::VideoTimestamp,
 };
 
 use crate::lerobot::{
@@ -133,12 +132,11 @@ fn load_and_stream(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let properties = re_types::archetypes::RecordingProperties::new()
+                let recording_info = re_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
-                debug_assert!(TimePoint::default().is_static());
-                let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
-                    .with_archetype(RowId::new(), TimePoint::default(), &properties)
+                let Ok(initial) = Chunk::builder(EntityPath::properties())
+                    .with_archetype(RowId::new(), TimePoint::STATIC, &recording_info)
                     .build()
                 else {
                     re_log::error!(
@@ -294,7 +292,7 @@ fn log_episode_task(
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
         .with_context(|| "Failed to get task_index field from dataset!")?;
 
-    let mut chunk = Chunk::builder("task".into());
+    let mut chunk = Chunk::builder("task");
     let mut row_id = RowId::new();
     let mut time_int = TimeInt::ZERO;
 
@@ -331,7 +329,7 @@ fn load_episode_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -360,7 +358,7 @@ fn load_episode_depth_images(
         .and_then(|a| a.downcast_array_ref::<BinaryArray>())
         .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
 
-    let mut chunk = Chunk::builder(observation.into());
+    let mut chunk = Chunk::builder(observation);
     let mut row_id = RowId::new();
 
     for frame_idx in 0..image_bytes.len() {
@@ -405,34 +403,20 @@ fn load_episode_video(
                 .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
 
-            let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
-            let video_timestamp_list_array = video_timestamp_batch
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
-
-            // Indicator column.
-            let video_frame_reference_indicators =
-                <VideoFrameReference as Archetype>::Indicator::new_array(video_timestamps.len());
-            let video_frame_reference_indicators_list_array = video_frame_reference_indicators
-                .to_arrow_list_array()
-                .map_err(re_chunk::ChunkError::from)?;
+            let video_frame_reference_column = VideoFrameReference::update_fields()
+                .with_many_timestamp(video_timestamps)
+                .columns_of_unit_batches()
+                .with_context(|| {
+                    format!(
+                        "Failed to create `VideoFrameReference` column for episode {episode:?}."
+                    )
+                })?;
 
             Some(Chunk::from_auto_row_ids(
                 re_chunk::ChunkId::new(),
                 entity_path.into(),
                 std::iter::once((*timeline.name(), time_column)).collect(),
-                [
-                    (
-                        VideoFrameReference::indicator().descriptor.clone(),
-                        video_frame_reference_indicators_list_array,
-                    ),
-                    (
-                        VideoFrameReference::descriptor_timestamp(),
-                        video_timestamp_list_array,
-                    ),
-                ]
-                .into_iter()
-                .collect(),
+                video_frame_reference_column.collect(),
             )?)
         }
         Err(err) => {
@@ -444,7 +428,7 @@ fn load_episode_video(
     };
 
     // Put video asset into its own (static) chunk since it can be fairly large.
-    let video_asset_chunk = Chunk::builder(entity_path.into())
+    let video_asset_chunk = Chunk::builder(entity_path)
         .with_archetype(RowId::new(), TimePoint::default(), &video_asset)
         .build()?;
 
@@ -583,7 +567,7 @@ fn make_scalar_batch_entity_chunks(
                     RowId::new(),
                     TimePoint::default(),
                     std::iter::once((
-                        <Name as Component>::descriptor().clone(),
+                        archetypes::SeriesLines::descriptor_names(),
                         Arc::new(StringArray::from_iter(names)) as Arc<dyn ArrowArray>,
                     )),
                 )

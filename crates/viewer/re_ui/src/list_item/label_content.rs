@@ -2,7 +2,7 @@ use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
 
 use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};
-use crate::{DesignTokens, Icon, LabelStyle};
+use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[allow(clippy::type_complexity)]
@@ -13,6 +13,7 @@ pub struct LabelContent<'a> {
     subdued: bool,
     weak: bool,
     italics: bool,
+    strong: bool,
 
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
@@ -31,6 +32,7 @@ impl<'a> LabelContent<'a> {
             subdued: false,
             weak: false,
             italics: false,
+            strong: false,
 
             label_style: Default::default(),
             icon_fn: None,
@@ -47,11 +49,7 @@ impl<'a> LabelContent<'a> {
     /// Text will be strong and smaller.
     /// For best results, use this with [`super::ListItem::header`].
     pub fn header(text: impl Into<RichText>) -> Self {
-        Self::new(
-            text.into()
-                .size(DesignTokens::list_header_font_size())
-                .strong(),
-        )
+        Self::new(text.into().size(DesignTokens::list_header_font_size())).strong(true)
     }
 
     /// Set the subdued state of the item.
@@ -82,6 +80,13 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn italics(mut self, italics: bool) -> Self {
         self.italics = italics;
+        self
+    }
+
+    /// Set the text to be strong.
+    #[inline]
+    pub fn strong(mut self, strong: bool) -> Self {
+        self.strong = strong;
         self
     }
 
@@ -186,6 +191,7 @@ impl ListItemContent for LabelContent<'_> {
             subdued,
             weak,
             italics,
+            strong,
             label_style,
             icon_fn,
             buttons_fn,
@@ -194,14 +200,16 @@ impl ListItemContent for LabelContent<'_> {
             min_desired_width: _,
         } = *self;
 
+        let tokens = ui.tokens();
+        let small_icon_size = tokens.small_icon_size;
         let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
-            DesignTokens::small_icon_size(),
+            context.rect.left_center() + egui::vec2(small_icon_size.x / 2., 0.0),
+            small_icon_size,
         );
 
         let mut text_rect = context.rect;
         if icon_fn.is_some() {
-            text_rect.min.x += icon_rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.min.x += icon_rect.width() + tokens.text_to_icon_padding();
         }
 
         // text styling
@@ -209,7 +217,8 @@ impl ListItemContent for LabelContent<'_> {
             text = text.italics();
         }
 
-        let visuals = context.visuals;
+        let mut visuals = context.visuals;
+        visuals.strong |= strong;
 
         let mut text_color = visuals.text_color();
 
@@ -240,6 +249,22 @@ impl ListItemContent for LabelContent<'_> {
                         .max_rect(text_rect)
                         .layout(egui::Layout::right_to_left(egui::Align::Center)),
                 );
+
+                if context.list_item.selected {
+                    // Icons and text get different colors when they are on a selected background:
+                    let visuals = ui.visuals_mut();
+
+                    visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
+                    visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
+
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                }
+
                 Some(buttons(&mut ui))
             } else {
                 None
@@ -251,7 +276,7 @@ impl ListItemContent for LabelContent<'_> {
         // Draw text
 
         if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.max.x -= button_response.rect.width() + tokens.text_to_icon_padding();
         }
 
         let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
@@ -281,6 +306,7 @@ impl ListItemContent for LabelContent<'_> {
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
+        let tokens = ui.tokens();
         let text_wrap_mode = self.get_text_wrap_mode(ui);
 
         let measured_width = {
@@ -300,8 +326,7 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width +=
-                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                desired_width += tokens.small_icon_size.x + tokens.text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being

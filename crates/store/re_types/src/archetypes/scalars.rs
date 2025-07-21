@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more double-precision scalar values, e.g. for use for time-series plots.
@@ -99,19 +99,9 @@ impl Scalars {
     #[inline]
     pub fn descriptor_scalars() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Scalars".into()),
-            component_name: "rerun.components.Scalar".into(),
-            archetype_field_name: Some("scalars".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.ScalarsIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.Scalars".into()),
+            component: "Scalars:scalars".into(),
+            component_type: Some("rerun.components.Scalar".into()),
         }
     }
 }
@@ -119,31 +109,21 @@ impl Scalars {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Scalars::descriptor_scalars()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Scalars::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            Scalars::descriptor_scalars(),
-            Scalars::descriptor_indicator(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Scalars::descriptor_scalars()]);
 
 impl Scalars {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-/// Indicator component for the [`Scalars`] [`::re_types_core::Archetype`]
-pub type ScalarsIndicator = ::re_types_core::GenericIndicatorComponent<Scalars>;
-
 impl ::re_types_core::Archetype for Scalars {
-    type Indicator = ScalarsIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Scalars".into()
@@ -152,12 +132,6 @@ impl ::re_types_core::Archetype for Scalars {
     #[inline]
     fn display_name() -> &'static str {
         "Scalars"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        ScalarsIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -198,10 +172,7 @@ impl ::re_types_core::AsComponents for Scalars {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [Some(Self::indicator()), self.scalars.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        std::iter::once(self.scalars.clone()).flatten().collect()
     }
 }
 
@@ -256,12 +227,7 @@ impl Scalars {
             .scalars
             .map(|scalars| scalars.partitioned(_lengths.clone()))
             .transpose()?];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

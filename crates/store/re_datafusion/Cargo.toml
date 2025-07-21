@@ -46,6 +46,7 @@ futures-util.workspace = true
 itertools.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
+tracing.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true
@@ -53,7 +54,7 @@ wasm-bindgen-futures.workspace = true
 
 # These are used by Datafusion but the required features are not set for wasm build.
 chrono = { workspace = true, features = ["wasmbind"] }
-getrandom = { workspace = true, features = ["js"] }
+getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]

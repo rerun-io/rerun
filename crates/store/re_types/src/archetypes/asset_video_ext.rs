@@ -46,22 +46,14 @@ impl AssetVideo {
     /// Panics if the serialized blob data doesn't have the right datatype.
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_nanos(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
+        use crate::datatypes::Blob;
         use re_types_core::Loggable as _;
 
         re_tracing::profile_function!();
 
-        let Some(blob) = self.blob.as_ref() else {
+        let Some(blob_bytes) = self.blob.as_ref().and_then(Blob::serialized_blob_as_slice) else {
             return Ok(Vec::new());
         };
-
-        // Grab blob data without a copy.
-        let blob_list_array = blob
-            .array
-            .as_any()
-            .downcast_ref::<arrow::array::ListArray>()
-            .expect("Video blob data is not a ListArray");
-        let blob_data = blob_list_array.values().to_data();
-        let blob_bytes = blob_data.buffer(0);
 
         let Some(media_type) = self
             .media_type
@@ -76,11 +68,14 @@ impl AssetVideo {
             return Err(re_video::VideoLoadError::UnrecognizedMimeType);
         };
 
-        Ok(
-            re_video::VideoData::load_from_bytes(blob_bytes, media_type.as_str())?
-                .frame_timestamps_nanos()
-                .collect(),
-        )
+        Ok(re_video::VideoDataDescription::load_from_bytes(
+            blob_bytes,
+            media_type.as_str(),
+            "AssetVideo",
+        )?
+        .frame_timestamps_nanos()
+        .ok_or(re_video::VideoLoadError::NoTimescale)?
+        .collect())
     }
 
     /// DEPRECATED: renamed to `read_frame_timestamps_nanos`

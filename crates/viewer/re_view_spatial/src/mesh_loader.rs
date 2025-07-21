@@ -37,7 +37,13 @@ pub struct LoadedMesh {
     // Can't do that right now because it's too hard to pass the render context through.
     pub mesh_instances: Vec<re_renderer::renderer::GpuMeshInstance>,
 
-    bbox: re_math::BoundingBox,
+    bbox: macaw::BoundingBox,
+}
+
+impl re_byte_size::SizeBytes for LoadedMesh {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // Mostly VRAM, not counted here.
+    }
 }
 
 impl LoadedMesh {
@@ -162,7 +168,7 @@ impl LoadedMesh {
 
         let bbox = {
             re_tracing::profile_scope!("bbox");
-            re_math::BoundingBox::from_points(vertex_positions.iter().copied())
+            macaw::BoundingBox::from_points(vertex_positions.iter().copied())
         };
 
         let albedo = try_get_or_create_albedo_texture(
@@ -210,7 +216,7 @@ impl LoadedMesh {
         &self.name
     }
 
-    pub fn bbox(&self) -> re_math::BoundingBox {
+    pub fn bbox(&self) -> macaw::BoundingBox {
         self.bbox
     }
 }

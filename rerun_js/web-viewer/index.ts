@@ -1,25 +1,31 @@
+// @ts-ignore
 import type { WebHandle, wasm_bindgen } from "./re_viewer";
 
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
 
-/*<INLINE-MARKER>*/
-async function fetch_viewer_js() {
+async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
+  // @ts-ignore
   return (await import("./re_viewer")).default;
 }
 
-async function fetch_viewer_wasm() {
-  return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
+  //!<INLINE-MARKER-OPEN>
+  if (base_url) {
+    return fetch(new URL("./re_viewer_bg.wasm", base_url))
+  } else {
+    return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+  }
+  //!<INLINE-MARKER-CLOSE>
 }
-/*<INLINE-MARKER>*/
 
-async function load(): Promise<typeof wasm_bindgen.WebHandle> {
+async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
   // instantiate wbg globals+module for every invocation of `load`,
   // but don't load the JS/Wasm source every time
   if (!get_wasm_bindgen || !_wasm_module) {
     [get_wasm_bindgen, _wasm_module] = await Promise.all([
-      fetch_viewer_js(),
-      WebAssembly.compileStreaming(fetch_viewer_wasm()),
+      fetch_viewer_js(base_url),
+      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url)),
     ]);
   }
   let bindgen = get_wasm_bindgen();
@@ -27,7 +33,7 @@ async function load(): Promise<typeof wasm_bindgen.WebHandle> {
   return class extends bindgen.WebHandle {
     free() {
       super.free();
-      // @ts-expect-error
+      // @ts-ignore
       bindgen.deinit();
     }
   };
@@ -88,6 +94,13 @@ export interface WebViewerOptions {
 
   /** The CSS height of the canvas. */
   height?: string;
+
+  /** The fallback token to use, if any.
+   *
+   * The fallback token behaves similarly to the `REDAP_TOKEN` env variable. If set in the
+   * enclosing notebook environment, it should be used to set the fallback token.
+   */
+  fallback_token?: string;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible
@@ -113,41 +126,95 @@ export interface AppOptions extends WebViewerOptions {
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
+// Important: The event names defined here are `snake_case` versions
+// of their `PascalCase` counterparts on the Rust side.
 /** An event produced in the Viewer. */
 export type ViewerEvent =
   | PlayEvent
   | PauseEvent
   | TimeUpdateEvent
   | TimelineChangeEvent
-  | SelectionChangeEvent;
+  | SelectionChangeEvent
+  | RecordingOpenEvent;
 
-type ViewerEventBase = {
+/**
+ * Properties available on all {@link ViewerEvent} types.
+ */
+export type ViewerEventBase = {
   application_id: string;
   recording_id: string;
+  partition_id?: string;
 }
 
+/**
+ * Fired when the timeline starts playing.
+ */
 export type PlayEvent = ViewerEventBase & {
   type: "play";
 };
 
+/**
+ * Fired when the timeline stops playing.
+ */
 export type PauseEvent = ViewerEventBase & {
   type: "pause";
 }
 
+/**
+ * Fired when the timepoint changes.
+ */
 export type TimeUpdateEvent = ViewerEventBase & {
   type: "time_update";
   time: number;
 }
 
+/**
+ * Fired when a different timeline is selected.
+ */
 export type TimelineChangeEvent = ViewerEventBase & {
   type: "timeline_change";
   timeline: string;
   time: number;
 }
 
+/**
+ * Fired when the selection changes.
+ *
+ * This event is fired each time any part of the event payload changes,
+ * this includes for example clicking on different parts of the same
+ * entity in a 2D or 3D view.
+ */
 export type SelectionChangeEvent = ViewerEventBase & {
   type: "selection_change";
   items: SelectionChangeItem[];
+}
+
+/**
+ * Fired when a new recording is opened in the Viewer.
+ *
+ * For `rrd` file or stream, a recording is considered "open" after
+ * enough information about the recording, such as its ID and source,
+ * is received.
+ *
+ * Contains some basic information about the origin of the recording.
+ */
+export type RecordingOpenEvent = ViewerEventBase & {
+  type: "recording_open";
+
+  /**
+   * Where the recording came from.
+   *
+   * The value should be considered unstable, which is why we don't
+   * list the possible values here.
+   */
+  source: string;
+
+  /**
+   * Version of the SDK used to create this recording.
+   *
+   * Uses semver format.
+   */
+  version?: string;
 }
 
 // A bit of TypeScript metaprogramming to automatically produce a
@@ -203,7 +270,7 @@ interface FullscreenOptions {
   on_toggle: () => void;
 }
 
-interface WebViewerEvents extends ViewerEventMap {
+export interface WebViewerEvents extends ViewerEventMap {
   fullscreen: boolean;
   ready: void;
 }
@@ -211,7 +278,7 @@ interface WebViewerEvents extends ViewerEventMap {
 // This abomination is a mapped type with key filtering, and is used to split the events
 // into those which take no value in their callback, and those which do.
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
-type EventsWithValue = {
+export type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
   ? never
   : K]: WebViewerEvents[K] extends any[]
@@ -219,18 +286,37 @@ type EventsWithValue = {
   : [WebViewerEvents[K]];
 };
 
-type EventsWithoutValue = {
+export type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
   ? K
   : never]: WebViewerEvents[K];
 };
 
-type Cancel = () => void;
-
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Rerun Web Viewer
+ *
+ * ```ts
+ * const viewer = new WebViewer();
+ * await viewer.start();
+ * ```
+ *
+ * Data may be provided to the Viewer as:
+ * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.24.0/examples/dna.rrd")`
+ * - A Rerun gRPC URL, e.g. `viewer.start("rerun+http://127.0.0.1:9876/proxy")`
+ * - A stream of log messages, via {@link WebViewer.open_channel}.
+ *
+ * Callbacks may be attached for various events using {@link WebViewer.on}:
+ *
+ * ```ts
+ * viewer.on("time_update", (time) => console.log(`current time: {time}`));
+ * ```
+ *
+ * For the full list of available events, see {@link ViewerEvent}.
+ */
 export class WebViewer {
   #id = randomId();
   // NOTE: Using the handle requires wrapping all calls to its methods in try/catch.
@@ -251,7 +337,7 @@ export class WebViewer {
    *
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param parent The element to attach the canvas onto.
-   * @param options Whether to hide the welcome screen.
+   * @param options Web Viewer configuration.
    */
   async start(
     rrd: string | string[] | null,
@@ -260,6 +346,7 @@ export class WebViewer {
   ): Promise<void> {
     parent ??= document.body;
     options ??= {};
+    options = options ? { ...options } : options;
 
     this.#allow_fullscreen = options.allow_fullscreen || false;
 
@@ -276,7 +363,12 @@ export class WebViewer {
     // element with the given ID.
     await delay(0);
 
-    let WebHandle_class = await load();
+    let base_url: string | undefined = (options as any)?.base_url;
+    if (base_url) {
+      delete (options as any).base_url;
+    }
+
+    let WebHandle_class = await load(base_url);
     if (this.#state !== "starting") return;
 
     const fullscreen = this.#allow_fullscreen
@@ -290,7 +382,7 @@ export class WebViewer {
       // for notebooks/gradio, we can avoid a whole layer
       // of serde by sending over the raw json directly,
       // which will be deserialized in Python instead
-      this.#_dispatch_raw_event(event_json);
+      this.#dispatch_raw_event(event_json);
 
       // for JS users, we dispatch the parsed event
       let event: ViewerEvent = JSON.parse(event_json);
@@ -298,6 +390,8 @@ export class WebViewer {
         event.type as any,
         event,
       );
+
+      console.log(event_json, event);
     }
 
     this.#handle = new WebHandle_class({
@@ -323,10 +417,9 @@ export class WebViewer {
     return;
   }
 
-  #_raw_events: Set<(event_json: string) => void> = new Set();
-
-  #_dispatch_raw_event(event_json: string) {
-    for (const callback of this.#_raw_events) {
+  #raw_events: Set<(event_json: string) => void> = new Set();
+  #dispatch_raw_event(event_json: string) {
+    for (const callback of this.#raw_events) {
       callback(event_json);
     }
   }
@@ -335,11 +428,11 @@ export class WebViewer {
   // NOTE: Callbacks passed to this function must NOT invoke any viewer methods!
   //       The `setTimeout` is omitted to avoid the 1-tick delay, as it is unnecessary,
   //       because this is only meant to be used for sending events to Jupyter/Gradio.
-  // 
+  //
   // Do not change this without searching for grepping for usage!
-  private _on_raw_event(callback: (event: string) => void): Cancel {
-    this.#_raw_events.add(callback);
-    return () => this.#_raw_events.delete(callback);
+  private _on_raw_event(callback: (event: string) => void): () => void {
+    this.#raw_events.add(callback);
+    return () => this.#raw_events.delete(callback);
   }
 
   #event_map: Map<
@@ -373,16 +466,18 @@ export class WebViewer {
    * Register an event listener.
    *
    * Returns a function which removes the listener when called.
+   *
+   * See {@link ViewerEvent} for a full list of available events.
    */
   on<E extends keyof EventsWithValue>(
     event: E,
     callback: (...args: EventsWithValue[E]) => void,
-  ): Cancel;
+  ): () => void;
   on<E extends keyof EventsWithoutValue>(
     event: E,
     callback: () => void,
-  ): Cancel;
-  on(event: any, callback: any): Cancel {
+  ): () => void;
+  on(event: any, callback: any): () => void {
     const callbacks = this.#event_map.get(event) ?? new Map();
     callbacks.set(callback, { once: false });
     this.#event_map.set(event, callbacks);
@@ -393,16 +488,18 @@ export class WebViewer {
    * Register an event listener which runs only once.
    *
    * Returns a function which removes the listener when called.
+   *
+   * See {@link ViewerEvent} for a full list of available events.
    */
   once<E extends keyof EventsWithValue>(
     event: E,
     callback: (value: EventsWithValue[E]) => void,
-  ): Cancel;
+  ): () => void;
   once<E extends keyof EventsWithoutValue>(
     event: E,
     callback: () => void,
-  ): Cancel;
-  once(event: any, callback: any): Cancel {
+  ): () => void;
+  once(event: any, callback: any): () => void {
     const callbacks = this.#event_map.get(event) ?? new Map();
     callbacks.set(callback, { once: true });
     this.#event_map.set(event, callbacks);
@@ -414,6 +511,8 @@ export class WebViewer {
    *
    * The event emitter relies on referential equality to store callbacks.
    * The `callback` passed in must be the exact same _instance_ of the function passed in to `on` or `once`.
+   *
+   * See {@link ViewerEvent} for a full list of available events.
    */
   off<E extends keyof EventsWithValue>(
     event: E,
@@ -448,7 +547,7 @@ export class WebViewer {
   /**
    * Open a recording.
    *
-   * The viewer must have been started via `WebViewer.start`.
+   * The viewer must have been started via {@link WebViewer.start}.
    *
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param options
@@ -474,7 +573,7 @@ export class WebViewer {
   /**
    * Close a recording.
    *
-   * The viewer must have been started via `WebViewer.start`.
+   * The viewer must have been started via {@link WebViewer.start}.
    *
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    */
@@ -599,8 +698,8 @@ export class WebViewer {
   /**
    * Force a panel to a specific state.
    *
-   * @param panel
-   * @param state
+   * @param panel which panel to configure
+   * @param state which state to force the panel into
    */
   override_panel_state(panel: Panel, state: PanelState | undefined | null) {
     if (!this.#handle) {
@@ -620,7 +719,7 @@ export class WebViewer {
   /**
    * Toggle panel overrides set via `override_panel_state`.
    *
-   * @param value - set to a specific value. Toggles the previous value if not provided.
+   * @param value set to a specific value. Toggles the previous value if not provided.
    */
   toggle_panel_overrides(value?: boolean | null) {
     if (!this.#handle) {
@@ -652,6 +751,8 @@ export class WebViewer {
 
   /**
    * Set the active recording id.
+   *
+   * This is the same as clicking on the recording in the Viewer's left panel.
    */
   set_active_recording_id(value: string) {
     if (!this.#handle) {
@@ -720,8 +821,6 @@ export class WebViewer {
    * - For sequence timelines, this is the sequence number.
    *
    * This does nothing if the recording or timeline can't be found.
-   *
-   * @param value
    */
   set_current_time(recording_id: string, timeline: string, time: number) {
     if (!this.#handle) {

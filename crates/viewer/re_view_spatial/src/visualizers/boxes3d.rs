@@ -1,7 +1,7 @@
 use std::iter;
 
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::Boxes3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
 };
@@ -39,6 +39,8 @@ impl Boxes3DVisualizer {
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Boxes3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
         // `ProcMeshKey::Cube` is scaled to side length of 1, i.e. a half-size of 0.5.
@@ -51,6 +53,7 @@ impl Boxes3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
+                Boxes3D::name(),
                 constant_instance_transform,
                 ProcMeshBatch {
                     half_sizes: batch.half_sizes,

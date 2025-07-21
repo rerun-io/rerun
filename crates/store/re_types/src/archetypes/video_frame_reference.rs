@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: References a single video frame.
@@ -25,6 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// To show an entire video, a video frame reference for each frame of the video should be logged.
 ///
 /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+///
+/// TODO(#10422): [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] does not yet work with [`archetypes::VideoStream`][crate::archetypes::VideoStream].
 ///
 /// ## Examples
 ///
@@ -159,9 +161,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: "rerun.components.VideoTimestamp".into(),
-            archetype_field_name: Some("timestamp".into()),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:timestamp".into(),
+            component_type: Some("rerun.components.VideoTimestamp".into()),
         }
     }
 
@@ -171,9 +173,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: "rerun.components.EntityPath".into(),
-            archetype_field_name: Some("video_reference".into()),
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:video_reference".into(),
+            component_type: Some("rerun.components.EntityPath".into()),
         }
     }
 
@@ -183,19 +185,9 @@ impl VideoFrameReference {
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
-    #[inline]
-    pub fn descriptor_indicator() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype_name: None,
-            component_name: "rerun.components.VideoFrameReferenceIndicator".into(),
-            archetype_field_name: None,
+            archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+            component: "VideoFrameReference:draw_order".into(),
+            component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
 }
@@ -203,8 +195,8 @@ impl VideoFrameReference {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_timestamp()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_indicator()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -214,28 +206,21 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             VideoFrameReference::descriptor_timestamp(),
-            VideoFrameReference::descriptor_indicator(),
             VideoFrameReference::descriptor_video_reference(),
             VideoFrameReference::descriptor_draw_order(),
         ]
     });
 
 impl VideoFrameReference {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`VideoFrameReference`] [`::re_types_core::Archetype`]
-pub type VideoFrameReferenceIndicator =
-    ::re_types_core::GenericIndicatorComponent<VideoFrameReference>;
-
 impl ::re_types_core::Archetype for VideoFrameReference {
-    type Indicator = VideoFrameReferenceIndicator;
-
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.VideoFrameReference".into()
@@ -244,12 +229,6 @@ impl ::re_types_core::Archetype for VideoFrameReference {
     #[inline]
     fn display_name() -> &'static str {
         "Video frame reference"
-    }
-
-    #[inline]
-    fn indicator() -> SerializedComponentBatch {
-        #[allow(clippy::unwrap_used)]
-        VideoFrameReferenceIndicator::DEFAULT.serialized().unwrap()
     }
 
     #[inline]
@@ -307,7 +286,6 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.timestamp.clone(),
             self.video_reference.clone(),
             self.draw_order.clone(),
@@ -386,12 +364,7 @@ impl VideoFrameReference {
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
-        Ok(columns
-            .into_iter()
-            .flatten()
-            .chain([::re_types_core::indicator_column::<Self>(
-                _lengths.into_iter().count(),
-            )?]))
+        Ok(columns.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.

@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package rerun.manifest_registry.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/log_msg.proto";
 
 service ManifestRegistryService {
   // --- Write data ---
@@ -111,6 +113,9 @@ service ManifestRegistryService {
 
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+
+  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 }
 
 // --- Write data ---
@@ -325,8 +330,40 @@ message QueryDatasetRequest {
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Which entity paths are we interested in? Leave empty to query all of them.
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 7;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 8;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 9;
 
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
@@ -381,23 +418,17 @@ message Query {
 // This has the exact same semantics as the query of the same name on our `ChunkStore`.
 message QueryLatestAt {
   // Which index column should we perform the query on? E.g. `log_time`.
+  //
+  // Leave this empty to query for static data.
   rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index value are we looking for?
+  //
+  // Leave this empty to query for static data.
   optional int64 at = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 3;
-  // TODO(cmc): I shall bring that back into a more structured form later.
-  // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 /// A chunk-level range query, aka `RangeRelevantChunks`.
@@ -410,18 +441,8 @@ message QueryRange {
   // What index range are we looking for?
   rerun.common.v1alpha1.TimeRange index_range = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 3;
-  // TODO(cmc): I shall bring that back into a more structured form later.
-  // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 message GetChunksRequest {
@@ -436,8 +457,40 @@ message GetChunksRequest {
   // all chunks (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Which entity paths are we interested in? Leave empty to query all of them.
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 6;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 7;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 8;
 
   // A chunk-level latest-at or range query, or both.
   //
@@ -446,7 +499,9 @@ message GetChunksRequest {
 }
 
 message GetChunksResponse {
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
 // --- Developer/Debug APIs ---
@@ -498,6 +553,29 @@ message FetchChunkManifestRequest {
 message FetchChunkManifestResponse {
   // Chunk manifest as arrow RecordBatches
   rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Create the acceleration structures for temporal queries.
+  //
+  // This will recreate all scalar indexes from scratch everytime.
+  //
+  // TODO(cmc): support incremental scalar indexing & index compaction
+  bool build_scalar_indexes = 2;
+
+  // Compact the underlying Lance fragments, for all Rerun Manifests.
+  //
+  // Hardcoded to the default (optimal) settings.
+  bool compact_fragments = 3;
+
+  // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  google.protobuf.Timestamp cleanup_before = 4;
+}
+
+message DoMaintenanceResponse {
+  string report = 1;
 }
 
 // ----------------- Error handling -----------------

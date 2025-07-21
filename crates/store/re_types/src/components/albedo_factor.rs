@@ -16,7 +16,7 @@
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentName};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A color multiplier, usually applied to a whole entity, e.g. a mesh.
@@ -28,8 +28,8 @@ pub struct AlbedoFactor(pub crate::datatypes::Rgba32);
 
 impl ::re_types_core::Component for AlbedoFactor {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AlbedoFactor")
+    fn name() -> ComponentType {
+        "rerun.components.AlbedoFactor".into()
     }
 }
 
