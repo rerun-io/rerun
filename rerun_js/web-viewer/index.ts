@@ -390,8 +390,6 @@ export class WebViewer {
         event.type as any,
         event,
       );
-
-      console.log(event_json, event);
     }
 
     this.#handle = new WebHandle_class({
