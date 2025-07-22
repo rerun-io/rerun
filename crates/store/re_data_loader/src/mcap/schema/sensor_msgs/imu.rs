@@ -155,14 +155,12 @@ impl McapMessageParser for ImuMessageParser {
                     sensor_readings.finish().into(),
                 ),
                 (
-                    // TODO(gijsd): Figure out why logging this as `Transform3D.quaternion` doesn't work.
-                    // Transform3D::descriptor_quaternion()
-                    // Couldn't read /rae/imu/data:Transform3D:quaternion @ ((TimeInt(1 732 709 177 965 813 000), RowId(18488EBBEFDBC2827b0bbb5092b80fb6))): mono index out of bounds: 0 (len=4)
+                    // TODO(#10727): Figure out why logging this as `Transform3D.quaternion` doesn't work.
                     ComponentDescriptor::partial("orientation")
                         .with_archetype(Self::ARCHETYPE_NAME.into()),
                     orientation.finish().into(),
                 ),
-                // TODO(gijsd): Figure out what to do with the covariance matrices.
+                // TODO(#10728): Figure out what to do with the covariance matrices.
                 (
                     ComponentDescriptor::partial("orientation_covariance")
                         .with_archetype(Self::ARCHETYPE_NAME.into()),

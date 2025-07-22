@@ -273,7 +273,7 @@ impl<'a> McapChunkDecoder<'a> {
                 .map_err(PluginError::Other);
         };
 
-        // TODO(gijsd): Add support for logging warnings directly to Rerun
+        // TODO(#10724): Add support for logging warnings directly to Rerun
         let (ctx, parser) = self.parsers.entry(entity_path.clone()).or_insert_with(|| {
             (
                 ParserContext::new(entity_path.clone()),

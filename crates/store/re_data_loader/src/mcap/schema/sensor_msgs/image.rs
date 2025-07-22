@@ -55,7 +55,7 @@ impl ImageMessageParser {
 
 impl McapMessageParser for ImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
-        // TODO(gijsd): Do we want to log the unused fields?
+        // TODO(#10725): Do we want to log the unused fields?
         #[allow(unused)]
         let sensor_msgs::Image {
             header,
@@ -76,7 +76,7 @@ impl McapMessageParser for ImageMessageParser {
         let dimensions = [width, height];
         let img_format = decode_image_format(&encoding, dimensions)?;
 
-        // TODO(gijsd): big assumption here: image format can technically be different for each image on the topic.
+        // TODO(#10726): big assumption here: image format can technically be different for each image on the topic.
         // `color_model` is `None` for formats created with `ImageFormat::depth`
         self.is_depth_image = img_format.color_model.is_none();
 

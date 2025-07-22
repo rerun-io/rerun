@@ -67,8 +67,6 @@ impl DataLoader for McapLoader {
         }
 
         let settings = settings.clone();
-
-        // TODO(gijsd): hopefully there's a better way to do this
         let contents = contents.into_owned();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
