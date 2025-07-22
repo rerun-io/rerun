@@ -72,6 +72,9 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        }
     }
 }
 
@@ -163,6 +166,10 @@ pub enum TypeConversionError {
 
     #[error("internal error: {0}")]
     InternalError(String),
+
+    //TODO(#10730): delete when removing 0.24 back compat
+    #[error("unexpected legacy `StoreId`: {0}")]
+    LegacyStoreIdError(String),
 }
 
 impl TypeConversionError {
@@ -268,7 +275,9 @@ mod sizes {
     impl SizeBytes for crate::log_msg::v1alpha1::StoreInfo {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
+            #[expect(deprecated)]
             let Self {
+                application_id: _,
                 store_id,
                 store_source,
                 store_version,

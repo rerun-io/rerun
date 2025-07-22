@@ -1,11 +1,12 @@
-use re_log_types::LogMsg;
+use re_log_types::{BlueprintActivationCommand, LogMsg, SetStoreInfo};
 use re_protos::missing_field;
 
+use super::{MessageHeader, MessageKind};
+
+use crate::app_id_cache::ApplicationIdCache;
 use crate::codec::CodecError;
 use crate::codec::arrow::decode_arrow;
 use crate::decoder::DecodeError;
-
-use super::{MessageHeader, MessageKind};
 
 // ---
 
@@ -14,6 +15,7 @@ use super::{MessageHeader, MessageKind};
 /// See also:
 /// * [`decode_to_transport`]
 pub(crate) fn decode_to_app(
+    app_id_cache: &mut ApplicationIdCache,
     data: &mut impl std::io::Read,
 ) -> Result<(u64, Option<LogMsg>), DecodeError> {
     let mut read_bytes = 0u64;
@@ -23,7 +25,7 @@ pub(crate) fn decode_to_app(
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
 
-    let msg = decode_bytes_to_app(header.kind, &buf)?;
+    let msg = decode_bytes_to_app(app_id_cache, header.kind, &buf)?;
 
     Ok((read_bytes, msg))
 }
@@ -58,11 +60,12 @@ pub(crate) fn decode_to_transport(
 /// `Ok(None)` returned from this function marks the end of the file stream.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_bytes_to_app(
+    app_id_cache: &mut ApplicationIdCache,
     message_kind: MessageKind,
     buf: &[u8],
 ) -> Result<Option<LogMsg>, DecodeError> {
     let decoded = decode_bytes_to_transport(message_kind, buf)?;
-    let decoded = decoded.map(decode_transport_to_app);
+    let decoded = decoded.map(|msg| decode_transport_to_app(app_id_cache, msg));
     decoded.transpose()
 }
 
@@ -110,13 +113,16 @@ pub fn decode_bytes_to_transport(
 /// is where all Arrow data will be decoded.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_transport_to_app(
+    app_id_cache: &mut ApplicationIdCache,
     msg: re_protos::log_msg::v1alpha1::log_msg::Msg,
 ) -> Result<LogMsg, DecodeError> {
     use re_protos::log_msg::v1alpha1::Encoding;
 
     let msg = match msg {
         re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(set_store_info) => {
-            LogMsg::SetStoreInfo(set_store_info.try_into()?)
+            let set_store_info: SetStoreInfo = set_store_info.try_into()?;
+            app_id_cache.insert(&set_store_info.info);
+            LogMsg::SetStoreInfo(set_store_info)
         }
 
         re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg) => {
@@ -130,10 +136,21 @@ pub fn decode_transport_to_app(
                 arrow_msg.compression().into(),
             )?;
 
-            let store_id: re_log_types::StoreId = arrow_msg
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let store_id: re_log_types::StoreId = match arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
-                .try_into()?;
+                .try_into()
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
+                        return Err(DecodeError::StoreIdMissingApplicationId);
+                    };
+
+                    store_id
+                }
+            };
 
             // TODO(grtlr): In the future, we should be able to rely on the `chunk_id` to be present in the
             // protobuf definitions. For now we have to extract it from the `batch`.
@@ -160,7 +177,34 @@ pub fn decode_transport_to_app(
 
         re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
             blueprint_activation_command,
-        ) => LogMsg::BlueprintActivationCommand(blueprint_activation_command.try_into()?),
+        ) => {
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let blueprint_id: re_log_types::StoreId = match blueprint_activation_command
+                .blueprint_id
+                .ok_or_else(|| {
+                    missing_field!(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand,
+                        "blueprint_id"
+                    )
+                })?
+                .try_into()
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
+                        return Err(DecodeError::StoreIdMissingApplicationId);
+                    };
+
+                    store_id
+                }
+            };
+
+            LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                blueprint_id,
+                make_active: blueprint_activation_command.make_active,
+                make_default: blueprint_activation_command.make_default,
+            })
+        }
     };
 
     Ok(msg)

@@ -1,5 +1,8 @@
 // TODO(#9430): this belongs in re_protos::ext
 
+use re_log_types::BlueprintActivationCommand;
+use re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError;
+
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
@@ -19,6 +22,11 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
     }
 }
 
+/// Decode log message from proto.
+///
+/// NOTE: this function DO NOT implement the migration of legacy `StoreId` without `ApplicationId`.
+/// This is ok because this is used for `--server` and SDK <-> viewer communication, which are
+/// always expected to be of matching versions.
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_from_proto(
@@ -36,17 +44,43 @@ pub fn log_msg_from_proto(
         Some(Msg::ArrowMsg(arrow_msg)) => {
             let encoded = arrow_msg_from_proto(&arrow_msg)?;
 
+            // Note: we dont support legacy `StoreId` migration, see above.
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
-                .try_into()?;
+                .try_into()
+                .map_err(|err: StoreIdMissingApplicationIdError| {
+                    err.into_type_conversion_error(
+                        "`StoreId` in `ArrowMsg` must contain an application id",
+                    )
+                })?;
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
         }
 
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
+            // Note: we dont support legacy `StoreId` migration, see above.
+            let blueprint_id: re_log_types::StoreId = blueprint_activation_command
+                .blueprint_id
+                .ok_or_else(|| {
+                    missing_field!(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand,
+                        "blueprint_id"
+                    )
+                })?
+                .try_into()
+                .map_err(|err: StoreIdMissingApplicationIdError| {
+                    err.into_type_conversion_error(
+                        "`StoreId` in `BlueprintActivationCommand` must contain an application id",
+                    )
+                })?;
+
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(
-                blueprint_activation_command.try_into()?,
+                BlueprintActivationCommand {
+                    blueprint_id,
+                    make_active: blueprint_activation_command.make_active,
+                    make_default: blueprint_activation_command.make_default,
+                },
             ))
         }
 

@@ -2,7 +2,7 @@ use std::hash::Hasher;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
-use re_log_types::{StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
@@ -368,20 +368,55 @@ impl From<re_log_types::StoreKind> for crate::common::v1alpha1::StoreKind {
     }
 }
 
+/// The store id failed to deserialize due to missing application id.
+///
+/// This may happen when migrating older RRD (before application ID was moved to `StoreId`). This
+/// error can be recovered from if the application ID is known.
+//TODO(#10730): this is specifically for 0.24 back compat. Switch to `TypeConversionError` when cleaning up.
+#[derive(Debug, Clone)]
+pub struct StoreIdMissingApplicationIdError {
+    pub store_kind: re_log_types::StoreKind,
+    pub recording_id: RecordingId,
+}
+
+impl StoreIdMissingApplicationIdError {
+    /// Recover the store ID by providing the application ID.
+    pub fn recover(self, application_id: re_log_types::ApplicationId) -> re_log_types::StoreId {
+        re_log_types::StoreId::new(self.store_kind, application_id, self.recording_id)
+    }
+
+    #[inline]
+    pub fn into_type_conversion_error(self, msg: impl Into<String>) -> TypeConversionError {
+        TypeConversionError::LegacyStoreIdError(format!(
+            "{} (kind: {}, recording_id: {})",
+            msg.into(),
+            self.store_kind,
+            self.recording_id
+        ))
+    }
+}
+
 /// Convert a store id
 impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
-    type Error = TypeConversionError;
+    type Error = StoreIdMissingApplicationIdError;
 
     #[inline]
     fn try_from(value: crate::common::v1alpha1::StoreId) -> Result<Self, Self::Error> {
-        Ok(Self::new(
-            value.kind().into(),
-            value.application_id.ok_or(missing_field!(
-                crate::common::v1alpha1::StoreId,
-                "application_id"
-            ))?,
-            value.id,
-        ))
+        let store_kind = value.kind().into();
+        let recording_id = RecordingId::from(value.id);
+
+        //TODO(#10730): switch to `TypeConversionError` when cleaning up 0.24 back compat
+        match value.application_id {
+            None => Err(StoreIdMissingApplicationIdError {
+                store_kind,
+                recording_id,
+            }),
+            Some(application_id) => Ok(re_log_types::StoreId::new(
+                store_kind,
+                application_id,
+                recording_id,
+            )),
+        }
     }
 }
 

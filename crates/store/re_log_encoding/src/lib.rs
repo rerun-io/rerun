@@ -1,5 +1,7 @@
 //! Crate that handles encoding of rerun log types.
 
+mod app_id_cache; //TODO: behind decode feature?
+
 #[cfg(feature = "decoder")]
 pub mod decoder;
 

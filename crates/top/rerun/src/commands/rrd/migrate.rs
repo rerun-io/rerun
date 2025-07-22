@@ -107,6 +107,12 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let mut errors = indexmap::IndexSet::new();
 
+    // TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
+    // the ability of `rrd migrate` as well. If we want to keep the ability to migrate here, then
+    // the pre-#10730 app id caching mechanism must somehow be ported here.
+    // TODO(ab): The `StoreId` migration in `Decoder` requires `SetStoreInfo` to arrive before the
+    // corresponding `ArrowMsg`. Ideally this tool would cache orphan `ArrowMsg` until a matching
+    // `SetStoreInfo` arrives.
     let messages = decoder.into_iter().filter_map(|result| match result {
         Ok(msg) => match msg {
             re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {

@@ -85,11 +85,14 @@ message BlueprintActivationCommand {
 
 // Information about a recording or blueprint.
 message StoreInfo {
+  // User-chosen name of the application doing the logging.
+  //
+  // This is deprecated and kept for backward compatibility.
+  //TODO(#10730): turn that into `reserved` statement when removing backward compatibility
+  rerun.common.v1alpha1.ApplicationId application_id = 1 [deprecated=true];
+
   // Unique ID of the recording.
   rerun.common.v1alpha1.StoreId store_id = 2;
-
-  reserved 1;
-  reserved "application_id";
   
   reserved 3;
   reserved "is_official_example";

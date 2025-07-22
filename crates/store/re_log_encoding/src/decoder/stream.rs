@@ -2,13 +2,13 @@ use std::collections::VecDeque;
 use std::io::Cursor;
 use std::io::Read as _;
 
-use re_build_info::CrateVersion;
-use re_log_types::LogMsg;
-
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
+use crate::app_id_cache::ApplicationIdCache;
 use crate::decoder::options_from_bytes;
+use re_build_info::CrateVersion;
+use re_log_types::LogMsg;
 
 use super::DecodeError;
 
@@ -30,6 +30,9 @@ pub struct StreamDecoder {
 
     /// The stream state
     state: State,
+
+    /// The application id cache used for migrating old data.
+    app_id_cache: ApplicationIdCache,
 }
 
 ///
@@ -73,6 +76,7 @@ impl StreamDecoder {
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
             state: State::StreamHeader,
+            app_id_cache: ApplicationIdCache::default(),
         }
     }
 
@@ -80,7 +84,24 @@ impl StreamDecoder {
         self.chunks.push(chunk);
     }
 
+    /// Read the next message in the stream, dropping messages missing application id that cannot
+    /// be migrated (because they arrived before `SetStoreInfo`).
     pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
+        //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
+        loop {
+            let result = self.try_read_impl();
+            if matches!(result, Err(DecodeError::StoreIdMissingApplicationId)) {
+                re_log::warn_once!(
+                    "Dropping message without application id which arrived before `SetStoreInfo`."
+                );
+            } else {
+                return result;
+            }
+        }
+    }
+
+    /// Read the next message in the stream.
+    fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
@@ -113,8 +134,11 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
-                    let message =
-                        crate::codec::file::decoder::decode_bytes_to_app(header.kind, bytes)?;
+                    let message = crate::codec::file::decoder::decode_bytes_to_app(
+                        &mut self.app_id_cache,
+                        header.kind,
+                        bytes,
+                    )?;
                     if let Some(mut message) = message {
                         propagate_version(&mut message, self.version);
                         self.state = State::MessageHeader;
