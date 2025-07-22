@@ -2,7 +2,7 @@
 
 use std::{fs::File, io::Cursor, sync::mpsc::Sender};
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::RowId;
 use re_log_types::{ApplicationId, SetStoreInfo, StoreInfo};
 
 use crate::mcap;
@@ -95,29 +95,20 @@ fn load_mcap(
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
 ) -> Result<(), DataLoaderError> {
-    tx.send(LoadedData::LogMsg(
-        McapLoader.name(),
-        re_log_types::LogMsg::SetStoreInfo(store_info(settings)),
-    ))
-    .map_err(|err| DataLoaderError::Other(err.into()))?;
-
-    // TODO: Clean this up.
-    convert_mcap(mcap, |rerun_chunk| {
-        // If the other side decided to hang up this is not our problem.
-        tx.send(LoadedData::Chunk(
+    if tx
+        .send(LoadedData::LogMsg(
             McapLoader.name(),
-            settings.store_id.clone(),
-            rerun_chunk,
-        ))?;
+            re_log_types::LogMsg::SetStoreInfo(store_info(settings)),
+        ))
+        .is_err()
+    {
+        re_log::debug_once!(
+            "Failed to send `SetStoreInfo` because smart channel closed unexpectedly."
+        );
+        // If the other side decided to hang up this is not our problem.
+        return Ok(());
+    }
 
-        Ok(())
-    })
-}
-
-pub fn convert_mcap(
-    mcap: &[u8],
-    on_rerun_chunk: impl Fn(Chunk) -> Result<(), Box<dyn std::error::Error>>,
-) -> Result<(), DataLoaderError> {
     let reader = Cursor::new(&mcap);
 
     let summary = mcap::util::read_summary(reader)?
@@ -125,8 +116,18 @@ pub fn convert_mcap(
 
     let properties_chunk = mcap::build_recording_properties_chunk(&summary)?;
 
-    if on_rerun_chunk(properties_chunk).is_err() {
-        re_log::debug_once!("Failed to send property chunk because the channel has been closed.");
+    if tx
+        .send(LoadedData::Chunk(
+            McapLoader.name(),
+            settings.store_id.clone(),
+            properties_chunk,
+        ))
+        .is_err()
+    {
+        re_log::debug_once!(
+            "Failed to send property chunk because the smart channel has been closed unexpectedly."
+        );
+        // If the other side decided to hang up this is not our problem.
         return Ok(());
     }
 
@@ -166,8 +167,18 @@ pub fn convert_mcap(
 
         for chunk in decoder.finish() {
             if let Ok(chunk) = chunk {
-                if on_rerun_chunk(chunk).is_err() {
-                    re_log::debug_once!("Failed to send chunk, the other ide has hung up.");
+                if tx
+                    .send(LoadedData::Chunk(
+                        McapLoader.name(),
+                        settings.store_id.clone(),
+                        chunk,
+                    ))
+                    .is_err()
+                {
+                    re_log::debug_once!(
+                        "Failed to send chunk, the smart channel has closed unexpectedly."
+                    );
+                    // If the other side decided to hang up this is not our problem.
                     break;
                 }
             } else {
