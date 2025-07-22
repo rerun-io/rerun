@@ -23,6 +23,7 @@ impl UnsupportedSchemaMessageParser {
         }
     }
 }
+
 impl McapMessageParser for UnsupportedSchemaMessageParser {
     fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         if let Some(schema) = msg.channel.schema.as_ref() {

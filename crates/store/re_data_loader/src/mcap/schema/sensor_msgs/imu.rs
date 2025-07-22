@@ -88,7 +88,7 @@ impl ImuMessageParser {
 impl McapMessageParser for ImuMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let imu = cdr::try_decode_message::<sensor_msgs::Imu>(msg.data.as_ref())
-            .map_err(|e| PluginError::Other(anyhow::anyhow!(e)))?;
+            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(

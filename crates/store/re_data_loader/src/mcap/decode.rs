@@ -103,7 +103,7 @@ pub trait SchemaPlugin {
     ///     Box::new(MyParser {
     ///         data: Vec::with_capacity(num_rows),
     ///         timestamps: Vec::with_capacity(num_rows),
-    ///         // ... other fields
+    ///         // … other fields
     ///     })
     /// }
     /// # }
@@ -319,7 +319,7 @@ impl ParserContext {
         }
     }
 
-    /// Add an additional [`TimePoint`] to the the timelines in this context.
+    /// Add an additional [`TimePoint`] to the timelines in this context.
     ///
     /// # Note
     ///

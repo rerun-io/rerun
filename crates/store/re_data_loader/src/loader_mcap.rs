@@ -47,7 +47,7 @@ impl DataLoader for McapLoader {
             .spawn(move || match load_mcap(&mmap, &settings, &tx) {
                 Ok(_) => {}
                 Err(err) => {
-                    re_log::error!("Failed to load MCAP file: {err:?}");
+                    re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
@@ -81,7 +81,7 @@ impl DataLoader for McapLoader {
             .spawn(move || match load_mcap(&contents, &settings, &tx) {
                 Ok(_) => {}
                 Err(err) => {
-                    re_log::error!("Failed to load MCAP file: {err:?}");
+                    re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
@@ -154,13 +154,13 @@ pub fn convert_mcap(
                 Ok(message) => {
                     if let Err(err) = decoder.decode_next(&message) {
                         re_log::error!(
-                            "Failed to decode message from MCAP file: {err:?} on channel: {}",
+                            "Failed to decode message from MCAP file: {err} on channel: {}",
                             message.channel.topic
                         );
                     }
                 }
                 Err(err) => {
-                    re_log::error!("Failed to read message from MCAP file: {err:?}");
+                    re_log::error!("Failed to read message from MCAP file: {err}");
                 }
             });
 

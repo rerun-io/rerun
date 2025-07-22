@@ -76,6 +76,7 @@ impl RepresentationIdentifier {
 
         Self::from_second_byte(bytes[1]).ok_or(DdsError::UnknownIdentifier(bytes))
     }
+
     /// Creates a [`RepresentationIdentifier`] from just the second byte, assuming first byte is `0x00`.
     pub fn from_second_byte(second_byte: u8) -> Option<Self> {
         // Mappings taken from Table 10.3 of the [DDS-RTPS 2.3 specification](https://www.omg.org/spec/DDSI-RTPS/2.3/PDF).
