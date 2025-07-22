@@ -2,7 +2,7 @@ use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
-use re_types::{Archetype as _, blueprint::components::Corner2D};
+use re_types::Archetype as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
@@ -440,6 +440,6 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
         view_id,
         name,
         egui::vec2(300.0, 300.0),
-        0,
+        2,
     );
 }
