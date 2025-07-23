@@ -91,7 +91,7 @@ fn fetch_jwks() -> mpsc::Receiver<Result<workos::Jwks, Error>> {
     rx
 }
 
-pub fn login(login_page_url: &str) -> Result<(), Error> {
+pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
     let p = indicatif::ProgressBar::new_spinner();
 
     // Login process:
@@ -105,11 +105,17 @@ pub fn login(login_page_url: &str) -> Result<(), Error> {
     let login_url = format!(
         // TODO: don't hardcode this
         "{login_page_url}?r={}",
-        BASE64_STANDARD.encode(callback_url.as_bytes()),
+        BASE64_URL_SAFE_NO_PAD.encode(callback_url.as_bytes()),
     );
-    p.println("Opening login page in your browser.");
-    p.println("Once you've logged in, the process will continue here.");
-    webbrowser::open(&login_url).map_err(Error::WebBrowser)?;
+
+    if open_browser {
+        p.println("Opening login page in your browser.");
+        p.println("Once you've logged in, the process will continue here.");
+        webbrowser::open(&login_url).map_err(Error::WebBrowser)?;
+    } else {
+        p.println("Open the following page in your browser:");
+        p.println(&login_url);
+    }
     p.inc(1);
 
     // 3. Wait for callback, then verify and store tokens

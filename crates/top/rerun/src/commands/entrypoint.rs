@@ -21,6 +21,7 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 
+#[cfg(feature = "auth")]
 use super::auth::AuthCommands;
 
 // ---

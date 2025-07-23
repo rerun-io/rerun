@@ -39,7 +39,7 @@ base64 = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
-serde = { workspace = true, optional = true } 
+serde = { workspace = true, optional = true }
 tiny_http = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
