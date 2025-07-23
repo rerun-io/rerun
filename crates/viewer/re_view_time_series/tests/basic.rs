@@ -379,14 +379,23 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
     }
 
     test_context.log_entity("scalars", |builder| {
-        let mut builder = builder.with_archetype(
-            RowId::new(),
-            TimePoint::from([(Timeline::log_tick(), 45)]),
-            &re_types::archetypes::SeriesLines::new()
-                .with_widths([5.0])
-                .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
-                .with_names(["muh_scalars"]),
-        );
+        let mut builder = builder
+            .with_archetype(
+                RowId::new(),
+                TimePoint::from([(Timeline::log_tick(), 0)]),
+                &re_types::archetypes::SeriesLines::new()
+                    .with_widths([5.0])
+                    .with_colors([re_types::components::Color::from_rgb(0, 255, 255)])
+                    .with_names(["muh_scalars"]),
+            )
+            .with_archetype(
+                RowId::new(),
+                TimePoint::from([(Timeline::log_tick(), 45)]),
+                &re_types::archetypes::SeriesLines::new()
+                    .with_widths([5.0])
+                    .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+                    .with_names(["muh_scalars"]),
+            );
         for i in 0..10 {
             builder = with_scalar(builder, i * 10);
         }
