@@ -49,8 +49,8 @@ pub enum EntryError {
 impl EntryError {
     fn tonic_status(&self) -> Option<&tonic::Status> {
         match self {
-            EntryError::TonicError(status) => Some(status),
-            EntryError::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            Self::TonicError(status) => Some(status),
+            Self::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
             _ => None,
         }
     }
