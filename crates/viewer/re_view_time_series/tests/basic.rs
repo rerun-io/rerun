@@ -386,7 +386,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
                 &re_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])
                     .with_colors([re_types::components::Color::from_rgb(0, 255, 255)])
-                    .with_names(["muh_scalars"]),
+                    .with_names(["muh_scalars_from_0"]),
             )
             .with_archetype(
                 RowId::new(),
@@ -394,7 +394,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
                 &re_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])
                     .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
-                    .with_names(["muh_scalars"]),
+                    .with_names(["muh_scalars_from_45"]),
             );
         for i in 0..10 {
             builder = with_scalar(builder, i * 10);
@@ -421,18 +421,6 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
                         },
                     ),
                 ]),
-            );
-        }
-
-        {
-            let property_path = re_viewport_blueprint::entity_path_for_view_property(
-                view.id,
-                ctx.store_context.blueprint.tree(),
-                re_types::blueprint::archetypes::PlotLegend::name(),
-            );
-            ctx.save_blueprint_archetype(
-                property_path,
-                &re_types::blueprint::archetypes::PlotLegend::new().with_visible(false),
             );
         }
 
