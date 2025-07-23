@@ -47,8 +47,16 @@ pub enum EntryError {
 }
 
 impl EntryError {
+    fn tonic_status(&self) -> Option<&tonic::Status> {
+        match self {
+            EntryError::TonicError(status) => Some(status),
+            EntryError::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            _ => None,
+        }
+    }
+
     pub fn is_missing_token(&self) -> bool {
-        if let Self::TonicError(status) = self {
+        if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
                 && status.message() == "missing credentials"
         } else {
@@ -57,7 +65,7 @@ impl EntryError {
     }
 
     pub fn is_wrong_token(&self) -> bool {
-        if let Self::TonicError(status) = self {
+        if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
                 && status.message() == "invalid credentials"
         } else {
