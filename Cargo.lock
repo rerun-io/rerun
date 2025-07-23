@@ -7107,7 +7107,6 @@ dependencies = [
  "re_context_menu",
  "re_data_ui",
  "re_entity_db",
- "re_global_context",
  "re_log",
  "re_log_types",
  "re_test_context",
