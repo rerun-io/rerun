@@ -18,7 +18,6 @@ mod loader_urdf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod mcap;
 
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
@@ -26,13 +25,11 @@ pub mod mcap;
 pub mod loader_lerobot;
 
 // This loader currently uses native-only features under the hood, and we cannot do that on web yet.
-#[cfg(not(target_arch = "wasm32"))]
 pub mod loader_mcap;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_mcap::McapLoader;
 
 pub use self::{
@@ -409,7 +406,6 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        #[cfg(not(target_arch = "wasm32"))]
         Arc::new(McapLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),

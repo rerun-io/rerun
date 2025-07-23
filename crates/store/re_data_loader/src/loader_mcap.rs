@@ -1,6 +1,6 @@
 //! Rerun dataloader for MCAP files.
 
-use std::{fs::File, io::Cursor, sync::mpsc::Sender};
+use std::{io::Cursor, sync::mpsc::Sender};
 
 use re_chunk::RowId;
 use re_log_types::{ApplicationId, SetStoreInfo, StoreInfo};
@@ -15,12 +15,15 @@ impl DataLoader for McapLoader {
         "McapLoader".into()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
         settings: &crate::DataLoaderSettings,
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
+        use std::fs::File;
+
         if path.is_dir()
             || path
                 .extension()
@@ -69,21 +72,24 @@ impl DataLoader for McapLoader {
         let settings = settings.clone();
         let contents = contents.into_owned();
 
-        // NOTE(1): `spawn` is fine, this whole function is native-only.
-        // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
-        // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
-        // their response via channels: we cannot be waiting for these responses on the
-        // common rayon thread pool.
-        std::thread::Builder::new()
-            .name(format!("load_mcap({filepath:?}"))
-            .spawn(move || match load_mcap(&contents, &settings, &tx) {
-                Ok(_) => {}
-                Err(err) => {
-                    re_log::error!("Failed to load MCAP file: {err}");
-                }
-            })
-            .map_err(|err| DataLoaderError::Other(err.into()))?;
-
+        if cfg!(target_arch = "wasm32") {
+            load_mcap(&contents, &settings, &tx)?;
+        } else {
+            // NOTE(1): `spawn` is fine, this whole function is native-only.
+            // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
+            // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
+            // their response via channels: we cannot be waiting for these responses on the
+            // common rayon thread pool.
+            std::thread::Builder::new()
+                .name(format!("load_mcap({filepath:?}"))
+                .spawn(move || match load_mcap(&contents, &settings, &tx) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        re_log::error!("Failed to load MCAP file: {err}");
+                    }
+                })
+                .map_err(|err| DataLoaderError::Other(err.into()))?;
+        }
         Ok(())
     }
 }
