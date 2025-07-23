@@ -178,7 +178,7 @@ impl RecordingStreamBuilder {
         Self {
             application_id: store_id.application_id,
             store_kind: store_id.kind,
-            recording_id: Some(store_id.id),
+            recording_id: Some(store_id.recording_id),
             store_source: None,
 
             default_enabled: true,
@@ -970,7 +970,7 @@ impl RecordingStreamInner {
         {
             re_log::debug!(
                 app_id = %store_info.store_id.application_id,
-                rec_id = %store_info.store_id.id,
+                rec_id = %store_info.store_id.recording_id,
                 "Setting StoreInfo",
             );
             sink.send(
@@ -1538,7 +1538,7 @@ fn forwarding_thread(
                 {
                     re_log::debug!(
                         app_id = %store_info.store_id.application_id,
-                        rec_id = %store_info.store_id.id,
+                        rec_id = %store_info.store_id.recording_id,
                         "Setting StoreInfo",
                     );
                     new_sink.send(

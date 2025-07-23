@@ -156,7 +156,7 @@ impl DataLoaderSettings {
 
             args.extend([
                 "--opened-recording-id".to_owned(),
-                format!("{}", opened_store_id.id),
+                format!("{}", opened_store_id.recording_id),
             ]);
         }
 

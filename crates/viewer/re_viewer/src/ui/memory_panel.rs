@@ -84,7 +84,7 @@ impl MemoryPanel {
             ui.separator();
 
             for (store_id, store_stats) in &store_stats.store_stats {
-                let title = format!("{} {}", store_id.kind, store_id.id);
+                let title = format!("{} {}", store_id.kind, store_id.recording_id);
                 ui.collapsing_header(&title, false, |ui| {
                     ui.collapsing("Datastore Resources", |ui| {
                         Self::store_stats(ui, &store_stats.store_config, &store_stats.store_stats);

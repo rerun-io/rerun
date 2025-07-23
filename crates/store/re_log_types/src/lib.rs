@@ -123,7 +123,7 @@ impl std::fmt::Display for StoreKind {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreId {
     pub kind: StoreKind,
-    pub id: RecordingId,
+    pub recording_id: RecordingId,
     pub application_id: ApplicationId,
 }
 
@@ -137,7 +137,7 @@ impl StoreId {
         Self {
             kind,
             application_id: application_id.into(),
-            id: recording_id.into(),
+            recording_id: recording_id.into(),
         }
     }
 
@@ -160,7 +160,7 @@ impl StoreId {
     pub fn random(kind: StoreKind) -> Self {
         Self {
             kind,
-            id: RecordingId::random(),
+            recording_id: RecordingId::random(),
             application_id: ApplicationId::random(),
         }
     }
@@ -169,7 +169,7 @@ impl StoreId {
     pub fn random_with_app_id(kind: StoreKind, application_id: impl Into<ApplicationId>) -> Self {
         Self {
             kind,
-            id: RecordingId::random(),
+            recording_id: RecordingId::random(),
             application_id: application_id.into(),
         }
     }
@@ -183,7 +183,7 @@ impl StoreId {
     pub fn with_recording_id(self, recording_id: impl Into<RecordingId>) -> Self {
         Self {
             kind: self.kind,
-            id: recording_id.into(),
+            recording_id: recording_id.into(),
             application_id: self.application_id,
         }
     }
@@ -192,7 +192,7 @@ impl StoreId {
     pub fn with_application_id(self, application_id: impl Into<ApplicationId>) -> Self {
         Self {
             kind: self.kind,
-            id: self.id,
+            recording_id: self.recording_id,
             application_id: application_id.into(),
         }
     }
@@ -204,17 +204,18 @@ impl StoreId {
 
     #[inline]
     pub fn is_empty_recording(&self) -> bool {
-        self.kind == StoreKind::Recording && self.id.as_str() == "<EMPTY>"
+        self.kind == StoreKind::Recording && self.recording_id.as_str() == "<EMPTY>"
     }
 
     #[inline]
     pub fn is_default_blueprint(&self) -> bool {
-        self.kind == StoreKind::Blueprint && self.application_id.as_str() == self.id.as_str()
+        self.kind == StoreKind::Blueprint
+            && self.application_id.as_str() == self.recording_id.as_str()
     }
 
     #[inline]
     pub fn recording_id(&self) -> &RecordingId {
-        &self.id
+        &self.recording_id
     }
 
     #[inline]
@@ -229,7 +230,7 @@ impl std::fmt::Display for StoreId {
         // `StoreKind` is not part of how we display the id,
         // because that can easily lead to confusion and bugs
         // when roundtripping to a string (e.g. via Python SDK).
-        self.id.fmt(f)
+        self.recording_id.fmt(f)
     }
 }
 
@@ -816,7 +817,7 @@ impl SizeBytes for StoreId {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             kind: _,
-            id,
+            recording_id: id,
             application_id,
         } = self;
 
