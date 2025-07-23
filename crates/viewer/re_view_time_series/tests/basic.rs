@@ -1,10 +1,10 @@
-use re_chunk_store::RowId;
-use re_log_types::TimePoint;
+use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 fn color_gradient0(step: i64) -> re_types::components::Color {
     re_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
@@ -356,5 +356,86 @@ fn run_view_ui_and_save_snapshot(
     harness.snapshot_options(
         name,
         &SnapshotOptions::new().failed_pixel_count_threshold(num_allowed_broken_pixels),
+    );
+}
+
+#[test]
+fn test_bootstrapped_secondaries() {
+    for partial_range in [false, true] {
+        test_bootstrapped_secondaries_impl(partial_range);
+    }
+}
+
+fn test_bootstrapped_secondaries_impl(partial_range: bool) {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    fn with_scalar(builder: ChunkBuilder, value: i64) -> ChunkBuilder {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::from([(Timeline::log_tick(), value)]),
+            &re_types::archetypes::Scalars::new([value as f64]),
+        )
+    }
+
+    test_context.log_entity("scalars", |builder| {
+        let mut builder = builder
+            .with_archetype(
+                RowId::new(),
+                TimePoint::from([(Timeline::log_tick(), 0)]),
+                &re_types::archetypes::SeriesLines::new()
+                    .with_widths([5.0])
+                    .with_colors([re_types::components::Color::from_rgb(0, 255, 255)])
+                    .with_names(["muh_scalars_from_0"]),
+            )
+            .with_archetype(
+                RowId::new(),
+                TimePoint::from([(Timeline::log_tick(), 45)]),
+                &re_types::archetypes::SeriesLines::new()
+                    .with_widths([5.0])
+                    .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+                    .with_names(["muh_scalars_from_45"]),
+            );
+        for i in 0..10 {
+            builder = with_scalar(builder, i * 10);
+        }
+        builder
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        if partial_range {
+            let override_path =
+                ViewContents::override_path_for_entity(view.id, &EntityPath::from("scalars"));
+            ctx.save_blueprint_archetype(
+                override_path.clone(),
+                &re_types::blueprint::archetypes::VisibleTimeRanges::new([
+                    re_types::blueprint::components::VisibleTimeRange(
+                        re_types::datatypes::VisibleTimeRange {
+                            timeline: "log_tick".into(),
+                            range: re_types::datatypes::TimeRange {
+                                start: re_types::datatypes::TimeRangeBoundary::Absolute(70.into()),
+                                end: re_types::datatypes::TimeRangeBoundary::Infinite,
+                            },
+                        },
+                    ),
+                ]),
+            );
+        }
+
+        blueprint.add_view_at_root(view)
+    });
+
+    let name = if partial_range {
+        "bootstrapped_secondaries_partial"
+    } else {
+        "bootstrapped_secondaries_full"
+    };
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        name,
+        egui::vec2(300.0, 300.0),
+        2,
     );
 }
