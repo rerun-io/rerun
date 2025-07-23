@@ -3,8 +3,8 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
-    ApplicationId, BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo,
-    StoreKind, StoreSource,
+    BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource,
 };
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
@@ -335,20 +335,18 @@ pub async fn stream_blueprint_and_partition_from_server(
         .into_inner()
         .try_into()?;
 
-    let app_id = ApplicationId::from(uri.dataset_id.to_string());
+    let recording_store_id = uri.store_id();
 
     if let Some((blueprint_dataset, blueprint_partition)) =
         response.dataset_entry.dataset_details.default_bluprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        // It may be tempting to use the partition id to build the `StoreId` here, but we require
-        // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
-        // ids are only unique within a given dataset.
-        // This is a hack be cause
-        // TODO(#7950)
-
-        let blueprint_store_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
+        // For blueprint, we can use a random recording ID
+        let blueprint_store_id = StoreId::random(
+            StoreKind::Blueprint,
+            recording_store_id.application_id().clone(),
+        );
 
         let blueprint_store_info = StoreInfo {
             store_id: blueprint_store_id.clone(),
@@ -387,8 +385,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     }
 
     let store_info = StoreInfo {
-        // See note above about `StoreId::random`.
-        store_id: StoreId::random(StoreKind::Recording, app_id),
+        store_id: recording_store_id,
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
