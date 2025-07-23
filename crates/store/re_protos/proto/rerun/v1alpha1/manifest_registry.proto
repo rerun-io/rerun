@@ -22,6 +22,9 @@ service ManifestRegistryService {
   // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
+  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+
   // --- Query schemas ---
 
   // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
@@ -102,9 +105,6 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Retrieves the chunk manifest for a specific index.
-  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
-
   // Create manifests for all partitions in the Dataset. Partition manifest contains information about
   // the chunks in the partitions.
   //
@@ -114,8 +114,11 @@ service ManifestRegistryService {
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 
-  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
-  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+  // Fetch the internal state of a Schema Manifest.
+  rpc FetchSchemaManifest(FetchSchemaManifestRequest) returns (stream FetchSchemaManifestResponse) {}
+
+  // Retrieves the chunk manifest for a specific index.
+  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 }
 
 // --- Write data ---
@@ -536,6 +539,16 @@ message FetchPartitionManifestRequest {
 
 // TODO(cmc): this should have response extensions too.
 message FetchPartitionManifestResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchSchemaManifestRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+// TODO(cmc): this should have response extensions too.
+message FetchSchemaManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
