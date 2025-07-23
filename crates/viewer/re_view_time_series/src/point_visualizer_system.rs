@@ -1,10 +1,13 @@
 use itertools::Itertools as _;
 
+use re_chunk_store::LatestAtQuery;
 use re_types::{
     Archetype as _, archetypes,
     components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
 };
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_view::{
+    clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
     ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
@@ -233,9 +236,29 @@ impl SeriesPointsSystem {
                 allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
 
             collect_scalars(&all_scalar_chunks, &mut points_per_series);
+
+            // The plot view visualizes scalar data within a specific time range, without any kind
+            // of time-alignment / bootstrapping behavior:
+            // * For the scalar themselves, this is what you want: if you're trying to plot some
+            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+            //   _extended bounds_ will take care of lines crossing the limit).
+            // * For the secondary components (colors, radii, names, etc), this is a problem
+            //   though: you don't want your plot to change color depending on what the currently
+            //   visible time range is! Secondary components have to be bootstrapped.
+            let query_shadowed_components = false;
+            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &LatestAtQuery::new(query.timeline, query.range.min()),
+                data_result,
+                archetypes::SeriesPoints::all_components().iter(),
+                query_shadowed_components,
+            );
+
             collect_colors(
                 entity_path,
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
@@ -243,6 +266,7 @@ impl SeriesPointsSystem {
             );
             collect_radius_ui(
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
@@ -256,8 +280,17 @@ impl SeriesPointsSystem {
                 re_tracing::profile_scope!("fill marker shapes");
 
                 {
-                    let all_marker_shapes_chunks =
-                        results.get_optional_chunks(archetypes::SeriesPoints::descriptor_markers());
+                    let all_marker_shapes_chunks = bootstrapped_results
+                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                        .iter()
+                        .cloned()
+                        .chain(
+                            results
+                                .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                                .iter()
+                                .cloned(),
+                        )
+                        .collect_vec();
 
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].is_static()
@@ -344,6 +377,7 @@ impl SeriesPointsSystem {
 
             let series_visibility = collect_series_visibility(
                 &query,
+                &bootstrapped_results,
                 &results,
                 num_series,
                 archetypes::SeriesPoints::descriptor_visible_series(),
@@ -351,6 +385,7 @@ impl SeriesPointsSystem {
             let series_names = collect_series_name(
                 self,
                 &query_ctx,
+                &bootstrapped_results,
                 &results,
                 num_series,
                 &archetypes::SeriesPoints::descriptor_names(),

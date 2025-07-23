@@ -167,4 +167,6 @@ extend-ignore-re = [
   "_LEVL_", # USed in air_traffic_data.py
 
   "thrEEone", # Used in a test
+
+  "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
 ]
