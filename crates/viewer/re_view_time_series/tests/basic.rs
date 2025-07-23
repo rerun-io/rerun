@@ -2,7 +2,6 @@ use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
-use re_types::Archetype as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
