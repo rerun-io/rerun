@@ -1,15 +1,13 @@
 //! Crate that handles encoding of rerun log types.
 
-mod app_id_cache; //TODO: behind decode feature?
-
 #[cfg(feature = "decoder")]
 pub mod decoder;
 
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+mod app_id_cache;
 pub mod codec;
-
 pub mod protobuf_conversions;
 
 #[cfg(feature = "encoder")]
@@ -25,6 +23,8 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------
+
+pub use app_id_cache::ApplicationIdCache;
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]

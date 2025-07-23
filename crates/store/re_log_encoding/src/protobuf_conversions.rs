@@ -1,7 +1,8 @@
 // TODO(#9430): this belongs in re_protos::ext
 
-use re_log_types::BlueprintActivationCommand;
-use re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError;
+use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
+
+use crate::app_id_cache::ApplicationIdCache;
 
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
@@ -24,12 +25,15 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 
 /// Decode log message from proto.
 ///
-/// NOTE: this function DO NOT implement the migration of legacy `StoreId` without `ApplicationId`.
-/// This is ok because this is used for `--server` and SDK <-> viewer communication, which are
-/// always expected to be of matching versions.
+/// This function attempts to migrate legacy `StoreId` with missing application id. It will return
+/// [`crate::decoder::DecodeError::StoreIdMissingApplicationId`] if a message arrives before the
+/// matching `SetStoreInfo` message.
+///
+/// The provided [`ApplicationIdCache`] must be shared across all calls for the same stream.
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_from_proto(
+    app_id_cache: &mut ApplicationIdCache,
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
     re_tracing::profile_function!();
@@ -37,30 +41,37 @@ pub fn log_msg_from_proto(
     use re_protos::{log_msg::v1alpha1::log_msg::Msg, missing_field};
 
     match message.msg {
-        Some(Msg::SetStoreInfo(set_store_info)) => Ok(re_log_types::LogMsg::SetStoreInfo(
-            set_store_info.try_into()?,
-        )),
+        Some(Msg::SetStoreInfo(set_store_info)) => {
+            let set_store_info: SetStoreInfo = set_store_info.try_into()?;
+            app_id_cache.insert(&set_store_info.info);
+            Ok(re_log_types::LogMsg::SetStoreInfo(set_store_info))
+        }
 
         Some(Msg::ArrowMsg(arrow_msg)) => {
             let encoded = arrow_msg_from_proto(&arrow_msg)?;
 
-            // Note: we dont support legacy `StoreId` migration, see above.
-            let store_id: re_log_types::StoreId = arrow_msg
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let store_id: re_log_types::StoreId = match arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
                 .try_into()
-                .map_err(|err: StoreIdMissingApplicationIdError| {
-                    err.into_type_conversion_error(
-                        "`StoreId` in `ArrowMsg` must contain an application id",
-                    )
-                })?;
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
+                        return Err(crate::decoder::DecodeError::StoreIdMissingApplicationId);
+                    };
+
+                    store_id
+                }
+            };
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
         }
 
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
-            // Note: we dont support legacy `StoreId` migration, see above.
-            let blueprint_id: re_log_types::StoreId = blueprint_activation_command
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let blueprint_id: re_log_types::StoreId = match blueprint_activation_command
                 .blueprint_id
                 .ok_or_else(|| {
                     missing_field!(
@@ -69,11 +80,16 @@ pub fn log_msg_from_proto(
                     )
                 })?
                 .try_into()
-                .map_err(|err: StoreIdMissingApplicationIdError| {
-                    err.into_type_conversion_error(
-                        "`StoreId` in `BlueprintActivationCommand` must contain an application id",
-                    )
-                })?;
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
+                        return Err(crate::decoder::DecodeError::StoreIdMissingApplicationId);
+                    };
+
+                    store_id
+                }
+            };
 
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(
                 BlueprintActivationCommand {

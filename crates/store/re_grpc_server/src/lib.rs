@@ -316,9 +316,14 @@ pub fn spawn_with_recv(
         }
     });
     tokio::spawn(async move {
+        let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+
         loop {
             let msg = match broadcast_log_rx.recv().await {
-                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(msg),
+                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(
+                    &mut app_id_cache,
+                    msg,
+                ),
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
                     channel_log_tx.quit(None).ok();
@@ -1029,9 +1034,11 @@ mod tests {
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
     ) -> Vec<LogMsg> {
-        let mut stream_ref = log_stream
-            .get_mut()
-            .map(|result| log_msg_from_proto(result.unwrap().log_msg.unwrap()).unwrap());
+        let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+
+        let mut stream_ref = log_stream.get_mut().map(|result| {
+            log_msg_from_proto(&mut app_id_cache, result.unwrap().log_msg.unwrap()).unwrap()
+        });
 
         let mut messages = Vec::new();
         for _ in 0..n {
@@ -1215,9 +1222,13 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
+            let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
+                    actual.push(
+                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
+                            .unwrap(),
+                    );
                 }
 
                 // Stream closed | Timed out
@@ -1259,9 +1270,13 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
+            let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
+                    actual.push(
+                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
+                            .unwrap(),
+                    );
                 }
 
                 // Stream closed | Timed out
