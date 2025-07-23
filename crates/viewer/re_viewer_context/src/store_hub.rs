@@ -219,7 +219,7 @@ impl StoreHub {
                 && !self.should_enable_heuristics_by_app_id.contains(&app_id)
             {
                 if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
-                    self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
+                    self.set_cloned_blueprint_active_for_app(&blueprint_id)
                         .unwrap_or_else(|err| {
                             re_log::warn!("Failed to make blueprint active: {err}");
                         });
@@ -559,11 +559,7 @@ impl StoreHub {
 
     /// Change which blueprint is the default for a given [`ApplicationId`]
     #[inline]
-    pub fn set_default_blueprint_for_app(
-        &mut self,
-        app_id: &ApplicationId,
-        blueprint_id: &StoreId,
-    ) -> anyhow::Result<()> {
+    pub fn set_default_blueprint_for_app(&mut self, blueprint_id: &StoreId) -> anyhow::Result<()> {
         let blueprint = self
             .store_bundle
             .get(blueprint_id)
@@ -576,9 +572,13 @@ impl StoreHub {
             }
         }
 
-        re_log::trace!("Switching default blueprint for '{app_id}' to '{blueprint_id}'");
+        re_log::trace!(
+            "Switching default blueprint for '{}' to '{}'",
+            blueprint_id.application_id(),
+            blueprint_id
+        );
         self.default_blueprint_by_app_id
-            .insert(app_id.clone(), blueprint_id.clone());
+            .insert(blueprint_id.application_id().clone(), blueprint_id.clone());
 
         Ok(())
     }
@@ -611,16 +611,15 @@ impl StoreHub {
     ///
     /// We never activate a blueprint directly. Instead, we clone it and activate the clone.
     //TODO(jleibs): In the future this can probably be handled with snapshots instead.
-    //TODO: fix args there!
     pub fn set_cloned_blueprint_active_for_app(
         &mut self,
-        app_id: &ApplicationId,
         blueprint_id: &StoreId,
     ) -> anyhow::Result<()> {
-        let new_id = StoreId::random(StoreKind::Blueprint);
+        let app_id = blueprint_id.application_id().clone();
+        let new_id = StoreId::random_with_app_id(StoreKind::Blueprint, app_id.clone());
 
         re_log::trace!(
-            "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}' to '{blueprint_id}'"
+            "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}'"
         );
 
         let blueprint = self
@@ -639,8 +638,7 @@ impl StoreHub {
 
         self.store_bundle.insert(new_blueprint);
 
-        self.active_blueprint_by_app_id
-            .insert(app_id.clone(), new_id);
+        self.active_blueprint_by_app_id.insert(app_id, new_id);
 
         Ok(())
     }

@@ -117,7 +117,7 @@ impl DataLoaderSettings {
         StoreId::recording(
             self.application_id
                 .clone()
-                .unwrap_or_else(re_log_types::ApplicationId::random), //TODO: is that correct?
+                .unwrap_or_else(re_log_types::ApplicationId::random),
             self.recording_id.clone(),
         )
     }

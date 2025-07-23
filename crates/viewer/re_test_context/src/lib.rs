@@ -163,7 +163,7 @@ impl TestContext {
         store_hub.insert_entity_db(blueprint_store);
         store_hub.set_active_recording_id(recording_store_id);
         store_hub
-            .set_cloned_blueprint_active_for_app(&application_id, &blueprint_id)
+            .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
         let (command_sender, command_receiver) = command_channel();

@@ -1738,18 +1738,20 @@ impl App {
                             let app_id = info.application_id().clone();
                             if cmd.make_default {
                                 store_hub
-                                    .set_default_blueprint_for_app(&app_id, store_id)
+                                    .set_default_blueprint_for_app(store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint default: {err}");
                                     });
                             }
                             if cmd.make_active {
                                 store_hub
-                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
+                                    .set_cloned_blueprint_active_for_app(store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
-                                store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
+
+                                // Switch to this app, e.g. on drag-and-drop of a blueprint file
+                                store_hub.set_active_app(app_id);
 
                                 // If the viewer is in the background, tell the user that it has received something new.
                                 egui_ctx.send_viewport_cmd(

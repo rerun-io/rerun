@@ -105,7 +105,7 @@ impl std::fmt::Display for StoreKind {
 ///
 /// All data associated with a given `StoreId`, regardless of its source, is considered to belong
 /// to the same logical recording. As such, when ingested in the viewer, they will be pooled into
-/// a single store and displayed as a single, in-viewer recording.  This can be very confusing if it
+/// a single store and displayed as a single, in-viewer recording. This can be very confusing if it
 /// happens inadvertently. However, the ability to pool data sharing the same `StoreId` can be very
 /// powerful. As a result, we do not want to _enforce_ uniqueness. Still, it is important to
 /// understand what a `StoreId` is, and, to avoid footguns, default to make them unique.
