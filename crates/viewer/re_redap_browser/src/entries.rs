@@ -27,6 +27,8 @@ use crate::context::Context;
 #[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
+    /// You usually want to use [`EntryError::tonic_status`] instead
+    /// (there are multiple variants holding [`tonic::Status`]).
     #[error(transparent)]
     TonicError(#[from] tonic::Status),
 
@@ -47,8 +49,36 @@ pub enum EntryError {
 }
 
 impl EntryError {
+    fn tonic_status(&self) -> Option<&tonic::Status> {
+        // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
+        match self {
+            Self::TonicError(status) => Some(status),
+            Self::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::StreamError(StreamError::Transport(_)) => None,
+            Self::StreamError(
+                StreamError::ConnectionError(_)
+                | StreamError::Tokio(_)
+                | StreamError::CodecError(_)
+                | StreamError::ChunkError(_)
+                | StreamError::DecodeError(_)
+                | StreamError::InvalidUri(_)
+                | StreamError::InvalidSorbetSchema(_)
+                | StreamError::TypeConversionError(_)
+                | StreamError::MissingChunkData
+                | StreamError::MissingDataframeColumn(_)
+                | StreamError::MissingData(_)
+                | StreamError::ArrowError(_),
+            )
+            | Self::ConnectionError(_)
+            | Self::TypeConversionError(_)
+            | Self::CodecError(_)
+            | Self::SorbetError(_) => None,
+        }
+    }
+
     pub fn is_missing_token(&self) -> bool {
-        if let Self::TonicError(status) = self {
+        if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
                 && status.message() == "missing credentials"
         } else {
@@ -57,7 +87,7 @@ impl EntryError {
     }
 
     pub fn is_wrong_token(&self) -> bool {
-        if let Self::TonicError(status) = self {
+        if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
                 && status.message() == "invalid credentials"
         } else {
