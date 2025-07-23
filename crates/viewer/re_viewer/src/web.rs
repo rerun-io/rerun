@@ -387,8 +387,9 @@ impl WebHandle {
         Some(recording.store_id().to_string())
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn set_active_recording_id(&self, store_id: &str) {
+    pub fn set_active_recording_id(&self, recording_id: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -396,19 +397,19 @@ impl WebHandle {
         let Some(hub) = app.store_hub.as_mut() else {
             return;
         };
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
-        if !hub.store_bundle().contains(&store_id) {
+
+        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
         };
 
-        hub.set_activate_recording(store_id);
+        hub.set_active_recording(store_id);
 
         app.egui_ctx.request_repaint();
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn get_active_timeline(&self, store_id: &str) -> Option<String> {
+    pub fn get_active_timeline(&self, recording_id: &str) -> Option<String> {
         let mut app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
             store_hub: Some(hub),
@@ -419,11 +420,7 @@ impl WebHandle {
             return None;
         };
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
-        if !hub.store_bundle().contains(&store_id) {
-            return None;
-        };
+        let store_id = store_id_from_recording_id(hub, recording_id)?;
         let rec_cfg = state.recording_config(&store_id)?;
         let time_ctrl = rec_cfg.time_ctrl.read();
         Some(time_ctrl.timeline().name().as_str().to_owned())
@@ -432,8 +429,9 @@ impl WebHandle {
     /// Set the active timeline.
     ///
     /// This does nothing if the timeline can't be found.
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn set_active_timeline(&self, store_id: &str, timeline_name: &str) {
+    pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -447,8 +445,9 @@ impl WebHandle {
             return;
         };
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
@@ -464,12 +463,12 @@ impl WebHandle {
         egui_ctx.request_repaint();
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, store_id: &str, timeline_name: &str) -> Option<f64> {
+    pub fn get_time_for_timeline(&self, recording_id: &str, timeline_name: &str) -> Option<f64> {
         let app = self.runner.app_mut::<crate::App>()?;
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let store_id = store_id_from_recording_id(app.store_hub.as_ref()?, recording_id)?;
         let rec_cfg = app.state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -478,8 +477,9 @@ impl WebHandle {
             .map(|v| v.as_f64())
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, store_id: &str, timeline_name: &str, time: f64) {
+    pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -493,8 +493,9 @@ impl WebHandle {
             return;
         };
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
@@ -511,8 +512,9 @@ impl WebHandle {
         egui_ctx.request_repaint();
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, store_id: &str, timeline_name: &str) -> JsValue {
+    pub fn get_timeline_time_range(&self, recording_id: &str, timeline_name: &str) -> JsValue {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return JsValue::null();
         };
@@ -524,8 +526,9 @@ impl WebHandle {
             return JsValue::null();
         };
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
+            return JsValue::null();
+        };
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return JsValue::null();
         };
@@ -544,8 +547,9 @@ impl WebHandle {
         JsValue::from(obj)
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn get_playing(&self, store_id: &str) -> Option<bool> {
+    pub fn get_playing(&self, recording_id: &str) -> Option<bool> {
         let app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
             store_hub: Some(hub),
@@ -556,8 +560,7 @@ impl WebHandle {
             return None;
         };
 
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let store_id = store_id_from_recording_id(hub, recording_id)?;
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
@@ -567,8 +570,9 @@ impl WebHandle {
         Some(time_ctrl.play_state() == re_viewer_context::PlayState::Playing)
     }
 
+    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
-    pub fn set_playing(&self, store_id: &str, value: bool) {
+    pub fn set_playing(&self, recording_id: &str, value: bool) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -582,8 +586,9 @@ impl WebHandle {
         let Some(hub) = store_hub.as_ref() else {
             return;
         };
-        let store_id =
-            re_log_types::StoreId::new(re_log_types::StoreKind::Recording, store_id.to_owned());
+        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
@@ -601,6 +606,19 @@ impl WebHandle {
             .set_play_state(recording.times_per_timeline(), play_state);
         egui_ctx.request_repaint();
     }
+}
+
+/// Best effort attempt at finding a store id based on the recording id.
+fn store_id_from_recording_id(
+    store_hub: &re_viewer_context::StoreHub,
+    recording_id: &str,
+) -> Option<re_log_types::StoreId> {
+    store_hub
+        .store_bundle()
+        .recordings()
+        .map(|entity_db| entity_db.store_id())
+        .find(|store_id| store_id.recording_id().as_str() == recording_id)
+        .cloned()
 }
 
 // TODO(jprochazk): figure out a way to auto-generate these types on JS side

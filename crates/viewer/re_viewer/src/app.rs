@@ -57,8 +57,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 
 #[cfg(target_arch = "wasm32")]
 struct PendingFilePromise {
-    recommended_application_id: Option<ApplicationId>,
-    recommended_recording_id: Option<re_log_types::StoreId>,
+    recommended_store_id: Option<StoreId>,
     force_store_info: bool,
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
@@ -2309,8 +2308,7 @@ impl eframe::App for App {
 
         #[cfg(target_arch = "wasm32")]
         if let Some(PendingFilePromise {
-            recommended_application_id,
-            recommended_recording_id,
+            recommended_store_id,
             force_store_info,
             promise,
         }) = &self.open_files_promise
@@ -2320,8 +2318,7 @@ impl eframe::App for App {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
                             FileSource::FileDialog {
-                                recommended_application_id: recommended_application_id.clone(),
-                                recommended_recording_id: recommended_recording_id.clone(),
+                                recommended_store_id: recommended_store_id.clone(),
                                 force_store_info: *force_store_info,
                             },
                             file.clone(),

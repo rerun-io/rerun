@@ -536,7 +536,7 @@ impl StoreHub {
     }
 
     /// Activate a recording by its [`StoreId`].
-    pub fn set_activate_recording(&mut self, store_id: StoreId) {
+    pub fn set_active_recording(&mut self, store_id: StoreId) {
         match store_id.kind {
             StoreKind::Recording => self.set_active_recording_id(store_id),
             StoreKind::Blueprint => {
