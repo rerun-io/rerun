@@ -27,7 +27,7 @@ use crate::context::Context;
 #[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
-    /// You usually want to check [`EntryError::tonic_status`]
+    /// You usually want to use [`EntryError::tonic_status`] instead
     /// (there are multiple variants holding [`tonic::Status`]).
     #[error(transparent)]
     TonicError(#[from] tonic::Status),
