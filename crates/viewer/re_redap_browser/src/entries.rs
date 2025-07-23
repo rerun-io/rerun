@@ -54,10 +54,11 @@ impl EntryError {
         match self {
             Self::TonicError(status) => Some(status),
             Self::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::StreamError(StreamError::Transport(_)) => None,
             Self::StreamError(
                 StreamError::ConnectionError(_)
                 | StreamError::Tokio(_)
-                | StreamError::Transport(_)
                 | StreamError::CodecError(_)
                 | StreamError::ChunkError(_)
                 | StreamError::DecodeError(_)
