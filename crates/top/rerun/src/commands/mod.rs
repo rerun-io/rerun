@@ -21,6 +21,9 @@ impl CallSource {
 
 // ---
 
+#[cfg(feature = "auth")]
+mod auth;
+
 mod entrypoint;
 mod rrd;
 mod stdio;
