@@ -1293,7 +1293,10 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let entity_db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
         TransformCacheStoreSubscriber::access(entity_db.store_id(), |_| {
             // Make sure the subscriber is registered.
         });

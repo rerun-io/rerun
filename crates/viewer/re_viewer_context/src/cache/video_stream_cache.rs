@@ -833,8 +833,10 @@ mod tests {
     #[test]
     fn video_stream_cache_from_single_chunk() {
         let mut cache = VideoStreamCache::default();
-        let mut store =
-            re_entity_db::EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut store = re_entity_db::EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
         let timeline = Timeline::new_sequence("frame");
 
         let mut chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into());
@@ -869,7 +871,7 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame() {
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::with_store_config(
-            StoreId::random(re_log_types::StoreKind::Recording),
+            StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");
@@ -910,7 +912,7 @@ mod tests {
 
             let mut cache = VideoStreamCache::default();
             let mut store = re_entity_db::EntityDb::with_store_config(
-                StoreId::random(re_log_types::StoreKind::Recording),
+                StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 if compaction_enabled {
                     re_chunk_store::ChunkStoreConfig::DEFAULT
                 } else {
@@ -977,7 +979,7 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame_with_gc() {
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::with_store_config(
-            StoreId::random(re_log_types::StoreKind::Recording),
+            StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");

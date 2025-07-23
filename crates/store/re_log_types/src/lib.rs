@@ -156,17 +156,12 @@ impl StoreId {
         Self::new(StoreKind::Blueprint, application_id, recording_id)
     }
 
+    /// Generate a random [`StoreId`] with the provided application id.
+    ///
+    /// Note: the application id is required here because fully random store ids are often a
+    /// logically incorrect thing to build (the notable exceptions being tests).
     #[inline]
-    pub fn random(kind: StoreKind) -> Self {
-        Self {
-            kind,
-            recording_id: RecordingId::random(),
-            application_id: ApplicationId::random(),
-        }
-    }
-
-    #[inline]
-    pub fn random_with_app_id(kind: StoreKind, application_id: impl Into<ApplicationId>) -> Self {
+    pub fn random(kind: StoreKind, application_id: impl Into<ApplicationId>) -> Self {
         Self {
             kind,
             recording_id: RecordingId::random(),

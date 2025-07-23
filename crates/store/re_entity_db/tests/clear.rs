@@ -59,7 +59,10 @@ fn query_latest_component_clear(
 fn clears() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+    let mut db = EntityDb::new(StoreId::random(
+        re_log_types::StoreKind::Recording,
+        "test_app",
+    ));
 
     let timeline_frame = Timeline::new_sequence("frame");
 
@@ -526,7 +529,10 @@ fn clears() -> anyhow::Result<()> {
 fn clears_respect_index_order() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+    let mut db = EntityDb::new(StoreId::random(
+        re_log_types::StoreKind::Recording,
+        "test_app",
+    ));
 
     let timeline_frame = Timeline::new_sequence("frame");
 

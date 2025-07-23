@@ -348,7 +348,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         // This is a hack be cause
         // TODO(#7950)
 
-        let blueprint_store_id = StoreId::random_with_app_id(StoreKind::Blueprint, app_id.clone());
+        let blueprint_store_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
 
         let blueprint_store_info = StoreInfo {
             store_id: blueprint_store_id.clone(),
@@ -388,7 +388,7 @@ pub async fn stream_blueprint_and_partition_from_server(
 
     let store_info = StoreInfo {
         // See note above about `StoreId::random`.
-        store_id: StoreId::random_with_app_id(StoreKind::Recording, app_id),
+        store_id: StoreId::random(StoreKind::Recording, app_id),
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,

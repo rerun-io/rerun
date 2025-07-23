@@ -70,7 +70,7 @@ fn all_components() -> anyhow::Result<()> {
         };
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -138,7 +138,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     let time = TimeInt::new_temporal(1);
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -198,7 +198,7 @@ fn latest_at() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -376,7 +376,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -517,7 +517,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -685,7 +685,7 @@ fn range() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -1047,7 +1047,7 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 

@@ -2720,7 +2720,11 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     // in a situation where the store_id we're loading is the same as the currently active one,
     // which mean they will merge in a strange way.
     // This is also related to https://github.com/rerun-io/rerun/issues/5295
-    let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
+    let new_store_id = store_context
+        .blueprint
+        .store_id()
+        .clone()
+        .with_recording_id(RecordingId::random());
     let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
         if let Ok(msg) = &mut msg {
             msg.set_store_id(new_store_id.clone());

@@ -12,7 +12,7 @@ use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
         EntryFilter,
@@ -566,10 +566,10 @@ impl ConnectionHandle {
                                             // Note: normally we use dataset name as application id,
                                             // but we don't have it here, and it doesn't really
                                             // matter since this is just a temporary store.
-                                            store_id: StoreId::random(StoreKind::Recording)
-                                                .with_application_id(ApplicationId::from(
-                                                    dataset_id.to_string(),
-                                                )),
+                                            store_id: StoreId::random(
+                                                StoreKind::Recording,
+                                                dataset_id.to_string(),
+                                            ),
                                             cloned_from: None,
                                             store_source: StoreSource::Unknown,
                                             store_version: None,

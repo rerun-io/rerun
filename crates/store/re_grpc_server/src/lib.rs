@@ -903,7 +903,7 @@ mod tests {
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
     fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint);
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let mut messages = Vec::new();
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
@@ -951,7 +951,7 @@ mod tests {
     }
 
     fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Recording);
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
         let mut messages = Vec::new();
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {

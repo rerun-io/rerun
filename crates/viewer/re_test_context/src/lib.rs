@@ -154,8 +154,7 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id =
-            StoreId::random(StoreKind::Blueprint).with_application_id(application_id.clone());
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id.clone());
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();

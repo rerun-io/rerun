@@ -616,7 +616,7 @@ impl StoreHub {
         blueprint_id: &StoreId,
     ) -> anyhow::Result<()> {
         let app_id = blueprint_id.application_id().clone();
-        let new_id = StoreId::random_with_app_id(StoreKind::Blueprint, app_id.clone());
+        let new_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
 
         re_log::trace!(
             "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}'"

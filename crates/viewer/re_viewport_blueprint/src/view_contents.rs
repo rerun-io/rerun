@@ -646,8 +646,14 @@ mod tests {
     fn test_query_results() {
         let space_env = EntityPathSubs::empty();
 
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let blueprint = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Blueprint,
+            "test_app",
+        ));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);

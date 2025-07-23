@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
 
 fn store() -> anyhow::Result<ChunkStoreHandle> {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 

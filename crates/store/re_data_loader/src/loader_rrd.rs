@@ -318,9 +318,7 @@ mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::encoder::DroppableEncoder;
-    use re_log_types::{
-        LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use super::*;
 
@@ -359,7 +357,7 @@ mod tests {
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
-                    store_id: StoreId::random(StoreKind::Recording),
+                    store_id: StoreId::random(StoreKind::Recording, "test_app"),
                     cloned_from: None,
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),

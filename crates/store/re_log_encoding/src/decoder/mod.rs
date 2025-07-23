@@ -430,7 +430,7 @@ mod tests {
     use crate::encoder::DroppableEncoder;
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint);
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let arrow_msg = re_chunk::Chunk::builder("test_entity")
             .with_archetype(

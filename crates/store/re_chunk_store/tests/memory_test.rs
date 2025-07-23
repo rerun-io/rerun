@@ -89,7 +89,7 @@ fn scalar_memory_overhead() {
 
     let (total_mem_use_global, _total_mem_use_local) = memory_use(|| {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::default(),
         );
 

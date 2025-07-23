@@ -56,7 +56,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     //   increasing.
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -96,7 +96,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Nothing happens, as re-using `RowId`s is simply UB.
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -126,7 +126,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Query at frame #11 and make sure we get `point1` because of intra-timestamp tie-breaks.
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -172,7 +172,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Query and make sure we get `point1` because of last-write-wins semantics.
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -216,7 +216,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     //   and therefore the second write does nothing.
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -267,7 +267,7 @@ fn write_errors() -> anyhow::Result<()> {
 
     {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -301,7 +301,7 @@ fn write_errors() -> anyhow::Result<()> {
 #[test]
 fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 
@@ -377,7 +377,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 #[test]
 fn entity_min_time_correct() -> anyhow::Result<()> {
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 

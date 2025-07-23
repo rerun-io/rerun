@@ -215,7 +215,7 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 pub fn new_store_info(
     application_id: impl Into<re_log_types::ApplicationId>,
 ) -> re_log_types::StoreInfo {
-    let store_id = StoreId::random(StoreKind::Recording).with_application_id(application_id.into());
+    let store_id = StoreId::random(StoreKind::Recording, application_id.into());
 
     re_log_types::StoreInfo {
         store_id,

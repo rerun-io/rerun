@@ -273,7 +273,10 @@ mod tests {
     fn deleting_descendants() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
 
         let timeline_frame = Timeline::new_sequence("frame");
 
