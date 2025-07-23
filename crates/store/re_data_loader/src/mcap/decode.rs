@@ -68,7 +68,7 @@ pub trait SchemaPlugin {
     /// # use mcap::Channel;
     /// # use re_chunk::Chunk;
     /// # use re_sorbet::SorbetSchema;
-    /// # use crate::mcap::decode::{
+    /// # use re_data_loader::mcap::decode::{
     /// #     McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin,
     /// # };
     /// # struct MyParser {
