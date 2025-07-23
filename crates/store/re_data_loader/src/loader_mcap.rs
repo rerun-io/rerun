@@ -82,16 +82,16 @@ impl DataLoader for McapLoader {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn load_mcap_mmap(
+    fn load_from_file_contents(
         &self,
         settings: &crate::DataLoaderSettings,
-        filepath: std::path::PathBuf,
+        _filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
         let contents = contents.into_owned();
 
-        load_mcap(&contents, &settings, &tx)?;
+        load_mcap(&contents, settings, &tx)
     }
 }
 
