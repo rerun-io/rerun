@@ -1945,13 +1945,14 @@ fn quote_fill_arrow_array_builder(
             }
 
             // C-style enum, encoded as arrow integer array.
-            ObjectClass::Enum(_) => {
+            ObjectClass::Enum(typ) => {
+                let quoted_type = quote_enum_type(&typ);
                 quote! {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
                     for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto variant = elements[elem_idx];
-                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<std::underlying_type_t<decltype(variant)>>(variant)));
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<#quoted_type>>(variant)));
                     }
                 }
             }
@@ -2511,6 +2512,15 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
             quote! { std::string }
         }
         ElementType::Object { fqname } => quote_fqname_as_type_path(includes, fqname),
+    }
+}
+
+fn quote_enum_type(typ: &EnumIntegerType) -> TokenStream {
+    match typ {
+        EnumIntegerType::U8 => quote! { uint8_t },
+        EnumIntegerType::U16 => quote! { uint16_t },
+        EnumIntegerType::U32 => quote! { uint32_t },
+        EnumIntegerType::U64 => quote! { uint64_t },
     }
 }
 
