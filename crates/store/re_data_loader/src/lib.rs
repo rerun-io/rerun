@@ -151,12 +151,12 @@ impl DataLoaderSettings {
         if let Some(opened_store_id) = opened_store_id {
             args.extend([
                 "--opened-application-id".to_owned(),
-                format!("{}", opened_store_id.application_id),
+                format!("{}", opened_store_id.application_id()),
             ]);
 
             args.extend([
                 "--opened-recording-id".to_owned(),
-                format!("{}", opened_store_id.recording_id),
+                format!("{}", opened_store_id.recording_id()),
             ]);
         }
 

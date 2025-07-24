@@ -174,11 +174,11 @@ impl RecordingStreamBuilder {
     //
     // NOTE: track_caller so that we can see if we are being called from an official example.
     #[track_caller]
-    pub fn from_store_id(store_id: StoreId) -> Self {
+    pub fn from_store_id(store_id: &StoreId) -> Self {
         Self {
-            application_id: store_id.application_id,
-            store_kind: store_id.kind,
-            recording_id: Some(store_id.recording_id),
+            application_id: store_id.application_id().clone(),
+            store_kind: store_id.kind(),
+            recording_id: Some(store_id.recording_id().clone()),
             store_source: None,
 
             default_enabled: true,
@@ -969,8 +969,7 @@ impl RecordingStreamInner {
 
         {
             re_log::debug!(
-                app_id = %store_info.store_id.application_id,
-                rec_id = %store_info.store_id.recording_id,
+                store_id = %store_info.store_id,
                 "Setting StoreInfo",
             );
             sink.send(
@@ -1084,7 +1083,9 @@ impl RecordingStream {
         batcher_hooks: BatcherHooks,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = (store_info.store_id.kind == StoreKind::Recording)
+        let sink = store_info
+            .store_id
+            .is_recording()
             .then(forced_sink_path)
             .flatten()
             .map_or(sink, |path| {
@@ -1537,8 +1538,7 @@ fn forwarding_thread(
                 // Send the recording info to the new sink. This is idempotent.
                 {
                     re_log::debug!(
-                        app_id = %store_info.store_id.application_id,
-                        rec_id = %store_info.store_id.recording_id,
+                        store_id = %store_info.store_id,
                         "Setting StoreInfo",
                     );
                     new_sink.send(

@@ -12,9 +12,11 @@ impl crate::DataUi for re_log_types::StoreId {
         if let Some(entity_db) = ctx.storage_context.bundle.get(self) {
             entity_db.data_ui(ctx, ui, ui_layout, query, db);
         } else {
+            //TODO(#10746): improve this to take into account the app id
             ui.label(format!(
                 "{} ID {} (not found)",
-                self.kind, self.recording_id
+                self.kind(),
+                self.recording_id()
             ));
         }
     }

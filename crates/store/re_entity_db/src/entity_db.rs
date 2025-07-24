@@ -198,7 +198,7 @@ impl EntityDb {
 
     #[inline]
     pub fn store_kind(&self) -> StoreKind {
-        self.store_id().kind
+        self.store_id().kind()
     }
 
     #[inline]

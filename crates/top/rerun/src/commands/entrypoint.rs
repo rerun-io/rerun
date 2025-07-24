@@ -1137,7 +1137,7 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        let mut_db = match msg.store_id().kind {
+                        let mut_db = match msg.store_id().kind() {
                             re_log_types::StoreKind::Recording => rec.get_or_insert_with(|| {
                                 re_entity_db::EntityDb::new(msg.store_id().clone())
                             }),

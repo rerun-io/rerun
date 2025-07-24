@@ -512,7 +512,7 @@ impl StoreHub {
     ///
     /// This will also change the application-id to match the newly active recording.
     pub fn set_active_recording_id(&mut self, recording_id: StoreId) {
-        debug_assert_eq!(recording_id.kind, StoreKind::Recording);
+        debug_assert!(recording_id.is_recording());
 
         // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
@@ -537,7 +537,7 @@ impl StoreHub {
 
     /// Activate a recording by its [`StoreId`].
     pub fn set_active_recording(&mut self, store_id: StoreId) {
-        match store_id.kind {
+        match store_id.kind() {
             StoreKind::Recording => self.set_active_recording_id(store_id),
             StoreKind::Blueprint => {
                 re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");

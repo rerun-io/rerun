@@ -122,9 +122,9 @@ impl std::fmt::Display for StoreKind {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreId {
-    pub kind: StoreKind,
-    pub recording_id: RecordingId,
-    pub application_id: ApplicationId,
+    kind: StoreKind,
+    recording_id: RecordingId,
+    application_id: ApplicationId,
 }
 
 impl StoreId {
@@ -209,6 +209,21 @@ impl StoreId {
     }
 
     #[inline]
+    pub fn kind(&self) -> StoreKind {
+        self.kind
+    }
+
+    #[inline]
+    pub fn is_recording(&self) -> bool {
+        self.kind == StoreKind::Recording
+    }
+
+    #[inline]
+    pub fn is_blueprint(&self) -> bool {
+        self.kind == StoreKind::Blueprint
+    }
+
+    #[inline]
     pub fn recording_id(&self) -> &RecordingId {
         &self.recording_id
     }
@@ -219,6 +234,7 @@ impl StoreId {
     }
 }
 
+//TODO(#10746): this is outdated and should be removed
 impl std::fmt::Display for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

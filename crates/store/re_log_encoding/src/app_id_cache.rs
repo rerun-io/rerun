@@ -23,7 +23,10 @@ impl ApplicationIdCache {
     /// them.
     pub fn insert(&mut self, store_info: &StoreInfo) {
         self.0.insert(
-            (store_info.recording_id().clone(), store_info.store_id.kind),
+            (
+                store_info.recording_id().clone(),
+                store_info.store_id.kind(),
+            ),
             store_info.application_id().clone(),
         );
     }

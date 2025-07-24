@@ -84,7 +84,8 @@ impl ItemTitle {
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        let id_str = format!("{} ID: {}", store_id.kind, store_id);
+        //TODO(#10746): improve this to take into account the app id
+        let id_str = format!("{} ID: {}", store_id.kind(), store_id.recording_id());
 
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
             let application_id = entity_db.application_id().to_string();
@@ -103,7 +104,7 @@ impl ItemTitle {
             id_str.clone()
         };
 
-        let icon = match store_id.kind {
+        let icon = match store_id.kind() {
             re_log_types::StoreKind::Recording => &icons::RECORDING,
             re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
         };

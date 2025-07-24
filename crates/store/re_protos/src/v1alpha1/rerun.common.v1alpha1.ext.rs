@@ -423,7 +423,7 @@ impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
 impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
     #[inline]
     fn from(value: re_log_types::StoreId) -> Self {
-        let kind: crate::common::v1alpha1::StoreKind = value.kind.into();
+        let kind: crate::common::v1alpha1::StoreKind = value.kind().into();
         Self {
             kind: kind as i32,
             id: value.recording_id().as_str().to_owned(),

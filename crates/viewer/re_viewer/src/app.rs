@@ -628,13 +628,13 @@ impl App {
             SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
                     "Update {} entities: {}",
-                    store_id.kind,
+                    store_id.kind(),
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
                 let db = store_hub.entity_db_mut(&store_id);
 
-                if store_id.kind == StoreKind::Blueprint {
+                if store_id.is_blueprint() {
                     self.state
                         .blueprint_undo_state
                         .entry(store_id)
@@ -1693,7 +1693,7 @@ impl App {
                         // Set the recording-id after potentially creating the store in the hub.
                         // This ordering is important because the `StoreHub` internally
                         // updates the app-id when changing the recording.
-                        match store_id.kind {
+                        match store_id.kind() {
                             StoreKind::Recording => {
                                 re_log::trace!("Opening a new recording: '{store_id}'");
                                 store_hub.set_active_recording_id(store_id.clone());
@@ -1724,7 +1724,7 @@ impl App {
                     // Handled by `EntityDb::add`
                 }
 
-                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
+                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
                     StoreKind::Recording => {
                         re_log::debug!(
                             "Unexpected `BlueprintActivationCommand` message for {store_id}"
