@@ -403,7 +403,7 @@ impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
     #[inline]
     fn try_from(value: crate::common::v1alpha1::StoreId) -> Result<Self, Self::Error> {
         let store_kind = value.kind().into();
-        let recording_id = RecordingId::from(value.id);
+        let recording_id = RecordingId::from(value.recording_id);
 
         //TODO(#10730): switch to `TypeConversionError` when cleaning up 0.24 back compat
         match value.application_id {
@@ -426,7 +426,7 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
         let kind: crate::common::v1alpha1::StoreKind = value.kind().into();
         Self {
             kind: kind as i32,
-            id: value.recording_id().as_str().to_owned(),
+            recording_id: value.recording_id().as_str().to_owned(),
             application_id: Some(value.application_id().clone().into()),
         }
     }

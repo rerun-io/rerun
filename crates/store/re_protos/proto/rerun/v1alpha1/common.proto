@@ -77,7 +77,7 @@ message StoreId {
 
   // The recording id of the store. For remote stores, this is the partition id. For blueprint store, this is an
   // arbitrary uuid.
-  string id = 2;
+  string recording_id = 2;
 
   // User-chosen name of the application doing the logging. For remote stores, this is the dataset entry id.
   rerun.common.v1alpha1.ApplicationId application_id = 3;

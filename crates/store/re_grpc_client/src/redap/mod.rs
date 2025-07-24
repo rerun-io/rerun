@@ -255,7 +255,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
                     r.chunks
                         .into_iter()
                         .map(|arrow_msg| {
-                            let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+                            let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                             let arrow_msg =
                                 re_log_encoding::protobuf_conversions::arrow_msg_from_proto(

@@ -303,11 +303,13 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self {
                 kind,
-                id,
+                recording_id,
                 application_id,
             } = self;
 
-            kind.heap_size_bytes() + id.heap_size_bytes() + application_id.heap_size_bytes()
+            kind.heap_size_bytes()
+                + recording_id.heap_size_bytes()
+                + application_id.heap_size_bytes()
         }
     }
 
