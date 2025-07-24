@@ -170,7 +170,7 @@ impl ViewContextSystem for TransformTreeContext {
         // TODO(andreas): This is a rather annoying sync point between different views.
         // We could alleviate this by introducing a per view class (not instance) method that is called
         // before system execution.
-        TransformCacheStoreSubscriber::access_mut(&ctx.recording().store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(ctx.recording().store_id(), |cache| {
             cache.apply_all_updates(ctx.recording());
         });
 
@@ -190,7 +190,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         let time_query = ctx.current_query();
 
-        TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
+        TransformCacheStoreSubscriber::access(ctx.recording().store_id(), |cache| {
             let transforms = cache.transforms_for_timeline(query.timeline);
 
             // Child transforms of this space

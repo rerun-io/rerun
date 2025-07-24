@@ -150,6 +150,12 @@ fn load_chunks(
     let rrd_file = std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
     let rrd_file = std::io::BufReader::new(rrd_file);
 
+    // TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
+    // the ability of `rrd compare` pre-0.25 rrds. If we want to keep the ability to migrate here,
+    // then the pre-#10730 app id caching mechanism must somehow be ported here.
+    // TODO(ab): For pre-0.25 legacy data with `StoreId` missing their application id, the migration
+    // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
+    // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
     let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
     for msg in decoder {
@@ -184,10 +190,7 @@ fn load_chunks(
     let engine = store.storage_engine();
 
     Ok((
-        store
-            .app_id()
-            .cloned()
-            .unwrap_or_else(re_log_types::ApplicationId::unknown),
+        store.application_id().clone(),
         engine
             .store()
             .iter_chunks()

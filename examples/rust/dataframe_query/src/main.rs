@@ -3,7 +3,7 @@
 use itertools::Itertools;
 
 use rerun::{
-    ChunkStoreConfig, StoreKind,
+    ChunkStoreConfig,
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::{arrow, re_format_arrow::format_record_batch},
 };
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)?;
 
     for (store_id, engine) in engines {
-        if store_id.kind != StoreKind::Recording {
+        if !store_id.is_recording() {
             continue;
         }
 

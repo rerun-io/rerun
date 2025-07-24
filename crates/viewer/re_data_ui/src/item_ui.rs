@@ -685,9 +685,7 @@ pub fn entity_db_button_ui(
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {
-        entity_db
-            .app_id()
-            .map_or(String::default(), |app_id| format!("{app_id} - "))
+        format!("{} - ", entity_db.application_id())
     } else {
         String::default()
     };
@@ -726,7 +724,7 @@ pub fn entity_db_button_ui(
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::CLOSE_SMALL, "Close recording")
-                .on_hover_text(match store_id.kind {
+                .on_hover_text(match store_id.kind() {
                     re_log_types::StoreKind::Recording => {
                         "Close this recording (unsaved data will be lost)"
                     }
@@ -779,7 +777,7 @@ pub fn entity_db_button_ui(
         // blueprint.
         // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
         // for the blueprint.
-        if store_id.kind == re_log_types::StoreKind::Recording {
+        if store_id.is_recording() {
             ctx.command_sender()
                 .send_system(SystemCommand::ActivateRecordingOrTable(
                     store_id.clone().into(),

@@ -1,5 +1,9 @@
 // TODO(#9430): this belongs in re_protos::ext
 
+use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
+
+use crate::ApplicationIdInjector;
+
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
         match value {
@@ -19,9 +23,17 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
     }
 }
 
+/// Decode log message from proto.
+///
+/// This function attempts to migrate legacy `StoreId` with missing application id. It will return
+/// [`crate::decoder::DecodeError::StoreIdMissingApplicationId`] if a message arrives before the
+/// matching `SetStoreInfo` message.
+///
+/// The provided [`ApplicationIdInjector`] must be shared across all calls for the same stream.
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_from_proto(
+    app_id_injector: &mut impl ApplicationIdInjector,
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
     re_tracing::profile_function!();
@@ -29,24 +41,62 @@ pub fn log_msg_from_proto(
     use re_protos::{log_msg::v1alpha1::log_msg::Msg, missing_field};
 
     match message.msg {
-        Some(Msg::SetStoreInfo(set_store_info)) => Ok(re_log_types::LogMsg::SetStoreInfo(
-            set_store_info.try_into()?,
-        )),
+        Some(Msg::SetStoreInfo(set_store_info)) => {
+            let set_store_info: SetStoreInfo = set_store_info.try_into()?;
+            app_id_injector.store_info_received(&set_store_info.info);
+            Ok(re_log_types::LogMsg::SetStoreInfo(set_store_info))
+        }
 
         Some(Msg::ArrowMsg(arrow_msg)) => {
             let encoded = arrow_msg_from_proto(&arrow_msg)?;
 
-            let store_id: re_log_types::StoreId = arrow_msg
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let store_id: re_log_types::StoreId = match arrow_msg
                 .store_id
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v1alpha1::ArrowMsg, "store_id"))?
-                .into();
+                .try_into()
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
+                        return Err(err.into());
+                    };
+
+                    store_id
+                }
+            };
 
             Ok(re_log_types::LogMsg::ArrowMsg(store_id, encoded))
         }
 
         Some(Msg::BlueprintActivationCommand(blueprint_activation_command)) => {
+            //TODO(#10730): clean that up when removing 0.24 back compat
+            let blueprint_id: re_log_types::StoreId = match blueprint_activation_command
+                .blueprint_id
+                .ok_or_else(|| {
+                    missing_field!(
+                        re_protos::log_msg::v1alpha1::BlueprintActivationCommand,
+                        "blueprint_id"
+                    )
+                })?
+                .try_into()
+            {
+                Ok(store_id) => store_id,
+                Err(err) => {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
+                        return Err(err.into());
+                    };
+
+                    store_id
+                }
+            };
+
             Ok(re_log_types::LogMsg::BlueprintActivationCommand(
-                blueprint_activation_command.try_into()?,
+                BlueprintActivationCommand {
+                    blueprint_id,
+                    make_active: blueprint_activation_command.make_active,
+                    make_default: blueprint_activation_command.make_default,
+                },
             ))
         }
 

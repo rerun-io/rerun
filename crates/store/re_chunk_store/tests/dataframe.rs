@@ -21,7 +21,7 @@ fn schema() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -76,7 +76,7 @@ fn schema_for_query() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -144,7 +144,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 

@@ -155,10 +155,16 @@ impl ::prost::Name for ApplicationId {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreId {
+    /// The kind of the store.
     #[prost(enumeration = "StoreKind", tag = "1")]
     pub kind: i32,
+    /// The recording id of the store. For remote stores, this is the partition id. For blueprint store, this is an
+    /// arbitrary uuid.
     #[prost(string, tag = "2")]
-    pub id: ::prost::alloc::string::String,
+    pub recording_id: ::prost::alloc::string::String,
+    /// User-chosen name of the application doing the logging. For remote stores, this is the dataset entry id.
+    #[prost(message, optional, tag = "3")]
+    pub application_id: ::core::option::Option<ApplicationId>,
 }
 impl ::prost::Name for StoreId {
     const NAME: &'static str = "StoreId";

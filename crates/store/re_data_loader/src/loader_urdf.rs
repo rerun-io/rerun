@@ -80,7 +80,7 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_file(&filepath)
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(robot, &filepath, &tx, &settings.store_id)
+        log_robot(robot, &filepath, &tx, &settings.recommended_store_id())
             .with_context(|| "Failed to load URDF file!")?;
 
         Ok(())
@@ -102,7 +102,7 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_from_string(&String::from_utf8_lossy(&contents))
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(robot, &filepath, &tx, &settings.store_id)
+        log_robot(robot, &filepath, &tx, &settings.recommended_store_id())
             .with_context(|| "Failed to load URDF file!")?;
 
         Ok(())

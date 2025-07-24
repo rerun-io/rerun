@@ -646,8 +646,14 @@ mod tests {
     fn test_query_results() {
         let space_env = EntityPathSubs::empty();
 
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let blueprint = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Blueprint,
+            "test_app",
+        ));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
@@ -687,11 +693,10 @@ mod tests {
             });
 
         let ctx = StoreContext {
-            app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Caches::new(recording.store_id()),
+            caches: &Caches::new(recording.store_id().clone()),
             should_enable_heuristics: false,
         };
 

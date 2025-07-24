@@ -23,7 +23,7 @@ fn drop_time_range() -> anyhow::Result<()> {
         ChunkStoreConfig::COMPACTION_DISABLED,
     ] {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             config,
         );
 

@@ -81,10 +81,7 @@ impl StoreBundle {
         let mut example_recordings: LocalRecordings<'_> = BTreeMap::new();
 
         for entity_db in self.entity_dbs() {
-            // We want to show all open applications, even if they have no recordings
-            let Some(app_id) = entity_db.app_id().cloned() else {
-                continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
-            };
+            let app_id = entity_db.application_id().clone();
 
             match entity_db.store_class() {
                 EntityDbClass::LocalRecording => {
@@ -145,7 +142,7 @@ impl StoreBundle {
     ///
     /// Like [`Self::entry`] but also sets `StoreInfo` to a default value.
     pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        debug_assert_eq!(id.kind, StoreKind::Blueprint);
+        debug_assert!(id.is_blueprint());
 
         self.recording_store.entry(id.clone()).or_insert_with(|| {
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are
@@ -159,7 +156,6 @@ impl StoreBundle {
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
                 info: re_log_types::StoreInfo {
-                    application_id: id.as_str().into(),
                     store_id: id.clone(),
                     cloned_from: None,
                     store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
@@ -213,6 +209,6 @@ impl StoreBundle {
 
         entity_dbs.sort_by_key(|db| db.last_modified_at());
 
-        entity_dbs.first().map(|db| db.store_id())
+        entity_dbs.first().map(|db| db.store_id().clone())
     }
 }

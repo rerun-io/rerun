@@ -3,7 +3,7 @@
 use std::{io::Cursor, sync::mpsc::Sender};
 
 use re_chunk::RowId;
-use re_log_types::{ApplicationId, SetStoreInfo, StoreInfo};
+use re_log_types::{SetStoreInfo, StoreInfo};
 
 use crate::mcap;
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
@@ -140,7 +140,7 @@ fn load_mcap(
     if tx
         .send(LoadedData::Chunk(
             McapLoader.name(),
-            settings.store_id.clone(),
+            settings.recommended_store_id(),
             properties_chunk,
         ))
         .is_err()
@@ -191,7 +191,7 @@ fn load_mcap(
                 if tx
                     .send(LoadedData::Chunk(
                         McapLoader.name(),
-                        settings.store_id.clone(),
+                        settings.recommended_store_id(),
                         chunk,
                     ))
                     .is_err()
@@ -212,16 +212,10 @@ fn load_mcap(
 }
 
 pub fn store_info(settings: &DataLoaderSettings) -> SetStoreInfo {
-    let application_id = settings
-        .application_id
-        .clone()
-        .unwrap_or(ApplicationId::random());
-
     SetStoreInfo {
         row_id: *RowId::new(),
         info: StoreInfo {
-            application_id,
-            store_id: settings.store_id.clone(),
+            store_id: settings.recommended_store_id(),
             cloned_from: None,
             store_source: re_log_types::StoreSource::Other(McapLoader.name()),
             store_version: Some(re_build_info::CrateVersion::LOCAL),

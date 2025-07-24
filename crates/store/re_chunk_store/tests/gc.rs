@@ -51,7 +51,7 @@ fn simple() -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -110,7 +110,7 @@ fn simple_static() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 
@@ -226,7 +226,7 @@ fn protected() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -356,7 +356,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -454,7 +454,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 

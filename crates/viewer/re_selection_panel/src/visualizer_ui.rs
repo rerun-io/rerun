@@ -581,7 +581,7 @@ fn available_inactive_visualizers(
     let maybe_visualizable_entities = ctx
         .viewer_ctx
         .view_class_registry()
-        .maybe_visualizable_entities_for_visualizer_systems(&entity_db.store_id());
+        .maybe_visualizable_entities_for_visualizer_systems(entity_db.store_id());
 
     let visualizable_entities = view
         .class(ctx.viewer_ctx.view_class_registry())

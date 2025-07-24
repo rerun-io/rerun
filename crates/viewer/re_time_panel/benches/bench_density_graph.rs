@@ -24,7 +24,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 
             let mut db = EntityDb::with_store_config(
-                StoreId::from_string(StoreKind::Recording, "test".into()),
+                StoreId::new(StoreKind::Recording, "test-app", "test"),
                 ChunkStoreConfig::COMPACTION_DISABLED,
             );
             let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
