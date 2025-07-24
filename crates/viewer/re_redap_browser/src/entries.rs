@@ -80,7 +80,7 @@ impl EntryError {
     pub fn is_missing_token(&self) -> bool {
         if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
-                && status.message() == "missing credentials"
+                && status.message() == re_auth::ERROR_MESSAGE_MISSING_CREDENTIALS
         } else {
             false
         }
@@ -89,7 +89,7 @@ impl EntryError {
     pub fn is_wrong_token(&self) -> bool {
         if let Some(status) = self.tonic_status() {
             status.code() == tonic::Code::Unauthenticated
-                && status.message() == "invalid credentials"
+                && status.message() == re_auth::ERROR_MESSAGE_INVALID_CREDENTIALS
         } else {
             false
         }
