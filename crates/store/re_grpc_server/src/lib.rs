@@ -316,7 +316,7 @@ pub fn spawn_with_recv(
         }
     });
     tokio::spawn(async move {
-        let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+        let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         loop {
             let msg = match broadcast_log_rx.recv().await {
@@ -1034,7 +1034,7 @@ mod tests {
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
     ) -> Vec<LogMsg> {
-        let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+        let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         let mut stream_ref = log_stream.get_mut().map(|result| {
             log_msg_from_proto(&mut app_id_cache, result.unwrap().log_msg.unwrap()).unwrap()
@@ -1222,7 +1222,7 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
-            let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
                     actual.push(
@@ -1270,7 +1270,7 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
-            let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
                     actual.push(

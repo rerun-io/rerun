@@ -5,7 +5,7 @@ use std::io::Read as _;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
-use crate::app_id_cache::ApplicationIdCache;
+use crate::app_id_injector::CachingApplicationIdInjector;
 use crate::decoder::options_from_bytes;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
@@ -32,7 +32,7 @@ pub struct StreamDecoder {
     state: State,
 
     /// The application id cache used for migrating old data.
-    app_id_cache: ApplicationIdCache,
+    app_id_cache: CachingApplicationIdInjector,
 }
 
 ///
@@ -76,7 +76,7 @@ impl StreamDecoder {
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
             state: State::StreamHeader,
-            app_id_cache: ApplicationIdCache::default(),
+            app_id_cache: CachingApplicationIdInjector::default(),
         }
     }
 

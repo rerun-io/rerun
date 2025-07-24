@@ -412,7 +412,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::app_id_cache::ApplicationIdCache::default();
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
@@ -452,7 +452,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut app_id_cache = crate::app_id_cache::ApplicationIdCache::default();
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
@@ -494,7 +494,7 @@ mod tests {
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
 
-            let mut app_id_cache = crate::app_id_cache::ApplicationIdCache::default();
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             for msg_expected in &mut decoded_messages {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
@@ -520,7 +520,7 @@ mod tests {
                 }
             }
 
-            let mut app_id_cache = crate::app_id_cache::ApplicationIdCache::default();
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())

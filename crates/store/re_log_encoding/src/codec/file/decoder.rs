@@ -3,7 +3,7 @@ use re_protos::missing_field;
 
 use super::{MessageHeader, MessageKind};
 
-use crate::app_id_cache::ApplicationIdCache;
+use crate::ApplicationIdInjector;
 use crate::codec::CodecError;
 use crate::codec::arrow::decode_arrow;
 use crate::decoder::DecodeError;
@@ -15,7 +15,7 @@ use crate::decoder::DecodeError;
 /// See also:
 /// * [`decode_to_transport`]
 pub(crate) fn decode_to_app(
-    app_id_cache: &mut ApplicationIdCache,
+    app_id_injector: &mut impl ApplicationIdInjector,
     data: &mut impl std::io::Read,
 ) -> Result<(u64, Option<LogMsg>), DecodeError> {
     let mut read_bytes = 0u64;
@@ -25,7 +25,7 @@ pub(crate) fn decode_to_app(
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
 
-    let msg = decode_bytes_to_app(app_id_cache, header.kind, &buf)?;
+    let msg = decode_bytes_to_app(app_id_injector, header.kind, &buf)?;
 
     Ok((read_bytes, msg))
 }
@@ -60,12 +60,12 @@ pub(crate) fn decode_to_transport(
 /// `Ok(None)` returned from this function marks the end of the file stream.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_bytes_to_app(
-    app_id_cache: &mut ApplicationIdCache,
+    app_id_injector: &mut impl ApplicationIdInjector,
     message_kind: MessageKind,
     buf: &[u8],
 ) -> Result<Option<LogMsg>, DecodeError> {
     let decoded = decode_bytes_to_transport(message_kind, buf)?;
-    let decoded = decoded.map(|msg| decode_transport_to_app(app_id_cache, msg));
+    let decoded = decoded.map(|msg| decode_transport_to_app(app_id_injector, msg));
     decoded.transpose()
 }
 
@@ -113,7 +113,7 @@ pub fn decode_bytes_to_transport(
 /// is where all Arrow data will be decoded.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn decode_transport_to_app(
-    app_id_cache: &mut ApplicationIdCache,
+    app_id_injector: &mut impl ApplicationIdInjector,
     msg: re_protos::log_msg::v1alpha1::log_msg::Msg,
 ) -> Result<LogMsg, DecodeError> {
     use re_protos::log_msg::v1alpha1::Encoding;
@@ -121,7 +121,7 @@ pub fn decode_transport_to_app(
     let msg = match msg {
         re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(set_store_info) => {
             let set_store_info: SetStoreInfo = set_store_info.try_into()?;
-            app_id_cache.insert(&set_store_info.info);
+            app_id_injector.store_info_received(&set_store_info.info);
             LogMsg::SetStoreInfo(set_store_info)
         }
 
@@ -144,7 +144,7 @@ pub fn decode_transport_to_app(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
@@ -191,7 +191,7 @@ pub fn decode_transport_to_app(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 

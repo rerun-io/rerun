@@ -13,7 +13,7 @@ use re_log_types::LogMsg;
 
 use crate::FileHeader;
 use crate::OLD_RRD_HEADERS;
-use crate::app_id_cache::ApplicationIdCache;
+use crate::app_id_injector::CachingApplicationIdInjector;
 use crate::codec;
 use crate::codec::file::decoder;
 use crate::{EncodingOptions, Serializer};
@@ -197,7 +197,7 @@ pub struct Decoder<R: std::io::Read> {
     size_bytes: u64,
 
     /// The application id cache used for migrating old data.
-    app_id_cache: ApplicationIdCache,
+    app_id_cache: CachingApplicationIdInjector,
 }
 
 impl<R: std::io::Read> Decoder<R> {
@@ -224,7 +224,7 @@ impl<R: std::io::Read> Decoder<R> {
             options,
             read: Reader::Raw(read),
             size_bytes: FileHeader::SIZE as _,
-            app_id_cache: ApplicationIdCache::default(),
+            app_id_cache: CachingApplicationIdInjector::default(),
         })
     }
 
@@ -234,7 +234,7 @@ impl<R: std::io::Read> Decoder<R> {
             options,
             read: Reader::Raw(read),
             size_bytes: FileHeader::SIZE as _,
-            app_id_cache: ApplicationIdCache::default(),
+            app_id_cache: CachingApplicationIdInjector::default(),
         }
     }
 
@@ -267,7 +267,7 @@ impl<R: std::io::Read> Decoder<R> {
             options,
             read: Reader::Buffered(read),
             size_bytes: FileHeader::SIZE as _,
-            app_id_cache: ApplicationIdCache::default(),
+            app_id_cache: CachingApplicationIdInjector::default(),
         })
     }
 
@@ -288,7 +288,10 @@ impl<R: std::io::Read> Decoder<R> {
     /// be migrated (because they arrived before `SetStoreInfo`).
     fn next<F, T>(&mut self, mut decoder: F) -> Option<Result<T, DecodeError>>
     where
-        F: FnMut(&mut ApplicationIdCache, &mut Reader<R>) -> Result<(u64, Option<T>), DecodeError>,
+        F: FnMut(
+            &mut CachingApplicationIdInjector,
+            &mut Reader<R>,
+        ) -> Result<(u64, Option<T>), DecodeError>,
     {
         //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
         loop {
@@ -311,7 +314,10 @@ impl<R: std::io::Read> Decoder<R> {
     /// Returns the next message in the stream.
     fn next_impl<F, T>(&mut self, decoder: &mut F) -> Option<Result<T, DecodeError>>
     where
-        F: FnMut(&mut ApplicationIdCache, &mut Reader<R>) -> Result<(u64, Option<T>), DecodeError>,
+        F: FnMut(
+            &mut CachingApplicationIdInjector,
+            &mut Reader<R>,
+        ) -> Result<(u64, Option<T>), DecodeError>,
     {
         re_tracing::profile_function!();
 

@@ -63,7 +63,7 @@ async fn stream_async(
         .map_err(TonicStatusError)?
         .into_inner();
 
-    let mut app_id_cache = re_log_encoding::ApplicationIdCache::default();
+    let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {

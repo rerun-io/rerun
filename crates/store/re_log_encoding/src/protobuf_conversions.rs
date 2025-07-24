@@ -2,7 +2,7 @@
 
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
-use crate::app_id_cache::ApplicationIdCache;
+use crate::ApplicationIdInjector;
 
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v1alpha1::Compression) -> Self {
@@ -33,7 +33,7 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_from_proto(
-    app_id_cache: &mut ApplicationIdCache,
+    app_id_injector: &mut impl ApplicationIdInjector,
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
     re_tracing::profile_function!();
@@ -43,7 +43,7 @@ pub fn log_msg_from_proto(
     match message.msg {
         Some(Msg::SetStoreInfo(set_store_info)) => {
             let set_store_info: SetStoreInfo = set_store_info.try_into()?;
-            app_id_cache.insert(&set_store_info.info);
+            app_id_injector.store_info_received(&set_store_info.info);
             Ok(re_log_types::LogMsg::SetStoreInfo(set_store_info))
         }
 
@@ -58,7 +58,7 @@ pub fn log_msg_from_proto(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
@@ -83,7 +83,7 @@ pub fn log_msg_from_proto(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                    let Some(store_id) = app_id_injector.recover_store_id(err.clone()) else {
                         return Err(err.into());
                     };
 
