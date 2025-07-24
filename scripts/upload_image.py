@@ -86,7 +86,7 @@ def build_image_stack(image: Image) -> list[tuple[int | None, Image]]:
     return image_stack
 
 
-def image_from_clipboard() -> Image:
+def image_from_clipboard() -> Image | None:
     """
     Get image from the clipboard.
 
@@ -114,7 +114,12 @@ def image_from_clipboard() -> Image:
         os.unlink(filepath)
         return im
     else:
-        return PIL.ImageGrab.grabclipboard()
+        # On windows might return a list, of files,
+        # so return None signaling no image found.
+        content = PIL.ImageGrab.grabclipboard()
+        if isinstance(content, list):
+            return None
+        return content
 
 
 class Uploader:
