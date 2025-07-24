@@ -1,13 +1,16 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::{RangeQuery, RowId};
+use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     Archetype as _,
     archetypes::{self},
     components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
 };
-use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
+use re_view::{
+    RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data,
+};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
@@ -228,9 +231,29 @@ impl SeriesLinesSystem {
                 allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
 
             collect_scalars(&all_scalar_chunks, &mut points_per_series);
+
+            // The plot view visualizes scalar data within a specific time range, without any kind
+            // of time-alignment / bootstrapping behavior:
+            // * For the scalar themselves, this is what you want: if you're trying to plot some
+            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+            //   _extended bounds_ will take care of lines crossing the limit).
+            // * For the secondary components (colors, radii, names, etc), this is a problem
+            //   though: you don't want your plot to change color depending on what the currently
+            //   visible time range is! Secondary components have to be bootstrapped.
+            let query_shadowed_components = false;
+            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &LatestAtQuery::new(query.timeline, query.range.min()),
+                data_result,
+                archetypes::SeriesLines::all_components().iter(),
+                query_shadowed_components,
+            );
+
             collect_colors(
                 entity_path,
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
@@ -238,6 +261,7 @@ impl SeriesLinesSystem {
             );
             collect_radius_ui(
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
@@ -247,9 +271,14 @@ impl SeriesLinesSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
-            let aggregator = results
+            let aggregator = bootstrapped_results
                 .get_optional_chunks(aggregation_policy_descr.clone())
                 .iter()
+                .chain(
+                    results
+                        .get_optional_chunks(aggregation_policy_descr.clone())
+                        .iter(),
+                )
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
@@ -311,6 +340,7 @@ impl SeriesLinesSystem {
 
             let series_visibility = collect_series_visibility(
                 &query,
+                &bootstrapped_results,
                 &results,
                 num_series,
                 archetypes::SeriesLines::descriptor_visible_series(),
@@ -318,6 +348,7 @@ impl SeriesLinesSystem {
             let series_names = collect_series_name(
                 self,
                 &query_ctx,
+                &bootstrapped_results,
                 &results,
                 num_series,
                 &archetypes::SeriesLines::descriptor_names(),
@@ -367,6 +398,26 @@ fn collect_recursive_clears(
 
     let mut clear_entity_path = entity_path.clone();
     let clear_descriptor = archetypes::Clear::descriptor_is_recursive();
+
+    // Bootstrap in case there's a pending clear out of the visible time range.
+    {
+        let results = ctx.recording_engine().cache().latest_at(
+            &LatestAtQuery::new(query.timeline, query.range.min()),
+            &clear_entity_path,
+            [&clear_descriptor],
+        );
+
+        cleared_indices.extend(
+            results
+                .iter_as(*query.timeline(), clear_descriptor.clone())
+                .slice::<bool>()
+                .filter_map(|(index, is_recursive_buffer)| {
+                    let is_recursive =
+                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
+                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
+                }),
+        );
+    }
 
     loop {
         let results =

@@ -18,12 +18,22 @@ mod loader_urdf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod mcap;
+
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod loader_lerobot;
 
+// This loader currently uses native-only features under the hood, and we cannot do that on web yet.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod loader_mcap;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::loader_mcap::McapLoader;
 
 pub use self::{
     load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
@@ -400,6 +410,8 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
         #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(McapLoader),
+        #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(ExternalLoader),
@@ -460,6 +472,11 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
+#[cfg(not(target_arch = "wasm32"))]
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
+#[cfg(target_arch = "wasm32")]
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &[];
+
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
@@ -467,6 +484,7 @@ pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
     SUPPORTED_RERUN_EXTENSIONS
         .iter()
+        .chain(SUPPORTED_THIRD_PARTY_FORMATS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)

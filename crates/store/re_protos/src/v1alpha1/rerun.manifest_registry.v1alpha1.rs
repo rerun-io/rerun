@@ -55,46 +55,6 @@ impl ::prost::Name for RegisterWithDatasetResponse {
         "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse".into()
     }
 }
-/// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
-/// Eventually we _may_ get rid of the sync version; until then,
-/// we should make sure that the two objects are in sync.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterWithDatasetBlockingRequest {
-    #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    #[prost(message, repeated, tag = "2")]
-    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "3"
-    )]
-    pub on_duplicate: i32,
-}
-impl ::prost::Name for RegisterWithDatasetBlockingRequest {
-    const NAME: &'static str = "RegisterWithDatasetBlockingRequest";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterWithDatasetBlockingResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for RegisterWithDatasetBlockingResponse {
-    const NAME: &'static str = "RegisterWithDatasetBlockingResponse";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
@@ -863,6 +823,39 @@ impl ::prost::Name for FetchPartitionManifestResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchSchemaManifestRequest {
+    #[prost(message, optional, tag = "1")]
+    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    #[prost(message, optional, tag = "2")]
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+}
+impl ::prost::Name for FetchSchemaManifestRequest {
+    const NAME: &'static str = "FetchSchemaManifestRequest";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.FetchSchemaManifestRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.FetchSchemaManifestRequest".into()
+    }
+}
+/// TODO(cmc): this should have response extensions too.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchSchemaManifestResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for FetchSchemaManifestResponse {
+    const NAME: &'static str = "FetchSchemaManifestResponse";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.FetchSchemaManifestResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.FetchSchemaManifestResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchChunkManifestRequest {
     /// Dataset for which we want to fetch chunk manifest
     #[prost(message, optional, tag = "1")]
@@ -1165,28 +1158,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Register new partitions with the Dataset (blocking)
-        pub async fn register_with_dataset_blocking(
-            &mut self,
-            request: impl tonic::IntoRequest<super::RegisterWithDatasetBlockingRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterWithDatasetBlockingResponse>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "RegisterWithDatasetBlocking",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Write chunks to one or more partitions.
         ///
         /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -1210,6 +1181,26 @@ pub mod manifest_registry_service_client {
                 "WriteChunks",
             ));
             self.inner.client_streaming(req, path, codec).await
+        }
+        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+        pub async fn do_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
+                "DoMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
         }
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
@@ -1427,28 +1418,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Retrieves the chunk manifest for a specific index.
-        pub async fn fetch_chunk_manifest(
-            &mut self,
-            request: impl tonic::IntoRequest<super::FetchChunkManifestRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::FetchChunkManifestResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchChunkManifest",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "FetchChunkManifest",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         /// Create manifests for all partitions in the Dataset. Partition manifest contains information about
         /// the chunks in the partitions.
         ///
@@ -1496,25 +1465,49 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
-        pub async fn do_maintenance(
+        /// Fetch the internal state of a Schema Manifest.
+        pub async fn fetch_schema_manifest(
             &mut self,
-            request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
-        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>
-        {
+            request: impl tonic::IntoRequest<super::FetchSchemaManifestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::FetchSchemaManifestResponse>>,
+            tonic::Status,
+        > {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance",
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchSchemaManifest",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "DoMaintenance",
+                "FetchSchemaManifest",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Retrieves the chunk manifest for a specific index.
+        pub async fn fetch_chunk_manifest(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchChunkManifestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::FetchChunkManifestResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchChunkManifest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
+                "FetchChunkManifest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
         }
     }
 }
@@ -1536,14 +1529,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
-        /// Register new partitions with the Dataset (blocking)
-        async fn register_with_dataset_blocking(
-            &self,
-            request: tonic::Request<super::RegisterWithDatasetBlockingRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterWithDatasetBlockingResponse>,
-            tonic::Status,
-        >;
         /// Write chunks to one or more partitions.
         ///
         /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -1553,6 +1538,11 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
         ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
+        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+        async fn do_maintenance(
+            &self,
+            request: tonic::Request<super::DoMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
@@ -1663,16 +1653,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
-        /// Server streaming response type for the FetchChunkManifest method.
-        type FetchChunkManifestStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::FetchChunkManifestResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Retrieves the chunk manifest for a specific index.
-        async fn fetch_chunk_manifest(
-            &self,
-            request: tonic::Request<super::FetchChunkManifestRequest>,
-        ) -> std::result::Result<tonic::Response<Self::FetchChunkManifestStream>, tonic::Status>;
         /// Create manifests for all partitions in the Dataset. Partition manifest contains information about
         /// the chunks in the partitions.
         ///
@@ -1694,11 +1674,26 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::FetchPartitionManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchPartitionManifestStream>, tonic::Status>;
-        /// Miscellaneous maintenance operations: scalar index creation, compaction, etc.
-        async fn do_maintenance(
+        /// Server streaming response type for the FetchSchemaManifest method.
+        type FetchSchemaManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::FetchSchemaManifestResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Fetch the internal state of a Schema Manifest.
+        async fn fetch_schema_manifest(
             &self,
-            request: tonic::Request<super::DoMaintenanceRequest>,
-        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
+            request: tonic::Request<super::FetchSchemaManifestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FetchSchemaManifestStream>, tonic::Status>;
+        /// Server streaming response type for the FetchChunkManifest method.
+        type FetchChunkManifestStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::FetchChunkManifestResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Retrieves the chunk manifest for a specific index.
+        async fn fetch_chunk_manifest(
+            &self,
+            request: tonic::Request<super::FetchChunkManifestRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FetchChunkManifestStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct ManifestRegistryServiceServer<T> {
@@ -1818,52 +1813,6 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking" =>
-                {
-                    #[allow(non_camel_case_types)]
-                    struct RegisterWithDatasetBlockingSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<T: ManifestRegistryService>
-                        tonic::server::UnaryService<super::RegisterWithDatasetBlockingRequest>
-                        for RegisterWithDatasetBlockingSvc<T>
-                    {
-                        type Response = super::RegisterWithDatasetBlockingResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::RegisterWithDatasetBlockingRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::register_with_dataset_blocking(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = RegisterWithDatasetBlockingSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/WriteChunks" => {
                     #[allow(non_camel_case_types)]
                     struct WriteChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
@@ -1902,6 +1851,49 @@ pub mod manifest_registry_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.client_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoMaintenanceSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::DoMaintenanceRequest>
+                        for DoMaintenanceSvc<T>
+                    {
+                        type Response = super::DoMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ManifestRegistryService>::do_maintenance(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -2258,53 +2250,6 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchChunkManifest" => {
-                    #[allow(non_camel_case_types)]
-                    struct FetchChunkManifestSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<T: ManifestRegistryService>
-                        tonic::server::ServerStreamingService<super::FetchChunkManifestRequest>
-                        for FetchChunkManifestSvc<T>
-                    {
-                        type Response = super::FetchChunkManifestResponse;
-                        type ResponseStream = T::FetchChunkManifestStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::FetchChunkManifestRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::fetch_chunk_manifest(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = FetchChunkManifestSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreatePartitionManifests" =>
                 {
                     #[allow(non_camel_case_types)]
@@ -2399,23 +2344,27 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/DoMaintenance" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchSchemaManifest" => {
                     #[allow(non_camel_case_types)]
-                    struct DoMaintenanceSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    struct FetchSchemaManifestSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<T: ManifestRegistryService>
-                        tonic::server::UnaryService<super::DoMaintenanceRequest>
-                        for DoMaintenanceSvc<T>
+                        tonic::server::ServerStreamingService<super::FetchSchemaManifestRequest>
+                        for FetchSchemaManifestSvc<T>
                     {
-                        type Response = super::DoMaintenanceResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Response = super::FetchSchemaManifestResponse;
+                        type ResponseStream = T::FetchSchemaManifestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::DoMaintenanceRequest>,
+                            request: tonic::Request<super::FetchSchemaManifestRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::do_maintenance(&inner, request)
-                                    .await
+                                <T as ManifestRegistryService>::fetch_schema_manifest(
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -2426,7 +2375,7 @@ pub mod manifest_registry_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = DoMaintenanceSvc(inner);
+                        let method = FetchSchemaManifestSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2437,7 +2386,54 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchChunkManifest" => {
+                    #[allow(non_camel_case_types)]
+                    struct FetchChunkManifestSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::FetchChunkManifestRequest>
+                        for FetchChunkManifestSvc<T>
+                    {
+                        type Response = super::FetchChunkManifestResponse;
+                        type ResponseStream = T::FetchChunkManifestStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchChunkManifestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ManifestRegistryService>::fetch_chunk_manifest(
+                                    &inner, request,
+                                )
+                                .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FetchChunkManifestSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
