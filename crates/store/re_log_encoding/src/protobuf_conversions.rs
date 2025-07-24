@@ -29,7 +29,7 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 /// [`crate::decoder::DecodeError::StoreIdMissingApplicationId`] if a message arrives before the
 /// matching `SetStoreInfo` message.
 ///
-/// The provided [`ApplicationIdCache`] must be shared across all calls for the same stream.
+/// The provided [`ApplicationIdInjector`] must be shared across all calls for the same stream.
 #[cfg(feature = "decoder")]
 #[tracing::instrument(level = "trace", skip_all)]
 pub fn log_msg_from_proto(
