@@ -735,8 +735,8 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.24.0a6"
-rerun-notebook = "==0.24.0a6"
+rerun-sdk = "==0.24.0"
+rerun-notebook = "==0.24.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]

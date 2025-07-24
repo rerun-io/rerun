@@ -5233,8 +5233,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b7/59/2056f61236782a2c86b33906c025d4f4a0b17be0161b63b70fd9e8775d36/referencing-0.35.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/5c/8b385afbfacb853730682c57be56225f9fe275c5bf02ac1fc88edbff316d/regex-2024.9.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/3b/25/061c9d8e8796d587bc069096294820e90eabe1da17f6dfd45578aa96a8cd/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/25/6d/94dc5388c0223b33843c1ae7dae6627caf543faf5d49c4f7ebfbdc3e4f0e/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a7/e8/85835077b782555d6b3416874b702ea6ebd7db1f145283c9252968670dd5/rpds_py-0.20.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -5573,8 +5573,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b7/59/2056f61236782a2c86b33906c025d4f4a0b17be0161b63b70fd9e8775d36/referencing-0.35.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/33/c4/60f3370735135e3a8d673ddcdb2507a8560d0e759e1398d366e43d000253/regex-2024.9.11-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/9b/22/27edfb9762a1dae35f1809bee392f38b31d9126b0f1b29d44c2e9e299472/rerun_sdk-0.24.0a6-cp39-abi3-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/f2/df/751bda39d62304f22776b30edf8efcfb8920b4e8c6a388ee12ccd7c6e88f/rerun_sdk-0.24.0-cp39-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/6a/2c9fdcc6d235ac0d61ec4fd9981184689c3e682abd05e3caa49bccb9c298/rpds_py-0.20.0-cp311-cp311-macosx_11_0_arm64.whl
@@ -5921,8 +5921,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b7/59/2056f61236782a2c86b33906c025d4f4a0b17be0161b63b70fd9e8775d36/referencing-0.35.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c7/ab/1ad2511cf6a208fde57fafe49829cab8ca018128ab0d0b48973d8218634a/regex-2024.9.11-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d9/a2/92a8888b3249f6ab0e8f51e6378bde3147e7d7ff10c9da0bca662e52a3ef/rerun_sdk-0.24.0a6-cp39-abi3-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/00/88/f3c738ae799423fe0615fb6e6b94d2c02e28a090bea0db260e38ff1113ed/rerun_sdk-0.24.0-cp39-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cc/ec/77d0674f9af4872919f3738018558dd9d37ad3f7ad792d062eadd4af7cba/rpds_py-0.20.0-cp311-none-win_amd64.whl
@@ -9881,8 +9881,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/5c/8b385afbfacb853730682c57be56225f9fe275c5bf02ac1fc88edbff316d/regex-2024.9.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/3b/25/061c9d8e8796d587bc069096294820e90eabe1da17f6dfd45578aa96a8cd/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/25/6d/94dc5388c0223b33843c1ae7dae6627caf543faf5d49c4f7ebfbdc3e4f0e/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -10354,8 +10354,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/33/c4/60f3370735135e3a8d673ddcdb2507a8560d0e759e1398d366e43d000253/regex-2024.9.11-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/9b/22/27edfb9762a1dae35f1809bee392f38b31d9126b0f1b29d44c2e9e299472/rerun_sdk-0.24.0a6-cp39-abi3-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/f2/df/751bda39d62304f22776b30edf8efcfb8920b4e8c6a388ee12ccd7c6e88f/rerun_sdk-0.24.0-cp39-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -10828,8 +10828,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c7/ab/1ad2511cf6a208fde57fafe49829cab8ca018128ab0d0b48973d8218634a/regex-2024.9.11-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d9/a2/92a8888b3249f6ab0e8f51e6378bde3147e7d7ff10c9da0bca662e52a3ef/rerun_sdk-0.24.0a6-cp39-abi3-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/00/88/f3c738ae799423fe0615fb6e6b94d2c02e28a090bea0db260e38ff1113ed/rerun_sdk-0.24.0-cp39-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -11328,8 +11328,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/f3/85/15278769b348121eacdbfcbd8c4d40f1102f32fa6af5be1ffc032ed684be/pyzmq-27.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/3b/25/061c9d8e8796d587bc069096294820e90eabe1da17f6dfd45578aa96a8cd/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/25/6d/94dc5388c0223b33843c1ae7dae6627caf543faf5d49c4f7ebfbdc3e4f0e/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -11712,8 +11712,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/7c/93/82863e8d695a9a3ae424b63662733ae204a295a2627d52af2f62c2cd8af9/pyzmq-27.0.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/1b/0e/29953b216f83926637f2ca17c0279f9daa4ecb3ae6ceef1257e066463b88/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_aarch64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/30/0f/e0d37550744d76968eb5affc2aff748cf06a93e90e013fe127ede831f98d/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -12072,8 +12072,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/44/df/84c630654106d9bd9339cdb564aa941ed41b023a0264251d6743766bb50e/pyzmq-27.0.0-cp311-cp311-macosx_10_15_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/9b/22/27edfb9762a1dae35f1809bee392f38b31d9126b0f1b29d44c2e9e299472/rerun_sdk-0.24.0a6-cp39-abi3-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/f2/df/751bda39d62304f22776b30edf8efcfb8920b4e8c6a388ee12ccd7c6e88f/rerun_sdk-0.24.0-cp39-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -12432,8 +12432,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c9/05/89354a8cffdcce6e547d48adaaf7be17007fc75572123ff4ca90a4ca04fc/pyzmq-27.0.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/d9/a2/92a8888b3249f6ab0e8f51e6378bde3147e7d7ff10c9da0bca662e52a3ef/rerun_sdk-0.24.0a6-cp39-abi3-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/00/88/f3c738ae799423fe0615fb6e6b94d2c02e28a090bea0db260e38ff1113ed/rerun_sdk-0.24.0-cp39-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/67/91/5474b84e505a6ccc295b2d322d90ff6aa0746745717839ee0c5fb4fdcceb/rich-13.9.2-py3-none-any.whl
@@ -15033,6 +15033,19 @@ packages:
   - html5lib ; extra == 'html5lib'
   - lxml ; extra == 'lxml'
   requires_python: '>=3.7.0'
+- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
+  name: betterproto
+  version: 1.2.5
+  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
+  requires_dist:
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
+  - grpclib
+  - stringcase
+  - black ; extra == 'compiler'
+  - jinja2 ; extra == 'compiler'
+  - protobuf ; extra == 'compiler'
+  requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
   name: betterproto
   version: 1.2.5
@@ -19148,6 +19161,13 @@ packages:
   sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
   requires_dist:
   - importlib-resources>=1.3 ; python_full_version < '3.9' and os_name == 'nt'
+  - pytest ; extra == 'testing'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/67/72/c3298da1a3773102359c5a78f20dae8925f5ea876e37354415f68594a6fb/google_crc32c-1.6.0.tar.gz
+  name: google-crc32c
+  version: 1.6.0
+  sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
+  requires_dist:
   - pytest ; extra == 'testing'
   requires_python: '>=3.9'
 - pypi: https://files.pythonhosted.org/packages/7d/14/ab47972ac79b6e7b03c8be3a7ef44b530a60e69555668dbbf08fc5692a98/google_crc32c-1.6.0-cp311-cp311-macosx_12_0_arm64.whl
@@ -34069,6 +34089,15 @@ packages:
   version: 1.16.2
   sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
   requires_dist:
+  - dataclasses ; python_full_version == '3.6.*'
+  - dataclasses-json>=0.0.25
+  - deprecated
+  requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
+  name: pygltflib
+  version: 1.16.2
+  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
+  requires_dist:
   - dataclasses-json>=0.0.25
   - deprecated
   - dataclasses ; python_full_version == '3.6.*'
@@ -34928,20 +34957,20 @@ packages:
   - pysocks>=1.5.6,!=1.5.7 ; extra == 'socks'
   - chardet>=3.0.2,<6 ; extra == 'use-chardet-on-py3'
   requires_python: '>=3.8'
-- pypi: https://files.pythonhosted.org/packages/50/24/51be572fda518f475dfd671b16a0788dcb4e07cd86b6a56edf8534683abd/rerun_notebook-0.24.0a6-py2.py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/22/c9/4a46b469eed428113b5e2c2f6e77fa1a1ce3b35f2a5db237acb8f4ccfb45/rerun_notebook-0.24.0-py2.py3-none-any.whl
   name: rerun-notebook
-  version: 0.24.0a6
-  sha256: 77946bcff8f633bfde119268b0f7982e27b2e64d8596d5656ec42db8cc5206e6
+  version: 0.24.0
+  sha256: eb2a929762ef4741999557a7b60e1c7a0d6197eccdd2ad90055c7e53efef294c
   requires_dist:
   - anywidget
   - jupyter-ui-poll
   - hatch ; extra == 'dev'
   - jupyterlab ; extra == 'dev'
   - watchfiles ; extra == 'dev'
-- pypi: https://files.pythonhosted.org/packages/1b/0e/29953b216f83926637f2ca17c0279f9daa4ecb3ae6ceef1257e066463b88/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_aarch64.whl
+- pypi: https://files.pythonhosted.org/packages/00/88/f3c738ae799423fe0615fb6e6b94d2c02e28a090bea0db260e38ff1113ed/rerun_sdk-0.24.0-cp39-abi3-win_amd64.whl
   name: rerun-sdk
-  version: 0.24.0a6
-  sha256: 3663258c02fc4a442fd26d8d86513455dac1baa3ccc8d0948c787c0e2f191a1f
+  version: 0.24.0
+  sha256: 4c5049f04f4b224cc342d831384b510d157bd7eff79aa267a88b546d0d12b36e
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34949,12 +34978,12 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.24.0a6 ; extra == 'notebook'
+  - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/3b/25/061c9d8e8796d587bc069096294820e90eabe1da17f6dfd45578aa96a8cd/rerun_sdk-0.24.0a6-cp39-abi3-manylinux_2_28_x86_64.whl
+- pypi: https://files.pythonhosted.org/packages/25/6d/94dc5388c0223b33843c1ae7dae6627caf543faf5d49c4f7ebfbdc3e4f0e/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_x86_64.whl
   name: rerun-sdk
-  version: 0.24.0a6
-  sha256: bc0ade8e0499f169728cb910445e43069f121b9a4a2b3cec76bc6a08b43e055b
+  version: 0.24.0
+  sha256: a4e5c7452df556fc5f64667cb3974ddcf01e3fc03374748348de6855f2919397
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34962,12 +34991,12 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.24.0a6 ; extra == 'notebook'
+  - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/9b/22/27edfb9762a1dae35f1809bee392f38b31d9126b0f1b29d44c2e9e299472/rerun_sdk-0.24.0a6-cp39-abi3-macosx_11_0_arm64.whl
+- pypi: https://files.pythonhosted.org/packages/30/0f/e0d37550744d76968eb5affc2aff748cf06a93e90e013fe127ede831f98d/rerun_sdk-0.24.0-cp39-abi3-manylinux_2_28_aarch64.whl
   name: rerun-sdk
-  version: 0.24.0a6
-  sha256: d4720e7a0226f540a626ee1e5bd414fac26416a9ee5241438cb65bc3e6ac37d0
+  version: 0.24.0
+  sha256: a0f8ac65ab0da000c9f23ef13440581050fa05f071ed23653cd10f134945479d
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34975,12 +35004,12 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.24.0a6 ; extra == 'notebook'
+  - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/d9/a2/92a8888b3249f6ab0e8f51e6378bde3147e7d7ff10c9da0bca662e52a3ef/rerun_sdk-0.24.0a6-cp39-abi3-win_amd64.whl
+- pypi: https://files.pythonhosted.org/packages/f2/df/751bda39d62304f22776b30edf8efcfb8920b4e8c6a388ee12ccd7c6e88f/rerun_sdk-0.24.0-cp39-abi3-macosx_11_0_arm64.whl
   name: rerun-sdk
-  version: 0.24.0a6
-  sha256: d2067cf4938083d252015999895ba89665e8d61a60d3956dc073e585c00a0b6d
+  version: 0.24.0
+  sha256: 35ee215d186bc410f4c38c7dc9f260604e857695cd9df996510326107d73c238
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34988,7 +35017,7 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.24.0a6 ; extra == 'notebook'
+  - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
 - pypi: rerun_py
   name: rerun-sdk
