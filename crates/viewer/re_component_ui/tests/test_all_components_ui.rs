@@ -10,6 +10,7 @@ use nohash_hasher::IntSet;
 
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
+use re_test_context::TestContext;
 use re_types::{
     ComponentDescriptor,
     blueprint::components::{ComponentColumnSelector, QueryExpression},
@@ -21,7 +22,6 @@ use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     UiLayout, ViewerContext,
     external::re_chunk_store::{LatestAtQuery, external::re_chunk},
-    test_context::TestContext,
 };
 
 /// Test case master list.

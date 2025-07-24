@@ -28,22 +28,28 @@ re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_error.workspace = true
+re_log.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
-re_log.workspace = true
+re_mcap_ros2.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+byteorder.workspace = true
+memmap2.workspace = true
+cdr-encoding.workspace = true
 crossbeam.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 notify.workspace = true
 once_cell.workspace = true
+mcap.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true

@@ -459,10 +459,11 @@ mod tests {
         StoreKind, TimePoint,
         example_components::{MyLabel, MyPoint, MyPoints},
     };
+    use re_test_context::TestContext;
     use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
     use re_viewer_context::{
         IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
-        VisualizableEntities, test_context::TestContext,
+        VisualizableEntities,
     };
 
     use crate::view_contents::DataQueryPropertyResolver;

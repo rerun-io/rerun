@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 ## Enable for testing utilities.
-testing = ["re_viewer_context/testing"]
+testing = []
 
 [dependencies]
 re_context_menu.workspace = true

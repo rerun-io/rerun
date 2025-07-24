@@ -455,5 +455,5 @@ fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry:
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
 }

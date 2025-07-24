@@ -5,11 +5,12 @@ use egui::Vec2;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::TimePoint;
+use re_test_context::TestContext;
 use re_time_panel::StreamsTreeData;
 use re_time_panel::{TimePanel, TimePanelSource};
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::{blueprint_timeline, test_context::TestContext};
+use re_viewer_context::blueprint_timeline;
 use re_viewport_blueprint::ViewportBlueprint;
 
 fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
