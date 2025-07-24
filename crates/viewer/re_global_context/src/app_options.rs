@@ -38,7 +38,7 @@ pub struct AppOptions {
     /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
     /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
     ///
-    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid loosing the user-defined
+    /// Implementation note: we avoid using `Option<PathBuf>` here to avoid losing the user-defined
     /// path when disabling the override.
     #[allow(clippy::doc_markdown)]
     pub video_decoder_override_ffmpeg_path: bool,

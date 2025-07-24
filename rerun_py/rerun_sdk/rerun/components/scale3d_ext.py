@@ -11,7 +11,7 @@ class Scale3DExt:
 
     def __init__(
         self: Any,
-        uniform_or_per_axis: Vec3DLike | Float32Like = True,
+        uniform_or_per_axis: Vec3DLike | Float32Like | None = True,
     ) -> None:
         """
         3D scaling factor.
@@ -29,4 +29,6 @@ class Scale3DExt:
         if not hasattr(uniform_or_per_axis, "__len__") or len(uniform_or_per_axis) == 1:  # type: ignore[arg-type]
             self.__attrs_init__([uniform_or_per_axis, uniform_or_per_axis, uniform_or_per_axis])
         else:
+            if uniform_or_per_axis is None:
+                uniform_or_per_axis = True
             self.__attrs_init__(uniform_or_per_axis)

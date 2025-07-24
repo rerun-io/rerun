@@ -57,4 +57,4 @@ def test_view_blueprint() -> None:
         assert arch.class_identifier == ViewClassBatch("3D")
         assert arch.display_name == NameBatch._converter(none_empty_or_value(display_name, "3D view"))
         assert arch.space_origin == ViewOriginBatch._converter(none_empty_or_value(space_origin, "/robot/arm"))
-        assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, False))
+        assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, [False]))
