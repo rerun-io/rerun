@@ -153,7 +153,7 @@ fn load_chunks(
     // TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
     // the ability of `rrd compare` pre-0.25 rrds. If we want to keep the ability to migrate here,
     // then the pre-#10730 app id caching mechanism must somehow be ported here.
-    // TODO(ab): For pre-0.25 legacy data with `StoreId` mising their application id, the migration
+    // TODO(ab): For pre-0.25 legacy data with `StoreId` missing their application id, the migration
     // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
