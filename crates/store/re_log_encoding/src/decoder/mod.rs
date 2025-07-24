@@ -687,6 +687,58 @@ mod tests {
         }
     }
 
+    /// Test that non-legacy message stream to no rely on the `SetStoreInfo` message to arrive
+    /// first.
+    #[test]
+    fn test_decode_out_of_order() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = fake_log_messages();
+
+        // ensure the test data is as we expect
+        let orig_message_count = messages.len();
+        assert_eq!(orig_message_count, 3);
+        assert!(matches!(messages[0], LogMsg::SetStoreInfo { .. }));
+        assert!(matches!(messages[1], LogMsg::ArrowMsg { .. }));
+        assert!(matches!(
+            messages[2],
+            LogMsg::BlueprintActivationCommand { .. }
+        ));
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        // make out-of-order messages
+        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
+        out_of_order_messages.extend(messages);
+
+        for options in options {
+            let mut file = vec![];
+            crate::encoder::encode_ref(
+                rrd_version,
+                options,
+                out_of_order_messages.iter().map(Ok),
+                &mut file,
+            )
+            .unwrap();
+
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
+
+            similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
+        }
+    }
+
     #[test]
     fn test_concatenated_streams() {
         let options = [
