@@ -4,6 +4,10 @@ pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
     #[prost(string, optional, tag = "1")]
     pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// TODO: null will default to "base" (bw compat)
+    /// TODO: docs
+    #[prost(string, optional, tag = "3")]
+    pub layer: ::core::option::Option<::prost::alloc::string::String>,
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
