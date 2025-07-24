@@ -49,9 +49,7 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto variant = elements[elem_idx];
-            ARROW_RETURN_NOT_OK(
-                builder->Append(static_cast<std::underlying_type_t<decltype(variant)>>(variant))
-            );
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast < uint8_t >> (variant)));
         }
 
         return Error::ok();
