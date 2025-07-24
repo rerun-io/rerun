@@ -118,6 +118,10 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
+  // TODO: null will default to "base" (bw compat)
+  // TODO: docs
+  optional string layer = 3;
+
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 }

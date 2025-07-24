@@ -314,6 +314,7 @@ impl GetDatasetSchemaResponse {
 
 impl RegisterWithDatasetResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_LAYER: &str = "rerun_partition_layer";
     pub const PARTITION_TYPE: &str = "rerun_partition_type";
     pub const STORAGE_URL: &str = "rerun_storage_url";
     pub const TASK_ID: &str = "rerun_task_id";
@@ -322,6 +323,7 @@ impl RegisterWithDatasetResponse {
     pub fn schema() -> Schema {
         Schema::new(vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_LAYER, DataType::Utf8, false),
             Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
             Field::new(Self::STORAGE_URL, DataType::Utf8, false),
             Field::new(Self::TASK_ID, DataType::Utf8, false),
@@ -331,6 +333,7 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         partition_ids: Vec<String>,
+        partition_layers: Vec<String>,
         partition_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
@@ -338,6 +341,7 @@ impl RegisterWithDatasetResponse {
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_layers)),
             Arc::new(StringArray::from(partition_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
@@ -424,13 +428,28 @@ impl ScanPartitionTableResponse {
 #[derive(Debug)]
 pub struct DataSource {
     pub storage_url: url::Url,
+    pub layer: Option<String>, // TODO: i dont yet know whether it should be optional
     pub kind: DataSourceKind,
 }
 
 impl DataSource {
+    // TODO: mention this goes to "base"?
     pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
+            layer: None, // TODO
+            kind: DataSourceKind::Rrd,
+        })
+    }
+
+    // TODO: explain
+    pub fn new_rrd_layer(
+        layer: impl Into<String>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: Some(layer.into()),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -440,6 +459,7 @@ impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
     fn from(value: DataSource) -> Self {
         crate::manifest_registry::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
+            layer: value.layer,
             typ: value.kind as i32,
         }
     }
@@ -461,6 +481,8 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
             })?
             .parse()?;
 
+        let layer = data_source.layer;
+
         let kind = DataSourceKind::try_from(data_source.typ)?;
         if kind == DataSourceKind::Unspecified {
             return Err(invalid_field!(
@@ -470,7 +492,11 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
             ));
         }
 
-        Ok(Self { storage_url, kind })
+        Ok(Self {
+            storage_url,
+            layer,
+            kind,
+        })
     }
 }
 
@@ -532,6 +558,7 @@ impl PartitionType {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PartitionDescriptor {
     pub storage_url: String,
+    pub layer: String, // TODO: not optional so optionality doesn't leak everywhere
     pub partition_type: PartitionType,
 }
 
@@ -545,6 +572,8 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for PartitionDescri
             storage_url: value
                 .storage_url
                 .ok_or_else(|| tonic::Status::invalid_argument("query_data is required"))?,
+
+            layer: value.layer.unwrap_or_else(|| "base".to_owned()), // TODO: need some constant still
 
             partition_type: DataSourceKind::try_from(value.typ)
                 .map_err(|err| {
