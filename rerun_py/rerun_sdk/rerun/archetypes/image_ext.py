@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -204,11 +204,13 @@ class ImageExt:
             raise ValueError(f"Provided width {width} does not match image width {_width}")
         else:
             width = _width
+        width = cast(int, width)
 
         if height is not None and height != _height:
             raise ValueError(f"Provided height {height} does not match image height {_height}")
         else:
             height = _height
+        height = cast(int, height)
 
         if color_model is None:
             if channels == 1:
