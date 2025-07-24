@@ -742,52 +742,6 @@ impl ::prost::Name for GetChunksResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreatePartitionManifestsRequest {
-    /// Dataset for which we want to create manifests
-    #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    /// Create manifest for specific partitions. All will be
-    /// created if left unspecified (empty list)
-    #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
-    /// types of partitions and their storage location (same order
-    /// as partition ids above)
-    #[prost(message, repeated, tag = "3")]
-    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
-    /// Define what happens if create is called multiple times for the same
-    /// Dataset / partitions
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "4"
-    )]
-    pub on_duplicate: i32,
-}
-impl ::prost::Name for CreatePartitionManifestsRequest {
-    const NAME: &'static str = "CreatePartitionManifestsRequest";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.CreatePartitionManifestsRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.CreatePartitionManifestsRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreatePartitionManifestsResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for CreatePartitionManifestsResponse {
-    const NAME: &'static str = "CreatePartitionManifestsResponse";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.CreatePartitionManifestsResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.CreatePartitionManifestsResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchPartitionManifestRequest {
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
@@ -1418,31 +1372,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Create manifests for all partitions in the Dataset. Partition manifest contains information about
-        /// the chunks in the partitions.
-        ///
-        /// This is normally automatically done as part of the registration process.
-        pub async fn create_partition_manifests(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreatePartitionManifestsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionManifestsResponse>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreatePartitionManifests",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "CreatePartitionManifests",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Fetch the internal state of a Partition Manifest.
         pub async fn fetch_partition_manifest(
             &mut self,
@@ -1653,17 +1582,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
-        /// Create manifests for all partitions in the Dataset. Partition manifest contains information about
-        /// the chunks in the partitions.
-        ///
-        /// This is normally automatically done as part of the registration process.
-        async fn create_partition_manifests(
-            &self,
-            request: tonic::Request<super::CreatePartitionManifestsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreatePartitionManifestsResponse>,
-            tonic::Status,
-        >;
         /// Server streaming response type for the FetchPartitionManifest method.
         type FetchPartitionManifestStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FetchPartitionManifestResponse, tonic::Status>,
@@ -2246,52 +2164,6 @@ pub mod manifest_registry_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreatePartitionManifests" =>
-                {
-                    #[allow(non_camel_case_types)]
-                    struct CreatePartitionManifestsSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<T: ManifestRegistryService>
-                        tonic::server::UnaryService<super::CreatePartitionManifestsRequest>
-                        for CreatePartitionManifestsSvc<T>
-                    {
-                        type Response = super::CreatePartitionManifestsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CreatePartitionManifestsRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::create_partition_manifests(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = CreatePartitionManifestsSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
