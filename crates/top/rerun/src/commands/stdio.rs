@@ -138,6 +138,12 @@ pub fn read_rrd_streams_from_file_or_stdin(
 /// It is up to the user to decide whether and when to stop.
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
+// TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
+// the ability for this function to use pre-0.25 rrds. If we want to keep the ability to migrate
+// here, then the pre-#10730 app id caching mechanism must somehow be ported here.
+// TODO(ab): For pre-0.25 legacy data with `StoreId` mising their application id, the migration
+// in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
+// this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
 pub fn read_raw_rrd_streams_from_file_or_stdin(
     paths: &[String],
 ) -> (
