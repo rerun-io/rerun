@@ -4,7 +4,9 @@ use crossbeam::channel::Receiver;
 use re_log_encoding::encoder::DroppableEncoder;
 use re_protos::{
     common::v1alpha1::ApplicationId,
-    log_msg::v1alpha1::{ArrowMsg, LogMsg, SetStoreInfo, StoreInfo, log_msg::Msg},
+    log_msg::v1alpha1::{
+        ArrowMsg, BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, log_msg::Msg,
+    },
 };
 
 use crate::commands::{read_raw_rrd_streams_from_file_or_stdin, stdio::InputSource};
@@ -115,19 +117,37 @@ fn process_messages<W: std::io::Write>(
             Ok(mut msg) => {
                 num_total_msgs += 1;
 
-                if matches!(&msg, Msg::BlueprintActivationCommand(_))
-                    && drop_blueprint_activation_cmds
-                {
-                    num_blueprint_activations += 1;
-                    continue;
-                }
-
+                #[allow(deprecated)]
                 match &mut msg {
+                    // This needs to come first, as an
+                    Msg::BlueprintActivationCommand(_) if drop_blueprint_activation_cmds => {
+                        num_blueprint_activations += 1;
+                        continue;
+                    }
+
                     Msg::SetStoreInfo(SetStoreInfo {
-                        info: Some(StoreInfo { store_id, .. }),
-                        ..
+                        info:
+                            Some(StoreInfo {
+                                store_id,
+                                application_id: _, // deprecated but not considered.
+                                store_source: _,
+                                store_version: _,
+                            }),
+                        row_id: _,
                     })
-                    | Msg::ArrowMsg(ArrowMsg { store_id, .. }) => {
+                    | Msg::BlueprintActivationCommand(BlueprintActivationCommand {
+                        blueprint_id: store_id,
+                        make_active: _,
+                        make_default: _,
+                    })
+                    | Msg::ArrowMsg(ArrowMsg {
+                        store_id,
+                        chunk_id: _,
+                        compression: _,
+                        uncompressed_size: _,
+                        encoding: _,
+                        payload: _,
+                    }) => {
                         if let Some(target_store_id) = store_id {
                             if let Some(recording_id) = &rewrites.recording_id {
                                 target_store_id.recording_id = recording_id.clone();
@@ -139,9 +159,16 @@ fn process_messages<W: std::io::Write>(
                         }
                     }
 
-                    _ => {
+                    Msg::SetStoreInfo(SetStoreInfo {
+                        row_id: _,
+                        info: None,
+                    }) => {
                         num_unexpected_msgs += 1;
-                        re_log::warn_once!("Encountered unexpected message: {:#?}", msg);
+                        is_success = false;
+                        re_log::warn_once!(
+                            "Encountered `SetStoreInfo` without `info` field: {:#?}",
+                            msg
+                        );
                     }
                 }
 
