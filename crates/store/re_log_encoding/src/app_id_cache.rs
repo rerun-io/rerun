@@ -34,7 +34,7 @@ impl ApplicationIdCache {
     /// Looks up a store id based on a recording id and store kind.
     pub fn recover_store_id(
         &self,
-        store_id_err: StoreIdMissingApplicationIdError,
+        store_id_err: &StoreIdMissingApplicationIdError,
     ) -> Option<StoreId> {
         let StoreIdMissingApplicationIdError {
             store_kind,
@@ -42,8 +42,8 @@ impl ApplicationIdCache {
         } = store_id_err;
 
         self.0
-            .get(&(recording_id.clone(), store_kind))
+            .get(&(recording_id.clone(), *store_kind))
             .cloned()
-            .map(|app_id| StoreId::new(store_kind, app_id, recording_id))
+            .map(|app_id| StoreId::new(*store_kind, app_id, recording_id.clone()))
     }
 }

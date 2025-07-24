@@ -90,9 +90,14 @@ impl StreamDecoder {
         //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
         loop {
             let result = self.try_read_impl();
-            if matches!(result, Err(DecodeError::StoreIdMissingApplicationId)) {
+            if let Err(DecodeError::StoreIdMissingApplicationId {
+                store_kind,
+                recording_id,
+            }) = result
+            {
                 re_log::warn_once!(
-                    "Dropping message without application id which arrived before `SetStoreInfo`."
+                    "Dropping message without application id which arrived before `SetStoreInfo` \
+                    (kind: {store_kind}, recording id: {recording_id}."
                 );
             } else {
                 return result;

@@ -144,8 +144,8 @@ pub fn decode_transport_to_app(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
-                        return Err(DecodeError::StoreIdMissingApplicationId);
+                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                        return Err(err.into());
                     };
 
                     store_id
@@ -191,8 +191,8 @@ pub fn decode_transport_to_app(
             {
                 Ok(store_id) => store_id,
                 Err(err) => {
-                    let Some(store_id) = app_id_cache.recover_store_id(err) else {
-                        return Err(DecodeError::StoreIdMissingApplicationId);
+                    let Some(store_id) = app_id_cache.recover_store_id(&err) else {
+                        return Err(err.into());
                     };
 
                     store_id

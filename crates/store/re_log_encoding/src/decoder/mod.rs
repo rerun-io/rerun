@@ -68,7 +68,10 @@ pub enum DecodeError {
     /// store id (missing the application id) before the corresponding `SetStoreInfo` message. In
     /// that case, the best effort is to recover by dropping such message with a warning.
     #[error("Message with an unknown application id was received.")]
-    StoreIdMissingApplicationId,
+    StoreIdMissingApplicationId {
+        store_kind: re_log_types::StoreKind,
+        recording_id: re_log_types::RecordingId,
+    },
 
     #[error("Failed to decode the options: {0}")]
     Options(#[from] crate::OptionsError),
@@ -96,6 +99,15 @@ pub enum DecodeError {
 
     #[error("Codec error: {0}")]
     Codec(#[from] codec::CodecError),
+}
+
+impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> for DecodeError {
+    fn from(value: re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError) -> Self {
+        Self::StoreIdMissingApplicationId {
+            store_kind: value.store_kind,
+            recording_id: value.recording_id,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -281,9 +293,14 @@ impl<R: std::io::Read> Decoder<R> {
         //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
         loop {
             let result = self.next_impl(&mut decoder);
-            if matches!(result, Some(Err(DecodeError::StoreIdMissingApplicationId))) {
+            if let Some(Err(DecodeError::StoreIdMissingApplicationId {
+                store_kind,
+                recording_id,
+            })) = result
+            {
                 re_log::warn_once!(
-                    "Dropping message without application id which arrived before `SetStoreInfo`."
+                    "Dropping message without application id which arrived before `SetStoreInfo` \
+                    (kind: {store_kind}, recording id: {recording_id}."
                 );
             } else {
                 return result;
