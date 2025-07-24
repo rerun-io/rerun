@@ -55,46 +55,6 @@ impl ::prost::Name for RegisterWithDatasetResponse {
         "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse".into()
     }
 }
-/// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
-/// Eventually we _may_ get rid of the sync version; until then,
-/// we should make sure that the two objects are in sync.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterWithDatasetBlockingRequest {
-    #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    #[prost(message, repeated, tag = "2")]
-    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
-    #[prost(
-        enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "3"
-    )]
-    pub on_duplicate: i32,
-}
-impl ::prost::Name for RegisterWithDatasetBlockingRequest {
-    const NAME: &'static str = "RegisterWithDatasetBlockingRequest";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterWithDatasetBlockingResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for RegisterWithDatasetBlockingResponse {
-    const NAME: &'static str = "RegisterWithDatasetBlockingResponse";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetBlockingResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
@@ -1198,28 +1158,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Register new partitions with the Dataset (blocking)
-        pub async fn register_with_dataset_blocking(
-            &mut self,
-            request: impl tonic::IntoRequest<super::RegisterWithDatasetBlockingRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterWithDatasetBlockingResponse>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "RegisterWithDatasetBlocking",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Write chunks to one or more partitions.
         ///
         /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -1591,14 +1529,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
-        /// Register new partitions with the Dataset (blocking)
-        async fn register_with_dataset_blocking(
-            &self,
-            request: tonic::Request<super::RegisterWithDatasetBlockingRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterWithDatasetBlockingResponse>,
-            tonic::Status,
-        >;
         /// Write chunks to one or more partitions.
         ///
         /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -1868,52 +1798,6 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = RegisterWithDatasetSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking" =>
-                {
-                    #[allow(non_camel_case_types)]
-                    struct RegisterWithDatasetBlockingSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<T: ManifestRegistryService>
-                        tonic::server::UnaryService<super::RegisterWithDatasetBlockingRequest>
-                        for RegisterWithDatasetBlockingSvc<T>
-                    {
-                        type Response = super::RegisterWithDatasetBlockingResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::RegisterWithDatasetBlockingRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::register_with_dataset_blocking(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = RegisterWithDatasetBlockingSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

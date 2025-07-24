@@ -12,9 +12,6 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset (asynchronously)
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Register new partitions with the Dataset (blocking)
-  rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
-
   // Write chunks to one or more partitions.
   //
   // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -143,19 +140,6 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
-// Eventually we _may_ get rid of the sync version; until then,
-// we should make sure that the two objects are in sync.
-message RegisterWithDatasetBlockingRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  repeated DataSource data_sources = 2;
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
-}
-
-message RegisterWithDatasetBlockingResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
