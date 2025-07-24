@@ -102,12 +102,6 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Create manifests for all partitions in the Dataset. Partition manifest contains information about
-  // the chunks in the partitions.
-  //
-  // This is normally automatically done as part of the registration process.
-  rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
-
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 
@@ -493,27 +487,6 @@ message GetChunksResponse {
 
 // --- Developer/Debug APIs ---
 // Unstable APIs that are not exposed by the Frontend.
-
-message CreatePartitionManifestsRequest {
-  // Dataset for which we want to create manifests
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Create manifest for specific partitions. All will be
-  // created if left unspecified (empty list)
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // types of partitions and their storage location (same order
-  // as partition ids above)
-  repeated DataSource data_sources = 3;
-
-  // Define what happens if create is called multiple times for the same
-  // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
-}
-
-message CreatePartitionManifestsResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
 
 message FetchPartitionManifestRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
