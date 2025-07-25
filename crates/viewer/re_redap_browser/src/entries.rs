@@ -278,7 +278,7 @@ impl Entries {
             );
         }
 
-        dbg!(&failed_things, &loading_things, &errors);
+        // TODO: Update error handling
 
         if !failed_things.is_empty() {
             ui.list_item_flat_noninteractive(list_item::LabelContent::new(
