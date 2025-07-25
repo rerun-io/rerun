@@ -1,19 +1,26 @@
 use std::future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Poll;
 
 use ahash::HashMap;
+use datafusion::catalog::TableProvider;
+use datafusion::common::DataFusionError;
+use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _, TryStreamExt as _};
 use itertools::Itertools as _;
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
-use re_grpc_client::{ConnectionError, ConnectionRegistryHandle, StreamError};
+use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
+use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistryHandle, StreamError};
 use re_log_encoding::codec::CodecError;
 use re_log_types::{ApplicationId, EntryId, natural_ordering};
 use re_protos::TypeConversionError;
-use re_protos::catalog::v1alpha1::ext::TableEntry;
-use re_protos::catalog::v1alpha1::{EntryFilter, ext::DatasetEntry};
+use re_protos::catalog::v1alpha1::ext::{EntryDetails, TableEntry};
+use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, ext::DatasetEntry};
+use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
 use re_sorbet::SorbetError;
 use re_types::archetypes::RecordingInfo;
@@ -48,6 +55,9 @@ pub enum EntryError {
 
     #[error(transparent)]
     SorbetError(#[from] SorbetError),
+
+    #[error(transparent)]
+    DataFusionError(#[from] DataFusionError),
 }
 
 impl EntryError {
@@ -75,7 +85,8 @@ impl EntryError {
             | Self::ConnectionError(_)
             | Self::TypeConversionError(_)
             | Self::CodecError(_)
-            | Self::SorbetError(_) => None,
+            | Self::SorbetError(_)
+            | Self::DataFusionError(_) => None,
         }
     }
 
@@ -134,12 +145,33 @@ pub enum EntryRef<'a> {
     Table(&'a Result<Table, EntryError>),
 }
 
+pub enum Entry {
+    Dataset(Dataset),
+    Table(Table),
+}
+
+impl Entry {
+    pub fn details(&self) -> &EntryDetails {
+        match self {
+            Self::Dataset(dataset) => &dataset.dataset_entry.details,
+            Self::Table(table) => &table.table_entry.details,
+        }
+    }
+
+    pub fn id(&self) -> EntryId {
+        self.details().id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.details().name
+    }
+}
+
 /// All the entries of a server.
 // TODO(ab): we currently load the ENTIRE list of datasets. We will need to be more granular
 // about this in the future.
 pub struct Entries {
-    datasets: RequestedObject<Result<HashMap<EntryId, Result<Dataset, EntryError>>, EntryError>>,
-    tables: RequestedObject<Result<HashMap<EntryId, Result<Table, EntryError>>, EntryError>>,
+    entries: RequestedObject<Result<HashMap<EntryId, Result<Entry, EntryError>>, EntryError>>,
 }
 
 impl Entries {
@@ -148,45 +180,36 @@ impl Entries {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        session_context: Arc<SessionContext>,
     ) -> Self {
-        let datasets_fut = fetch_dataset_entries(connection_registry.clone(), origin.clone());
-        let tables_fut = fetch_table_entries(connection_registry, origin);
+        let entries_fut =
+            fetch_entries_and_register_tables(connection_registry, origin, session_context);
 
         Self {
-            datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets_fut),
-            tables: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), tables_fut),
+            entries: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), entries_fut),
         }
     }
 
     pub fn on_frame_start(&mut self) {
-        self.datasets.on_frame_start();
-        self.tables.on_frame_start();
+        self.entries.on_frame_start();
     }
 
-    pub fn find_dataset(&self, entry_id: EntryId) -> Option<&Result<Dataset, EntryError>> {
-        self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
+    pub fn find_entry(&self, entry_id: EntryId) -> Option<Result<&Entry, &EntryError>> {
+        self.entries
+            .try_as_ref()?
+            .as_ref()
+            .ok()?
+            .get(&entry_id)
+            .map(|r| r.as_ref())
     }
 
-    pub fn find_table(&self, entry_id: EntryId) -> Option<&Result<Table, EntryError>> {
-        self.tables.try_as_ref()?.as_ref().ok()?.get(&entry_id)
-    }
-
-    pub fn find_entry(&self, entry_id: EntryId) -> Option<EntryRef<'_>> {
-        if let Some(dataset) = self.find_dataset(entry_id) {
-            return Some(EntryRef::Dataset(dataset));
-        }
-        if let Some(table) = self.find_table(entry_id) {
-            return Some(EntryRef::Table(table));
-        }
-        None
-    }
-
-    pub fn state(
-        &self,
-    ) -> Poll<Result<&HashMap<EntryId, Result<Dataset, EntryError>>, &EntryError>> {
-        self.datasets
+    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Result<Entry, EntryError>>, &EntryError>> {
+        self.entries
             .try_as_ref()
-            .map_or(Poll::Pending, |r| Poll::Ready(r.as_ref()))
+            .map_or(Poll::Pending, |r| match r {
+                Ok(entries) => Poll::Ready(Ok(entries)),
+                Err(err) => Poll::Ready(Err(err)),
+            })
     }
 
     /// [`list_item::ListItem`]-based UI for the datasets.
@@ -201,67 +224,44 @@ impl Entries {
         let mut failed_things = smallvec::SmallVec::<[_; 2]>::new();
         let mut errors = smallvec::SmallVec::<[_; 2]>::new();
 
-        match self.datasets.try_as_ref() {
+        match self.entries.try_as_ref() {
             None => {
-                loading_things.push("datasets");
+                loading_things.push("entries");
             }
 
             Some(Err(err)) => {
-                failed_things.push("datasets");
+                failed_things.push("entries");
                 errors.push(err.to_string());
             }
 
-            Some(Ok(datasets)) => {
-                for dataset in datasets
+            Some(Ok(entries)) => {
+                for entry in entries
                     .values()
-                    .sorted_by_key(|dataset| dataset.as_ref().map(|d| d.name()).ok())
+                    .sorted_by_key(|entry| entry.as_ref().map(|e| e.name()).ok())
                 {
-                    match dataset {
-                        Ok(dataset) => {
-                            let recordings = recordings
-                                .as_mut()
-                                .and_then(|r| r.remove(&dataset.id()))
-                                .unwrap_or_default();
+                    match entry {
+                        Ok(entry) => match entry {
+                            Entry::Dataset(dataset) => {
+                                let recordings = recordings
+                                    .as_mut()
+                                    .and_then(|r| r.remove(&dataset.id()))
+                                    .unwrap_or_default();
 
-                            dataset_and_its_recordings_ui(
-                                ui,
-                                viewer_context,
-                                &DatasetKind::Remote {
-                                    origin: dataset.origin.clone(),
-                                    entry_id: dataset.id(),
-                                    name: dataset.name().to_owned(),
-                                },
-                                recordings,
-                            );
-                        }
+                                dataset_and_its_recordings_ui(
+                                    ui,
+                                    viewer_context,
+                                    &DatasetKind::Remote {
+                                        origin: dataset.origin.clone(),
+                                        entry_id: dataset.id(),
+                                        name: dataset.name().to_owned(),
+                                    },
+                                    recordings,
+                                );
+                            }
+                            Entry::Table(table) => table_ui(ui, viewer_context, table),
+                        },
                         Err(err) => {
-                            errors.push(err.to_string());
-                        }
-                    }
-                }
-            }
-        }
-
-        match self.tables.try_as_ref() {
-            None => {
-                loading_things.push("tables");
-            }
-
-            Some(Err(err)) => {
-                failed_things.push("tables");
-                errors.push(err.to_string());
-            }
-
-            Some(Ok(tables)) => {
-                for table in tables
-                    .values()
-                    .sorted_by_key(|table| table.as_ref().map(|t| t.name()).ok())
-                {
-                    match table {
-                        Ok(table) => {
-                            table_ui(ui, viewer_context, table);
-                        }
-                        Err(err) => {
+                            failed_things.push("entry");
                             errors.push(err.to_string());
                         }
                     }
@@ -277,6 +277,8 @@ impl Entries {
                     .italics(true),
             );
         }
+
+        dbg!(&failed_things, &loading_things, &errors);
 
         if !failed_things.is_empty() {
             ui.list_item_flat_noninteractive(list_item::LabelContent::new(
@@ -462,76 +464,136 @@ pub fn table_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, table: &Table) {
     }
 }
 
-async fn fetch_dataset_entries(
+async fn fetch_entries_and_register_tables(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
-) -> Result<HashMap<EntryId, Result<Dataset, EntryError>>, EntryError> {
+    session_ctx: Arc<SessionContext>,
+) -> Result<HashMap<EntryId, Result<Entry, EntryError>>, EntryError> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
-        .find_entries(EntryFilter {
-            id: None,
-            name: None,
-            entry_kind: Some(re_protos::catalog::v1alpha1::EntryKind::Dataset.into()),
+        .inner()
+        .find_entries(FindEntriesRequest {
+            filter: Some(EntryFilter {
+                id: None,
+                name: None,
+                entry_kind: None,
+            }),
         })
-        .await?;
+        .await?
+        .into_inner()
+        .entries
+        .into_iter()
+        .map(TryInto::try_into)
+        .collect::<Result<Vec<EntryDetails>, _>>()?;
 
     let origin_ref = &origin;
-    let futures = entries.into_iter().map(move |entry_details| {
-        let mut client = client.clone();
-        async move {
-            client
-                .read_dataset_entry(entry_details.id)
-                .map_ok(|dataset_entry| Dataset {
-                    dataset_entry,
-                    origin: origin_ref.clone(),
-                })
-                .map_err(EntryError::from)
-                .map(|res| (entry_details.id, res))
-                .await
-        }
-    });
+    let futures_iter = entries
+        .into_iter()
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e));
 
-    Ok(FuturesUnordered::from_iter(futures).collect().await)
+    let mut entries = HashMap::default();
+
+    let mut futures_unordered = FuturesUnordered::from_iter(futures_iter);
+    while let Some((id, result)) = futures_unordered.next().await {
+        let result = result.map(|(entry, provider)| {
+            session_ctx.register_table(entry.name(), provider).ok();
+            entry
+        });
+
+        let is_system_table = match &result {
+            Ok(entry) => match entry {
+                Entry::Dataset(_) => false,
+                Entry::Table(table) => {
+                    table.table_entry.provider_details.type_url
+                        == re_protos::catalog::v1alpha1::SystemTable::type_url()
+                }
+            },
+            Err(_) => false,
+        };
+        if !is_system_table {
+            entries.insert(id, result);
+        }
+    }
+
+    Ok(entries)
 }
 
-async fn fetch_table_entries(
-    connection_registry: ConnectionRegistryHandle,
-    origin: re_uri::Origin,
-) -> Result<HashMap<EntryId, Result<Table, EntryError>>, EntryError> {
-    let mut client = connection_registry.client(origin.clone()).await?;
+/// Returns None if the entry should not be presented in the UI.
+fn fetch_entry_details(
+    mut client: ConnectionClient,
+    origin: &re_uri::Origin,
+    entry: EntryDetails,
+) -> Option<impl Future<Output = (EntryId, Result<(Entry, Arc<dyn TableProvider>), EntryError>)>> {
+    let id = entry.id;
+    #[expect(clippy::match_same_arms)]
+    match entry.kind {
+        // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
+        // some reason, this failure is silent but blocks other tables from being registered.
+        // Since we don't need these tables yet, we just skip them for now.
+        EntryKind::BlueprintDataset => None,
+        EntryKind::Dataset => Some(
+            fetch_dataset_details(client, entry, origin)
+                .map_ok(|(dataset, table_provider)| (Entry::Dataset(dataset), table_provider))
+                .map(move |res| (id, res))
+                .boxed(),
+        ),
+        EntryKind::Table => Some(
+            fetch_table_details(client, entry, origin)
+                .map_ok(|(table, table_provider)| (Entry::Table(table), table_provider))
+                .map(move |res| (id, res))
+                .boxed(),
+        ),
 
-    let entries = client
-        .find_entries(EntryFilter {
-            id: None,
-            name: None,
-            entry_kind: Some(re_protos::catalog::v1alpha1::EntryKind::Table.into()),
-        })
+        // TODO(ab): these do not exist yet
+        EntryKind::DatasetView | EntryKind::TableView => None,
+
+        EntryKind::Unspecified => Some(
+            future::ready((
+                id,
+                Err(TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32)).into()),
+            ))
+            .boxed(),
+        ),
+    }
+}
+
+async fn fetch_dataset_details(
+    mut client: ConnectionClient,
+    entry: EntryDetails,
+    origin: &re_uri::Origin,
+) -> Result<(Dataset, Arc<dyn TableProvider>), EntryError> {
+    let result = client
+        .read_dataset_entry(entry.id)
+        .await
+        .map(|dataset_entry| Dataset {
+            dataset_entry,
+            origin: origin.clone(),
+        })?;
+
+    let table_provider = PartitionTableProvider::new(client, entry.id)
+        .into_provider()
         .await?;
 
-    let origin_ref = &origin;
-    let futures = entries.into_iter().map(|entry_details| {
-        let mut client = client.clone();
-        async move {
-            client
-                .read_table_entry(entry_details.id)
-                .map_ok(|table_entry| Table {
-                    table_entry,
-                    origin: origin_ref.clone(),
-                })
-                .map_err(EntryError::from)
-                .map(|res| (entry_details.id, res))
-                .await
-        }
-    });
+    Ok((result, table_provider))
+}
 
-    Ok(FuturesUnordered::from_iter(futures)
-        .filter(|(_, result)| {
-            future::ready(result.as_ref().map_or(true, |t| {
-                t.table_entry.provider_details.type_url
-                    != re_protos::catalog::v1alpha1::SystemTable::type_url()
-            }))
-        })
-        .collect()
-        .await)
+async fn fetch_table_details(
+    mut client: ConnectionClient,
+    entry: EntryDetails,
+    origin: &re_uri::Origin,
+) -> Result<(Table, Arc<dyn TableProvider>), EntryError> {
+    let result = client
+        .read_table_entry(entry.id)
+        .await
+        .map(|table_entry| Table {
+            table_entry,
+            origin: origin.clone(),
+        })?;
+
+    let table_provider = TableEntryTableProvider::new(client, entry.id)
+        .into_provider()
+        .await?;
+
+    Ok((result, table_provider))
 }
