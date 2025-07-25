@@ -3,7 +3,7 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _, TryStreamExt as _};
 use itertools::Itertools as _;
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;

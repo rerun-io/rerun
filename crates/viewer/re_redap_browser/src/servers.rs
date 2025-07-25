@@ -20,7 +20,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, EntryError, EntryRef, Table};
+use crate::entries::{Dataset, Entries, EntryRef, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 use crate::tables_session_context::TablesSessionContext;
 
@@ -579,10 +579,7 @@ impl RedapServers {
                             server.dataset_entry_ui(viewer_ctx, ui, dataset);
                         }
                         Err(err) => {
-                            ui.error_label(format!(
-                                "Failed to load dataset entry: {}",
-                                err.to_string()
-                            ));
+                            ui.error_label(format!("Failed to load dataset entry: {err}"));
                         }
                     }
                     return;
@@ -593,10 +590,7 @@ impl RedapServers {
                             server.table_entry_ui(viewer_ctx, ui, table);
                         }
                         Err(err) => {
-                            ui.error_label(format!(
-                                "Failed to load table entry: {}",
-                                err.to_string()
-                            ));
+                            ui.error_label(format!("Failed to load table entry: {err}"));
                         }
                     }
                     return;
