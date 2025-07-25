@@ -52,6 +52,9 @@ message CreateDatasetEntryRequest {
   // with the same name already exists, the request will fail.
   optional string name = 1;
 
+  // If specified, create the entry using this specific ID. Use at your own risk.
+  optional rerun.common.v1alpha1.EntryId id = 2;
+
   //TODO(ab): add IfExistingBehavior?
 }
 

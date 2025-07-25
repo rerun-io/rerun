@@ -100,7 +100,7 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    .create_dataset_entry(name)
+                    .create_dataset_entry(name, None)
                     .await
                     .map_err(to_py_err)
             }

@@ -105,10 +105,14 @@ where
     pub async fn create_dataset_entry(
         &mut self,
         name: String,
+        entry_id: Option<EntryId>,
     ) -> Result<DatasetEntry, StreamError> {
         let response: CreateDatasetEntryResponse = self
             .inner()
-            .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
+            .create_dataset_entry(CreateDatasetEntryRequest {
+                name: Some(name),
+                id: entry_id.map(Into::into),
+            })
             .await?
             .into_inner()
             .try_into()?;
