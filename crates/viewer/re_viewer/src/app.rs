@@ -754,7 +754,7 @@ impl App {
                     guard.set_looping(re_viewer_context::Looping::Selection);
                 } else {
                     re_log::debug!(
-                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{store_id:?}'"
+                        "SystemCommand::SetLoopSelection ignored: unknown store ID '{store_id:?}'"
                     );
                 }
             }
