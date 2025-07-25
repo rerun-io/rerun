@@ -1,8 +1,10 @@
+use std::future;
 use std::task::Poll;
 
 use ahash::HashMap;
+use futures::stream::FuturesUnordered;
+use futures::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use itertools::Itertools as _;
-
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
@@ -128,16 +130,16 @@ impl Table {
 }
 
 pub enum EntryRef<'a> {
-    Dataset(&'a Dataset),
-    Table(&'a Table),
+    Dataset(&'a Result<Dataset, EntryError>),
+    Table(&'a Result<Table, EntryError>),
 }
 
 /// All the entries of a server.
 // TODO(ab): we currently load the ENTIRE list of datasets. We will need to be more granular
 // about this in the future.
 pub struct Entries {
-    datasets: RequestedObject<Result<HashMap<EntryId, Dataset>, EntryError>>,
-    tables: RequestedObject<Result<HashMap<EntryId, Table>, EntryError>>,
+    datasets: RequestedObject<Result<HashMap<EntryId, Result<Dataset, EntryError>>, EntryError>>,
+    tables: RequestedObject<Result<HashMap<EntryId, Result<Table, EntryError>>, EntryError>>,
 }
 
 impl Entries {
@@ -161,11 +163,11 @@ impl Entries {
         self.tables.on_frame_start();
     }
 
-    pub fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
+    pub fn find_dataset(&self, entry_id: EntryId) -> Option<&Result<Dataset, EntryError>> {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
-    pub fn find_table(&self, entry_id: EntryId) -> Option<&Table> {
+    pub fn find_table(&self, entry_id: EntryId) -> Option<&Result<Table, EntryError>> {
         self.tables.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
@@ -179,7 +181,9 @@ impl Entries {
         None
     }
 
-    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Dataset>, &EntryError>> {
+    pub fn state(
+        &self,
+    ) -> Poll<Result<&HashMap<EntryId, Result<Dataset, EntryError>>, &EntryError>> {
         self.datasets
             .try_as_ref()
             .map_or(Poll::Pending, |r| Poll::Ready(r.as_ref()))
@@ -208,22 +212,32 @@ impl Entries {
             }
 
             Some(Ok(datasets)) => {
-                for dataset in datasets.values().sorted_by_key(|dataset| dataset.name()) {
-                    let recordings = recordings
-                        .as_mut()
-                        .and_then(|r| r.remove(&dataset.id()))
-                        .unwrap_or_default();
+                for dataset in datasets
+                    .values()
+                    .sorted_by_key(|dataset| dataset.as_ref().map(|d| d.name()).ok())
+                {
+                    match dataset {
+                        Ok(dataset) => {
+                            let recordings = recordings
+                                .as_mut()
+                                .and_then(|r| r.remove(&dataset.id()))
+                                .unwrap_or_default();
 
-                    dataset_and_its_recordings_ui(
-                        ui,
-                        viewer_context,
-                        &DatasetKind::Remote {
-                            origin: dataset.origin.clone(),
-                            entry_id: dataset.id(),
-                            name: dataset.name().to_owned(),
-                        },
-                        recordings,
-                    );
+                            dataset_and_its_recordings_ui(
+                                ui,
+                                viewer_context,
+                                &DatasetKind::Remote {
+                                    origin: dataset.origin.clone(),
+                                    entry_id: dataset.id(),
+                                    name: dataset.name().to_owned(),
+                                },
+                                recordings,
+                            );
+                        }
+                        Err(err) => {
+                            errors.push(err.to_string());
+                        }
+                    }
                 }
             }
         }
@@ -239,8 +253,18 @@ impl Entries {
             }
 
             Some(Ok(tables)) => {
-                for table in tables.values().sorted_by_key(|table| table.name()) {
-                    table_ui(ui, viewer_context, table);
+                for table in tables
+                    .values()
+                    .sorted_by_key(|table| table.as_ref().map(|t| t.name()).ok())
+                {
+                    match table {
+                        Ok(table) => {
+                            table_ui(ui, viewer_context, table);
+                        }
+                        Err(err) => {
+                            errors.push(err.to_string());
+                        }
+                    }
                 }
             }
         }
@@ -441,7 +465,7 @@ pub fn table_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, table: &Table) {
 async fn fetch_dataset_entries(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
-) -> Result<HashMap<EntryId, Dataset>, EntryError> {
+) -> Result<HashMap<EntryId, Result<Dataset, EntryError>>, EntryError> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
@@ -452,28 +476,29 @@ async fn fetch_dataset_entries(
         })
         .await?;
 
-    let futures = entries.into_iter().map(|entry_details| {
+    let origin_ref = &origin;
+    let futures = entries.into_iter().map(move |entry_details| {
         let mut client = client.clone();
-        async move { client.read_dataset_entry(entry_details.id).await }
+        async move {
+            client
+                .read_dataset_entry(entry_details.id)
+                .map_ok(|dataset_entry| Dataset {
+                    dataset_entry,
+                    origin: origin_ref.clone(),
+                })
+                .map_err(EntryError::from)
+                .map(|res| (entry_details.id, res))
+                .await
+        }
     });
 
-    let mut datasets = HashMap::default();
-    for dataset_entry in futures::future::join_all(futures).await {
-        let dataset = Dataset {
-            dataset_entry: dataset_entry?,
-            origin: origin.clone(),
-        };
-
-        datasets.insert(dataset.id(), dataset);
-    }
-
-    Ok(datasets)
+    Ok(FuturesUnordered::from_iter(futures).collect().await)
 }
 
 async fn fetch_table_entries(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
-) -> Result<HashMap<EntryId, Table>, EntryError> {
+) -> Result<HashMap<EntryId, Result<Table, EntryError>>, EntryError> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
@@ -484,29 +509,29 @@ async fn fetch_table_entries(
         })
         .await?;
 
+    let origin_ref = &origin;
     let futures = entries.into_iter().map(|entry_details| {
         let mut client = client.clone();
-        async move { client.read_table_entry(entry_details.id).await }
+        async move {
+            client
+                .read_table_entry(entry_details.id)
+                .map_ok(|table_entry| Table {
+                    table_entry,
+                    origin: origin_ref.clone(),
+                })
+                .map_err(EntryError::from)
+                .map(|res| (entry_details.id, res))
+                .await
+        }
     });
 
-    let mut tables = HashMap::default();
-    for table_entry in futures::future::join_all(futures).await {
-        let table_entry = table_entry?;
-
-        // We do not want to display system tables in the UI.
-        if table_entry.provider_details.type_url
-            == re_protos::catalog::v1alpha1::SystemTable::type_url()
-        {
-            continue;
-        }
-
-        let table = Table {
-            table_entry,
-            origin: origin.clone(),
-        };
-
-        tables.insert(table.id(), table);
-    }
-
-    Ok(tables)
+    Ok(FuturesUnordered::from_iter(futures)
+        .filter(|(_, result)| {
+            future::ready(result.as_ref().map_or(true, |t| {
+                t.table_entry.provider_details.type_url
+                    != re_protos::catalog::v1alpha1::SystemTable::type_url()
+            }))
+        })
+        .collect()
+        .await)
 }

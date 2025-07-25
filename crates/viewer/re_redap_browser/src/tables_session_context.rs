@@ -149,13 +149,19 @@ async fn register_all_table_entries(
     }
 
     for (result, entry) in futures::future::join_all(futures).await {
-        let table_provider = result?;
-        ctx.register_table(&entry.name, table_provider)?;
+        match result {
+            Ok(table_provider) => {
+                ctx.register_table(&entry.name, table_provider)?;
 
-        registered_tables.push(Table {
-            entry_id: entry.id,
-            name: entry.name,
-        });
+                registered_tables.push(Table {
+                    entry_id: entry.id,
+                    name: entry.name,
+                });
+            }
+            Err(err) => {
+                re_log::error!("Failed to register table entry {}: {}", entry.name, err);
+            }
+        }
     }
 
     Ok(registered_tables)
