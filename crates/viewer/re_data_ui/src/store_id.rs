@@ -6,18 +6,9 @@ impl crate::DataUi for re_log_types::StoreId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
+        _query: &re_chunk_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
     ) {
-        if let Some(entity_db) = ctx.storage_context.bundle.get(self) {
-            entity_db.data_ui(ctx, ui, ui_layout, query, db);
-        } else {
-            //TODO: improve this to take into account the app id
-            ui.label(format!(
-                "{} ID {} (not found)",
-                self.kind(),
-                self.recording_id()
-            ));
-        }
+        crate::item_ui::store_id_button_ui(ctx, ui, self, ui_layout);
     }
 }

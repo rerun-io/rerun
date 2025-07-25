@@ -84,11 +84,7 @@ impl ItemTitle {
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        //TODO: improve this to take into account the app id
-        let id_str = format!("{} ID: {}", store_id.kind(), store_id.recording_id());
-
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
-            let application_id = entity_db.application_id().to_string();
             if let Some(started) = entity_db
                 .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             {
@@ -96,12 +92,12 @@ impl ItemTitle {
                     .to_jiff_zoned(ctx.app_options().timestamp_format)
                     .strftime("%H:%M:%S")
                     .to_string();
-                format!("{application_id} - {time}")
+                format!("{} - {time}", store_id.application_id())
             } else {
-                application_id
+                store_id.application_id().to_string()
             }
         } else {
-            id_str.clone()
+            store_id.application_id().to_string()
         };
 
         let icon = match store_id.kind() {
@@ -109,7 +105,12 @@ impl ItemTitle {
             re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
         };
 
-        Self::new(title, icon).with_tooltip(id_str)
+        Self::new(title, icon).with_tooltip(format!(
+            "Store kind: {}\nApplication ID: {}\nRecording ID: {}",
+            store_id.kind(),
+            store_id.application_id(),
+            store_id.recording_id(),
+        ))
     }
 
     pub fn from_instance_path(

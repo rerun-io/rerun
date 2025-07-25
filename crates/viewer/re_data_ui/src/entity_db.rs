@@ -21,8 +21,10 @@ impl crate::DataUi for EntityDb {
         _db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
-            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
-            let mut string = self.store_id().recording_id().to_string(); //TODO: correct? where can I see that?
+            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui` (this is
+            // probably dead code, as `entity_db_button_ui` is actually used in all single line
+            // contexts).
+            let mut string = self.store_id().recording_id().to_string();
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
             }

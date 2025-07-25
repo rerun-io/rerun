@@ -297,7 +297,11 @@ impl ItemCollection {
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
-                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))), //TODO
+
+                // TODO(ab): it is not very meaningful to copy the `StoreId` representation, but
+                // that's the best we can do for now. In the future, we should have URIs for
+                // in-memery recordings, and that's what we should copy here.
+                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))),
 
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,

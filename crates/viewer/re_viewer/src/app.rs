@@ -1643,7 +1643,6 @@ impl App {
 
             if store_hub.is_active_blueprint(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
-                //TODO: user facing
                 re_log::warn_once!(
                     "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
                 );
