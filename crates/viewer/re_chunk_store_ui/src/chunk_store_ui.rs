@@ -398,9 +398,15 @@ impl DatastoreUi {
         list_item::list_item_scope(ui, "chunk store info", |ui| {
             let stats = chunk_store.stats().total();
             ui.list_item_collapsible_noninteractive_label("Info", false, |ui| {
+                // Note: no need to print the store kind, because it's selected by the top-level toggle.
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Store ID")
-                        .value_text(chunk_store.id().to_string()),
+                    list_item::PropertyContent::new("Application ID")
+                        .value_text(chunk_store.id().application_id().to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Recording ID")
+                        .value_text(chunk_store.id().recording_id().to_string()),
                 );
 
                 ui.list_item_flat_noninteractive(

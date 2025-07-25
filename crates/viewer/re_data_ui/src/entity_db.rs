@@ -22,13 +22,12 @@ impl crate::DataUi for EntityDb {
     ) {
         if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
-            let mut string = self.store_id().to_string();
+            let mut string = self.store_id().recording_id().to_string(); //TODO: correct? where can I see that?
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
             }
-            if let Some(store_info) = self.store_info() {
-                string += &format!(", {}", store_info.application_id());
-            }
+            string += &format!(", {}", self.store_id().application_id());
+
             ui.label(string);
             return;
         }

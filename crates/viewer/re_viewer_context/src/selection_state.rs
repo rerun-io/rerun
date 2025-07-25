@@ -297,7 +297,7 @@ impl ItemCollection {
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
-                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, id.to_string())),
+                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))), //TODO
 
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,

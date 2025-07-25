@@ -84,7 +84,7 @@ impl ItemTitle {
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        //TODO(#10746): improve this to take into account the app id
+        //TODO: improve this to take into account the app id
         let id_str = format!("{} ID: {}", store_id.kind(), store_id.recording_id());
 
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {

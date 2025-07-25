@@ -638,7 +638,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
-        .map(|info| info.store_id.to_string())
+        .map(|info| info.store_id.recording_id().to_string())
 }
 
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any.
