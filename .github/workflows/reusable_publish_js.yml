@@ -10,6 +10,9 @@ on:
         description: "Commit to release"
         type: string
         required: true
+      release-version:
+        type: string
+        required: true
 
 concurrency:
   group: ${{ inputs.concurrency }}-publish-js
@@ -72,3 +75,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           pixi run node rerun_js/scripts/publish.mjs
+
+      - name: "Upload rerun_js to GCS"
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_js_package"
+          destination: "rerun-builds/version/${{ inputs.release-version }}/rerun_js"
+          parent: false
+          process_gcloudignore: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+          gzip: false
