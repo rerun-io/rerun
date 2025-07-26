@@ -21,6 +21,9 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
+
 // ---
 
 const LONG_ABOUT: &str = r#"
@@ -548,6 +551,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -632,6 +640,9 @@ where
                 println!("{web_header}\n\n{man}");
                 Ok(())
             }
+
+            // TODO: report nicer errors
+            Command::Auth(cmd) => cmd.run().map_err(Into::into),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
