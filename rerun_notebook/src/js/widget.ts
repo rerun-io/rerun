@@ -49,11 +49,6 @@ function _resize(el: HTMLElement, width: number | string, height: number | strin
   }
 }
 
-function dbg(...args: any[]): boolean {
-  console.log(...args)
-  return true;
-}
-
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
@@ -72,8 +67,8 @@ class ViewerWidget {
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    model.on("change:_width", (_, width) => dbg("resize") && this.on_resize(el, width, model.get("_height")));
-    model.on("change:_height", (_, height) => dbg("resize") && this.on_resize(el, model.get("_width"), height));
+    model.on("change:_width", (_, width) => this.on_resize(el, width, model.get("_height")));
+    model.on("change:_height", (_, height) => this.on_resize(el, model.get("_width"), height));
 
     model.on("msg:custom", this.on_custom_message);
 
