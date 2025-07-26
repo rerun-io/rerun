@@ -3,7 +3,7 @@
 use std::{io::Cursor, sync::mpsc::Sender};
 
 use re_chunk::RowId;
-use re_log_types::{SetStoreInfo, StoreInfo};
+use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 
 use crate::mcap;
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
@@ -116,10 +116,12 @@ fn load_mcap(
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
 ) -> Result<(), DataLoaderError> {
+    let store_id = settings.recommended_store_id();
+
     if tx
         .send(LoadedData::LogMsg(
             McapLoader.name(),
-            re_log_types::LogMsg::SetStoreInfo(store_info(settings)),
+            re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
         ))
         .is_err()
     {
@@ -140,7 +142,7 @@ fn load_mcap(
     if tx
         .send(LoadedData::Chunk(
             McapLoader.name(),
-            settings.recommended_store_id(),
+            store_id.clone(),
             properties_chunk,
         ))
         .is_err()
@@ -154,9 +156,10 @@ fn load_mcap(
 
     let mut registry = mcap::decode::MessageDecoderRegistry::default();
     registry
-        .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
+        .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImageSchemaPlugin>()
-        .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>();
+        .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
+        .register_default::<mcap::schema::sensor_msgs::PointCloud2SchemaPlugin>();
 
     for chunk in &summary.chunk_indexes {
         let channel_counts = mcap::util::get_chunk_message_count(chunk, &summary, mcap)?;
@@ -191,7 +194,7 @@ fn load_mcap(
                 if tx
                     .send(LoadedData::Chunk(
                         McapLoader.name(),
-                        settings.recommended_store_id(),
+                        store_id.clone(),
                         chunk,
                     ))
                     .is_err()
@@ -211,11 +214,11 @@ fn load_mcap(
     Ok(())
 }
 
-pub fn store_info(settings: &DataLoaderSettings) -> SetStoreInfo {
+pub fn store_info(store_id: StoreId) -> SetStoreInfo {
     SetStoreInfo {
         row_id: *RowId::new(),
         info: StoreInfo {
-            store_id: settings.recommended_store_id(),
+            store_id,
             cloned_from: None,
             store_source: re_log_types::StoreSource::Other(McapLoader.name()),
             store_version: Some(re_build_info::CrateVersion::LOCAL),
