@@ -11,11 +11,21 @@ if(@RERUN_INSTALL_RERUN_C@)
         get_filename_component(RERUN_C_LIB_NAME "@RERUN_C_LIB_LOCATION@" NAME)
         set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION "${RERUN_LIB_DIR}/${RERUN_C_LIB_NAME}")
         if(APPLE)
-            target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
+            target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit" "-framework Security")
         elseif(UNIX) # if(LINUX) # CMake 3.25
             target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
         elseif(WIN32)
-            target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
+            target_link_libraries(rerun_c INTERFACE Crypt32
+                                                    Iphlpapi
+                                                    Ncrypt
+                                                    Netapi32
+                                                    ntdll
+                                                    Pdh
+                                                    PowrProf
+                                                    Psapi
+                                                    Secur32
+                                                    Userenv
+                                                    ws2_32)
         endif()
     endif()
 endif()
