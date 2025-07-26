@@ -3,17 +3,51 @@ use crate::{Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyUri {
     pub origin: Origin,
+
+    /// Path segments before the `/proxy` endpoint.
+    ///
+    /// - `None` for URLs like `rerun://host/proxy` (no prefix)
+    /// - `Some(vec!["prefix"])` for URLs like `rerun://host/prefix/proxy`
+    /// - `Some(vec!["a", "b"])` for URLs like `rerun://host/a/b/proxy`
+    pub prefix_segments: Option<Vec<String>>,
 }
 
 impl std::fmt::Display for ProxyUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/proxy", self.origin)
+        match &self.prefix_segments {
+            None => write!(f, "{}/proxy", self.origin),
+            Some(segments) => {
+                if segments.is_empty() {
+                    write!(f, "{}/proxy", self.origin)
+                } else {
+                    write!(f, "{}/{}/proxy", self.origin, segments.join("/"))
+                }
+            }
+        }
     }
 }
 
 impl ProxyUri {
     pub fn new(origin: Origin) -> Self {
-        Self { origin }
+        Self {
+            origin,
+            prefix_segments: None,
+        }
+    }
+
+    /// Returns the HTTP URL for connecting to this proxy endpoint.
+    /// This includes the path prefix if present.
+    pub fn endpoint_url(&self) -> String {
+        match &self.prefix_segments {
+            None => self.origin.as_url(),
+            Some(segments) => {
+                if segments.is_empty() {
+                    self.origin.as_url()
+                } else {
+                    format!("{}/{}", self.origin.as_url(), segments.join("/"))
+                }
+            }
+        }
     }
 }
 
