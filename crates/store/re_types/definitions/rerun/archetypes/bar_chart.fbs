@@ -22,4 +22,7 @@ table BarChart (
 
   /// The color of the bar chart
   color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+  indexes: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3000);
 }
