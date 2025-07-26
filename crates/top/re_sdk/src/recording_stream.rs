@@ -969,7 +969,7 @@ impl RecordingStreamInner {
 
         {
             re_log::debug!(
-                store_id = %store_info.store_id,
+                store_id = ?store_info.store_id,
                 "Setting StoreInfo",
             );
             sink.send(
@@ -1538,7 +1538,7 @@ fn forwarding_thread(
                 // Send the recording info to the new sink. This is idempotent.
                 {
                     re_log::debug!(
-                        store_id = %store_info.store_id,
+                        store_id = ?store_info.store_id,
                         "Setting StoreInfo",
                     );
                     new_sink.send(
@@ -2266,7 +2266,7 @@ impl RecordingStream {
                 self.record_msg(activation_cmd.into());
             } else {
                 re_log::warn!(
-                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    "Blueprint ID mismatch when sending blueprint: {:?} != {:?}. Ignoring activation.",
                     blueprint_id,
                     activation_cmd.blueprint_id
                 );

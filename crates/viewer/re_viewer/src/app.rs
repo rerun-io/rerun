@@ -721,11 +721,11 @@ impl App {
             }
 
             SystemCommand::SetActiveTime {
-                store_id: rec_id,
+                store_id,
                 timeline,
                 time,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
                     let mut time_ctrl = rec_cfg.time_ctrl.write();
 
                     time_ctrl.set_timeline(timeline);
@@ -737,24 +737,24 @@ impl App {
                     time_ctrl.pause();
                 } else {
                     re_log::debug!(
-                        "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
+                        "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
                     );
                 }
             }
 
             SystemCommand::SetLoopSelection {
-                store_id: rec_id,
+                store_id,
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
                 } else {
                     re_log::debug!(
-                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{rec_id}'"
+                        "SystemCommand::SetLoopSelection ignored: unknown store ID '{store_id:?}'"
                     );
                 }
             }
@@ -1224,7 +1224,7 @@ impl App {
                 ) {
                 rec_name.to_string()
             } else {
-                store.store_id().to_string()
+                format!("{}-{}", store.application_id(), store.recording_id())
             }
             .pipe(|name| santitize_file_name(&name))
             .pipe(|stem| format!("{stem}.rrd"));
@@ -1644,7 +1644,7 @@ impl App {
             if store_hub.is_active_blueprint(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
                 re_log::warn_once!(
-                    "Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
+                    "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
                 );
             }
 
@@ -1695,7 +1695,7 @@ impl App {
                         // updates the app-id when changing the recording.
                         match store_id.kind() {
                             StoreKind::Recording => {
-                                re_log::trace!("Opening a new recording: '{store_id}'");
+                                re_log::trace!("Opening a new recording: '{store_id:?}'");
                                 store_hub.set_active_recording_id(store_id.clone());
 
                                 // Also select the new recording:
@@ -1727,7 +1727,7 @@ impl App {
                 LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
                     StoreKind::Recording => {
                         re_log::debug!(
-                            "Unexpected `BlueprintActivationCommand` message for {store_id}"
+                            "Unexpected `BlueprintActivationCommand` message for {store_id:?}"
                         );
                     }
                     StoreKind::Blueprint => {
@@ -1901,12 +1901,12 @@ impl App {
     pub fn recording_config_mut(
         &mut self,
         store_hub: &StoreHub,
-        rec_id: &StoreId,
+        store_id: &StoreId,
     ) -> Option<&mut RecordingConfig> {
-        if let Some(entity_db) = store_hub.store_bundle().get(rec_id) {
+        if let Some(entity_db) = store_hub.store_bundle().get(store_id) {
             Some(self.state.recording_config_mut(entity_db))
         } else {
-            re_log::debug!("Failed to find recording '{rec_id}' in store hub");
+            re_log::debug!("Failed to find recording '{store_id:?}' in store hub");
             None
         }
     }
