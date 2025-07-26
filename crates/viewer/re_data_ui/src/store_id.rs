@@ -6,9 +6,15 @@ impl crate::DataUi for re_log_types::StoreId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
+        query: &re_chunk_store::LatestAtQuery,
+        db: &re_entity_db::EntityDb,
     ) {
-        crate::item_ui::store_id_button_ui(ctx, ui, self, ui_layout);
+        if let Some(entity_db) = ctx.storage_context.bundle.get(self) {
+            entity_db.data_ui(ctx, ui, ui_layout, query, db);
+        } else {
+            ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
+                ui.label(format!("{self:?}"));
+            });
+        }
     }
 }
