@@ -642,7 +642,11 @@ where
             }
 
             // TODO: report nicer errors
-            Command::Auth(cmd) => cmd.run().map_err(Into::into),
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
+            }
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]

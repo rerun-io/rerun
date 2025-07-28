@@ -1,13 +1,8 @@
-use std::{
-    collections::HashMap,
-    io::Cursor,
-    sync::mpsc,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, time::Duration};
 
 use base64::prelude::*;
 
-use crate::{Jwt, TokenError, workos};
+use crate::workos::{self, AuthContext, Credentials};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -20,20 +15,14 @@ pub enum Error {
     #[error("failed to open browser: {0}")]
     WebBrowser(std::io::Error),
 
-    #[error("failed to fetch JWKS: {0}")]
-    JwksFetch(String),
+    #[error("failed to load context: {0}")]
+    Context(#[from] workos::ContextLoadError),
 
-    #[error("request timed out while fetching JWKS")]
-    JwksFetchTimeout,
+    #[error("failed to verify credentials: {0}")]
+    Credentials(#[from] workos::CredentialsError),
 
-    #[error("failed to decode JWKS: {0}")]
-    JwksDecode(workos::JwksDecodeError),
-
-    #[error("{0}")]
-    InvalidJwt(TokenError),
-
-    #[error("failed to verify token: {0}")]
-    Verify(#[from] workos::VerifyError),
+    #[error("failed to store credentials: {0}")]
+    Store(#[from] workos::CredentialsStoreError),
 
     #[error("{0}")]
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
@@ -59,39 +48,42 @@ impl<R: std::io::Read> ResponseCorsExt<R> for tiny_http::Response<R> {
     }
 }
 
-fn fetch_jwks() -> mpsc::Receiver<Result<workos::Jwks, Error>> {
-    let (tx, rx) = mpsc::channel();
-
-    ehttp::fetch(
-        ehttp::Request::get(workos::jwks_url()),
-        move |res| match res {
-            Ok(res) => {
-                let res: workos::JwksResponse = match serde_json::from_slice(&res.bytes) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        tx.send(Err(Error::JwksFetch(err.to_string()))).ok();
-                        return;
-                    }
-                };
-                let jwks = match res.decode() {
-                    Ok(v) => v,
-                    Err(err) => {
-                        tx.send(Err(Error::JwksDecode(err))).ok();
-                        return;
-                    }
-                };
-                tx.send(Ok(jwks)).ok();
-            }
-            Err(err) => {
-                tx.send(Err(Error::JwksFetch(err))).ok();
-            }
-        },
-    );
-
-    rx
+pub struct LoginOptions<'a> {
+    pub login_page_url: &'a str,
+    pub open_browser: bool,
+    pub force_login: bool,
 }
 
-pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
+/// Login to Rerun using Authorization Code flow.
+///
+/// This first checks if valid credentials already exist locally,
+/// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
+pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(), Error> {
+    if !options.force_login {
+        if let Ok(Some(mut credentials)) = workos::Credentials::load() {
+            // Try to do a refresh to validate the token
+            match credentials.refresh(context).await {
+                Ok(_) => {
+                    println!(
+                        "You're already logged in as {}, and your credentials are valid.",
+                        credentials.user().email
+                    );
+                    println!("Use `rerun auth login --force` if you'd like to login again anyway.");
+                    println!("Note: We've refreshed your credentials.");
+                    credentials.store()?;
+                    return Ok(());
+                }
+                Err(err) => {
+                    println!(
+                        "Note: Credentials were already present on the machine, but validating them failed:\n    {err}"
+                    );
+                    println!("This is normal if you haven't used your credentials in some time.");
+                    // continue
+                }
+            }
+        }
+    }
+
     let p = indicatif::ProgressBar::new_spinner();
 
     // Login process:
@@ -103,12 +95,16 @@ pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
     // 2. Open authorization URL in browser
     let callback_url = format!("http://{}/callback", server.server_addr());
     let login_url = format!(
-        // TODO: don't hardcode this
-        "{login_page_url}?r={}",
-        BASE64_URL_SAFE_NO_PAD.encode(callback_url.as_bytes()),
+        "{login_page_url}?r={r}",
+        login_page_url = options.login_page_url,
+        r = BASE64_URL_SAFE_NO_PAD.encode(callback_url.as_bytes()),
     );
 
-    if open_browser {
+    // Once the user opens the link, they are redirected to the login UI.
+    // If they were already logged in, it will immediately redirect them
+    // to the login callback with an authorization code.
+    // That code is then sent by our callback page back to the web server here.
+    if options.open_browser {
         p.println("Opening login page in your browser.");
         p.println("Once you've logged in, the process will continue here.");
         webbrowser::open(&login_url).map_err(Error::WebBrowser)?;
@@ -118,10 +114,7 @@ pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
     }
     p.inc(1);
 
-    // 3. Wait for callback, then verify and store tokens
-    // While we wait, we can start fetching JWKS in the meantime.
-    let rx = fetch_jwks();
-
+    // 3. Wait for callback
     p.set_message("Waiting for browser...");
     let auth = loop {
         p.inc(1);
@@ -187,10 +180,11 @@ pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
 
         let raw_response = match BASE64_STANDARD.decode(serialized_response.as_ref()) {
             Ok(v) => v,
-            Err(e) => {
-                p.println(format!("{e}"));
+            Err(err) => {
+                let err = format!("failed to deserialize response: {err}");
+                p.println(&err);
                 req.respond(
-                    tiny_http::Response::from_string("failed to deserialize response")
+                    tiny_http::Response::from_string(err)
                         .with_status_code(400)
                         .cors(),
                 )
@@ -200,9 +194,11 @@ pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
         };
         let response: AuthenticationResponse = match serde_json::from_slice(&raw_response) {
             Ok(v) => v,
-            Err(_) => {
+            Err(err) => {
+                let err = format!("failed to deserialize response: {err}");
+                p.println(&err);
                 req.respond(
-                    tiny_http::Response::from_string("failed to deserialize response")
+                    tiny_http::Response::from_string(err)
                         .with_status_code(400)
                         .cors(),
                 )
@@ -216,47 +212,22 @@ pub fn login(login_page_url: &str, open_browser: bool) -> Result<(), Error> {
         break response;
     };
 
+    // 4. Verify credentials
     p.set_message("Verifying login...");
-    let start = Instant::now();
-    let timeout = Duration::from_secs(10);
-    let jwks = loop {
-        p.inc(1);
-        if start.elapsed() >= timeout {
-            return Err(Error::JwksFetchTimeout);
-        }
+    let credentials = Credentials::verify_auth_response(context, auth.into())?;
 
-        match rx.try_recv() {
-            Ok(v) => break v?,
-            Err(mpsc::TryRecvError::Empty) => {
-                std::thread::sleep(Duration::from_millis(10));
-                continue;
-            }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                // this shouldn't really happen
-                unreachable!("JWKS fetch thread disconnected early");
-            }
-        }
-    };
-
-    let jwt = match Jwt::try_from(auth.access_token.clone()) {
-        Ok(jwt) => jwt,
-        Err(err) => {
-            return Err(Error::InvalidJwt(err));
-        }
-    };
-
-    match workos::verify_token(jwt, &jwks)? {
-        workos::Status::NeedsRefresh => {
-            // TODO: can this actually happen?
-            unreachable!("Token needs to be refreshed immediately after generation");
-        }
-        workos::Status::Valid => {} // OK!
-    };
-
-    // TODO: store tokens and exit
-    p.println(format!("{auth:?}"));
+    // 5. Store the refresh token
+    // The access token lives only in memory, because it's short-lived.
+    // Refresh tokens last between a few hours to a few days, so that's what we store on the user's machine.
+    credentials.store()?;
 
     p.finish_and_clear();
+
+    println!(
+        "Success! You are now logged in as {}",
+        credentials.user().email
+    );
+    println!("Rerun will automatically use the credentials stored on your machine.");
 
     Ok(())
 }
@@ -274,6 +245,17 @@ struct AuthenticationResponse {
     oauth_tokens: Option<OauthTokens>,
 }
 
+impl From<AuthenticationResponse> for workos::api::AuthenticationResponse {
+    fn from(value: AuthenticationResponse) -> Self {
+        Self {
+            user: value.user.into(),
+            organization_id: value.organization_id,
+            access_token: value.access_token,
+            refresh_token: value.refresh_token,
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct User {
@@ -288,6 +270,16 @@ struct User {
     updated_at: String,
     external_id: Option<String>,
     metadata: HashMap<String, String>,
+}
+
+impl From<User> for workos::User {
+    fn from(value: User) -> Self {
+        Self {
+            id: value.id,
+            email: value.email,
+            metadata: value.metadata,
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
