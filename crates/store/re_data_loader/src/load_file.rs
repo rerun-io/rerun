@@ -23,6 +23,8 @@ pub fn load_from_path(
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
     tx: &Sender<LogMsg>,
 ) -> Result<(), DataLoaderError> {
+    use re_log_types::ApplicationId;
+
     re_tracing::profile_function!(path.to_string_lossy());
 
     if !path.exists() {
@@ -33,7 +35,7 @@ pub fn load_from_path(
         .into());
     }
 
-    re_log::info!("Loading {path:?}…");
+    re_log::info!("Loading {path:?}...");
 
     // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
     // loader handles this automatically.
@@ -43,7 +45,10 @@ pub fn load_from_path(
             ..settings.clone()
         }
     } else {
-        settings
+        &crate::DataLoaderSettings {
+            application_id: Some(ApplicationId::from(path.display().to_string())),
+            ..settings.clone()
+        }
     };
 
     let rx = load(settings, path, None)?;
