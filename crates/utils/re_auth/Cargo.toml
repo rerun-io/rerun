@@ -15,10 +15,10 @@ version.workspace = true
 workspace = true
 
 [features]
-# TODO: remove
-default = ["cli"]
 cli = [
   "dep:base64",
+  "dep:directories",
+  "dep:const_format",
   "dep:ehttp",
   "dep:indicatif",
   "dep:serde",
@@ -26,6 +26,22 @@ cli = [
   "dep:tiny_http",
   "dep:url",
   "dep:webbrowser",
+
+  "workos",
+]
+
+# TODO: figure out which dependencies belong under which feature
+workos = [
+  "dep:base64",
+  "dep:directories",
+  "dep:const_format",
+  "dep:ehttp",
+  "dep:indicatif",
+  "dep:serde",
+  "dep:serde_json",
+  "dep:tiny_http",
+  "dep:url",
+  "dep:webbrowser",  
 ]
 
 [dependencies]
@@ -36,7 +52,10 @@ thiserror.workspace = true
 tonic.workspace = true
 
 base64 = { workspace = true, optional = true }
-ehttp = { workspace = true, optional = true }
+const_format = { workspace = true, optional = true }
+directories = { workspace = true, optional = true }
+# TODO: should not use `native-async` on wasm32
+ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
