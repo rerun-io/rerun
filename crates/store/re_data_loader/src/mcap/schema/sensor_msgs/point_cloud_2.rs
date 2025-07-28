@@ -1,9 +1,10 @@
 use std::io::Cursor;
 
+use super::super::fixed_size_list_builder;
 use arrow::{
     array::{
-        ArrayBuilder, BooleanBuilder, FixedSizeListBuilder, ListBuilder, StringBuilder,
-        StructBuilder, UInt8Builder, UInt32Builder,
+        BooleanBuilder, FixedSizeListBuilder, ListBuilder, StringBuilder, StructBuilder,
+        UInt8Builder, UInt32Builder,
     },
     datatypes::{DataType, Field, Fields},
 };
@@ -47,13 +48,6 @@ impl SchemaPlugin for PointCloud2SchemaPlugin {
     }
 }
 
-fn fixed_size_list_builder<T: ArrayBuilder + Default>(
-    value_length: i32,
-    capacity: usize,
-) -> FixedSizeListBuilder<T> {
-    FixedSizeListBuilder::with_capacity(Default::default(), value_length, capacity)
-}
-
 pub struct PointCloud2MessageParser {
     num_rows: usize,
 
@@ -66,6 +60,7 @@ pub struct PointCloud2MessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
 
     // We lazily create this, only if we can interpret the point cloud semantically.
+    // For now, this is the case if there are fields with names `x`,`y`, and `z` present.
     points_3ds: Option<Vec<archetypes::Points3D>>,
 }
 
