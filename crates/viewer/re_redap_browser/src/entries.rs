@@ -524,37 +524,35 @@ fn fetch_entry_details(
     origin: &re_uri::Origin,
     entry: EntryDetails,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
+    // We could also box the future but then we'd need to use `.boxed()` natively and
+    // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
+    use itertools::Either::{Left, Right};
     #[expect(clippy::match_same_arms)]
     match &entry.kind {
         // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
         // some reason, this failure is silent but blocks other tables from being registered.
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
-        EntryKind::Dataset => Some(
+        EntryKind::Dataset => Some(Left(Left(
             fetch_dataset_details(client, entry.id, origin)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
-                .map(move |res| (entry, res))
-                .boxed(),
-        ),
-        EntryKind::Table => Some(
+                .map(move |res| (entry, res)),
+        ))),
+        EntryKind::Table => Some(Left(Right(
             fetch_table_details(client, entry.id, origin)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
-                .map(move |res| (entry, res))
-                .boxed(),
-        ),
+                .map(move |res| (entry, res)),
+        ))),
 
         // TODO(ab): these do not exist yet
         EntryKind::DatasetView | EntryKind::TableView => None,
 
         EntryKind::Unspecified => {
             let kind = entry.kind;
-            Some(
-                future::ready((
-                    entry,
-                    Err(TypeConversionError::from(prost::UnknownEnumValue(kind as i32)).into()),
-                ))
-                .boxed(),
-            )
+            Some(Right(future::ready((
+                entry,
+                Err(TypeConversionError::from(prost::UnknownEnumValue(kind as i32)).into()),
+            ))))
         }
     }
 }
