@@ -1,4 +1,6 @@
-//! HTTP Client for Rerun's auth API
+//! HTTP Client for Rerun's Auth API.
+//!
+//! Rerun Auth API wraps WorkOS.
 
 use super::*;
 
