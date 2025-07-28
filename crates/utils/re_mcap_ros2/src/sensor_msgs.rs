@@ -108,3 +108,64 @@ pub struct Imu {
     pub linear_acceleration: geometry_msgs::Vector3,
     pub linear_acceleration_covariance: [f64; 9],
 }
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum PointFieldDatatype {
+    /// Does not exist in original spec.
+    Unknown = 0,
+    Int8 = 1,
+    UInt8 = 2,
+    Int16 = 3,
+    UInt16 = 4,
+    Int32 = 5,
+    UInt32 = 6,
+    Float32 = 7,
+    Float64 = 8,
+}
+
+/// This message holds the description of one point entry in the
+/// [`PointCloud2`] message format.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PointField {
+    /// Common [`PointField`] names are x, y, z, intensity, rgb, rgba
+    pub name: String,
+    pub offset: u32,
+    pub datatype: PointFieldDatatype,
+    pub count: u32,
+}
+
+/// This message holds a collection of N-dimensional points.
+///
+/// It may contain additional information such as normals, intensity, etc. The
+/// point data is stored as a binary blob, its layout described by the
+/// contents of the "fields" array.
+///
+/// The point cloud data may be organized 2D (image-like) or 1D (unordered).
+/// Point clouds organized as 2D images may be produced by camera depth sensors
+/// such as stereo or time-of-flight.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PointCloud2 {
+    /// Time of sensor data acquisition, and the coordinate frame ID (for 3D points).
+    pub header: Header,
+
+    /// 2D structure of the point cloud. If the cloud is unordered, height is
+    /// 1 and width is the length of the point cloud.
+    pub height: u32,
+    pub width: u32,
+
+    /// Describes the channels and their layout in the binary data blob.
+    pub fields: Vec<PointField>,
+
+    /// Is this data bigendian?
+    pub is_bigendian: bool,
+
+    /// Length of a point in bytes
+    pub point_step: u32,
+
+    /// Length of a row in bytes
+    pub row_step: u32,
+
+    /// Actual point data, size is (`row_step`*`height`)
+    pub data: Vec<u8>,
+}
