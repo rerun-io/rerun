@@ -67,7 +67,7 @@ be written as:
 ```python
 rrb.Spatial3DView(
     contents=[
-        "+ helix/**,
+        "+ helix/**",
         "- helix/structure/scaffolding",
     ],
 ),
@@ -84,7 +84,7 @@ For example, the above query could be rewritten as:
 rrb.Spatial3DView(
     origin="helix",
     contents=[
-        "+ $origin/**,
+        "+ $origin/**",
         "- $origin/structure/scaffolding",
     ],
 ),
