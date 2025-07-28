@@ -119,12 +119,24 @@ impl std::fmt::Display for StoreKind {
 /// dataset entry id, and the recording id is the partition id. The former is a UUID, and the latter
 /// is, by definition, unique within the dataset entry. As a result, the uniqueness of the `StoreId`
 /// is always guaranteed in this case.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreId {
     kind: StoreKind,
-    recording_id: RecordingId,
     application_id: ApplicationId,
+    recording_id: RecordingId,
+}
+
+/// More compact debug representation of a [`StoreId`].
+impl std::fmt::Debug for StoreId {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("StoreId")
+            .field(&self.kind)
+            .field(&self.application_id.as_str())
+            .field(&self.recording_id.as_str())
+            .finish()
+    }
 }
 
 impl StoreId {
@@ -231,17 +243,6 @@ impl StoreId {
     #[inline]
     pub fn application_id(&self) -> &ApplicationId {
         &self.application_id
-    }
-}
-
-//TODO(#10746): this is outdated and should be removed
-impl std::fmt::Display for StoreId {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // `StoreKind` is not part of how we display the id,
-        // because that can easily lead to confusion and bugs
-        // when roundtripping to a string (e.g. via Python SDK).
-        self.recording_id.fmt(f)
     }
 }
 

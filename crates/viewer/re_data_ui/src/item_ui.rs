@@ -664,7 +664,9 @@ pub fn store_id_button_ui(
     if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
         entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
-        ui_layout.label(ui, store_id.to_string());
+        ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
+            ui.label(format!("{store_id:?}"));
+        });
     }
 }
 

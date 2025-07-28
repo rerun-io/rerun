@@ -384,7 +384,7 @@ impl WebHandle {
         let hub = app.store_hub.as_ref()?;
         let recording = hub.active_recording()?;
 
-        Some(recording.store_id().to_string())
+        Some(recording.store_id().recording_id().to_string())
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -454,7 +454,7 @@ impl WebHandle {
         let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
             return;
         };
 
@@ -501,7 +501,7 @@ impl WebHandle {
         };
         let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
+            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
             return;
         };
 

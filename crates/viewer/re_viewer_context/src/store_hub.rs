@@ -540,7 +540,7 @@ impl StoreHub {
         match store_id.kind() {
             StoreKind::Recording => self.set_active_recording_id(store_id),
             StoreKind::Blueprint => {
-                re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
+                re_log::debug!("Tried to activate the blueprint {store_id:?} as a recording.");
             }
         }
     }
@@ -573,7 +573,7 @@ impl StoreHub {
         }
 
         re_log::trace!(
-            "Switching default blueprint for '{}' to '{}'",
+            "Switching default blueprint for '{:?}' to '{:?}'",
             blueprint_id.application_id(),
             blueprint_id
         );
@@ -619,7 +619,7 @@ impl StoreHub {
         let new_id = StoreId::random(StoreKind::Blueprint, app_id.clone());
 
         re_log::trace!(
-            "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}'"
+            "Cloning '{blueprint_id:?}' as '{new_id:?}' the active blueprint for '{app_id}'"
         );
 
         let blueprint = self
@@ -654,7 +654,7 @@ impl StoreHub {
     pub fn clear_active_blueprint(&mut self) {
         if let Some(app_id) = &self.active_application_id {
             if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
-                re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
+                re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id:?}");
                 self.remove_store(&blueprint_id);
             }
         }
@@ -861,7 +861,7 @@ impl StoreHub {
             }
 
             let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
-                re_log::debug!("Failed to find blueprint {blueprint_id}.");
+                re_log::debug!("Failed to find blueprint {blueprint_id:?}.");
                 continue;
             };
             if self.blueprint_last_save.get(blueprint_id) == Some(&blueprint.generation()) {
@@ -905,7 +905,7 @@ impl StoreHub {
                 // We found the blueprint we were looking for; make it active.
                 // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                 re_log::debug!(
-                    "Activating new blueprint {} for {app_id}; loaded from disk",
+                    "Activating new blueprint {:?} for {app_id}; loaded from disk",
                     store.store_id(),
                 );
                 self.active_blueprint_by_app_id
