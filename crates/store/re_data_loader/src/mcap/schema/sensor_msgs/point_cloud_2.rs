@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use crate::mcap::{
     cdr,
     decode::{McapMessageParser, ParserContext, PluginError, SchemaPlugin},
+    schema::blob_list_builder,
 };
 
 /// Plugin that parses `sensor_msgs/msg/PointCloud2` messages.
@@ -73,7 +74,7 @@ impl PointCloud2MessageParser {
                 Fields::from(vec![
                     Field::new("name", DataType::Utf8, false),
                     Field::new("offset", DataType::UInt32, false),
-                    Field::new("dataype", DataType::UInt8, false),
+                    Field::new("datatype", DataType::UInt8, false),
                     Field::new("count", DataType::UInt32, false),
                 ]),
                 vec![
@@ -96,7 +97,7 @@ impl PointCloud2MessageParser {
             is_bigendian: fixed_size_list_builder(1, num_rows),
             point_step: fixed_size_list_builder(1, num_rows),
             row_step: fixed_size_list_builder(1, num_rows),
-            data: fixed_size_list_builder(1, num_rows),
+            data: blob_list_builder(num_rows),
 
             points_3ds: None,
         }
