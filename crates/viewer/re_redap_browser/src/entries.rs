@@ -33,6 +33,8 @@ use re_viewer_context::{
 
 use crate::context::Context;
 
+pub type EntryResult<T> = Result<T, EntryError>;
+
 #[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
@@ -140,22 +142,19 @@ impl Table {
     }
 }
 
-pub enum EntryRef<'a> {
-    Dataset(&'a Result<Dataset, EntryError>),
-    Table(&'a Result<Table, EntryError>),
-}
-
-pub enum Entry {
+pub enum EntryInner {
     Dataset(Dataset),
     Table(Table),
 }
 
+pub struct Entry {
+    details: EntryDetails,
+    inner: EntryResult<EntryInner>,
+}
+
 impl Entry {
     pub fn details(&self) -> &EntryDetails {
-        match self {
-            Self::Dataset(dataset) => &dataset.dataset_entry.details,
-            Self::Table(table) => &table.table_entry.details,
-        }
+        &self.details
     }
 
     pub fn id(&self) -> EntryId {
@@ -171,7 +170,7 @@ impl Entry {
 // TODO(ab): we currently load the ENTIRE list of datasets. We will need to be more granular
 // about this in the future.
 pub struct Entries {
-    entries: RequestedObject<Result<HashMap<EntryId, Result<Entry, EntryError>>, EntryError>>,
+    entries: RequestedObject<EntryResult<HashMap<EntryId, Entry>>>,
 }
 
 impl Entries {
@@ -194,7 +193,7 @@ impl Entries {
         self.entries.on_frame_start();
     }
 
-    pub fn find_entry(&self, entry_id: EntryId) -> Option<Result<&Entry, &EntryError>> {
+    pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries
             .try_as_ref()?
             .as_ref()
@@ -203,7 +202,7 @@ impl Entries {
             .map(|r| r.as_ref())
     }
 
-    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Result<Entry, EntryError>>, &EntryError>> {
+    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &EntryError>> {
         self.entries
             .try_as_ref()
             .map_or(Poll::Pending, |r| match r {
@@ -468,7 +467,7 @@ async fn fetch_entries_and_register_tables(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
     session_ctx: Arc<SessionContext>,
-) -> Result<HashMap<EntryId, Result<Entry, EntryError>>, EntryError> {
+) -> EntryResult<HashMap<EntryId, Entry>> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
@@ -524,7 +523,7 @@ fn fetch_entry_details(
     mut client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
-) -> Option<impl Future<Output = (EntryId, Result<(Entry, Arc<dyn TableProvider>), EntryError>)>> {
+) -> Option<impl Future<Output = (EntryId, EntryResult<(Entry, Arc<dyn TableProvider>)>)>> {
     let id = entry.id;
     #[expect(clippy::match_same_arms)]
     match entry.kind {
@@ -562,7 +561,7 @@ async fn fetch_dataset_details(
     mut client: ConnectionClient,
     entry: EntryDetails,
     origin: &re_uri::Origin,
-) -> Result<(Dataset, Arc<dyn TableProvider>), EntryError> {
+) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let result = client
         .read_dataset_entry(entry.id)
         .await
@@ -582,7 +581,7 @@ async fn fetch_table_details(
     mut client: ConnectionClient,
     entry: EntryDetails,
     origin: &re_uri::Origin,
-) -> Result<(Table, Arc<dyn TableProvider>), EntryError> {
+) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client
         .read_table_entry(entry.id)
         .await

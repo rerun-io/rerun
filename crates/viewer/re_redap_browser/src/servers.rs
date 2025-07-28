@@ -21,7 +21,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, Entry, EntryError, EntryRef, Table};
+use crate::entries::{Dataset, Entries, Entry, EntryError, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 
 struct Server {
