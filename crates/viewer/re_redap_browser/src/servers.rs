@@ -21,7 +21,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, Entry, EntryError, Table};
+use crate::entries::{Dataset, Entries, Entry, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 
 struct Server {
@@ -78,7 +78,7 @@ impl Server {
         self.entries.on_frame_start();
     }
 
-    fn find_entry(&self, entry_id: EntryId) -> Option<Result<&Entry, &EntryError>> {
+    fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries.find_entry(entry_id)
     }
 
@@ -558,22 +558,23 @@ impl RedapServers {
     ) {
         for server in self.servers.values() {
             match server.find_entry(active_entry) {
-                Some(Ok(Entry::Dataset(dataset))) => {
-                    server.dataset_entry_ui(viewer_ctx, ui, dataset);
-                }
-                Some(Ok(Entry::Table(table))) => {
-                    server.table_entry_ui(viewer_ctx, ui, table);
-                }
-                Some(Err(err)) => {
-                    Frame::new().inner_margin(16.0).show(ui, |ui| {
-                        Alert::error().show_text(
-                            ui,
-                            format!("Error loading entry {}", active_entry),
-                            Some(err.to_string()),
-                        );
-                    });
-                }
-
+                Some(entry) => match entry.inner() {
+                    Ok(crate::entries::EntryInner::Dataset(dataset)) => {
+                        server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                    }
+                    Ok(crate::entries::EntryInner::Table(table)) => {
+                        server.table_entry_ui(viewer_ctx, ui, table);
+                    }
+                    Err(err) => {
+                        Frame::new().inner_margin(16.0).show(ui, |ui| {
+                            Alert::error().show_text(
+                                ui,
+                                format!("Error loading entry {}", entry.name()),
+                                Some(err.to_string()),
+                            );
+                        });
+                    }
+                },
                 None => {}
             }
         }

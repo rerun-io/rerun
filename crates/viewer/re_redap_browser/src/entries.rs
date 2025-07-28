@@ -1,5 +1,4 @@
 use std::future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 
@@ -7,8 +6,9 @@ use ahash::HashMap;
 use datafusion::catalog::TableProvider;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
+use egui::RichText;
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _, TryStreamExt as _};
+use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use itertools::Itertools as _;
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
@@ -25,7 +25,8 @@ use re_protos::external::prost::Name as _;
 use re_sorbet::SorbetError;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
-use re_ui::{UiExt as _, UiLayout, icons, list_item};
+use re_ui::list_item::LabelContent;
+use re_ui::{Icon, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, RecordingOrTable, SystemCommand,
     SystemCommandSender as _, ViewerContext, external::re_entity_db::EntityDb,
@@ -164,6 +165,20 @@ impl Entry {
     pub fn name(&self) -> &str {
         &self.details().name
     }
+
+    pub fn icon(&self) -> Icon {
+        match &self.details.kind {
+            EntryKind::Dataset | EntryKind::DatasetView | EntryKind::BlueprintDataset => {
+                icons::DATASET
+            }
+            EntryKind::Table | EntryKind::TableView => icons::TABLE,
+            EntryKind::Unspecified => icons::VIEW_UNKNOWN,
+        }
+    }
+
+    pub fn inner(&self) -> &EntryResult<EntryInner> {
+        &self.inner
+    }
 }
 
 /// All the entries of a server.
@@ -194,12 +209,7 @@ impl Entries {
     }
 
     pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
-        self.entries
-            .try_as_ref()?
-            .as_ref()
-            .ok()?
-            .get(&entry_id)
-            .map(|r| r.as_ref())
+        self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
     pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &EntryError>> {
@@ -219,76 +229,49 @@ impl Entries {
         ui: &mut egui::Ui,
         mut recordings: Option<re_entity_db::DatasetRecordings<'_>>,
     ) {
-        let mut loading_things = smallvec::SmallVec::<[_; 2]>::new();
-        let mut failed_things = smallvec::SmallVec::<[_; 2]>::new();
-        let mut errors = smallvec::SmallVec::<[_; 2]>::new();
-
         match self.entries.try_as_ref() {
             None => {
-                loading_things.push("entries");
+                // TODO(#10568): these loading and error status should be displayed as a spinner/icon on the
+                // parent item instead (server), but that requires improving the `list_item` API.
+                ui.list_item_flat_noninteractive(
+                    list_item::LabelContent::new(format!("Loading entries…")).italics(true),
+                );
             }
 
             Some(Err(err)) => {
-                failed_things.push("entries");
-                errors.push(err.to_string());
+                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                    egui::RichText::new("Failed to load entries")
+                        .color(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(err.to_string());
             }
 
             Some(Ok(entries)) => {
-                for entry in entries
-                    .values()
-                    .sorted_by_key(|entry| entry.as_ref().map(|e| e.name()).ok())
-                {
-                    match entry {
-                        Ok(entry) => match entry {
-                            Entry::Dataset(dataset) => {
-                                let recordings = recordings
-                                    .as_mut()
-                                    .and_then(|r| r.remove(&dataset.id()))
-                                    .unwrap_or_default();
+                for entry in entries.values().sorted_by_key(|entry| entry.name()) {
+                    match entry.inner() {
+                        Ok(EntryInner::Dataset(dataset)) => {
+                            let recordings = recordings
+                                .as_mut()
+                                .and_then(|r| r.remove(&dataset.id()))
+                                .unwrap_or_default();
 
-                                dataset_and_its_recordings_ui(
-                                    ui,
-                                    viewer_context,
-                                    &DatasetKind::Remote {
-                                        origin: dataset.origin.clone(),
-                                        entry_id: dataset.id(),
-                                        name: dataset.name().to_owned(),
-                                    },
-                                    recordings,
-                                );
-                            }
-                            Entry::Table(table) => table_ui(ui, viewer_context, table),
-                        },
-                        Err(err) => {
-                            failed_things.push("entry");
-                            errors.push(err.to_string());
+                            dataset_list_item_and_its_recordings_ui(
+                                ui,
+                                viewer_context,
+                                &DatasetKind::Remote {
+                                    origin: dataset.origin.clone(),
+                                    entry_id: dataset.id(),
+                                    name: dataset.name().to_owned(),
+                                },
+                                recordings,
+                            );
+                        }
+                        Ok(EntryInner::Table(_)) | Err(_) => {
+                            entry_list_item_ui(ui, viewer_context, entry)
                         }
                     }
                 }
             }
-        }
-
-        // TODO(#10568): these loading and error status should be displayed as a spinner/icon on the
-        // parent item instead (server), but that requires improving the `list_item` API.
-        if !loading_things.is_empty() {
-            ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new(format!("Loading {}…", loading_things.join(" and ")))
-                    .italics(true),
-            );
-        }
-
-        // TODO: Update error handling
-
-        if !failed_things.is_empty() {
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new(format!("Failed to load {}", failed_things.join(" and ")))
-                    .color(ui.visuals().error_fg_color),
-            ))
-            .on_hover_ui(|ui| {
-                for error in errors.into_iter().unique() {
-                    ui.label(error);
-                }
-            });
         }
     }
 }
@@ -371,7 +354,7 @@ impl DatasetKind {
     }
 }
 
-pub fn dataset_and_its_recordings_ui(
+pub fn dataset_list_item_and_its_recordings_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     kind: &DatasetKind,
@@ -442,14 +425,19 @@ pub fn dataset_and_its_recordings_ui(
     }
 }
 
-pub fn table_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, table: &Table) {
-    let item = Item::RedapEntry(table.id());
+pub fn entry_list_item_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, entry: &Entry) {
+    let item = Item::RedapEntry(entry.id());
     let selected = ctx.selection().contains_item(&item);
-    let is_active = ctx.active_redap_entry() == Some(&table.id());
+    let is_active = ctx.active_redap_entry() == Some(&entry.id());
+    let is_error = entry.inner().is_err();
 
+    let mut text = RichText::new(entry.name());
+    if is_error {
+        text = text.color(ui.visuals().error_fg_color);
+    }
     let table_list_item = ui.list_item().selected(selected).active(is_active);
-    let table_list_item_content =
-        re_ui::list_item::LabelContent::new(table.name()).with_icon(&icons::TABLE);
+    let icon = entry.icon();
+    let table_list_item_content = LabelContent::new(text).with_icon(&icon);
 
     let item_response = table_list_item.show_hierarchical(ui, table_list_item_content);
 
@@ -458,8 +446,12 @@ pub fn table_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, table: &Table) {
             .send_system(SystemCommand::SetSelection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                table.id(),
+                entry.id(),
             )));
+    }
+
+    if let Err(err) = entry.inner() {
+        item_response.on_hover_text(err.to_string());
     }
 }
 
@@ -494,24 +486,26 @@ async fn fetch_entries_and_register_tables(
     let mut entries = HashMap::default();
 
     let mut futures_unordered = FuturesUnordered::from_iter(futures_iter);
-    while let Some((id, result)) = futures_unordered.next().await {
-        let result = result.map(|(entry, provider)| {
-            session_ctx.register_table(entry.name(), provider).ok();
-            entry
+    while let Some((id, (details, result))) = futures_unordered.next().await {
+        let inner_result = result.map(|(inner, provider)| {
+            session_ctx.register_table(&details.name, provider).ok();
+            inner
         });
 
-        let is_system_table = match &result {
-            Ok(entry) => match entry {
-                Entry::Dataset(_) => false,
-                Entry::Table(table) => {
-                    table.table_entry.provider_details.type_url
-                        == re_protos::catalog::v1alpha1::SystemTable::type_url()
-                }
-            },
+        let is_system_table = match &inner_result {
+            Ok(EntryInner::Dataset(_)) => false,
+            Ok(EntryInner::Table(table)) => {
+                table.table_entry.provider_details.type_url
+                    == re_protos::catalog::v1alpha1::SystemTable::type_url()
+            }
             Err(_) => false,
         };
         if !is_system_table {
-            entries.insert(id, result);
+            let entry = Entry {
+                details,
+                inner: inner_result,
+            };
+            entries.insert(id, entry);
         }
     }
 
@@ -520,11 +514,22 @@ async fn fetch_entries_and_register_tables(
 
 /// Returns None if the entry should not be presented in the UI.
 fn fetch_entry_details(
-    mut client: ConnectionClient,
+    client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
-) -> Option<impl Future<Output = (EntryId, EntryResult<(Entry, Arc<dyn TableProvider>)>)>> {
+) -> Option<
+    impl Future<
+        Output = (
+            EntryId,
+            (
+                EntryDetails,
+                EntryResult<(EntryInner, Arc<dyn TableProvider>)>,
+            ),
+        ),
+    >,
+> {
     let id = entry.id;
+    let entry_clone = entry.clone();
     #[expect(clippy::match_same_arms)]
     match entry.kind {
         // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
@@ -533,14 +538,14 @@ fn fetch_entry_details(
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(
             fetch_dataset_details(client, entry, origin)
-                .map_ok(|(dataset, table_provider)| (Entry::Dataset(dataset), table_provider))
-                .map(move |res| (id, res))
+                .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
+                .map(move |res| (id, (entry_clone, res)))
                 .boxed(),
         ),
         EntryKind::Table => Some(
             fetch_table_details(client, entry, origin)
-                .map_ok(|(table, table_provider)| (Entry::Table(table), table_provider))
-                .map(move |res| (id, res))
+                .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
+                .map(move |res| (id, (entry_clone, res)))
                 .boxed(),
         ),
 
@@ -550,7 +555,13 @@ fn fetch_entry_details(
         EntryKind::Unspecified => Some(
             future::ready((
                 id,
-                Err(TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32)).into()),
+                (
+                    entry_clone,
+                    Err(
+                        TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32))
+                            .into(),
+                    ),
+                ),
             ))
             .boxed(),
         ),
