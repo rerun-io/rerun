@@ -234,7 +234,7 @@ impl Entries {
                 // TODO(#10568): these loading and error status should be displayed as a spinner/icon on the
                 // parent item instead (server), but that requires improving the `list_item` API.
                 ui.list_item_flat_noninteractive(
-                    list_item::LabelContent::new(format!("Loading entries…")).italics(true),
+                    list_item::LabelContent::new("Loading entries…").italics(true),
                 );
             }
 
@@ -267,7 +267,7 @@ impl Entries {
                             );
                         }
                         Ok(EntryInner::Table(_)) | Err(_) => {
-                            entry_list_item_ui(ui, viewer_context, entry)
+                            entry_list_item_ui(ui, viewer_context, entry);
                         }
                     }
                 }
@@ -485,20 +485,20 @@ async fn fetch_entries_and_register_tables(
 
     let mut entries = HashMap::default();
 
-    let mut futures_unordered = FuturesUnordered::from_iter(futures_iter);
-    while let Some((id, (details, result))) = futures_unordered.next().await {
+    let mut futures_unordered: FuturesUnordered<_> = futures_iter.collect();
+    while let Some((details, result)) = futures_unordered.next().await {
+        let id = details.id;
         let inner_result = result.map(|(inner, provider)| {
             session_ctx.register_table(&details.name, provider).ok();
             inner
         });
 
         let is_system_table = match &inner_result {
-            Ok(EntryInner::Dataset(_)) => false,
             Ok(EntryInner::Table(table)) => {
                 table.table_entry.provider_details.type_url
                     == re_protos::catalog::v1alpha1::SystemTable::type_url()
             }
-            Err(_) => false,
+            Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };
         if !is_system_table {
             let entry = Entry {
@@ -512,76 +512,67 @@ async fn fetch_entries_and_register_tables(
     Ok(entries)
 }
 
+/// Basically a [`Entry`] + `Arc<dyn TableProvider>`.
+type FetchEntryDetailsOutput = (
+    EntryDetails,
+    EntryResult<(EntryInner, Arc<dyn TableProvider>)>,
+);
+
 /// Returns None if the entry should not be presented in the UI.
 fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
-) -> Option<
-    impl Future<
-        Output = (
-            EntryId,
-            (
-                EntryDetails,
-                EntryResult<(EntryInner, Arc<dyn TableProvider>)>,
-            ),
-        ),
-    >,
-> {
-    let id = entry.id;
-    let entry_clone = entry.clone();
+) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     #[expect(clippy::match_same_arms)]
-    match entry.kind {
+    match &entry.kind {
         // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
         // some reason, this failure is silent but blocks other tables from being registered.
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(
-            fetch_dataset_details(client, entry, origin)
+            fetch_dataset_details(client, entry.id, origin)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
-                .map(move |res| (id, (entry_clone, res)))
+                .map(move |res| (entry, res))
                 .boxed(),
         ),
         EntryKind::Table => Some(
-            fetch_table_details(client, entry, origin)
+            fetch_table_details(client, entry.id, origin)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
-                .map(move |res| (id, (entry_clone, res)))
+                .map(move |res| (entry, res))
                 .boxed(),
         ),
 
         // TODO(ab): these do not exist yet
         EntryKind::DatasetView | EntryKind::TableView => None,
 
-        EntryKind::Unspecified => Some(
-            future::ready((
-                id,
-                (
-                    entry_clone,
-                    Err(
-                        TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32))
-                            .into(),
-                    ),
-                ),
-            ))
-            .boxed(),
-        ),
+        EntryKind::Unspecified => {
+            let kind = entry.kind;
+            Some(
+                future::ready((
+                    entry,
+                    Err(TypeConversionError::from(prost::UnknownEnumValue(kind as i32)).into()),
+                ))
+                .boxed(),
+            )
+        }
     }
 }
 
 async fn fetch_dataset_details(
     mut client: ConnectionClient,
-    entry: EntryDetails,
+    id: EntryId,
     origin: &re_uri::Origin,
 ) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
     let result = client
-        .read_dataset_entry(entry.id)
+        .read_dataset_entry(id)
         .await
         .map(|dataset_entry| Dataset {
             dataset_entry,
             origin: origin.clone(),
         })?;
 
-    let table_provider = PartitionTableProvider::new(client, entry.id)
+    let table_provider = PartitionTableProvider::new(client, id)
         .into_provider()
         .await?;
 
@@ -590,18 +581,15 @@ async fn fetch_dataset_details(
 
 async fn fetch_table_details(
     mut client: ConnectionClient,
-    entry: EntryDetails,
+    id: EntryId,
     origin: &re_uri::Origin,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
-    let result = client
-        .read_table_entry(entry.id)
-        .await
-        .map(|table_entry| Table {
-            table_entry,
-            origin: origin.clone(),
-        })?;
+    let result = client.read_table_entry(id).await.map(|table_entry| Table {
+        table_entry,
+        origin: origin.clone(),
+    })?;
 
-    let table_provider = TableEntryTableProvider::new(client, entry.id)
+    let table_provider = TableEntryTableProvider::new(client, id)
         .into_provider()
         .await?;
 

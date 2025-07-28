@@ -557,8 +557,8 @@ impl RedapServers {
         active_entry: EntryId,
     ) {
         for server in self.servers.values() {
-            match server.find_entry(active_entry) {
-                Some(entry) => match entry.inner() {
+            if let Some(entry) = server.find_entry(active_entry) {
+                match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(viewer_ctx, ui, dataset);
                     }
@@ -574,8 +574,7 @@ impl RedapServers {
                             );
                         });
                     }
-                },
-                None => {}
+                }
             }
         }
     }
