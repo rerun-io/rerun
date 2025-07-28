@@ -141,12 +141,12 @@ pub struct PointField {
 /// point data is stored as a binary blob, its layout described by the
 /// contents of the "fields" array.
 ///
-/// The point cloud data may be organized 2d (image-like) or 1d (unordered).
-/// Point clouds organized as 2d images may be produced by camera depth sensors
+/// The point cloud data may be organized 2D (image-like) or 1D (unordered).
+/// Point clouds organized as 2D images may be produced by camera depth sensors
 /// such as stereo or time-of-flight.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PointCloud2 {
-    /// Time of sensor data acquisition, and the coordinate frame ID (for 3d points).
+    /// Time of sensor data acquisition, and the coordinate frame ID (for 3D points).
     pub header: Header,
 
     /// 2D structure of the point cloud. If the cloud is unordered, height is
@@ -159,8 +159,10 @@ pub struct PointCloud2 {
 
     /// Is this data bigendian?
     pub is_bigendian: bool,
+
     /// Length of a point in bytes
     pub point_step: u32,
+
     /// Length of a row in bytes
     pub row_step: u32,
 
