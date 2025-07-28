@@ -2,7 +2,7 @@
 
 use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 
-use arrow::array::ArrayRef;
+use arrow::{array::ArrayRef, datatypes::DataType};
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
@@ -106,6 +106,42 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             ComponentType::from("custom_large_blob"),
             arrow::array::UInt8Array::from(vec![42; 3001]),
             "any_value_large_blob",
+        ),
+        TestCase::from_arrow(
+            ComponentType::from("custom_struct_array"),
+            arrow::array::StructArray::from(vec![
+                (
+                    Arc::new(arrow::datatypes::Field::new("a", DataType::Utf8, false)),
+                    Arc::new(arrow::array::StringArray::from(vec!["foo", "bar"])) as ArrayRef,
+                ),
+                (
+                    Arc::new(arrow::datatypes::Field::new("b", DataType::Boolean, false)),
+                    Arc::new(arrow::array::BooleanArray::from(vec![true, false])) as ArrayRef,
+                ),
+                (
+                    Arc::new(arrow::datatypes::Field::new("c", DataType::Int32, false)),
+                    Arc::new(arrow::array::Int32Array::from(vec![42, 17])) as ArrayRef,
+                ),
+            ]),
+            "any_value_struct_array",
+        ),
+        TestCase::from_arrow(
+            ComponentType::from("custom_struct_array_single_element"),
+            arrow::array::StructArray::from(vec![
+                (
+                    Arc::new(arrow::datatypes::Field::new("a", DataType::Utf8, false)),
+                    Arc::new(arrow::array::StringArray::from(vec!["foo"])) as ArrayRef,
+                ),
+                (
+                    Arc::new(arrow::datatypes::Field::new("b", DataType::Boolean, false)),
+                    Arc::new(arrow::array::BooleanArray::from(vec![true])) as ArrayRef,
+                ),
+                (
+                    Arc::new(arrow::datatypes::Field::new("c", DataType::Int32, false)),
+                    Arc::new(arrow::array::Int32Array::from(vec![42])) as ArrayRef,
+                ),
+            ]),
+            "any_value_struct_array_single_element",
         ),
     ];
 

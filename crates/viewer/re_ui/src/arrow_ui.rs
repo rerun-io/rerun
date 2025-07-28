@@ -82,6 +82,15 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                 re_format::format_bytes(instance_count as _)
             } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
                 format!("{instance_count_str} items of {dtype}")
+            } else if let DataType::Struct(fields) = array.data_type() {
+                format!(
+                    "{instance_count_str} structs with {} fields: {}",
+                    fields.len(),
+                    fields
+                        .iter()
+                        .map(|f| format!("{}:{}", f.name(), f.data_type()))
+                        .join(", ")
+                )
             } else {
                 format!("{instance_count_str} items")
             };
