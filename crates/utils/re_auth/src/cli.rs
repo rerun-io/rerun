@@ -232,6 +232,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     Ok(())
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthenticationResponse {
@@ -256,6 +257,7 @@ impl From<AuthenticationResponse> for workos::api::AuthenticationResponse {
     }
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct User {
@@ -282,6 +284,7 @@ impl From<User> for workos::User {
     }
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct Impersonator {
     email: String,
@@ -301,6 +304,7 @@ enum AuthenticationMethod {
     Impersonation,
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Clone, serde::Deserialize)]
 struct OauthTokens {
     access_token: String,

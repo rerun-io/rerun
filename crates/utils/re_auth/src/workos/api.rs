@@ -67,7 +67,7 @@ pub struct AuthenticationResponse {
     pub refresh_token: String,
 }
 
-pub async fn refresh(refresh_token: &RefreshToken) -> Result<AuthenticationResponse, Error> {
+pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<AuthenticationResponse, Error> {
     post(
         "/refresh",
         RefreshRequest {
