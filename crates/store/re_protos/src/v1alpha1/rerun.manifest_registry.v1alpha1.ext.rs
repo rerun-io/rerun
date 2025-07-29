@@ -13,11 +13,12 @@ use re_sorbet::ComponentColumnDescriptor;
 
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::manifest_registry::v1alpha1::{
-    DataSourceKind, GetDatasetSchemaResponse, RegisterWithDatasetResponse,
-    ScanPartitionTableResponse, VectorDistanceMetric,
+    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
+    VectorDistanceMetric,
 };
 use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
-use crate::{TypeConversionError, invalid_field, missing_field};
+use crate::{TypeConversionError, missing_field};
+
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -421,7 +422,42 @@ impl ScanPartitionTableResponse {
 
 // --- DataSource --
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub enum DataSourceKind {
+    Rrd,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSourceKind> for DataSourceKind {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        kind: crate::manifest_registry::v1alpha1::DataSourceKind,
+    ) -> Result<Self, Self::Error> {
+        match kind {
+            crate::manifest_registry::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
+
+            crate::manifest_registry::v1alpha1::DataSourceKind::Unspecified => {
+                return Err(TypeConversionError::InvalidField {
+                    package_name: "rerun.manifest_registry.v1alpha1",
+                    type_name: "DataSourceKind",
+                    field_name: "",
+                    reason: "enum value unspecified".to_owned(),
+                });
+            }
+        }
+    }
+}
+
+impl TryFrom<i32> for DataSourceKind {
+    type Error = TypeConversionError;
+
+    fn try_from(kind: i32) -> Result<Self, Self::Error> {
+        let kind = crate::manifest_registry::v1alpha1::DataSourceKind::try_from(kind)?;
+        kind.try_into()
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
     pub storage_url: url::Url,
     pub kind: DataSourceKind,
@@ -462,13 +498,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
             .parse()?;
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
-        if kind == DataSourceKind::Unspecified {
-            return Err(invalid_field!(
-                crate::manifest_registry::v1alpha1::DataSource,
-                "typ",
-                "data source kind is unspecified"
-            ));
-        }
 
         Ok(Self { storage_url, kind })
     }
@@ -526,43 +555,6 @@ impl PartitionType {
                 }
             })
             .collect()
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PartitionDescriptor {
-    pub storage_url: String,
-    pub partition_type: PartitionType,
-}
-
-impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for PartitionDescriptor {
-    type Error = tonic::Status;
-
-    fn try_from(
-        value: crate::manifest_registry::v1alpha1::DataSource,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            storage_url: value
-                .storage_url
-                .ok_or_else(|| tonic::Status::invalid_argument("query_data is required"))?,
-
-            partition_type: DataSourceKind::try_from(value.typ)
-                .map_err(|err| {
-                    tonic::Status::invalid_argument(format!(
-                        "{} is not a valid DataSourceKind: {err}",
-                        value.typ
-                    ))
-                })?
-                .into(),
-        })
-    }
-}
-
-impl From<DataSourceKind> for PartitionType {
-    fn from(value: DataSourceKind) -> Self {
-        match value {
-            DataSourceKind::Unspecified | DataSourceKind::Rrd => Self::Rrd,
-        }
     }
 }
 
