@@ -1,7 +1,9 @@
 // TODO(#9430): this belongs in re_protos::ext
 
+#[cfg(feature = "decoder")]
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
+#[cfg(feature = "decoder")]
 use crate::ApplicationIdInjector;
 
 impl From<re_protos::log_msg::v1alpha1::Compression> for crate::Compression {
