@@ -37,18 +37,12 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
-    // loader handles this automatically.
-    let settings = if crate::lerobot::is_lerobot_dataset(path) {
-        &crate::DataLoaderSettings {
-            force_store_info: false,
-            ..settings.clone()
-        }
-    } else {
-        &crate::DataLoaderSettings {
-            application_id: Some(ApplicationId::from(path.display().to_string())),
-            ..settings.clone()
-        }
+    let application_id = ApplicationId::from(path.display().to_string());
+    let settings = &crate::DataLoaderSettings {
+        application_id: Some(application_id),
+        // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot loader handles this automatically.
+        force_store_info: !crate::lerobot::is_lerobot_dataset(path),
+        ..settings.clone()
     };
 
     let rx = load(settings, path, None)?;
