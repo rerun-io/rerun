@@ -13,6 +13,8 @@ service CatalogService {
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
 
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {}
+
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
@@ -42,6 +44,21 @@ message DeleteEntryRequest {
 }
 
 message DeleteEntryResponse {}
+
+// UpdateEntry
+
+message UpdateEntryRequest {
+  // The entry to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values for updatable fields.
+  EntryDetailsUpdate entry_details_update = 2;
+}
+
+message UpdateEntryResponse {
+  // The updated entry details
+  EntryDetails entry_details = 1;
+}
 
 // CreateDatasetEntry
 
@@ -158,6 +175,12 @@ message EntryDetails {
 
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
+}
+
+// Updatable fields of an Entry
+message EntryDetailsUpdate {
+  // The new name for this entry (optional - if not provided, name will remain unchanged).
+  optional string name = 1;
 }
 
 message DatasetDetails {
