@@ -40,21 +40,29 @@ pub enum FetchJwksError {
     Deserialize(#[from] serde_json::Error),
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Deserialize)]
 pub struct Claims {
-    iss: String,
+    #[serde(rename = "iss")]
+    issuer: String,
+    // TODO: better names
     sub: String,
     act: Option<Act>,
     org_id: Option<String>,
     role: Option<String>,
     permissions: Option<Vec<String>>,
     entitlements: Option<Vec<String>>,
+    // session id
     sid: String,
+    // token id
     jti: String,
+    // expires at
     exp: i64,
+    // issued at
     iat: i64,
 }
 
+#[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Deserialize)]
 pub struct Act {
     sub: String,
@@ -101,6 +109,7 @@ impl AuthContext {
 
     pub async fn load() -> Result<Self, ContextLoadError> {
         // TODO: for server usage, we can't easily cache on disk
+        // TODO: set our own TTL for this, refetch when it's about to expire
         // 1. try to load from disk cache
         match Self::load_from_cache() {
             Ok(cached) => {
@@ -352,7 +361,7 @@ impl AccessToken {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(transparent)]
-struct RefreshToken(String);
+pub(crate) struct RefreshToken(String);
 
 impl RefreshToken {
     fn private_clone(&self) -> Self {

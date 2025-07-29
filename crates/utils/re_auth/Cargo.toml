@@ -41,7 +41,7 @@ workos = [
   "dep:serde_json",
   "dep:tiny_http",
   "dep:url",
-  "dep:webbrowser",  
+  "dep:webbrowser",
 ]
 
 [dependencies]
@@ -55,7 +55,10 @@ base64 = { workspace = true, optional = true }
 const_format = { workspace = true, optional = true }
 directories = { workspace = true, optional = true }
 # TODO: should not use `native-async` on wasm32
-ehttp = { workspace = true, optional = true, features = ["json", "native-async"] }
+ehttp = { workspace = true, optional = true, features = [
+  "json",
+  "native-async",
+] }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
