@@ -59,6 +59,10 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        return len(self.class_map)
+
 
 if TYPE_CHECKING:
     AnnotationContextLike = Union[
