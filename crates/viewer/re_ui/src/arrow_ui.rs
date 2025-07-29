@@ -27,19 +27,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
         if ui_layout.is_selection_panel() {
-            let (datatype_name, maybe_ui) = datatype_ui(array.data_type());
-            if let Some(content) = maybe_ui {
-                list_item_scope(ui, Id::new("arrow data type list"), |ui| {
-                    ui.list_item().show_hierarchical_with_children(
-                        ui,
-                        Id::new("arrow data type"),
-                        true,
-                        LabelContent::new(datatype_name),
-                        content,
-                    );
-                });
-            }
-
             list_item_scope(ui, Id::new("arrow data"), |ui| {
                 array_items_ui(ui, array);
             });
@@ -290,7 +277,7 @@ impl<'a> ArrowNode<'a> {
     }
 
     fn child_nodes(&'a self) -> Option<Box<dyn Iterator<Item = Self> + 'a>> {
-        let array = self.array.as_ref();
+        let array: &dyn Array = self.array.as_ref();
         if let Some(struct_array) = array.as_struct_opt() {
             Some(Box::new(struct_array.column_names().into_iter().map(
                 |column_name| {
@@ -359,7 +346,13 @@ impl<'a> ArrowNode<'a> {
         } else if let Some(union_array) = array.as_union_opt() {
             let variant_index = union_array.type_id(self.index);
             let child = union_array.child(variant_index);
-            Some(Box::new(std::iter::once(ArrowNode::new(child, self.index))))
+            let names = union_array.type_names();
+            let variant_name = names
+                .get(variant_index as usize)
+                .expect("Variant index should be valid");
+            Some(Box::new(std::iter::once(
+                ArrowNode::new(child, self.index).with_field_name(variant_name.to_owned()),
+            )))
         } else {
             None
         }
@@ -383,6 +376,7 @@ impl<'a> ArrowNode<'a> {
 
         if let Some(children) = self.child_nodes() {
             let mut peekable = children.peekable();
+            // TODO: Add some fallback in case it's empty
             let has_name = peekable
                 .peek()
                 .map_or(false, |node| node.field_name.is_some());
@@ -462,6 +456,25 @@ impl<'a> ArrowNode<'a> {
                                     Stroke::new(1.0, visuals.text_color()),
                                     StrokeKind::Middle,
                                 );
+
+                                response.on_hover_ui(|ui| {
+                                    let (datatype_name, maybe_ui) = datatype_ui(array.data_type());
+                                    if let Some(content) = maybe_ui {
+                                        list_item_scope(
+                                            ui,
+                                            Id::new("arrow data type hover"),
+                                            |ui| {
+                                                ui.list_item().show_hierarchical_with_children(
+                                                    ui,
+                                                    Id::new("arrow data type item hover"),
+                                                    true,
+                                                    LabelContent::new(datatype_name),
+                                                    content,
+                                                );
+                                            },
+                                        );
+                                    }
+                                });
                             }
                         },
                     );
