@@ -8,7 +8,11 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use eframe::epaint::StrokeKind;
-use egui::{Frame, Id, Response, RichText, Stroke, Ui, Widget, WidgetText};
+use egui::text::{LayoutJob, TextWrapping};
+use egui::{
+    FontId, FontSelection, Frame, Id, Response, RichText, Stroke, TextFormat, TextStyle, Ui,
+    Widget, WidgetText,
+};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use std::collections::hash_map::DefaultHasher;
@@ -252,119 +256,188 @@ fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
 
 fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
     for i in 0..array.len() {
-        let node = array_item_ui(array, i);
-
-        node.ui(ui, format!("[{i}]"));
+        let node = ArrowNode::new(array, i);
+        node.ui(ui);
     }
-}
-
-fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
-    let formatter = make_formatter(array).expect("Formatter should be created");
-    let value = formatter(index);
-
-    let mut node = ArrowNode::new(value, array.data_type());
-
-    node = if let Some(struct_array) = array.as_struct_opt() {
-        node.with_children(move |ui| {
-            for column_name in struct_array.column_names() {
-                let column = struct_array
-                    .column_by_name(column_name)
-                    .expect("Field should exist");
-
-                let node = array_item_ui(column.as_ref(), index);
-                node.ui(ui, column_name);
-            }
-        })
-    } else if let Some(list) = array.as_list_opt::<i32>() {
-        node.with_children(move |ui| {
-            let value = list.value(index);
-            array_items_ui(ui, &value);
-        })
-    } else if let Some(list) = array.as_list_opt::<i64>() {
-        node.with_children(move |ui| {
-            let value = list.value(index);
-            array_items_ui(ui, &value);
-        })
-    } else if let Some(list_array) = array.as_fixed_size_list_opt() {
-        node.with_children(move |ui| {
-            let value = list_array.value(index);
-            array_items_ui(ui, &value);
-        })
-    } else if let Some(dict_array) = array.as_any_dictionary_opt() {
-        node.with_children(move |ui| {
-            if !dict_array.keys().data_type().is_nested() {
-                let formatter = make_formatter(dict_array.keys())
-                    .expect("Formatter should be created for dictionary keys");
-                let key_string = formatter(index);
-                let node = array_item_ui(dict_array.values().as_ref(), index);
-                node.ui(ui, key_string);
-            } else {
-                let key_node = array_item_ui(dict_array.keys(), index);
-                let value_node = array_item_ui(dict_array.values().as_ref(), index);
-                key_node.ui(ui, "key");
-                value_node.ui(ui, "value");
-            }
-        })
-    } else if let Some(map_array) = array.as_map_opt() {
-        node.with_children(move |ui| {
-            if !map_array.keys().data_type().is_nested() {
-                let formatter = make_formatter(map_array.keys())
-                    .expect("Formatter should be created for map keys");
-                let key_string = formatter(index);
-                let node = array_item_ui(map_array.values().as_ref(), index);
-                node.ui(ui, key_string);
-            } else {
-                let key_node = array_item_ui(map_array.keys().as_ref(), index);
-                let value_node = array_item_ui(map_array.values().as_ref(), index);
-                key_node.ui(ui, "key");
-                value_node.ui(ui, "value");
-            }
-        })
-    } else if let Some(union_array) = array.as_union_opt() {
-        let variant_index = union_array.type_id(index);
-        let child = union_array.child(variant_index);
-        let node = array_item_ui(child, index);
-        node
-    } else {
-        node
-    };
-
-    node
 }
 
 struct ArrowNode<'a> {
-    value: String,
-    data_type: &'a DataType,
-    children: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+    array: MaybeArc<'a>,
+    index: usize,
+    field_name: Option<String>, // TODO: Can be &str?
 }
 
 impl<'a> ArrowNode<'a> {
-    fn new(value: String, data_type: &'a DataType) -> Self {
+    fn new(array: &'a dyn Array, index: usize) -> Self {
         ArrowNode {
-            value,
-            data_type,
-            children: None,
+            array: MaybeArc::Array(array),
+            index,
+            field_name: None,
         }
     }
 
-    fn with_children<F: FnOnce(&mut egui::Ui) + 'a>(mut self, children: F) -> Self {
-        self.children = Some(Box::new(children));
+    fn new_arc(array: arrow::array::ArrayRef, index: usize) -> Self {
+        ArrowNode {
+            array: MaybeArc::Arc(array),
+            index,
+            field_name: None,
+        }
+    }
+
+    fn with_field_name(mut self, field_name: impl Into<String>) -> Self {
+        self.field_name = Some(field_name.into());
         self
     }
 
-    fn ui(self, ui: &mut Ui, name: impl Into<WidgetText>) -> Response {
-        let ArrowNode {
-            value,
-            data_type,
-            children: maybe_children,
-        } = self;
+    fn child_nodes(&'a self) -> Option<Box<dyn Iterator<Item = Self> + 'a>> {
+        let array = self.array.as_ref();
+        if let Some(struct_array) = array.as_struct_opt() {
+            Some(Box::new(struct_array.column_names().into_iter().map(
+                |column_name| {
+                    let column = struct_array
+                        .column_by_name(column_name)
+                        .expect("Field should exist");
+                    ArrowNode::new(column.as_ref(), self.index)
+                        .with_field_name(column_name.to_owned())
+                },
+            )))
+        } else if let Some(list) = array.as_list_opt::<i32>() {
+            let value = list.value(self.index);
+            Some(Box::new(
+                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
+            ))
+        } else if let Some(list) = array.as_list_opt::<i64>() {
+            let value = list.value(self.index);
+            Some(Box::new(
+                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
+            ))
+        } else if let Some(list_array) = array.as_fixed_size_list_opt() {
+            let value = list_array.value(self.index);
+            Some(Box::new(
+                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
+            ))
+        } else if let Some(dict_array) = array.as_any_dictionary_opt() {
+            if !dict_array.keys().data_type().is_nested() {
+                let formatter = make_formatter(dict_array.keys())
+                    .expect("Formatter should be created for dictionary keys");
+                let key_string = formatter(self.index);
+                Some(Box::new(std::iter::once(
+                    ArrowNode::new(dict_array.values().as_ref(), self.index)
+                        .with_field_name(key_string),
+                )))
+            } else {
+                Some(Box::new(
+                    vec![
+                        ArrowNode::new(dict_array.keys(), self.index)
+                            .with_field_name("key".to_owned()),
+                        ArrowNode::new(dict_array.values().as_ref(), self.index)
+                            .with_field_name("value".to_owned()),
+                    ]
+                    .into_iter(),
+                ))
+            }
+        } else if let Some(map_array) = array.as_map_opt() {
+            if !map_array.keys().data_type().is_nested() {
+                let formatter = make_formatter(map_array.keys())
+                    .expect("Formatter should be created for map keys");
+                let key_string = formatter(self.index);
+                Some(Box::new(std::iter::once(
+                    ArrowNode::new(map_array.values().as_ref(), self.index)
+                        .with_field_name(key_string),
+                )))
+            } else {
+                Some(Box::new(
+                    vec![
+                        ArrowNode::new(map_array.keys().as_ref(), self.index)
+                            .with_field_name("key".to_owned()),
+                        ArrowNode::new(map_array.values().as_ref(), self.index)
+                            .with_field_name("value".to_owned()),
+                    ]
+                    .into_iter(),
+                ))
+            }
+        } else if let Some(union_array) = array.as_union_opt() {
+            let variant_index = union_array.type_id(self.index);
+            let child = union_array.child(variant_index);
+            Some(Box::new(std::iter::once(ArrowNode::new(child, self.index))))
+        } else {
+            None
+        }
+    }
 
-        let data_type_name = datatype_ui(self.data_type).0;
+    fn layout_job(&self, ui: &Ui) -> LayoutJob {
+        let mut job = LayoutJob::default();
+        self.inline_value_layout_job(&mut job, ui);
+        job
+    }
+
+    fn inline_value_layout_job(&self, job: &mut LayoutJob, ui: &Ui) {
+        // TODO: Use listvisuals here
+        let mut format_name = TextFormat::default();
+        format_name.font_id = TextStyle::Monospace.resolve(ui.style());
+        format_name.color = ui.visuals().text_color();
+
+        let mut format_value = TextFormat::default();
+        format_value.font_id = TextStyle::Monospace.resolve(ui.style());
+        format_value.color = ui.visuals().strong_text_color();
+
+        if let Some(children) = self.child_nodes() {
+            let mut peekable = children.peekable();
+            let has_name = peekable
+                .peek()
+                .map_or(false, |node| node.field_name.is_some());
+
+            let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
+
+            job.append(open, 0.0, format_name.clone());
+
+            while let Some(child) = peekable.next() {
+                if let Some(field_name) = &child.field_name {
+                    job.append(field_name, 0.0, format_name.clone());
+                    job.append(": ", 0.0, format_name.clone());
+                }
+                child.inline_value_layout_job(job, ui);
+                if peekable.peek().is_some() {
+                    job.append(", ", 0.0, format_name.clone());
+                }
+            }
+
+            job.append(close, 0.0, format_name.clone());
+        } else {
+            let value = if let Some(formatter) = make_formatter(self.array.as_ref()).ok() {
+                formatter(self.index)
+            } else {
+                "Error formatting value".to_string()
+            };
+
+            job.append(&value, 0.0, format_value.clone());
+        }
+    }
+
+    fn ui(self, ui: &mut Ui) -> Response {
+        let ArrowNode {
+            array,
+            index,
+            field_name,
+        } = &self;
+
+        let array = MaybeArc::as_ref(array);
+
+        let data_type_name = datatype_ui(array.data_type()).0;
 
         let item = ui.list_item();
 
-        let text = name.into();
-        let id = ui.unique_id().with(&text.text());
+        let text = field_name.clone().unwrap_or_else(|| format!("[{index}]"));
+        let id = ui.unique_id().with(&text);
+
+        // let value = if let Some(formatter) = make_formatter(array).ok() {
+        //     formatter(*index)
+        // } else {
+        //     "Error formatting value".to_string()
+        // };
+
+        let job = self.layout_job(ui);
+
         let content = PropertyContent::new(text)
             .value_fn(|ui, visuals| {
                 ui.horizontal(|ui| {
@@ -377,7 +450,7 @@ impl<'a> ArrowNode<'a> {
                                 }
                                 ui.set_opacity(1.0 - visuals.openness());
                             }
-                            ui.monospace(value);
+                            ui.label(job);
                         },
                         |ui| {
                             let visuals = visuals;
@@ -396,11 +469,14 @@ impl<'a> ArrowNode<'a> {
             })
             .show_only_when_collapsed(false);
 
+        let maybe_children = self.child_nodes();
         let response = if let Some(children) = maybe_children {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 // We create a new scope so properties are only aligned on a single level
                 ui.list_item_scope(id.with("scope"), |ui| {
-                    children(ui);
+                    for child in children {
+                        child.ui(ui);
+                    }
                 });
             })
             .item_response
@@ -409,6 +485,20 @@ impl<'a> ArrowNode<'a> {
         };
 
         response
+    }
+}
+
+enum MaybeArc<'a> {
+    Array(&'a dyn Array),
+    Arc(arrow::array::ArrayRef),
+}
+
+impl MaybeArc<'_> {
+    fn as_ref(&self) -> &dyn Array {
+        match self {
+            MaybeArc::Array(array) => *array,
+            MaybeArc::Arc(arc) => arc.as_ref(),
+        }
     }
 }
 
