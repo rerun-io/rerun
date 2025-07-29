@@ -264,8 +264,8 @@ fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
 
     let mut node = ArrowNode::new(value, array.data_type());
 
-    if let Some(struct_array) = array.as_struct_opt() {
-        node = node.with_children(move |ui| {
+    node = if let Some(struct_array) = array.as_struct_opt() {
+        node.with_children(move |ui| {
             for column_name in struct_array.column_names() {
                 let column = struct_array
                     .column_by_name(column_name)
@@ -274,24 +274,24 @@ fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
                 let node = array_item_ui(column.as_ref(), index);
                 node.ui(ui, column_name);
             }
-        });
+        })
     } else if let Some(list) = array.as_list_opt::<i32>() {
-        node = node.with_children(move |ui| {
+        node.with_children(move |ui| {
             let value = list.value(index);
             array_items_ui(ui, &value);
-        });
+        })
     } else if let Some(list) = array.as_list_opt::<i64>() {
-        node = node.with_children(move |ui| {
+        node.with_children(move |ui| {
             let value = list.value(index);
             array_items_ui(ui, &value);
-        });
+        })
     } else if let Some(list_array) = array.as_fixed_size_list_opt() {
-        node = node.with_children(move |ui| {
+        node.with_children(move |ui| {
             let value = list_array.value(index);
             array_items_ui(ui, &value);
-        });
+        })
     } else if let Some(dict_array) = array.as_any_dictionary_opt() {
-        node = node.with_children(move |ui| {
+        node.with_children(move |ui| {
             if !dict_array.keys().data_type().is_nested() {
                 let formatter = make_formatter(dict_array.keys())
                     .expect("Formatter should be created for dictionary keys");
@@ -304,9 +304,9 @@ fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
                 key_node.ui(ui, "key");
                 value_node.ui(ui, "value");
             }
-        });
+        })
     } else if let Some(map_array) = array.as_map_opt() {
-        node = node.with_children(move |ui| {
+        node.with_children(move |ui| {
             if !map_array.keys().data_type().is_nested() {
                 let formatter = make_formatter(map_array.keys())
                     .expect("Formatter should be created for map keys");
@@ -319,13 +319,15 @@ fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
                 key_node.ui(ui, "key");
                 value_node.ui(ui, "value");
             }
-        });
+        })
     } else if let Some(union_array) = array.as_union_opt() {
         let variant_index = union_array.type_id(index);
         let child = union_array.child(variant_index);
         let node = array_item_ui(child, index);
-        return node;
-    }
+        node
+    } else {
+        node
+    };
 
     node
 }
