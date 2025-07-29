@@ -1277,8 +1277,10 @@ class Entry:
         """
         Update this entry's properties.
 
-        Args:
-            name: New name for the entry
+        Parameters
+        ----------
+        name : str | None
+            New name for the entry
 
         """
 
