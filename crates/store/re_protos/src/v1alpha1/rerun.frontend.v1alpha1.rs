@@ -103,6 +103,11 @@ pub struct CreateIndexRequest {
     /// List of specific partitions that will be indexed (all if left empty).
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
+    /// List of specific partition layers that will be indexed (all if left empty).
+    ///
+    /// If non-empty, this must match the length of `partition_ids`.
+    #[prost(string, repeated, tag = "5")]
+    pub partition_layers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "3")]
     pub config: ::core::option::Option<super::super::manifest_registry::v1alpha1::IndexConfig>,
     /// Specify behavior when index for a partition was already created.
