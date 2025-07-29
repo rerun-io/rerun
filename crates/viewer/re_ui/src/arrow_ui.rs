@@ -1,3 +1,5 @@
+use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
+use crate::{UiExt, UiLayout};
 use arrow::array::AsArray;
 use arrow::{
     array::{Array, StructArray},
@@ -5,14 +7,12 @@ use arrow::{
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
-use egui::{Id, Response, Ui, Widget, WidgetText};
+use eframe::epaint::StrokeKind;
+use egui::{Frame, Id, Response, RichText, Stroke, Ui, Widget, WidgetText};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-
-use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
-use crate::{UiExt, UiLayout};
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
@@ -378,8 +378,15 @@ impl<'a> ArrowNode<'a> {
                             ui.monospace(value);
                         },
                         |ui| {
+                            let visuals = visuals;
                             if visuals.hovered {
-                                ui.weak(data_type_name);
+                                let response = ui.small(RichText::new(data_type_name).strong());
+                                ui.painter().rect_stroke(
+                                    response.rect.expand(2.0),
+                                    4.0,
+                                    Stroke::new(1.0, visuals.text_color()),
+                                    StrokeKind::Middle,
+                                );
                             }
                         },
                     );
