@@ -8044,7 +8044,6 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "serde",
- "smallvec",
  "thiserror 1.0.69",
  "tonic",
  "url",
