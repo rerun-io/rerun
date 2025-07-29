@@ -179,8 +179,8 @@ message EntryDetails {
 
 // Updatable fields of an Entry
 message EntryDetailsUpdate {
-  // The new name for this entry (optional - if not provided, name will remain unchanged).
-  optional string name = 1;
+  // The name of this entry.
+  optional string name = 2;
 }
 
 message DatasetDetails {

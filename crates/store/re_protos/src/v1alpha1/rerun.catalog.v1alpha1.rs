@@ -313,8 +313,8 @@ impl ::prost::Name for EntryDetails {
 /// Updatable fields of an Entry
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntryDetailsUpdate {
-    /// The new name for this entry (optional - if not provided, name will remain unchanged).
-    #[prost(string, optional, tag = "1")]
+    /// The name of this entry.
+    #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for EntryDetailsUpdate {
