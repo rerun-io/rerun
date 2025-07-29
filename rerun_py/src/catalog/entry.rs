@@ -170,6 +170,9 @@ impl PyEntry {
     }
 
     /// Update this entry's properties.
+    ///
+    /// Args:
+    ///     name: New name for the entry
     #[pyo3(signature = (*, name=None))]
     fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
         let entry_id = self.id.borrow(py).id;

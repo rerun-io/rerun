@@ -1273,6 +1273,15 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
+    def update(self, *, name: str | None = None) -> None:
+        """
+        Update this entry's properties.
+
+        Args:
+            name: New name for the entry
+
+        """
+
 class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
