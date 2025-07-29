@@ -1450,26 +1450,22 @@ fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String
     }
 
     let field_name = &obj.fields[0].name;
-    if obj.fields[0].is_nullable {
+
+    let null_string = if obj.fields[0].is_nullable {
         // If the field is optional, we return 0 if it is None.
-        return unindent(&format!(
-            "
-            def __len__(self) -> int:
-                # You can define your own __len__ function as a member of {} in {}
-                return len(self.{field_name}) if self.{field_name} is not None else 0
-            ",
-            ext_class.name, ext_class.file_name
-        ));
+        format!(" if self.{field_name} is not None else 0")
     } else {
-        unindent(&format!(
-            "
-            def __len__(self) -> int:
-                # You can define your own __len__ function as a member of {} in {}
-                return len(self.{field_name})
-            ",
-            ext_class.name, ext_class.file_name
-        ))
-    }
+        String::new()
+    };
+
+    unindent(&format!(
+        "
+        def __len__(self) -> int:
+            # You can define your own __len__ function as a member of {} in {}
+            return len(self.{field_name}){null_string}
+        ",
+        ext_class.name, ext_class.file_name
+    ))
 }
 
 /// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
