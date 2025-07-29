@@ -1,14 +1,17 @@
+use arrow::array::AsArray;
 use arrow::{
     array::Array,
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
+use egui::Id;
 use itertools::Itertools as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 
-use crate::UiLayout;
+use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
+use crate::{UiExt, UiLayout};
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
@@ -17,6 +20,36 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
+        dbg!(&ui_layout);
+
+        if ui_layout.is_selection_panel() {
+            // if let DataType::Struct(fields) = array.data_type() {
+            //     for field in fields {
+            //         ui.list_item()
+            //             .show_flat(ui, PropertyContent::new(field.to_string()));
+            //     }
+            // }
+
+            let (datatype_name, maybe_ui) = datatype_ui(ui, array.data_type());
+            dbg!(&datatype_name);
+            if let Some(content) = maybe_ui {
+                // println!("Showing struct: {}", datatype_name);
+                // list_item_scope(ui, "arrow data type", content);
+
+                list_item_scope(ui, Id::new("arrow data type list"), |ui| {
+                    ui.list_item().show_hierarchical_with_children(
+                        ui,
+                        Id::new("arrow data type"),
+                        true,
+                        LabelContent::new(datatype_name),
+                        content,
+                    );
+                });
+            }
+
+            return;
+        }
 
         if array.is_empty() {
             ui_layout.data_label(ui, "[]");
@@ -118,6 +151,112 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             });
         }
     });
+}
+
+fn datatype_ui<'a>(
+    data_type: &'a DataType,
+) -> (String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>) {
+    match data_type {
+        DataType::Struct(fields) => (
+            "struct".to_string(),
+            Some(Box::new(move |ui| {
+                for field in fields {
+                    datatype_field_ui(ui, field);
+                }
+            })),
+        ),
+        DataType::List(field) => (
+            "list".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::ListView(field) => (
+            "list view".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::FixedSizeList(field, size) => (
+            format!("fixed-size list ({size})"),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::LargeList(field) => (
+            "large list".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::LargeListView(field) => (
+            "large list view".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::Union(fields, mode) => {
+            let label = match mode {
+                arrow::datatypes::UnionMode::Sparse => "sparse union",
+                arrow::datatypes::UnionMode::Dense => "dense union",
+            };
+            (
+                label.to_string(),
+                Some(Box::new(move |ui| {
+                    for (_, field) in fields.iter() {
+                        datatype_field_ui(ui, field);
+                    }
+                })),
+            )
+        }
+        DataType::Dictionary(k, v) => (
+            format!("dictionary"),
+            // Some(Box::new(move |ui| {
+            //     ui.list_item()
+            //         .show_flat(ui, PropertyContent::new("key").value_text(k.to_string()));
+            //     ui.list_item()
+            //         .show_flat(ui, PropertyContent::new("value").value_text(v.to_string()));
+            // })),
+            None, // TODO
+        ),
+        DataType::Map(a, _) => (
+            "map".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, a);
+            })),
+        ),
+        DataType::RunEndEncoded(a, b) => (
+            "run-end encoded".to_string(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, a);
+                datatype_field_ui(ui, b);
+            })),
+        ),
+        non_nested => {
+            let label = simple_datatype_string(non_nested)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| non_nested.to_string());
+            (label, None)
+        }
+    }
+}
+
+fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
+    ui.spacing_mut().item_spacing.y = 0.0;
+    let item = ui.list_item();
+
+    let (datatype_name, maybe_ui) = datatype_ui(ui, field.data_type());
+
+    let property = PropertyContent::new(field.name())
+        .value_text(datatype_name)
+        .show_only_when_collapsed(false);
+
+    if let Some(content) = maybe_ui {
+        println!("Field: {} ({})", field.name(), field.data_type());
+        item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
+    } else {
+        item.show_hierarchical(ui, property);
+    }
 }
 
 fn make_formatter(array: &dyn Array) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
