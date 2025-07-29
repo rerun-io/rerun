@@ -262,119 +262,139 @@ fn array_item_ui<'a>(array: &'a dyn Array, index: usize) -> ArrowNode<'a> {
     let formatter = make_formatter(array).expect("Formatter should be created");
     let value = formatter(index);
 
+    let mut node = ArrowNode::new(value, array.data_type());
+
     if let Some(struct_array) = array.as_struct_opt() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                for column_name in struct_array.column_names() {
-                    let column = struct_array
-                        .column_by_name(column_name)
-                        .expect("Field should exist");
+        node = node.with_children(move |ui| {
+            for column_name in struct_array.column_names() {
+                let column = struct_array
+                    .column_by_name(column_name)
+                    .expect("Field should exist");
 
-                    let node = array_item_ui(column.as_ref(), index);
-                    node.ui(ui, column_name);
-                }
-            })),
-        );
-    }
-
-    if let Some(list) = array.as_list_opt::<i32>() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                let value = list.value(index);
-                array_items_ui(ui, &value);
-            })),
-        );
-    }
-
-    if let Some(list) = array.as_list_opt::<i64>() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                let value = list.value(index);
-                array_items_ui(ui, &value);
-            })),
-        );
-    }
-
-    if let Some(list_array) = array.as_fixed_size_list_opt() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                let value = list_array.value(index);
-                array_items_ui(ui, &value);
-            })),
-        );
-    }
-
-    if let Some(dict_array) = array.as_any_dictionary_opt() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                if !dict_array.keys().data_type().is_nested() {
-                    let formatter = make_formatter(dict_array.keys())
-                        .expect("Formatter should be created for dictionary keys");
-                    let key_string = formatter(index);
-                    let node = array_item_ui(dict_array.values().as_ref(), index);
-                    node.ui(ui, key_string);
-                } else {
-                    let key_node = array_item_ui(dict_array.keys(), index);
-                    let value_node = array_item_ui(dict_array.values().as_ref(), index);
-                    key_node.ui(ui, "key");
-                    value_node.ui(ui, "value");
-                }
-            })),
-        );
-    }
-
-    if let Some(map_array) = array.as_map_opt() {
-        return ArrowNode(
-            value,
-            Some(Box::new(move |ui| {
-                if !map_array.keys().data_type().is_nested() {
-                    let formatter = make_formatter(map_array.keys())
-                        .expect("Formatter should be created for map keys");
-                    let key_string = formatter(index);
-                    let node = array_item_ui(map_array.values().as_ref(), index);
-                    node.ui(ui, key_string);
-                } else {
-                    let key_node = array_item_ui(map_array.keys().as_ref(), index);
-                    let value_node = array_item_ui(map_array.values().as_ref(), index);
-                    key_node.ui(ui, "key");
-                    value_node.ui(ui, "value");
-                }
-            })),
-        );
-    }
-
-    if let Some(union_array) = array.as_union_opt() {
+                let node = array_item_ui(column.as_ref(), index);
+                node.ui(ui, column_name);
+            }
+        });
+    } else if let Some(list) = array.as_list_opt::<i32>() {
+        node = node.with_children(move |ui| {
+            let value = list.value(index);
+            array_items_ui(ui, &value);
+        });
+    } else if let Some(list) = array.as_list_opt::<i64>() {
+        node = node.with_children(move |ui| {
+            let value = list.value(index);
+            array_items_ui(ui, &value);
+        });
+    } else if let Some(list_array) = array.as_fixed_size_list_opt() {
+        node = node.with_children(move |ui| {
+            let value = list_array.value(index);
+            array_items_ui(ui, &value);
+        });
+    } else if let Some(dict_array) = array.as_any_dictionary_opt() {
+        node = node.with_children(move |ui| {
+            if !dict_array.keys().data_type().is_nested() {
+                let formatter = make_formatter(dict_array.keys())
+                    .expect("Formatter should be created for dictionary keys");
+                let key_string = formatter(index);
+                let node = array_item_ui(dict_array.values().as_ref(), index);
+                node.ui(ui, key_string);
+            } else {
+                let key_node = array_item_ui(dict_array.keys(), index);
+                let value_node = array_item_ui(dict_array.values().as_ref(), index);
+                key_node.ui(ui, "key");
+                value_node.ui(ui, "value");
+            }
+        });
+    } else if let Some(map_array) = array.as_map_opt() {
+        node = node.with_children(move |ui| {
+            if !map_array.keys().data_type().is_nested() {
+                let formatter = make_formatter(map_array.keys())
+                    .expect("Formatter should be created for map keys");
+                let key_string = formatter(index);
+                let node = array_item_ui(map_array.values().as_ref(), index);
+                node.ui(ui, key_string);
+            } else {
+                let key_node = array_item_ui(map_array.keys().as_ref(), index);
+                let value_node = array_item_ui(map_array.values().as_ref(), index);
+                key_node.ui(ui, "key");
+                value_node.ui(ui, "value");
+            }
+        });
+    } else if let Some(union_array) = array.as_union_opt() {
         let variant_index = union_array.type_id(index);
         let child = union_array.child(variant_index);
         let node = array_item_ui(child, index);
         return node;
     }
 
-    ArrowNode(value, None)
+    node
 }
 
-struct ArrowNode<'a>(String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>);
+struct ArrowNode<'a> {
+    value: String,
+    data_type: &'a DataType,
+    children: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+}
 
-impl ArrowNode<'_> {
+impl<'a> ArrowNode<'a> {
+    fn new(value: String, data_type: &'a DataType) -> Self {
+        ArrowNode {
+            value,
+            data_type,
+            children: None,
+        }
+    }
+
+    fn with_children<F: FnOnce(&mut egui::Ui) + 'a>(mut self, children: F) -> Self {
+        self.children = Some(Box::new(children));
+        self
+    }
+
     fn ui(self, ui: &mut Ui, name: impl Into<WidgetText>) -> Response {
-        let ArrowNode(value, maybe_children) = self;
+        let ArrowNode {
+            value,
+            data_type,
+            children: maybe_children,
+        } = self;
+
+        let data_type_name = datatype_ui(self.data_type).0;
 
         let item = ui.list_item();
 
         let text = name.into();
         let id = ui.unique_id().with(&text.text());
         let content = PropertyContent::new(text)
-            .value_text(value)
-            .show_only_when_collapsed(true);
+            .value_fn(|ui, visuals| {
+                ui.horizontal(|ui| {
+                    egui::Sides::new().shrink_left().show(
+                        ui,
+                        |ui| {
+                            if visuals.is_collapsible() && visuals.openness() != 0.0 {
+                                if visuals.openness() == 1.0 {
+                                    return;
+                                }
+                                ui.set_opacity(1.0 - visuals.openness());
+                            }
+                            ui.monospace(value);
+                        },
+                        |ui| {
+                            if visuals.hovered {
+                                ui.weak(data_type_name);
+                            }
+                        },
+                    );
+                });
+            })
+            .show_only_when_collapsed(false);
 
         let response = if let Some(children) = maybe_children {
-            item.show_hierarchical_with_children(ui, id, false, content, children)
-                .item_response
+            item.show_hierarchical_with_children(ui, id, false, content, |ui| {
+                // We create a new scope so properties are only aligned on a single level
+                ui.list_item_scope(id.with("scope"), |ui| {
+                    children(ui);
+                });
+            })
+            .item_response
         } else {
             item.show_hierarchical(ui, content)
         };
