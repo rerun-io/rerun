@@ -139,6 +139,12 @@ impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
     }
 }
 
+impl AsRef<str> for PartitionId {
+    fn as_ref(&self) -> &str {
+        self.id.as_str()
+    }
+}
+
 // shortcuts
 
 impl From<String> for crate::common::v1alpha1::PartitionId {
