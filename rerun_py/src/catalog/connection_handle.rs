@@ -248,16 +248,26 @@ impl ConnectionHandle {
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
+    //
+    // TODO: docs for layers (also: can be left empty)
     #[tracing::instrument(level = "info", skip_all)]
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
+        recording_layers: Vec<String>,
     ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
         let data_sources = recording_uris
             .iter()
-            .map(DataSource::new_rrd)
+            .zip(
+                recording_layers
+                    .into_iter()
+                    .chain(std::iter::repeat_with(|| {
+                        DataSource::DEFAULT_LAYER.to_owned()
+                    })),
+            )
+            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
 
