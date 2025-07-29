@@ -184,6 +184,11 @@ message CreateIndexRequest {
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
+  // List of specific partition layers that will be indexed (all if left empty).
+  //
+  // If non-empty, this must match the length of `partition_ids`.
+  repeated string partition_layers = 5;
+
   IndexConfig config = 3;
 
   // Specify behavior when index for a partition was already created.
