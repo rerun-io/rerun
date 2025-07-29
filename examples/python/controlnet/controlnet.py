@@ -51,7 +51,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         return
 
     if image_path.startswith(("http://", "https://")):
-        pil_image = PIL.Image.open(requests.get(image_path, stream=True).raw)
+        pil_image = PIL.Image.open(requests.get(image_path, stream=True).content)
     elif os.path.isfile(image_path):
         pil_image = PIL.Image.open(image_path)
     else:

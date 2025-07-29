@@ -151,7 +151,7 @@ impl AppState {
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<(TimelineName, ResolvedTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
-        let rec_cfg = self.recording_configs.get(&rec_id)?;
+        let rec_cfg = self.recording_configs.get(rec_id)?;
 
         // is there an active loop selection?
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -277,9 +277,9 @@ impl AppState {
                 let recording = store_context.recording;
 
                 let maybe_visualizable_entities_per_visualizer = view_class_registry
-                    .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
+                    .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
-                    view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
+                    view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
                 // Execute the queries for every `View`
                 let mut query_results = {
@@ -627,7 +627,9 @@ impl AppState {
                             DisplayMode::LocalRecordings => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
-                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
+                                if ctx.store_context.application_id()
+                                    == &StoreHub::welcome_screen_app_id()
+                                {
                                     ctx.command_sender().send_system(
                                         SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
                                             re_redap_browser::EXAMPLES_ORIGIN.clone(),

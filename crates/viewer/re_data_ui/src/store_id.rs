@@ -12,7 +12,9 @@ impl crate::DataUi for re_log_types::StoreId {
         if let Some(entity_db) = ctx.storage_context.bundle.get(self) {
             entity_db.data_ui(ctx, ui, ui_layout, query, db);
         } else {
-            ui.label(format!("{} ID {} (not found)", self.kind, self.id));
+            ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
+                ui.label(format!("{self:?}"));
+            });
         }
     }
 }

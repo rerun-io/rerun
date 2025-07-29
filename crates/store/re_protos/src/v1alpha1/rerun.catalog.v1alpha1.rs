@@ -64,6 +64,9 @@ pub struct CreateDatasetEntryRequest {
     /// with the same name already exists, the request will fail.
     #[prost(string, optional, tag = "1")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// If specified, create the entry using this specific ID. Use at your own risk.
+    #[prost(message, optional, tag = "2")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for CreateDatasetEntryRequest {
     const NAME: &'static str = "CreateDatasetEntryRequest";

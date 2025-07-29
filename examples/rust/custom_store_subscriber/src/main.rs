@@ -110,14 +110,14 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
                 // if first occurrence, speak!
                 if event.delta() > 0 && *count == 0 {
                     println!(
-                        "New component introduced in recording {}: {}!",
+                        "New component introduced in recording {:?}: {}!",
                         event.store_id, component_descr,
                     );
                 }
                 // if last occurrence, speak!
                 else if event.delta() < 0 && *count <= event.delta().unsigned_abs() {
                     println!(
-                        "Component retired from recording {}: {}!",
+                        "Component retired from recording {:?}: {}!",
                         event.store_id, component_descr,
                     );
                 }
@@ -133,8 +133,8 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
         println!("Component stats");
         println!("---------------");
 
-        for (recording, per_component) in &self.counters {
-            println!("  Recording '{recording}':"); // NOLINT
+        for (store_id, per_component) in &self.counters {
+            println!("  Recording '{store_id:?}':"); // NOLINT
             for (component, counter) in per_component {
                 println!("    {component}: {counter} occurrences");
             }

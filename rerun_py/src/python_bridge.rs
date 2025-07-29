@@ -10,24 +10,23 @@ use std::path::PathBuf;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
+use once_cell::sync::{Lazy, OnceCell};
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyDict},
 };
-use re_chunk::ChunkBatcherConfig;
-use re_sdk::ComponentDescriptor;
 
+use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
-use re_log_types::LogMsg;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_sdk::sink::CallbackSink;
+use re_log_types::{BlueprintActivationCommand, EntityPathPart};
+use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
-    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
-    sink::{BinaryStreamStorage, MemorySinkStorage},
+    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
+    external::re_log_encoding::encoder::encode_ref_as_bytes_local,
+    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage},
     time::TimePoint,
 };
-use re_sdk::{TimeCell, external::re_log_encoding::encoder::encode_ref_as_bytes_local};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -42,8 +41,6 @@ impl PyRuntimeErrorExt for PyRuntimeError {
         Self::new_err(format!("{message}: {err}"))
     }
 }
-
-use once_cell::sync::{Lazy, OnceCell};
 
 use crate::dataframe::PyRecording;
 
@@ -472,9 +469,9 @@ fn new_recording(
     batcher_config: Option<PyChunkBatcherConfig>,
 ) -> PyResult<PyRecordingStream> {
     let recording_id = if let Some(recording_id) = recording_id {
-        StoreId::from_string(StoreKind::Recording, recording_id)
+        RecordingId::from(recording_id)
     } else {
-        default_store_id(py, StoreKind::Recording, &application_id)
+        default_recording_id(py, &application_id)
     };
 
     let mut hooks = re_chunk::BatcherHooks::NONE;
@@ -485,7 +482,7 @@ fn new_recording(
 
     let mut builder = RecordingStreamBuilder::new(application_id)
         .batcher_hooks(hooks)
-        .store_id(recording_id.clone())
+        .recording_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .send_properties(send_properties);
@@ -533,10 +530,6 @@ fn new_blueprint(
     make_thread_default: bool,
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
-    // We don't currently support additive blueprints, so we should always be generating a new, unique
-    // blueprint id to avoid collisions.
-    let blueprint_id = StoreId::random(StoreKind::Blueprint);
-
     let mut hooks = re_chunk::BatcherHooks::NONE;
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
@@ -544,8 +537,11 @@ fn new_blueprint(
     hooks.on_release = Some(on_release.into());
 
     let blueprint = RecordingStreamBuilder::new(application_id)
+        // We don't currently support additive blueprints, so we should always be generating a new,
+        // unique blueprint recording id to avoid collisions.
+        .recording_id(RecordingId::random())
+        .blueprint()
         .batcher_hooks(hooks)
-        .store_id(blueprint_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
@@ -633,7 +629,7 @@ impl std::ops::Deref for PyRecordingStream {
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
-        .map(|info| info.application_id.to_string())
+        .map(|info| info.application_id().to_string())
 }
 
 /// Get the current recording stream's recording ID.
@@ -642,7 +638,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
-        .map(|info| info.store_id.to_string())
+        .map(|info| info.store_id.recording_id().to_string())
 }
 
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any.
@@ -2056,7 +2052,7 @@ pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) -> StoreId {
+fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 
@@ -2088,13 +2084,10 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     //
     // This makes sure that independent recording streams started from the same program, but
     // targeting different application IDs, won't share the same recording ID.
-    //
-    // Keep in mind: application IDs are merely metadata, everything is the store/viewer is driven
-    // solely by recording IDs.
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
     let uuid = uuid::Builder::from_random_bytes(rng.r#gen()).into_uuid();
-    StoreId::from_uuid(variant, uuid)
+    RecordingId::from(uuid.simple().to_string())
 }
 
 fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {

@@ -22,14 +22,14 @@ rr.init("rerun_example_image_advanced", spawn=True)
 rr.log("from_file", rr.EncodedImage(path=file_path))
 
 # Read with Pillow and NumPy, and log the image.
-image = np.array(PILImage.open(file_path))
-rr.log("from_pillow_rgba", rr.Image(image))
+image_data = np.array(PILImage.open(file_path))
+rr.log("from_pillow_rgba", rr.Image(image_data))
 
 # Drop the alpha channel from the image.
-image_rgb = image[..., :3]
+image_rgb = image_data[..., :3]
 rr.log("from_pillow_rgb", rr.Image(image_rgb))
 
 # Read with OpenCV.
-image = cv2.imread(file_path)
+image_cv = cv2.imread(file_path)
 # OpenCV uses BGR ordering, we need to make this known to Rerun.
-rr.log("from_opencv", rr.Image(image, color_model="BGR"))
+rr.log("from_opencv", rr.Image(image_cv, color_model="BGR"))

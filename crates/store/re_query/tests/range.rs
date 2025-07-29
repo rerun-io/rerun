@@ -22,7 +22,7 @@ use re_types_core::{Archetype as _, ComponentBatch as _};
 #[test]
 fn simple_range() -> anyhow::Result<()> {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -122,7 +122,7 @@ fn simple_range() -> anyhow::Result<()> {
 #[test]
 fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -230,7 +230,7 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
 #[test]
 fn static_range() -> anyhow::Result<()> {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -381,7 +381,7 @@ fn static_range() -> anyhow::Result<()> {
 #[test]
 fn time_back_and_forth() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -529,7 +529,7 @@ fn invalidation() {
             .unwrap_or(TimeInt::STATIC);
 
         let store = ChunkStore::new_handle(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
         let mut caches = QueryCache::new(store.clone());
@@ -833,7 +833,7 @@ fn invalidation() {
 #[test]
 fn invalidation_of_future_optionals() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -946,7 +946,7 @@ fn invalidation_of_future_optionals() {
 #[test]
 fn invalidation_static() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -1032,7 +1032,7 @@ fn invalidation_static() {
 #[test]
 fn concurrent_multitenant_edge_case() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -1105,7 +1105,7 @@ fn concurrent_multitenant_edge_case() {
 #[test]
 fn concurrent_multitenant_edge_case2() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());

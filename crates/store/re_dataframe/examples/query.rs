@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
-    SparseFillStrategy, StoreKind, TimeInt,
+    SparseFillStrategy, TimeInt,
 };
 use re_format_arrow::format_record_batch;
 
@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)?;
 
     for (store_id, engine) in &engines {
-        if store_id.kind != StoreKind::Recording {
+        if !store_id.is_recording() {
             continue;
         }
 

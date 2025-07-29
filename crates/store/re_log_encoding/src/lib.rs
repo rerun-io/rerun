@@ -6,8 +6,8 @@ pub mod decoder;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+mod app_id_injector;
 pub mod codec;
-
 pub mod protobuf_conversions;
 
 #[cfg(feature = "encoder")]
@@ -23,6 +23,10 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------
+
+pub use app_id_injector::{
+    ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
+};
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]

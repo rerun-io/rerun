@@ -22,7 +22,7 @@ impl crate::DataUi for ApplicationId {
                 ui.label("Application ID");
 
                 let mut label = self.to_string();
-                if self == &ctx.store_context.app_id {
+                if self == ctx.store_context.application_id() {
                     label.push_str(" (active)");
                 }
                 UiLayout::List.label(ui, label);
@@ -40,7 +40,7 @@ impl crate::DataUi for ApplicationId {
             .storage_context
             .bundle
             .recordings()
-            .filter(|db| db.app_id() == Some(self))
+            .filter(|db| db.application_id() == self)
             .sorted_by_key(|entity_db| {
                 entity_db
                     .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())

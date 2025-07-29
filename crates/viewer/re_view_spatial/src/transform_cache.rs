@@ -1246,7 +1246,7 @@ mod tests {
     ];
 
     fn apply_all_updates(entity_db: &EntityDb) {
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(entity_db);
         });
     }
@@ -1293,8 +1293,11 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
+        let entity_db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        TransformCacheStoreSubscriber::access(entity_db.store_id(), |_| {
             // Make sure the subscriber is registered.
         });
         entity_db
@@ -1326,7 +1329,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk0)).unwrap();
         entity_db.add_chunk(&Arc::new(chunk1)).unwrap();
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             assert!(
@@ -1390,7 +1393,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1477,7 +1480,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1592,7 +1595,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1681,7 +1684,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1743,7 +1746,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline_name = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
@@ -1820,7 +1823,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1931,7 +1934,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2065,7 +2068,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2132,7 +2135,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2164,7 +2167,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected changed transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2239,7 +2242,7 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(chunk)).unwrap();
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2316,7 +2319,7 @@ mod tests {
                 }
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2355,7 +2358,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Apply some updates to the transform before GC pass.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
         });
 
@@ -2373,7 +2376,7 @@ mod tests {
 
         entity_db.gc(&GarbageCollectionOptions::gc_everything());
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             assert!(
                 cache.transforms_for_timeline(*timeline.name()).per_entity
                     == cache.static_timeline.per_entity

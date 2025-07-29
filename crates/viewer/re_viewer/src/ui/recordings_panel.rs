@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
-    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
+    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers,
+    dataset_list_item_and_its_recordings_ui,
 };
 use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::ItemMenuButton;
@@ -126,7 +127,7 @@ fn recording_list_ui(
                 list_item::LabelContent::header("Local"),
                 |ui| {
                     for (app_id, entity_dbs) in local_recordings {
-                        dataset_and_its_recordings_ui(
+                        dataset_list_item_and_its_recordings_ui(
                             ui,
                             ctx,
                             &DatasetKind::Local(app_id.clone()),
@@ -173,7 +174,7 @@ fn recording_list_ui(
                     title,
                     |ui| {
                         for (app_id, entity_dbs) in example_recordings {
-                            dataset_and_its_recordings_ui(
+                            dataset_list_item_and_its_recordings_ui(
                                 ui,
                                 ctx,
                                 &DatasetKind::Local(app_id.clone()),

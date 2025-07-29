@@ -12,15 +12,15 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset (asynchronously)
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Register new partitions with the Dataset (blocking)
-  rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
-
   // Write chunks to one or more partitions.
   //
   // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
   //
   // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
+
+  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 
   // --- Query schemas ---
 
@@ -102,20 +102,14 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Retrieves the chunk manifest for a specific index.
-  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
-
-  // Create manifests for all partitions in the Dataset. Partition manifest contains information about
-  // the chunks in the partitions.
-  //
-  // This is normally automatically done as part of the registration process.
-  rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
-
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 
-  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
-  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+  // Fetch the internal state of a Schema Manifest.
+  rpc FetchSchemaManifest(FetchSchemaManifestRequest) returns (stream FetchSchemaManifestResponse) {}
+
+  // Retrieves the chunk manifest for a specific index.
+  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 }
 
 // --- Write data ---
@@ -140,19 +134,6 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
-// Eventually we _may_ get rid of the sync version; until then,
-// we should make sure that the two objects are in sync.
-message RegisterWithDatasetBlockingRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  repeated DataSource data_sources = 2;
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
-}
-
-message RegisterWithDatasetBlockingResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -507,27 +488,6 @@ message GetChunksResponse {
 // --- Developer/Debug APIs ---
 // Unstable APIs that are not exposed by the Frontend.
 
-message CreatePartitionManifestsRequest {
-  // Dataset for which we want to create manifests
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Create manifest for specific partitions. All will be
-  // created if left unspecified (empty list)
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // types of partitions and their storage location (same order
-  // as partition ids above)
-  repeated DataSource data_sources = 3;
-
-  // Define what happens if create is called multiple times for the same
-  // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
-}
-
-message CreatePartitionManifestsResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
 message FetchPartitionManifestRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
   rerun.common.v1alpha1.PartitionId id = 2;
@@ -536,6 +496,16 @@ message FetchPartitionManifestRequest {
 
 // TODO(cmc): this should have response extensions too.
 message FetchPartitionManifestResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchSchemaManifestRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+// TODO(cmc): this should have response extensions too.
+message FetchSchemaManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

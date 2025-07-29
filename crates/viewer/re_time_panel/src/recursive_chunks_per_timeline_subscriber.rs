@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn path_recursive_chunks_per_timeline() -> anyhow::Result<()> {
         let mut store = ChunkStore::new(
-            StoreId::random(re_log_types::StoreKind::Recording),
+            StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED, // Makes it hard to predict chunks otherwise.
         );
         // Initialize the store subscriber. Need to do this ahead of time, otherwise it will miss on events.

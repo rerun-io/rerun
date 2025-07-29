@@ -5,7 +5,7 @@ use std::sync::Arc;
 use once_cell::sync::Lazy;
 
 use re_chunk::{Chunk, ChunkResult};
-use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
+use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
 
 // ----------------------------------------------------------------------------
 
@@ -18,12 +18,19 @@ mod loader_urdf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
 
+pub mod mcap;
+
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod loader_lerobot;
 
+// This loader currently uses native-only features under the hood, and we cannot do that on web yet.
+pub mod loader_mcap;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
+
+pub use self::loader_mcap::McapLoader;
 
 pub use self::{
     load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
@@ -67,17 +74,14 @@ pub struct DataLoaderSettings {
     /// The recommended [`re_log_types::ApplicationId`] to log the data to, based on the surrounding context.
     pub application_id: Option<re_log_types::ApplicationId>,
 
-    /// The [`re_log_types::ApplicationId`] that is currently opened in the viewer, if any.
-    pub opened_application_id: Option<re_log_types::ApplicationId>,
-
-    /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
+    /// The recommended recording id to log the data to, based on the surrounding context.
     ///
     /// Log data to this recording if you want it to appear in a new recording shared by all
     /// data-loaders for the current loading session.
-    pub store_id: re_log_types::StoreId,
+    pub recording_id: RecordingId,
 
     /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
-    pub opened_store_id: Option<re_log_types::StoreId>,
+    pub opened_store_id: Option<StoreId>,
 
     /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
     ///
@@ -94,11 +98,10 @@ pub struct DataLoaderSettings {
 
 impl DataLoaderSettings {
     #[inline]
-    pub fn recommended(store_id: impl Into<re_log_types::StoreId>) -> Self {
+    pub fn recommended(recording_id: impl Into<RecordingId>) -> Self {
         Self {
             application_id: Default::default(),
-            opened_application_id: Default::default(),
-            store_id: store_id.into(),
+            recording_id: recording_id.into(),
             opened_store_id: Default::default(),
             force_store_info: false,
             entity_path_prefix: Default::default(),
@@ -106,12 +109,29 @@ impl DataLoaderSettings {
         }
     }
 
+    /// Returns the recommended [`re_log_types::StoreId`] to log the data to.
+    pub fn recommended_store_id(&self) -> StoreId {
+        StoreId::recording(
+            self.application_id
+                .clone()
+                .unwrap_or_else(re_log_types::ApplicationId::random),
+            self.recording_id.clone(),
+        )
+    }
+
+    /// Returns the currently opened [`re_log_types::StoreId`] if any. Otherwise, returns the
+    /// recommended store id.
+    pub fn opened_store_id_or_recommended(&self) -> StoreId {
+        self.opened_store_id
+            .clone()
+            .unwrap_or_else(|| self.recommended_store_id())
+    }
+
     /// Generates CLI flags from these settings, for external data loaders.
     pub fn to_cli_args(&self) -> Vec<String> {
         let Self {
             application_id,
-            opened_application_id,
-            store_id,
+            recording_id,
             opened_store_id,
             force_store_info: _,
             entity_path_prefix,
@@ -123,18 +143,17 @@ impl DataLoaderSettings {
         if let Some(application_id) = application_id {
             args.extend(["--application-id".to_owned(), format!("{application_id}")]);
         }
-        args.extend(["--recording-id".to_owned(), format!("{store_id}")]);
+        args.extend(["--recording-id".to_owned(), format!("{recording_id}")]);
 
-        if let Some(opened_application_id) = opened_application_id {
-            args.extend([
-                "--opened-application-id".to_owned(),
-                format!("{opened_application_id}"),
-            ]);
-        }
         if let Some(opened_store_id) = opened_store_id {
             args.extend([
+                "--opened-application-id".to_owned(),
+                format!("{}", opened_store_id.application_id()),
+            ]);
+
+            args.extend([
                 "--opened-recording-id".to_owned(),
-                format!("{opened_store_id}"),
+                format!("{}", opened_store_id.recording_id()),
             ]);
         }
 
@@ -399,6 +418,7 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        Arc::new(McapLoader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
@@ -460,6 +480,11 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
+#[cfg(not(target_arch = "wasm32"))]
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
+#[cfg(target_arch = "wasm32")]
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &[];
+
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
@@ -467,6 +492,7 @@ pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
     SUPPORTED_RERUN_EXTENSIONS
         .iter()
+        .chain(SUPPORTED_THIRD_PARTY_FORMATS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)

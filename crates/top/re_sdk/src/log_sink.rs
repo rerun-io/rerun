@@ -63,7 +63,7 @@ pub trait LogSink: Send + Sync + 'static {
                 self.send(activation_cmd.into());
             } else {
                 re_log::warn!(
-                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    "Blueprint ID mismatch when sending blueprint: {:?} != {:?}. Ignoring activation.",
                     blueprint_id,
                     activation_cmd.blueprint_id
                 );

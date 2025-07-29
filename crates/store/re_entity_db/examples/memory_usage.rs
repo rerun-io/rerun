@@ -102,7 +102,7 @@ fn log_messages() {
 
     const NUM_POINTS: usize = 1_000;
 
-    let store_id = StoreId::random(StoreKind::Recording);
+    let store_id = StoreId::random(StoreKind::Recording, "test_app");
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
     time_point.insert(timeline, TimeInt::ZERO);

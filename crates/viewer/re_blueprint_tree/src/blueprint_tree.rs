@@ -81,9 +81,9 @@ impl BlueprintTree {
         re_tracing::profile_function!();
 
         // Invalidate the filter widget if the store id has changed.
-        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+        if self.filter_state_app_id.as_ref() != Some(ctx.store_context.application_id()) {
             self.filter_state = Default::default();
-            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+            self.filter_state_app_id = Some(ctx.store_context.application_id().clone());
         }
 
         ui.panel_content(|ui| {
@@ -1279,15 +1279,15 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let default_blueprint_id = ctx
         .storage_context
         .hub
-        .default_blueprint_id_for_app(&ctx.store_context.app_id);
+        .default_blueprint_id_for_app(ctx.store_context.application_id());
 
     let default_blueprint = default_blueprint_id.and_then(|id| ctx.storage_context.bundle.get(id));
 
     let disabled_reason = match default_blueprint {
         None => Some("No default blueprint is set for this app"),
         Some(default_blueprint) => {
-            let active_is_clone_of_default = Some(default_blueprint.store_id()).as_ref()
-                == ctx.store_context.blueprint.cloned_from();
+            let active_is_clone_of_default =
+                Some(default_blueprint.store_id()) == ctx.store_context.blueprint.cloned_from();
             let last_modified_at_the_same_time =
                 default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
             if active_is_clone_of_default && last_modified_at_the_same_time {
