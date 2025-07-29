@@ -487,6 +487,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
@@ -550,6 +551,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
