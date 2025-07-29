@@ -118,6 +118,11 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
+  /// Which Partition Layer should this data source be registered to?
+  ///
+  /// Defaults to `base` if unspecified.
+  optional string layer = 3;
+
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 }
