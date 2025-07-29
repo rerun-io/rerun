@@ -35,7 +35,7 @@ pub fn load_from_path(
         .into());
     }
 
-    re_log::info!("Loading {path:?}...");
+    re_log::info!("Loading {path:?}…");
 
     // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
     // loader handles this automatically.
