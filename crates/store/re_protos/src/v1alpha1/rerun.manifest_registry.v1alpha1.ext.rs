@@ -352,7 +352,7 @@ impl RegisterWithDatasetResponse {
 #[derive(Debug)]
 pub struct RegisterWithDatasetTaskDescriptor {
     pub partition_id: PartitionId,
-    pub partition_type: PartitionType,
+    pub partition_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
 }
@@ -457,58 +457,7 @@ impl TryFrom<i32> for DataSourceKind {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DataSource {
-    pub storage_url: url::Url,
-    pub kind: DataSourceKind,
-}
-
-impl DataSource {
-    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
-        Ok(Self {
-            storage_url: storage_url.as_ref().parse()?,
-            kind: DataSourceKind::Rrd,
-        })
-    }
-}
-
-impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
-    fn from(value: DataSource) -> Self {
-        crate::manifest_registry::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            typ: value.kind as i32,
-        }
-    }
-}
-
-impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        data_source: crate::manifest_registry::v1alpha1::DataSource,
-    ) -> Result<Self, Self::Error> {
-        let storage_url = data_source
-            .storage_url
-            .ok_or_else(|| {
-                missing_field!(
-                    crate::manifest_registry::v1alpha1::DataSource,
-                    "storage_url"
-                )
-            })?
-            .parse()?;
-
-        let kind = DataSourceKind::try_from(data_source.typ)?;
-
-        Ok(Self { storage_url, kind })
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum PartitionType {
-    Rrd,
-}
-
-impl PartitionType {
+impl DataSourceKind {
     pub fn to_arrow(self) -> ArrayRef {
         match self {
             Self::Rrd => {
@@ -555,6 +504,52 @@ impl PartitionType {
                 }
             })
             .collect()
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DataSource {
+    pub storage_url: url::Url,
+    pub kind: DataSourceKind,
+}
+
+impl DataSource {
+    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            kind: DataSourceKind::Rrd,
+        })
+    }
+}
+
+impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
+    fn from(value: DataSource) -> Self {
+        crate::manifest_registry::v1alpha1::DataSource {
+            storage_url: Some(value.storage_url.to_string()),
+            typ: value.kind as i32,
+        }
+    }
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        data_source: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| {
+                missing_field!(
+                    crate::manifest_registry::v1alpha1::DataSource,
+                    "storage_url"
+                )
+            })?
+            .parse()?;
+
+        let kind = DataSourceKind::try_from(data_source.typ)?;
+
+        Ok(Self { storage_url, kind })
     }
 }
 

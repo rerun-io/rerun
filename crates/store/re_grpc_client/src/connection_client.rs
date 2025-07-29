@@ -27,7 +27,7 @@ use re_protos::{
     },
     manifest_registry::v1alpha1::{
         RegisterWithDatasetResponse, ScanPartitionTableResponse,
-        ext::{DataSource, PartitionType, RegisterWithDatasetTaskDescriptor},
+        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     missing_field,
 };
@@ -270,7 +270,7 @@ where
         };
 
         let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
-        let partition_type_column = PartitionType::many_from_arrow(
+        let partition_type_column = DataSourceKind::many_from_arrow(
             response
                 .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
                 .ok_or_else(|| {
