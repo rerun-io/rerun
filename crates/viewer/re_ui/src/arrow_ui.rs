@@ -1,6 +1,5 @@
-use arrow::array::AsArray;
 use arrow::{
-    array::Array,
+    array::{Array, StructArray},
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
@@ -21,22 +20,9 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        dbg!(&ui_layout);
-
         if ui_layout.is_selection_panel() {
-            // if let DataType::Struct(fields) = array.data_type() {
-            //     for field in fields {
-            //         ui.list_item()
-            //             .show_flat(ui, PropertyContent::new(field.to_string()));
-            //     }
-            // }
-
-            let (datatype_name, maybe_ui) = datatype_ui(ui, array.data_type());
-            dbg!(&datatype_name);
+            let (datatype_name, maybe_ui) = datatype_ui(array.data_type());
             if let Some(content) = maybe_ui {
-                // println!("Showing struct: {}", datatype_name);
-                // list_item_scope(ui, "arrow data type", content);
-
                 list_item_scope(ui, Id::new("arrow data type list"), |ui| {
                     ui.list_item().show_hierarchical_with_children(
                         ui,
@@ -47,6 +33,8 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                     );
                 });
             }
+
+            array_contents_ui(ui, array);
 
             return;
         }
@@ -209,7 +197,7 @@ fn datatype_ui<'a>(
                 })),
             )
         }
-        DataType::Dictionary(k, v) => (
+        DataType::Dictionary(_k, _v) => (
             format!("dictionary"),
             // Some(Box::new(move |ui| {
             //     ui.list_item()
@@ -245,17 +233,392 @@ fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     ui.spacing_mut().item_spacing.y = 0.0;
     let item = ui.list_item();
 
-    let (datatype_name, maybe_ui) = datatype_ui(ui, field.data_type());
+    let (datatype_name, maybe_ui) = datatype_ui(field.data_type());
 
     let property = PropertyContent::new(field.name())
         .value_text(datatype_name)
         .show_only_when_collapsed(false);
 
     if let Some(content) = maybe_ui {
-        println!("Field: {} ({})", field.name(), field.data_type());
         item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
     } else {
         item.show_hierarchical(ui, property);
+    }
+}
+
+fn array_contents_ui(ui: &mut egui::Ui, array: &dyn arrow::array::Array) {
+    if array.is_empty() {
+        return;
+    }
+
+    let array_len = array.len();
+    let instance_count_str = re_format::format_uint(array_len);
+    let contents_label = format!("{instance_count_str} items");
+
+    list_item_scope(ui, Id::new("array contents list"), |ui| {
+        ui.list_item().show_hierarchical_with_children(
+            ui,
+            Id::new("array contents"),
+            true,
+            LabelContent::new(contents_label),
+            |ui| {
+                render_array_items(ui, array);
+            },
+        );
+    });
+}
+
+fn render_array_items(ui: &mut egui::Ui, array: &dyn arrow::array::Array) {
+    const RANGE_SIZE: usize = 100;
+    const MAX_RANGES_TO_SHOW: usize = 10;
+    const MAX_ITEMS_PER_RANGE: usize = 10;
+
+    // Handle different array types with custom UI
+    match array.data_type() {
+        DataType::Struct(_) => {
+            render_struct_array_items(
+                ui,
+                array,
+                RANGE_SIZE,
+                MAX_RANGES_TO_SHOW,
+                MAX_ITEMS_PER_RANGE,
+            );
+        }
+        DataType::List(_)
+        | DataType::LargeList(_)
+        | DataType::ListView(_)
+        | DataType::LargeListView(_)
+        | DataType::FixedSizeList(_, _) => {
+            render_list_array_items(
+                ui,
+                array,
+                RANGE_SIZE,
+                MAX_RANGES_TO_SHOW,
+                MAX_ITEMS_PER_RANGE,
+            );
+        }
+        DataType::Union(_, _) => {
+            render_union_array_items(
+                ui,
+                array,
+                RANGE_SIZE,
+                MAX_RANGES_TO_SHOW,
+                MAX_ITEMS_PER_RANGE,
+            );
+        }
+        DataType::Map(_, _) => {
+            render_map_array_items(
+                ui,
+                array,
+                RANGE_SIZE,
+                MAX_RANGES_TO_SHOW,
+                MAX_ITEMS_PER_RANGE,
+            );
+        }
+        _ => {
+            // Primitive types and other simple types
+            render_primitive_array_items(
+                ui,
+                array,
+                RANGE_SIZE,
+                MAX_RANGES_TO_SHOW,
+                MAX_ITEMS_PER_RANGE,
+            );
+        }
+    }
+}
+
+fn render_struct_array_items(
+    ui: &mut egui::Ui,
+    array: &dyn arrow::array::Array,
+    range_size: usize,
+    max_ranges: usize,
+    max_items_per_range: usize,
+) {
+    let Some(struct_array) = array.as_any().downcast_ref::<StructArray>() else {
+        return;
+    };
+    let array_len = struct_array.len();
+
+    if array_len <= max_items_per_range {
+        // Show all items individually for small arrays
+        for i in 0..array_len {
+            render_struct_item(ui, struct_array, i);
+        }
+    } else {
+        // Group items into ranges for large arrays
+        let mut ranges_shown = 0;
+        let mut start = 0;
+
+        while start < array_len && ranges_shown < max_ranges {
+            let end = (start + range_size).min(array_len);
+            let range_label = if end - start == 1 {
+                format!("[{start}]")
+            } else {
+                format!("[{start}..{}]", end - 1)
+            };
+
+            let range_content =
+                PropertyContent::new(range_label.clone()).show_only_when_collapsed(false);
+
+            ui.list_item().show_hierarchical_with_children(
+                ui,
+                Id::new(format!("struct_range_{start}_{end}")),
+                false, // collapsed by default
+                range_content,
+                |ui| {
+                    let items_to_show = (end - start).min(max_items_per_range);
+                    for i in start..(start + items_to_show) {
+                        render_struct_item(ui, struct_array, i);
+                    }
+
+                    if end - start > max_items_per_range {
+                        let omitted = end - start - max_items_per_range;
+                        let content =
+                            PropertyContent::new("...").value_text(format!("{omitted} more items"));
+                        ui.list_item().show_flat(ui, content);
+                    }
+                },
+            );
+
+            start = end;
+            ranges_shown += 1;
+        }
+
+        if start < array_len {
+            let remaining = array_len - start;
+            let content =
+                PropertyContent::new("...").value_text(format!("{remaining} more ranges"));
+            ui.list_item().show_flat(ui, content);
+        }
+    }
+}
+
+fn render_struct_item(ui: &mut egui::Ui, struct_array: &StructArray, index: usize) {
+    let struct_label = format!("[{index}]");
+
+    ui.list_item().show_hierarchical_with_children(
+        ui,
+        Id::new(format!("struct_item_{index}")),
+        false, // collapsed by default
+        PropertyContent::new(struct_label).show_only_when_collapsed(false),
+        |ui| {
+            // Show each field of the struct
+            for (field_index, _field) in struct_array.fields().iter().enumerate() {
+                let field_array = struct_array.column(field_index);
+                let field_name = struct_array.column_names()[field_index];
+
+                match field_array.data_type() {
+                    // For nested types, show hierarchically
+                    DataType::Struct(_)
+                    | DataType::List(_)
+                    | DataType::LargeList(_)
+                    | DataType::ListView(_)
+                    | DataType::LargeListView(_)
+                    | DataType::FixedSizeList(_, _)
+                    | DataType::Union(_, _)
+                    | DataType::Map(_, _) => {
+                        ui.list_item().show_hierarchical_with_children(
+                            ui,
+                            Id::new(format!("struct_field_{index}_{field_index}")),
+                            false,
+                            PropertyContent::new(field_name).show_only_when_collapsed(false),
+                            |ui| {
+                                // Recursively render the nested field
+                                let single_item_array = field_array.slice(index, 1);
+                                arrow_ui(ui, UiLayout::SelectionPanel, &single_item_array);
+                            },
+                        );
+                    }
+                    _ => {
+                        // For primitive types, show the value directly
+                        if let Ok(formatter) = make_formatter(field_array.as_ref()) {
+                            let content =
+                                PropertyContent::new(field_name).value_text(formatter(index));
+                            ui.list_item().show_flat(ui, content);
+                        }
+                    }
+                }
+            }
+        },
+    );
+}
+
+fn render_list_array_items(
+    ui: &mut egui::Ui,
+    array: &dyn arrow::array::Array,
+    range_size: usize,
+    max_ranges: usize,
+    max_items_per_range: usize,
+) {
+    let array_len = array.len();
+
+    if array_len <= max_items_per_range {
+        for i in 0..array_len {
+            render_list_item(ui, array, i);
+        }
+    } else {
+        // Group items into ranges for large arrays
+        let mut ranges_shown = 0;
+        let mut start = 0;
+
+        while start < array_len && ranges_shown < max_ranges {
+            let end = (start + range_size).min(array_len);
+            let range_label = if end - start == 1 {
+                format!("[{start}]")
+            } else {
+                format!("[{start}..{}]", end - 1)
+            };
+
+            let range_content =
+                PropertyContent::new(range_label.clone()).show_only_when_collapsed(false);
+
+            ui.list_item().show_hierarchical_with_children(
+                ui,
+                Id::new(format!("list_range_{start}_{end}")),
+                false,
+                range_content,
+                |ui| {
+                    let items_to_show = (end - start).min(max_items_per_range);
+                    for i in start..(start + items_to_show) {
+                        render_list_item(ui, array, i);
+                    }
+
+                    if end - start > max_items_per_range {
+                        let omitted = end - start - max_items_per_range;
+                        let content =
+                            PropertyContent::new("...").value_text(format!("{omitted} more items"));
+                        ui.list_item().show_flat(ui, content);
+                    }
+                },
+            );
+
+            start = end;
+            ranges_shown += 1;
+        }
+
+        if start < array_len {
+            let remaining = array_len - start;
+            let content =
+                PropertyContent::new("...").value_text(format!("{remaining} more ranges"));
+            ui.list_item().show_flat(ui, content);
+        }
+    }
+}
+
+fn render_list_item(ui: &mut egui::Ui, array: &dyn arrow::array::Array, index: usize) {
+    use arrow::array::{LargeListArray, ListArray};
+
+    let list_label = format!("[{index}]");
+
+    ui.list_item().show_hierarchical_with_children(
+        ui,
+        Id::new(format!("list_item_{index}")),
+        false,
+        PropertyContent::new(list_label).show_only_when_collapsed(false),
+        |ui| {
+            // Get the list value at this index and recursively render it
+            if let Some(list_array) = array.as_any().downcast_ref::<ListArray>() {
+                let list_value = list_array.value(index);
+                arrow_ui(ui, UiLayout::SelectionPanel, &list_value);
+            } else if let Some(large_list_array) = array.as_any().downcast_ref::<LargeListArray>() {
+                let list_value = large_list_array.value(index);
+                arrow_ui(ui, UiLayout::SelectionPanel, &list_value);
+            }
+        },
+    );
+}
+
+fn render_union_array_items(
+    ui: &mut egui::Ui,
+    array: &dyn arrow::array::Array,
+    range_size: usize,
+    max_ranges: usize,
+    max_items_per_range: usize,
+) {
+    // For now, treat unions like primitive arrays
+    // TODO: Add proper union handling
+    render_primitive_array_items(ui, array, range_size, max_ranges, max_items_per_range);
+}
+
+fn render_map_array_items(
+    ui: &mut egui::Ui,
+    array: &dyn arrow::array::Array,
+    range_size: usize,
+    max_ranges: usize,
+    max_items_per_range: usize,
+) {
+    // For now, treat maps like primitive arrays
+    // TODO: Add proper map handling
+    render_primitive_array_items(ui, array, range_size, max_ranges, max_items_per_range);
+}
+
+fn render_primitive_array_items(
+    ui: &mut egui::Ui,
+    array: &dyn arrow::array::Array,
+    range_size: usize,
+    max_ranges: usize,
+    max_items_per_range: usize,
+) {
+    let array_len = array.len();
+    let Ok(array_formatter) = make_formatter(array) else {
+        return;
+    };
+
+    if array_len <= max_items_per_range {
+        // Show all items individually for small arrays
+        for i in 0..array_len {
+            let content = PropertyContent::new(format!("[{i}]")).value_text(array_formatter(i));
+            ui.list_item().show_flat(ui, content);
+        }
+    } else {
+        // Group items into ranges for large arrays
+        let mut ranges_shown = 0;
+        let mut start = 0;
+
+        while start < array_len && ranges_shown < max_ranges {
+            let end = (start + range_size).min(array_len);
+            let range_label = if end - start == 1 {
+                format!("[{start}]")
+            } else {
+                format!("[{start}..{}]", end - 1)
+            };
+
+            let range_content =
+                PropertyContent::new(range_label.clone()).show_only_when_collapsed(false);
+
+            ui.list_item().show_hierarchical_with_children(
+                ui,
+                Id::new(format!("primitive_range_{start}_{end}")),
+                false, // collapsed by default
+                range_content,
+                |ui| {
+                    let items_to_show = (end - start).min(max_items_per_range);
+                    for i in start..(start + items_to_show) {
+                        let content =
+                            PropertyContent::new(format!("[{i}]")).value_text(array_formatter(i));
+                        ui.list_item().show_flat(ui, content);
+                    }
+
+                    if end - start > max_items_per_range {
+                        let omitted = end - start - max_items_per_range;
+                        let content =
+                            PropertyContent::new("...").value_text(format!("{omitted} more items"));
+                        ui.list_item().show_flat(ui, content);
+                    }
+                },
+            );
+
+            start = end;
+            ranges_shown += 1;
+        }
+
+        if start < array_len {
+            let remaining = array_len - start;
+            let content =
+                PropertyContent::new("...").value_text(format!("{remaining} more ranges"));
+            ui.list_item().show_flat(ui, content);
+        }
     }
 }
 
