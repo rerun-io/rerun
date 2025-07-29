@@ -545,6 +545,17 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
         })
     }
+
+    pub fn new_rrd_layer(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: layer.as_ref().into(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
 }
 
 impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
