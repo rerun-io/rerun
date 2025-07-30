@@ -1,3 +1,5 @@
+mod child_nodes;
+
 use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
 use crate::{UiExt, UiLayout};
 use arrow::array::AsArray;
@@ -17,6 +19,7 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
@@ -249,113 +252,79 @@ fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
 }
 
 struct ArrowNode<'a> {
-    array: MaybeArc<'a>,
+    array: child_nodes::MaybeArc<'a>,
     index: usize,
-    field_name: Option<String>, // TODO: Can be &str?
+    field_name: Option<WidgetText>, // TODO: Can be &str?
 }
 
 impl<'a> ArrowNode<'a> {
-    fn new(array: &'a dyn Array, index: usize) -> Self {
+    fn new(array: impl Into<child_nodes::MaybeArc<'a>>, index: usize) -> Self {
         ArrowNode {
-            array: MaybeArc::Array(array),
+            array: array.into(),
             index,
             field_name: None,
         }
     }
 
-    fn new_arc(array: arrow::array::ArrayRef, index: usize) -> Self {
-        ArrowNode {
-            array: MaybeArc::Arc(array),
-            index,
-            field_name: None,
-        }
-    }
-
-    fn with_field_name(mut self, field_name: impl Into<String>) -> Self {
+    fn with_field_name(mut self, field_name: impl Into<WidgetText>) -> Self {
         self.field_name = Some(field_name.into());
         self
     }
 
-    fn child_nodes(&'a self) -> Option<Box<dyn NodeIterator<'a> + 'a>> {
+    fn child_nodes(&'a self) -> Option<child_nodes::ChildNodes<'a>> {
         let array: &dyn Array = self.array.as_ref();
-        if let Some(struct_array) = array.as_struct_opt() {
-            Some(Box::new(struct_array.column_names().into_iter().map(
-                |column_name| {
-                    let column = struct_array
-                        .column_by_name(column_name)
-                        .expect("Field should exist");
-                    ArrowNode::new(column.as_ref(), self.index)
-                        .with_field_name(column_name.to_owned())
-                },
-            )))
+        let child_nodes = if let Some(struct_array) = array.as_struct_opt() {
+            child_nodes::ChildNodes::Struct {
+                parent_index: self.index,
+                array: struct_array,
+            }
         } else if let Some(list) = array.as_list_opt::<i32>() {
             let value = list.value(self.index);
-            Some(Box::new(
-                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
-            ))
+            child_nodes::ChildNodes::List(value.clone())
         } else if let Some(list) = array.as_list_opt::<i64>() {
             let value = list.value(self.index);
-            Some(Box::new(
-                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
-            ))
+            child_nodes::ChildNodes::List(value.clone())
         } else if let Some(list_array) = array.as_fixed_size_list_opt() {
             let value = list_array.value(self.index);
-            Some(Box::new(
-                (0..value.len()).map(move |i| ArrowNode::new_arc(value.clone(), i)),
-            ))
+            child_nodes::ChildNodes::List(value.clone())
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             if !dict_array.keys().data_type().is_nested() {
-                let formatter = make_formatter(dict_array.keys())
-                    .expect("Formatter should be created for dictionary keys");
-                let key_string = formatter(self.index);
-                Some(Box::new(std::iter::once(
-                    ArrowNode::new(dict_array.values().as_ref(), self.index)
-                        .with_field_name(key_string),
-                )))
+                child_nodes::ChildNodes::InlineKeyMap {
+                    keys: dict_array.keys().clone().into(),
+                    values: dict_array.values().clone().into(),
+                    parent_index: self.index,
+                }
             } else {
-                Some(Box::new(
-                    vec![
-                        ArrowNode::new(dict_array.keys(), self.index)
-                            .with_field_name("key".to_owned()),
-                        ArrowNode::new(dict_array.values().as_ref(), self.index)
-                            .with_field_name("value".to_owned()),
-                    ]
-                    .into_iter(),
-                ))
+                child_nodes::ChildNodes::Map {
+                    keys: dict_array.keys().clone().into(),
+                    values: dict_array.values().clone().into(),
+                    parent_index: self.index,
+                }
             }
         } else if let Some(map_array) = array.as_map_opt() {
             if !map_array.keys().data_type().is_nested() {
-                let formatter = make_formatter(map_array.keys())
-                    .expect("Formatter should be created for map keys");
-                let key_string = formatter(self.index);
-                Some(Box::new(std::iter::once(
-                    ArrowNode::new(map_array.values().as_ref(), self.index)
-                        .with_field_name(key_string),
-                )))
+                child_nodes::ChildNodes::InlineKeyMap {
+                    keys: map_array.keys().clone().into(),
+                    values: map_array.values().clone().into(),
+                    parent_index: self.index,
+                }
             } else {
-                Some(Box::new(
-                    vec![
-                        ArrowNode::new(map_array.keys().as_ref(), self.index)
-                            .with_field_name("key".to_owned()),
-                        ArrowNode::new(map_array.values().as_ref(), self.index)
-                            .with_field_name("value".to_owned()),
-                    ]
-                    .into_iter(),
-                ))
+                child_nodes::ChildNodes::Map {
+                    keys: map_array.keys().clone().into(),
+                    values: map_array.values().clone().into(),
+                    parent_index: self.index,
+                }
             }
         } else if let Some(union_array) = array.as_union_opt() {
-            let variant_index = union_array.type_id(self.index);
-            let child = union_array.child(variant_index);
-            let names = union_array.type_names();
-            let variant_name = names
-                .get(variant_index as usize)
-                .expect("Variant index should be valid");
-            Some(Box::new(std::iter::once(
-                ArrowNode::new(child, self.index).with_field_name(variant_name.to_owned()),
-            )))
+            child_nodes::ChildNodes::Union {
+                array: union_array,
+                parent_index: self.index,
+            }
         } else {
-            None
-        }
+            return None;
+        };
+
+        Some(child_nodes)
     }
 
     fn layout_job(&self, ui: &Ui) -> LayoutJob {
@@ -376,8 +345,13 @@ impl<'a> ArrowNode<'a> {
 
         if let Some(children) = self.child_nodes() {
             let len = children.len();
+            const MAX_INLINE_ITEMS: usize = 3;
 
-            let mut peekable = children.peekable();
+            let mut peekable = children
+                .iter()
+                // Limit the number of items we show inline
+                .take(MAX_INLINE_ITEMS)
+                .peekable();
             // TODO: Add some fallback in case it's empty
             let has_name = peekable
                 .peek()
@@ -392,13 +366,18 @@ impl<'a> ArrowNode<'a> {
 
             while let Some(child) = peekable.next() {
                 if let Some(field_name) = &child.field_name {
-                    job.append(field_name, 0.0, format_name.clone());
+                    job.append(field_name.text(), 0.0, format_name.clone());
                     job.append(": ", 0.0, format_name.clone());
                 }
                 child.inline_value_layout_job(job, ui);
                 if peekable.peek().is_some() {
                     job.append(", ", 0.0, format_name.clone());
                 }
+            }
+
+            if len > MAX_INLINE_ITEMS {
+                job.append(", ", 0.0, format_name.clone());
+                job.append("…", 0.0, format_value.clone());
             }
 
             job.append(close, 0.0, format_name.clone());
@@ -420,14 +399,16 @@ impl<'a> ArrowNode<'a> {
             field_name,
         } = &self;
 
-        let array = MaybeArc::as_ref(array);
+        let array = child_nodes::MaybeArc::as_ref(array);
 
         let data_type_name = datatype_ui(array.data_type()).0;
 
         let item = ui.list_item();
 
-        let text = field_name.clone().unwrap_or_else(|| format!("[{index}]"));
-        let id = ui.unique_id().with(&text);
+        let text = field_name
+            .clone()
+            .unwrap_or_else(|| format!("[{index}]").into());
+        let id = ui.unique_id().with(&text.text());
 
         let job = self.layout_job(ui);
 
@@ -486,7 +467,7 @@ impl<'a> ArrowNode<'a> {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 // We create a new scope so properties are only aligned on a single level
                 ui.list_item_scope(id.with("scope"), |ui| {
-                    for child in children {
+                    for child in children.iter() {
                         child.ui(ui);
                     }
                 });
@@ -497,24 +478,6 @@ impl<'a> ArrowNode<'a> {
         };
 
         response
-    }
-}
-
-trait NodeIterator<'a>: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator {}
-
-impl<'a, I: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator> NodeIterator<'a> for I {}
-
-enum MaybeArc<'a> {
-    Array(&'a dyn Array),
-    Arc(arrow::array::ArrayRef),
-}
-
-impl MaybeArc<'_> {
-    fn as_ref(&self) -> &dyn Array {
-        match self {
-            MaybeArc::Array(array) => *array,
-            MaybeArc::Arc(arc) => arc.as_ref(),
-        }
     }
 }
 
