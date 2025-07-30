@@ -10,7 +10,7 @@ use arrow::array::{
 use arrow::error::ArrowError;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_types::{AnyValues, Loggable, archetypes, components};
+use re_types::{AnyValues, archetypes, components};
 
 use crate::mcap;
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};

@@ -1,3 +1,4 @@
+pub mod protobuf;
 mod raw;
 pub mod sensor_msgs;
 
