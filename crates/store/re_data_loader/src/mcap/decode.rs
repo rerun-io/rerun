@@ -13,7 +13,7 @@ use re_log_types::TimeCell;
 use re_sorbet::SorbetSchema;
 use thiserror::Error;
 
-use super::schema::UnsupportedSchemaMessageParser;
+use super::schema::RawMcapMessageParser;
 
 pub type SchemaName = String;
 
@@ -170,6 +170,10 @@ impl MessageDecoderRegistry {
         self
     }
 
+    pub fn has_schema(&self, schema: &SchemaName) -> bool {
+        self.0.contains_key(schema)
+    }
+
     /// Registers a new schema plugin using its [`Default`] implementation.
     pub fn register_default<T: SchemaPlugin + Default + 'static>(&mut self) -> &mut Self {
         self.register(T::default())
@@ -197,7 +201,7 @@ impl IsEnabled for ChannelId {}
 pub struct McapChunkDecoder<'a> {
     registry: &'a MessageDecoderRegistry,
     channel_counts: IntMap<ChannelId, usize>,
-    parsers: IntMap<EntityPath, (ParserContext, Box<dyn McapMessageParser>)>,
+    parsers: IntMap<ChannelId, (ParserContext, Box<dyn McapMessageParser>)>,
 }
 
 impl<'a> McapChunkDecoder<'a> {
@@ -215,6 +219,7 @@ impl<'a> McapChunkDecoder<'a> {
     /// Decode the next message in the chunk
     pub fn decode_next(&mut self, msg: &Message<'_>) -> Result<(), PluginError> {
         let channel = msg.channel.as_ref();
+        let channel_id = ChannelId(channel.id);
         let entity_path = EntityPath::from(channel.topic.as_str());
         let timepoint = TimePoint::from([
             (
@@ -249,19 +254,10 @@ impl<'a> McapChunkDecoder<'a> {
             });
 
         let Some(plugin) = self.registry.0.get(&schema.name) else {
-            let mcap::Schema {
-                id: _,
-                name,
-                encoding: _,
-                data: _,
-            } = schema.as_ref();
-
-            re_log::warn_once!("No loader for schema {name:?}");
-
-            let (ctx, parser) = self.parsers.entry(entity_path.clone()).or_insert_with(|| {
+            let (ctx, parser) = self.parsers.entry(channel_id).or_insert_with(|| {
                 (
                     ParserContext::new(entity_path.clone()),
-                    Box::new(UnsupportedSchemaMessageParser::new(num_rows)),
+                    Box::new(RawMcapMessageParser::new(num_rows)),
                 )
             });
 
@@ -273,8 +269,7 @@ impl<'a> McapChunkDecoder<'a> {
                 .map_err(PluginError::Other);
         };
 
-        // TODO(#10724): Add support for logging warnings directly to Rerun
-        let (ctx, parser) = self.parsers.entry(entity_path.clone()).or_insert_with(|| {
+        let (ctx, parser) = self.parsers.entry(channel_id).or_insert_with(|| {
             (
                 ParserContext::new(entity_path.clone()),
                 plugin.create_message_parser(channel, num_rows),

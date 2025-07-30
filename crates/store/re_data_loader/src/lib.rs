@@ -345,7 +345,10 @@ pub enum DataLoaderError {
     IO(#[from] std::io::Error),
 
     #[error(transparent)]
-    Arrow(#[from] re_chunk::ChunkError),
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error(transparent)]
+    Chunk(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
     Decode(#[from] re_log_encoding::decoder::DecodeError),
