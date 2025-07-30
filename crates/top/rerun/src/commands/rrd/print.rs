@@ -77,7 +77,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             println!("{info:#?}");
         }
 
-        LogMsg::ArrowMsg(_row_id, arrow_msg) => {
+        LogMsg::ArrowMsg(_store_id, arrow_msg) => {
             let mut chunk =
                 re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).context("corrupt chunk")?;
 
@@ -131,7 +131,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             make_default,
         }) => {
             println!(
-                "BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})"
+                "BlueprintActivationCommand({blueprint_id:?}, make_active: {make_active}, make_default: {make_default})"
             );
         }
     }

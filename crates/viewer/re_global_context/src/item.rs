@@ -159,7 +159,7 @@ impl Item {
             Self::AppId(_) => "Application",
             Self::TableId(_) => "Table",
             Self::DataSource(_) => "Data source",
-            Self::StoreId(store_id) => match store_id.kind {
+            Self::StoreId(store_id) => match store_id.kind() {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },

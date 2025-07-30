@@ -21,22 +21,23 @@ impl crate::DataUi for EntityDb {
         _db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
-            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
-            let mut string = self.store_id().to_string();
+            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui` (this is
+            // probably dead code, as `entity_db_button_ui` is actually used in all single line
+            // contexts).
+            let mut string = self.store_id().recording_id().to_string();
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
             }
-            if let Some(store_info) = self.store_info() {
-                string += &format!(", {}", store_info.application_id);
-            }
+            string += &format!(", {}", self.store_id().application_id());
+
             ui.label(string);
             return;
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
             {
-                ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
-                ui.label(self.store_id().to_string());
+                ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind()));
+                ui.label(self.store_id().recording_id().to_string());
                 ui.end_row();
             }
 
@@ -48,7 +49,6 @@ impl crate::DataUi for EntityDb {
 
             if let Some(store_info) = self.store_info() {
                 let re_log_types::StoreInfo {
-                    application_id,
                     store_id,
                     cloned_from,
                     store_source,
@@ -62,7 +62,7 @@ impl crate::DataUi for EntityDb {
                 }
 
                 ui.grid_left_hand_label("Application ID");
-                app_id_button_ui(ctx, ui, application_id);
+                app_id_button_ui(ctx, ui, store_id.application_id());
                 ui.end_row();
 
                 ui.grid_left_hand_label("Source");
@@ -80,7 +80,7 @@ impl crate::DataUi for EntityDb {
                 }
 
                 ui.grid_left_hand_label("Kind");
-                ui.label(store_id.kind.to_string());
+                ui.label(store_id.kind().to_string());
                 ui.end_row();
             }
 
@@ -200,21 +200,19 @@ impl crate::DataUi for EntityDb {
             StoreKind::Recording => {
                 if false {
                     // Just confusing and unnecessary to show this.
-                    if store_id.as_ref() == hub.active_recording_id() {
+                    if store_id == hub.active_store_id() {
                         ui.add_space(8.0);
                         ui.label("This is the active recording.");
                     }
                 }
             }
             StoreKind::Blueprint => {
-                let active_app_id = &ctx.store_context.app_id;
-                let is_active_app_id = self.app_id() == Some(active_app_id);
+                let active_app_id = ctx.store_context.application_id();
+                let is_active_app_id = self.application_id() == active_app_id;
 
                 if is_active_app_id {
-                    let is_default =
-                        hub.default_blueprint_id_for_app(active_app_id) == store_id.as_ref();
-                    let is_active =
-                        hub.active_blueprint_id_for_app(active_app_id) == store_id.as_ref();
+                    let is_default = hub.default_blueprint_id_for_app(active_app_id) == store_id;
+                    let is_active = hub.active_blueprint_id_for_app(active_app_id) == store_id;
 
                     match (is_default, is_active) {
                         (false, false) => {}
@@ -225,8 +223,7 @@ impl crate::DataUi for EntityDb {
                             if let Some(active_blueprint) =
                                 hub.active_blueprint_for_app(active_app_id)
                             {
-                                if active_blueprint.cloned_from() == Some(self.store_id()).as_ref()
-                                {
+                                if active_blueprint.cloned_from() == Some(self.store_id()) {
                                     // The active blueprint is a clone of the selected blueprint.
                                     if self.latest_row_id() == active_blueprint.latest_row_id() {
                                         ui.label(

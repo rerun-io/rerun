@@ -61,3 +61,19 @@ for (const pkg of unpublished) {
   const tag = inferTag(pkg.version);
   $(`npm publish --tag ${tag}`, { cwd: pkg.dir });
 }
+
+const tarballs = [];
+for (const pkg of unpublished) {
+  $(`yarn run pack`, { cwd: pkg.dir });
+  const filename = `${pkg.name.split("/")[1]}.tar.gz`;
+  tarballs.push(path.join(pkg.dir, filename));
+}
+
+console.log("constructing final package for GCS upload");
+console.log(`files: ${tarballs.join(" ")}`);
+const rerun_js_package_dir = "rerun_js_package";
+fs.mkdirSync(rerun_js_package_dir);
+for (const tarball of tarballs) {
+  const dest = path.join(rerun_js_package_dir, path.basename(tarball));
+  fs.copyFileSync(tarball, dest);
+}

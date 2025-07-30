@@ -174,13 +174,11 @@ impl TryFrom<crate::log_msg::v1alpha1::FileSource> for re_log_types::FileSource 
             FileSourceKind::Cli => Ok(Self::Cli),
             FileSourceKind::Uri => Ok(Self::Uri),
             FileSourceKind::DragAndDrop => Ok(Self::DragAndDrop {
-                recommended_application_id: None,
-                recommended_recording_id: None,
+                recommended_store_id: None,
                 force_store_info: false,
             }),
             FileSourceKind::FileDialog => Ok(Self::FileDialog {
-                recommended_application_id: None,
-                recommended_recording_id: None,
+                recommended_store_id: None,
                 force_store_info: false,
             }),
             FileSourceKind::Sdk => Ok(Self::Sdk),
@@ -196,8 +194,9 @@ impl TryFrom<crate::log_msg::v1alpha1::FileSource> for re_log_types::FileSource 
 impl From<re_log_types::StoreInfo> for crate::log_msg::v1alpha1::StoreInfo {
     #[inline]
     fn from(value: re_log_types::StoreInfo) -> Self {
+        #[expect(deprecated)]
         Self {
-            application_id: Some(value.application_id.into()),
+            application_id: None,
             store_id: Some(value.store_id.into()),
             store_source: Some(value.store_source.into()),
             store_version: value
@@ -214,20 +213,29 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
 
     #[inline]
     fn try_from(value: crate::log_msg::v1alpha1::StoreInfo) -> Result<Self, Self::Error> {
-        let application_id: re_log_types::ApplicationId = value
-            .application_id
-            .ok_or(missing_field!(
-                crate::log_msg::v1alpha1::StoreInfo,
-                "application_id",
-            ))?
-            .into();
-        let store_id: re_log_types::StoreId = value
+        #[expect(deprecated)]
+        let legacy_application_id = value.application_id;
+
+        //TODO(#10730): clean that up when removing 0.24 back compat
+        let store_id: re_log_types::StoreId = match value
             .store_id
             .ok_or(missing_field!(
                 crate::log_msg::v1alpha1::StoreInfo,
                 "store_id",
             ))?
-            .into();
+            .try_into()
+        {
+            Ok(store_id) => store_id,
+            Err(err) => match legacy_application_id {
+                Some(app_id) => err.recover(app_id.into()),
+                None => {
+                    return Err(err.into_type_conversion_error(
+                        "both `StoreId` and `StoreInfo` are missing an application id",
+                    ));
+                }
+            },
+        };
+
         let store_source: re_log_types::StoreSource = value
             .store_source
             .ok_or(missing_field!(
@@ -235,12 +243,12 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
                 "store_source",
             ))?
             .try_into()?;
+
         let store_version = value
             .store_version
             .map(|v| re_build_info::CrateVersion::from_bytes(v.crate_version_bits.to_le_bytes()));
 
         Ok(Self {
-            application_id,
             store_id,
             cloned_from: None,
             store_source,
@@ -296,28 +304,10 @@ impl From<re_log_types::BlueprintActivationCommand>
     }
 }
 
-impl TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand>
-    for re_log_types::BlueprintActivationCommand
-{
-    type Error = TypeConversionError;
-
-    #[inline]
-    fn try_from(
-        value: crate::log_msg::v1alpha1::BlueprintActivationCommand,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            blueprint_id: value
-                .blueprint_id
-                .ok_or(missing_field!(
-                    crate::log_msg::v1alpha1::BlueprintActivationCommand,
-                    "blueprint_id",
-                ))?
-                .into(),
-            make_active: value.make_active,
-            make_default: value.make_default,
-        })
-    }
-}
+// IMPORTANT: TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand> for
+// re_log_types::BlueprintActivationCommand is not tricky because of the `ApplicationId` in
+// `StoreId`, so we don't implement it here.
+//TODO(#10730): we could reimplement it if/when we remove 0.24 back compat.
 
 #[cfg(test)]
 mod tests {
@@ -346,10 +336,10 @@ mod tests {
     #[test]
     fn store_info_conversion() {
         let store_info = re_log_types::StoreInfo {
-            application_id: re_log_types::ApplicationId("test".to_owned()),
-            store_id: re_log_types::StoreId::from_string(
+            store_id: re_log_types::StoreId::new(
                 re_log_types::StoreKind::Recording,
-                "test_recording".to_owned(),
+                "test_app_id",
+                "test_recording_id",
             ),
             cloned_from: None,
             store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
@@ -370,10 +360,10 @@ mod tests {
         let set_store_info = re_log_types::SetStoreInfo {
             row_id: re_tuid::Tuid::new(),
             info: re_log_types::StoreInfo {
-                application_id: re_log_types::ApplicationId("test".to_owned()),
-                store_id: re_log_types::StoreId::from_string(
+                store_id: re_log_types::StoreId::new(
                     re_log_types::StoreKind::Recording,
-                    "test_recording".to_owned(),
+                    "test_app_id",
+                    "test_recording_id",
                 ),
                 cloned_from: None,
                 store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
@@ -389,22 +379,5 @@ mod tests {
             set_store_info.clone().into();
         let set_store_info2: re_log_types::SetStoreInfo = proto_set_store_info.try_into().unwrap();
         assert_eq!(set_store_info, set_store_info2);
-    }
-
-    #[test]
-    fn blueprint_activation_command_conversion() {
-        let blueprint_activation_command = re_log_types::BlueprintActivationCommand {
-            blueprint_id: re_log_types::StoreId::from_string(
-                re_log_types::StoreKind::Blueprint,
-                "test".to_owned(),
-            ),
-            make_active: true,
-            make_default: false,
-        };
-        let proto_blueprint_activation_command: crate::log_msg::v1alpha1::BlueprintActivationCommand =
-            blueprint_activation_command.clone().into();
-        let blueprint_activation_command2: re_log_types::BlueprintActivationCommand =
-            proto_blueprint_activation_command.try_into().unwrap();
-        assert_eq!(blueprint_activation_command, blueprint_activation_command2);
     }
 }

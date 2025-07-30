@@ -1,3 +1,5 @@
+//! Provides a test context that builds on `re_viewer_context`.
+
 #![allow(clippy::unwrap_used)] // This is only a test
 
 use std::sync::Arc;
@@ -13,8 +15,8 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_global_context::{AppOptions, DisplayMode};
 use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Timeline,
-    external::re_tuid::Tuid,
+    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    StoreSource, Timeline, external::re_tuid::Tuid,
 };
 use re_types::{
     Component as _, ComponentDescriptor, archetypes::RecordingInfo, external::uuid::Uuid,
@@ -22,18 +24,22 @@ use re_types::{
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 
-use crate::{
+use re_viewer_context::{
     ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
     DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StoreHub, SystemCommand,
     ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     command_channel,
 };
 
+pub mod external {
+    pub use egui_kittest;
+}
+
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
 /// Example:
 /// ```rust
-/// use re_viewer_context::test_context::TestContext;
+/// use re_test_context::TestContext;
 /// use re_viewer_context::ViewerContext;
 ///
 /// let mut test_context = TestContext::new();
@@ -54,7 +60,7 @@ pub struct TestContext {
 
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
-    pub focused_item: Mutex<Option<crate::Item>>,
+    pub focused_item: Mutex<Option<re_viewer_context::Item>>,
 
     // Arc to make it easy to modify the time cursor at runtime (i.e. while the harness is running).
     pub recording_config: Arc<RecordingConfig>,
@@ -86,14 +92,15 @@ impl TestContext {
     pub fn new() -> Self {
         re_log::setup_logging();
 
-        let recording_id = StoreId::from_uuid(StoreKind::Recording, Uuid::nil());
-        let mut recording_store = EntityDb::new(recording_id.clone());
+        let application_id = ApplicationId::from("test_app");
+        let recording_store_id =
+            StoreId::from_uuid(StoreKind::Recording, application_id.clone(), Uuid::nil());
+        let mut recording_store = EntityDb::new(recording_store_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
             info: StoreInfo {
-                application_id: "test_app".into(),
-                store_id: recording_store.store_id(),
+                store_id: recording_store.store_id().clone(),
                 cloned_from: None,
                 store_source: StoreSource::Other("test".into()),
                 store_version: None,
@@ -147,16 +154,15 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id = StoreId::random(StoreKind::Blueprint);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id.clone());
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();
-        let application_id = recording_store.store_info().unwrap().application_id.clone();
         store_hub.insert_entity_db(recording_store);
         store_hub.insert_entity_db(blueprint_store);
-        store_hub.set_active_recording_id(recording_id);
+        store_hub.set_active_recording_id(recording_store_id);
         store_hub
-            .set_cloned_blueprint_active_for_app(&application_id, &blueprint_id)
+            .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
         let (command_sender, command_receiver) = command_channel();
@@ -333,12 +339,13 @@ impl TestContext {
         store_hub.entity_db_mut(&blueprint_id)
     }
 
-    pub fn active_recording_id(&self) -> StoreId {
+    pub fn active_store_id(&self) -> StoreId {
         self.store_hub
             .lock()
             .active_recording()
             .expect("expected an active recording")
             .store_id()
+            .clone()
     }
 
     pub fn set_active_timeline(&self, timeline: Timeline) {
@@ -397,14 +404,13 @@ impl TestContext {
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
-            .indicated_entities_per_visualizer(&store_context.recording.store_id());
+            .indicated_entities_per_visualizer(store_context.recording.store_id());
         let maybe_visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(
-                &store_context.recording.store_id(),
-            );
+            .maybe_visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
 
-        let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
+        let drag_and_drop_manager =
+            re_viewer_context::DragAndDropManager::new(ItemCollection::default());
 
         let mut context_render_state = self.egui_render_state.lock();
         let render_state = context_render_state.get_or_insert_with(create_egui_renderstate);
@@ -569,12 +575,12 @@ impl TestContext {
                 }
 
                 SystemCommand::SetActiveTime {
-                    rec_id,
+                    store_id: rec_id,
                     timeline,
                     time,
                 } => {
                     assert_eq!(
-                        rec_id,
+                        &rec_id,
                         self.store_hub.lock().active_recording().unwrap().store_id()
                     );
                     let mut time_ctrl = self.recording_config.time_ctrl.write();
@@ -685,8 +691,8 @@ impl TestContext {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Item;
     use re_entity_db::InstancePath;
+    use re_viewer_context::Item;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

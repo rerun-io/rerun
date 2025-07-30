@@ -342,9 +342,8 @@ impl PyDatasetEntry {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
+            let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
             let store_info = StoreInfo {
-                application_id: dataset_name.into(),
                 store_id: store_id.clone(),
                 cloned_from: None,
                 store_source: StoreSource::Unknown,
@@ -488,6 +487,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
@@ -551,6 +551,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),

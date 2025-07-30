@@ -174,7 +174,7 @@ impl std::fmt::Debug for QueryCache {
         let mut strings = Vec::new();
 
         strings.push(format!(
-            "[Entities that must be checked for clears @ {store_id}]\n"
+            "[Entities that must be checked for clears @ {store_id:?}]\n"
         ));
         {
             let sorted: BTreeSet<EntityPath> =
@@ -185,7 +185,7 @@ impl std::fmt::Debug for QueryCache {
             strings.push("\n".to_owned());
         }
 
-        strings.push(format!("[LatestAt @ {store_id}]"));
+        strings.push(format!("[LatestAt @ {store_id:?}]"));
         {
             let latest_at_per_cache_key = latest_at_per_cache_key.read();
             let latest_at_per_cache_key: BTreeMap<_, _> = latest_at_per_cache_key.iter().collect();
@@ -209,7 +209,7 @@ impl std::fmt::Debug for QueryCache {
             }
         }
 
-        strings.push(format!("[Range @ {store_id}]"));
+        strings.push(format!("[Range @ {store_id:?}]"));
         {
             let range_per_cache_key = range_per_cache_key.read();
             let range_per_cache_key: BTreeMap<_, _> = range_per_cache_key.iter().collect();
@@ -300,7 +300,7 @@ impl ChunkStoreSubscriber for QueryCache {
 
             assert!(
                 self.store_id == *store_id,
-                "attempted to use a query cache {} with the wrong datastore ({})",
+                "attempted to use a query cache {:?} with the wrong datastore ({:?})",
                 self.store_id,
                 store_id,
             );

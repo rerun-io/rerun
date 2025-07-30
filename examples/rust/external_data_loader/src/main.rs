@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
                 .as_deref()
                 .unwrap_or("rerun_example_external_data_loader"),
         );
-        if let Some(recording_id) = args.recording_id.as_ref() {
+        if let Some(recording_id) = args.recording_id.as_deref() {
             rec = rec.recording_id(recording_id);
         };
 

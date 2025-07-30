@@ -13,6 +13,8 @@ service CatalogService {
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
 
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {}
+
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
@@ -43,6 +45,21 @@ message DeleteEntryRequest {
 
 message DeleteEntryResponse {}
 
+// UpdateEntry
+
+message UpdateEntryRequest {
+  // The entry to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values for updatable fields.
+  EntryDetailsUpdate entry_details_update = 2;
+}
+
+message UpdateEntryResponse {
+  // The updated entry details
+  EntryDetails entry_details = 1;
+}
+
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
@@ -51,6 +68,9 @@ message CreateDatasetEntryRequest {
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
   // with the same name already exists, the request will fail.
   optional string name = 1;
+
+  // If specified, create the entry using this specific ID. Use at your own risk.
+  optional rerun.common.v1alpha1.EntryId id = 2;
 
   //TODO(ab): add IfExistingBehavior?
 }
@@ -155,6 +175,12 @@ message EntryDetails {
 
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
+}
+
+// Updatable fields of an Entry
+message EntryDetailsUpdate {
+  // The name of this entry.
+  optional string name = 2;
 }
 
 message DatasetDetails {

@@ -137,7 +137,7 @@ pub fn url_to_receiver(
                     timeline,
                     time_range,
                 } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                    rec_id: recording_id,
+                    store_id: recording_id,
                     timeline,
                     time_range,
                 }),

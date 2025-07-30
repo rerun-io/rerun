@@ -55,25 +55,27 @@ pub fn open_recording(
 ) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_types::StoreInfo {
-            application_id,
             store_id,
             store_source,
             store_version,
             cloned_from: _,
         } = store_info;
 
+        let application_id = store_id.application_id();
+        let recording_id = store_id.recording_id();
+
         let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
 
         let (application_id_preprocessed, recording_id_preprocessed) =
             if app_id_starts_with_rerun_example {
                 (
-                    Id::Official(application_id.0.clone()),
-                    Id::Official(store_id.to_string()),
+                    Id::Official(application_id.to_string()),
+                    Id::Official(recording_id.to_string()),
                 )
             } else {
                 (
-                    Id::Hashed(Property::from(application_id.0.clone()).hashed()),
-                    Id::Hashed(Property::from(store_id.to_string()).hashed()),
+                    Id::Hashed(Property::from(application_id.as_str()).hashed()),
+                    Id::Hashed(Property::from(recording_id.as_str()).hashed()),
                 )
             };
 

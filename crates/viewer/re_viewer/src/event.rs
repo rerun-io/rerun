@@ -11,13 +11,9 @@
 use std::rc::Rc;
 
 use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, StoreId};
-use re_log_types::{TimeReal, Timeline, TimelineName};
+use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
 use re_smart_channel::SmartChannelSource;
-use re_viewer_context::Item;
-use re_viewer_context::ItemContext;
-use re_viewer_context::ViewId;
-use re_viewer_context::{ContainerId, ItemCollection};
+use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
 use re_viewport_blueprint::ViewportBlueprint;
 
 /// An event produced in the Viewer.
@@ -28,7 +24,7 @@ pub struct ViewerEvent {
     pub application_id: ApplicationId,
 
     #[serde(with = "serde::recording_id")]
-    pub recording_id: StoreId,
+    pub recording_id: RecordingId,
 
     pub partition_id: Option<String>,
 
@@ -38,7 +34,7 @@ pub struct ViewerEvent {
 
 impl ViewerEvent {
     #[inline]
-    fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Option<Self> {
+    fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
         let partition_id = db.data_source.as_ref().and_then(|ds| {
             if let SmartChannelSource::RedapGrpcStream {
                 uri: re_uri::DatasetDataUri { partition_id, .. },
@@ -51,12 +47,12 @@ impl ViewerEvent {
             }
         });
 
-        Some(Self {
-            application_id: db.app_id()?.clone(),
-            recording_id: db.store_id(),
+        Self {
+            application_id: db.application_id().clone(),
+            recording_id: db.recording_id().clone(),
             partition_id,
             kind,
-        })
+        }
     }
 }
 
@@ -321,10 +317,8 @@ impl ViewerEventDispatcher {
     }
 
     #[inline]
-    fn dispatch(&self, event: Option<ViewerEvent>) {
-        if let Some(event) = event {
-            (self.f)(event);
-        }
+    fn dispatch(&self, event: ViewerEvent) {
+        (self.f)(event);
     }
 }
 
@@ -412,22 +406,19 @@ mod serde {
     pub mod recording_id {
         use super::{Deserialize, Deserializer, Serializer};
 
-        pub fn serialize<S>(v: &re_log_types::StoreId, serializer: S) -> Result<S::Ok, S::Error>
+        pub fn serialize<S>(v: &re_log_types::RecordingId, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
             serializer.serialize_str(v.as_str())
         }
 
-        pub fn deserialize<'de, D>(deserializer: D) -> Result<re_log_types::StoreId, D::Error>
+        pub fn deserialize<'de, D>(deserializer: D) -> Result<re_log_types::RecordingId, D::Error>
         where
             D: Deserializer<'de>,
         {
             let s: String = Deserialize::deserialize(deserializer)?;
-            Ok(re_log_types::StoreId::from_string(
-                re_log_types::StoreKind::Recording,
-                s,
-            ))
+            Ok(s.into())
         }
     }
 

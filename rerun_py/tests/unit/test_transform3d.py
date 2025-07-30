@@ -68,7 +68,7 @@ def test_angle() -> None:
 def test_transform3d() -> None:
     rotation_axis_angle_original = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
-    scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0]]
+    scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0], rr.Scale3D([1.0, 2.0, 3.0])]
     axis_lengths = [None, 1, 1.0]
     relations = [
         None,

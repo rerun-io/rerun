@@ -31,6 +31,9 @@ const INIT_METHOD: &str = "__init__";
 /// The standard numpy interface for converting to an array type
 const ARRAY_METHOD: &str = "__array__";
 
+/// The standard python len method
+const LEN_METHOD: &str = "__len__";
+
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
 
@@ -200,6 +203,12 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains a `deferred_patch_class()` method
     has_deferred_patch_class: bool,
+
+    /// Whether the `ObjectExt` contains __len__()
+    ///
+    /// If the `ExtensionClass` contains its own `__len__` then we avoid generating
+    /// a default implementation.
+    has_len: bool,
 }
 
 impl ExtensionClass {
@@ -248,6 +257,7 @@ impl ExtensionClass {
 
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
+            let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
             let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides: Vec<String> = methods
@@ -286,6 +296,7 @@ impl ExtensionClass {
                 has_array,
                 has_native_to_pa_array,
                 has_deferred_patch_class,
+                has_len,
             }
         } else {
             Self {
@@ -298,6 +309,7 @@ impl ExtensionClass {
                 has_array: false,
                 has_native_to_pa_array: false,
                 has_deferred_patch_class: false,
+                has_len: false,
             }
         }
     }
@@ -805,6 +817,7 @@ fn code_for_struct(
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
         code.push_indented(1, quote_native_types_method_from_obj(objects, obj), 1);
+        code.push_indented(1, quote_len_method_from_obj(ext_class, obj), 1);
 
         if *kind != ObjectKind::Archetype {
             code.push_indented(0, quote_aliases_from_object(obj), 1);
@@ -1419,6 +1432,37 @@ fn quote_array_method_from_obj(
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
             return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+        ",
+        ext_class.name, ext_class.file_name
+    ))
+}
+
+fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String {
+    // allow overriding the __len__ function
+    if ext_class.has_len {
+        return format!("# __len__ can be found in {}", ext_class.file_name);
+    }
+
+    // exclude archetypes, objects which don't have a single field, and anything that isn't plural
+    if obj.kind == ObjectKind::Archetype || obj.fields.len() != 1 || !obj.fields[0].typ.is_plural()
+    {
+        return String::new();
+    }
+
+    let field_name = &obj.fields[0].name;
+
+    let null_string = if obj.fields[0].is_nullable {
+        // If the field is optional, we return 0 if it is None.
+        format!(" if self.{field_name} is not None else 0")
+    } else {
+        String::new()
+    };
+
+    unindent(&format!(
+        "
+        def __len__(self) -> int:
+            # You can define your own __len__ function as a member of {} in {}
+            return len(self.{field_name}){null_string}
         ",
         ext_class.name, ext_class.file_name
     ))

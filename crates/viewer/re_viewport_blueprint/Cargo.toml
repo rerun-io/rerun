@@ -43,4 +43,4 @@ smallvec.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-re_viewer_context = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true

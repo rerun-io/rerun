@@ -741,7 +741,7 @@ mod tests {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -931,7 +931,7 @@ mod tests {
     fn no_components() -> anyhow::Result<()> {
         re_log::setup_logging();
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -996,7 +996,7 @@ mod tests {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -1174,7 +1174,7 @@ mod tests {
             // Insert `chunk1` then `chunk2`.
 
             let mut store = ChunkStore::new(
-                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
                     chunk_max_bytes: u64::MAX,
@@ -1203,7 +1203,7 @@ mod tests {
             // Insert `chunk2` then `chunk1`.
 
             let mut store = ChunkStore::new(
-                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
                     chunk_max_bytes: u64::MAX,

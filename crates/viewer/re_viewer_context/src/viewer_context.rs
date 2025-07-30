@@ -154,7 +154,7 @@ impl ViewerContext<'_> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> re_log_types::StoreId {
+    pub fn store_id(&self) -> &re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -347,9 +347,7 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording()
-            .app_id()
-            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
+        self.recording().application_id() != &StoreHub::welcome_screen_app_id()
     }
 }
 

@@ -2311,7 +2311,7 @@ mod tests {
         re_log::setup_logging();
 
         let store = ChunkStore::new_handle(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
 
@@ -2519,7 +2519,7 @@ mod tests {
     /// repeated timestamps, duplicated chunks, partial multi-timelines, flat and recursive clears, etc.
     fn create_nasty_store() -> anyhow::Result<ChunkStore> {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
 

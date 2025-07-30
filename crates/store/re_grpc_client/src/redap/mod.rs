@@ -255,7 +255,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
                     r.chunks
                         .into_iter()
                         .map(|arrow_msg| {
-                            let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+                            let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                             let arrow_msg =
                                 re_log_encoding::protobuf_conversions::arrow_msg_from_proto(
@@ -292,7 +292,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             r.chunks
                 .into_iter()
                 .map(|arrow_msg| {
-                    let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+                    let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                     let arrow_msg =
                         re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
@@ -335,20 +335,20 @@ pub async fn stream_blueprint_and_partition_from_server(
         .into_inner()
         .try_into()?;
 
+    let recording_store_id = uri.store_id();
+
     if let Some((blueprint_dataset, blueprint_partition)) =
         response.dataset_entry.dataset_details.default_bluprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        // It may be tempting to use the partition id to build the `StoreId` here, but we require
-        // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
-        // ids are only unique within a given dataset.
-        // This is a hack be cause
-        // TODO(#7950)
-        let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
+        // For blueprint, we can use a random recording ID
+        let blueprint_store_id = StoreId::random(
+            StoreKind::Blueprint,
+            recording_store_id.application_id().clone(),
+        );
 
         let blueprint_store_info = StoreInfo {
-            application_id: uri.dataset_id.to_string().into(),
             store_id: blueprint_store_id.clone(),
             cloned_from: None,
             store_source: StoreSource::Unknown,
@@ -385,9 +385,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     }
 
     let store_info = StoreInfo {
-        application_id: uri.dataset_id.to_string().into(),
-        // See note above about `StoreId::random`.
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id: recording_store_id,
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,

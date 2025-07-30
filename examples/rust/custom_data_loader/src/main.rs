@@ -83,10 +83,7 @@ fn hash_and_log(
         .with_archetype(RowId::new(), TimePoint::default(), &doc)
         .build()?;
 
-    let store_id = settings
-        .opened_store_id
-        .clone()
-        .unwrap_or_else(|| settings.store_id.clone());
+    let store_id = settings.opened_store_id_or_recommended();
     let data = LoadedData::Chunk(HashLoader::name(&HashLoader), store_id, chunk);
     tx.send(data).ok();
 

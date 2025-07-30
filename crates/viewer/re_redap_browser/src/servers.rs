@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
-use datafusion::prelude::{col, lit};
+use datafusion::prelude::{SessionContext, col, lit};
 use egui::{Frame, Margin, RichText, Widget as _};
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
@@ -20,16 +21,15 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::entries::{Dataset, Entries, EntryRef, Table};
+use crate::entries::{Dataset, Entries, Entry, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
-use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
     entries: Entries,
 
     /// Session context wrapper which holds all the table-like entries of the server.
-    tables_session_ctx: TablesSessionContext,
+    tables_session_ctx: Arc<SessionContext>,
 
     connection_registry: re_grpc_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
@@ -42,18 +42,14 @@ impl Server {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
+        let tables_session_ctx = Arc::new(SessionContext::new());
+
         let entries = Entries::new(
             connection_registry.clone(),
             &runtime,
             egui_ctx,
             origin.clone(),
-        );
-
-        let tables_session_ctx = TablesSessionContext::new(
-            connection_registry.clone(),
-            &runtime,
-            egui_ctx,
-            origin.clone(),
+            tables_session_ctx.clone(),
         );
 
         Self {
@@ -66,28 +62,23 @@ impl Server {
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        // Note: this also drops the DataFusionTableWidget caches
+        self.tables_session_ctx = Arc::new(SessionContext::new());
+
         self.entries = Entries::new(
             self.connection_registry.clone(),
             runtime,
             egui_ctx,
             self.origin.clone(),
-        );
-
-        // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = TablesSessionContext::new(
-            self.connection_registry.clone(),
-            runtime,
-            egui_ctx,
-            self.origin.clone(),
+            self.tables_session_ctx.clone(),
         );
     }
 
     fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
-        self.tables_session_ctx.on_frame_start();
     }
 
-    fn find_entry(&self, entry_id: EntryId) -> Option<EntryRef<'_>> {
+    fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries.find_entry(entry_id)
     }
 
@@ -154,44 +145,41 @@ impl Server {
 
         const ENTRY_LINK_COLUMN_NAME: &str = "link";
 
-        re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.ctx.clone(),
-            "__entries",
-        )
-        .title(self.origin.host.to_string())
-        .column_blueprint(|desc| {
-            let mut blueprint = ColumnBlueprint::default();
+        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), "__entries")
+            .title(self.origin.host.to_string())
+            .column_blueprint(|desc| {
+                let mut blueprint = ColumnBlueprint::default();
 
-            if let ColumnDescriptorRef::Component(component) = desc {
-                if component.component == "entry_kind" {
-                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
+                if let ColumnDescriptorRef::Component(component) = desc {
+                    if component.component == "entry_kind" {
+                        blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
+                    }
                 }
-            }
 
-            let column_sort_key = match desc.display_name().as_str() {
-                "name" => 0,
-                ENTRY_LINK_COLUMN_NAME => 1,
-                _ => 2,
-            };
+                let column_sort_key = match desc.display_name().as_str() {
+                    "name" => 0,
+                    ENTRY_LINK_COLUMN_NAME => 1,
+                    _ => 2,
+                };
 
-            blueprint = blueprint.sort_key(column_sort_key);
+                blueprint = blueprint.sort_key(column_sort_key);
 
-            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
-                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
-            }
+                if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
+                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+                }
 
-            blueprint
-        })
-        .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
-        .filter(
-            col("entry_kind")
-                .in_list(
-                    vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
-                    false,
-                )
-                .and(col("name").not_eq(lit("__entries"))),
-        )
-        .show(viewer_ctx, &self.runtime, ui);
+                blueprint
+            })
+            .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+            .filter(
+                col("entry_kind")
+                    .in_list(
+                        vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
+                        false,
+                    )
+                    .and(col("name").not_eq(lit("__entries"))),
+            )
+            .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn dataset_entry_ui(
@@ -203,7 +191,7 @@ impl Server {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
         re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.ctx.clone(),
+            self.tables_session_ctx.clone(),
             dataset.name(),
         )
         .title(dataset.name())
@@ -268,13 +256,10 @@ impl Server {
     }
 
     fn table_entry_ui(&self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table: &Table) {
-        re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.ctx.clone(),
-            table.name(),
-        )
-        .title(table.name())
-        .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-        .show(viewer_ctx, &self.runtime, ui);
+        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), table.name())
+            .title(table.name())
+            .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
+            .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn panel_ui(
@@ -572,18 +557,24 @@ impl RedapServers {
         active_entry: EntryId,
     ) {
         for server in self.servers.values() {
-            match server.find_entry(active_entry) {
-                Some(EntryRef::Dataset(dataset)) => {
-                    server.dataset_entry_ui(viewer_ctx, ui, dataset);
-                    return;
+            if let Some(entry) = server.find_entry(active_entry) {
+                match entry.inner() {
+                    Ok(crate::entries::EntryInner::Dataset(dataset)) => {
+                        server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                    }
+                    Ok(crate::entries::EntryInner::Table(table)) => {
+                        server.table_entry_ui(viewer_ctx, ui, table);
+                    }
+                    Err(err) => {
+                        Frame::new().inner_margin(16.0).show(ui, |ui| {
+                            Alert::error().show_text(
+                                ui,
+                                format!("Error loading entry {}", entry.name()),
+                                Some(err.to_string()),
+                            );
+                        });
+                    }
                 }
-                Some(EntryRef::Table(table)) => {
-                    server.table_entry_ui(viewer_ctx, ui, table);
-
-                    return;
-                }
-
-                None => {}
             }
         }
     }

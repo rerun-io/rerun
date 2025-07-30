@@ -145,7 +145,7 @@ These tests work by rendering an image and then comparing it with a checked-in r
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
 Comparison tests are driven by [egui_kittest](https://github.com/emilk/egui/tree/master/crates/egui_kittest)'s `Harness::snapshot` method.
-Typically, we use [TestContext](./crates/viewer/re_viewer_context/src/test_context.rs) in order to mock
+Typically, we use [TestContext](./crates/viewer/re_test_context/src/lib.rs?speculative-link) in order to mock
 relevant parts of the Rerun viewer.
 
 ##### Comparing results & updating images

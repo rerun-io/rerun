@@ -72,6 +72,10 @@ class Mat3x3(Mat3x3Ext):
         # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py
         return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Mat3x3Ext in mat3x3_ext.py
+        return len(self.flat_columns)
+
 
 if TYPE_CHECKING:
     Mat3x3Like = Union[Mat3x3, npt.ArrayLike]

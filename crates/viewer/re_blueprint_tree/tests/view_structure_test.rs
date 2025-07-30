@@ -1,4 +1,4 @@
-//! Snapshot testTest suite dedicated to snapshot the way we present various kinds of blueprint tree structures
+//! Snapshot test suite dedicated to snapshot the way we present various kinds of blueprint tree structures
 //! with a focus on various view contents and filter configuration.
 
 #![cfg(feature = "testing")]
@@ -12,11 +12,11 @@ use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, Timeline, build_frame_nr};
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";

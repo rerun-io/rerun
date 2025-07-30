@@ -40,17 +40,11 @@ impl RedapUri {
         }
     }
 
-    fn partition_id(&self) -> Option<&str> {
+    pub fn store_id(&self) -> Option<StoreId> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
-            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
+            Self::Catalog(_) | Self::Entry(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.store_id()),
         }
-    }
-
-    pub fn recording_id(&self) -> Option<StoreId> {
-        self.partition_id().map(|partition_id| {
-            StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
-        })
     }
 }
 

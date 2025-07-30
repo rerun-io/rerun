@@ -96,7 +96,7 @@ pub enum SystemCommand {
 
     /// Set the active timeline and time for the given recording.
     SetActiveTime {
-        rec_id: StoreId,
+        store_id: StoreId,
         timeline: re_chunk::Timeline,
         time: Option<re_log_types::TimeReal>,
     },
@@ -105,7 +105,7 @@ pub enum SystemCommand {
     ///
     /// This also sets the active timeline and activates the loop selection.
     SetLoopSelection {
-        rec_id: StoreId,
+        store_id: StoreId,
         timeline: Timeline,
         time_range: ResolvedTimeRangeF,
     },

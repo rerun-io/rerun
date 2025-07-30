@@ -106,9 +106,10 @@ impl DatasetDataUri {
         self
     }
 
-    pub fn recording_id(&self) -> StoreId {
-        StoreId::from_string(
+    pub fn store_id(&self) -> StoreId {
+        StoreId::new(
             re_log_types::StoreKind::Recording,
+            self.dataset_id.to_string(),
             self.partition_id.clone(),
         )
     }

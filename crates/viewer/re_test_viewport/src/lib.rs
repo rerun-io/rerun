@@ -1,12 +1,13 @@
+//! Extends the `re_test_context` with viewport-related features.
+
 use ahash::HashMap;
 
-use re_viewer_context::{
-    Contents, ViewId, ViewerContext, VisitorControlFlow, test_context::TestContext,
-};
+use re_test_context::TestContext;
+use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
 
-use crate::execute_systems_for_view;
+use re_viewport::execute_systems_for_view;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
@@ -92,7 +93,7 @@ impl TestContextExt for TestContext {
 
                             let indicated_entities_per_visualizer = ctx
                                 .view_class_registry()
-                                .indicated_entities_per_visualizer(&ctx.recording().store_id());
+                                .indicated_entities_per_visualizer(ctx.recording().store_id());
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,

@@ -8,7 +8,7 @@ use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_grpc_client::ConnectionRegistryHandle;
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
+use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -57,8 +57,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 
 #[cfg(target_arch = "wasm32")]
 struct PendingFilePromise {
-    recommended_application_id: Option<ApplicationId>,
-    recommended_recording_id: Option<re_log_types::StoreId>,
+    recommended_store_id: Option<StoreId>,
     force_store_info: bool,
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
@@ -420,7 +419,7 @@ impl App {
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.add_redap_server(uri.origin.clone());
 
-            self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+            self.go_to_dataset_data(uri);
         }
 
         self.rx_log.add(rx);
@@ -586,7 +585,7 @@ impl App {
                         timeline,
                         time_range,
                     } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                        rec_id: recording_id,
+                        store_id: recording_id,
                         timeline,
                         time_range,
                     }),
@@ -629,13 +628,13 @@ impl App {
             SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
                     "Update {} entities: {}",
-                    store_id.kind,
+                    store_id.kind(),
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
                 let db = store_hub.entity_db_mut(&store_id);
 
-                if store_id.kind == StoreKind::Blueprint {
+                if store_id.is_blueprint() {
                     self.state
                         .blueprint_undo_state
                         .entry(store_id)
@@ -722,11 +721,11 @@ impl App {
             }
 
             SystemCommand::SetActiveTime {
-                rec_id,
+                store_id,
                 timeline,
                 time,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
                     let mut time_ctrl = rec_cfg.time_ctrl.write();
 
                     time_ctrl.set_timeline(timeline);
@@ -738,24 +737,24 @@ impl App {
                     time_ctrl.pause();
                 } else {
                     re_log::debug!(
-                        "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
+                        "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
                     );
                 }
             }
 
             SystemCommand::SetLoopSelection {
-                rec_id,
+                store_id,
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &store_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
                 } else {
                     re_log::debug!(
-                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{rec_id}'"
+                        "SystemCommand::SetLoopSelection ignored: unknown store ID '{store_id:?}'"
                     );
                 }
             }
@@ -773,8 +772,8 @@ impl App {
         }
     }
 
-    fn go_to_uri_fragment(&self, rec_id: re_log_types::StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { focus, when } = fragment;
+    fn go_to_dataset_data(&self, uri: &re_uri::DatasetDataUri) {
+        let re_uri::Fragment { focus, when } = uri.fragment.clone();
 
         if let Some(focus) = focus {
             let re_log_types::DataPath {
@@ -801,7 +800,7 @@ impl App {
         if let Some((timeline, timecell)) = when {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
-                    rec_id,
+                    store_id: uri.store_id(),
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
                 });
@@ -817,28 +816,24 @@ impl App {
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
-        let active_application_id = store_context
-            .map(|ctx| &ctx.app_id)
+        let active_store_id = store_context
+            .map(|ctx| ctx.recording_store_id().clone())
             // Don't redirect data to the welcome screen.
-            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-            .cloned()
-            // If we don't have any application ID to recommend (which means we are on the welcome screen),
-            // then just generate a new one using a UUID.
-            .or_else(|| Some(ApplicationId::random()));
-        let active_recording_id = store_context
-            .map(|ctx| ctx.recording.store_id().clone())
-            .or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
+            .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
+            .unwrap_or_else(|| {
+                // If we don't have any application ID to recommend (which means we are on the welcome screen),
+                // then just generate a new one using a UUID.
+                let application_id = ApplicationId::random();
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                let recording_id = RecordingId::random();
 
                 // We're creating a recording just-in-time, directly from the viewer.
                 // We need those store infos or the data will just be silently ignored.
                 force_store_info = true;
 
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                Some(re_log_types::StoreId::random(StoreKind::Recording))
+                StoreId::recording(application_id, recording_id)
             });
 
         match cmd {
@@ -857,7 +852,7 @@ impl App {
                         match item {
                             Item::AppId(selected_app_id) => {
                                 for recording in _storage_context.bundle.recordings() {
-                                    if recording.app_id() == Some(selected_app_id) {
+                                    if recording.application_id() == selected_app_id {
                                         selected_stores.push(recording.store_id().clone());
                                     }
                                 }
@@ -919,8 +914,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
                             FileSource::FileDialog {
-                                recommended_application_id: None,
-                                recommended_recording_id: None,
+                                recommended_store_id: None,
                                 force_store_info,
                             },
                             file_path,
@@ -938,8 +932,7 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id: None,
-                    recommended_recording_id: None,
+                    recommended_store_id: None,
                     force_store_info,
                     promise,
                 });
@@ -951,8 +944,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
                             FileSource::FileDialog {
-                                recommended_application_id: active_application_id.clone(),
-                                recommended_recording_id: active_recording_id.clone(),
+                                recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,
                             },
                             file_path,
@@ -970,8 +962,7 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id: active_application_id.clone(),
-                    recommended_recording_id: active_recording_id.clone(),
+                    recommended_store_id: Some(active_store_id.clone()),
                     force_store_info,
                     promise,
                 });
@@ -1233,7 +1224,7 @@ impl App {
                 ) {
                 rec_name.to_string()
             } else {
-                store.store_id().to_string()
+                format!("{}-{}", store.application_id(), store.recording_id())
             }
             .pipe(|name| santitize_file_name(&name))
             .pipe(|stem| format!("{stem}.rrd"));
@@ -1653,7 +1644,7 @@ impl App {
             if store_hub.is_active_blueprint(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
                 re_log::warn_once!(
-                    "Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
+                    "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
                 );
             }
 
@@ -1692,7 +1683,7 @@ impl App {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
                 if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
-                    self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+                    self.go_to_dataset_data(uri);
                 }
             }
 
@@ -1702,9 +1693,9 @@ impl App {
                         // Set the recording-id after potentially creating the store in the hub.
                         // This ordering is important because the `StoreHub` internally
                         // updates the app-id when changing the recording.
-                        match store_id.kind {
+                        match store_id.kind() {
                             StoreKind::Recording => {
-                                re_log::trace!("Opening a new recording: '{store_id}'");
+                                re_log::trace!("Opening a new recording: '{store_id:?}'");
                                 store_hub.set_active_recording_id(store_id.clone());
 
                                 // Also select the new recording:
@@ -1733,10 +1724,10 @@ impl App {
                     // Handled by `EntityDb::add`
                 }
 
-                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
+                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind() {
                     StoreKind::Recording => {
                         re_log::debug!(
-                            "Unexpected `BlueprintActivationCommand` message for {store_id}"
+                            "Unexpected `BlueprintActivationCommand` message for {store_id:?}"
                         );
                     }
                     StoreKind::Blueprint => {
@@ -1744,21 +1735,23 @@ impl App {
                             re_log::trace!(
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
-                            let app_id = info.application_id.clone();
+                            let app_id = info.application_id().clone();
                             if cmd.make_default {
                                 store_hub
-                                    .set_default_blueprint_for_app(&app_id, store_id)
+                                    .set_default_blueprint_for_app(store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint default: {err}");
                                     });
                             }
                             if cmd.make_active {
                                 store_hub
-                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
+                                    .set_cloned_blueprint_active_for_app(store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
-                                store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
+
+                                // Switch to this app, e.g. on drag-and-drop of a blueprint file
+                                store_hub.set_active_app(app_id);
 
                                 // If the viewer is in the background, tell the user that it has received something new.
                                 egui_ctx.send_viewport_cmd(
@@ -1908,12 +1901,12 @@ impl App {
     pub fn recording_config_mut(
         &mut self,
         store_hub: &StoreHub,
-        rec_id: &StoreId,
+        store_id: &StoreId,
     ) -> Option<&mut RecordingConfig> {
-        if let Some(entity_db) = store_hub.store_bundle().get(rec_id) {
+        if let Some(entity_db) = store_hub.store_bundle().get(store_id) {
             Some(self.state.recording_config_mut(entity_db))
         } else {
-            re_log::debug!("Failed to find recording '{rec_id}' in store hub");
+            re_log::debug!("Failed to find recording '{store_id:?}' in store hub");
             None
         }
     }
@@ -1934,37 +1927,44 @@ impl App {
         }
 
         let mut force_store_info = false;
-        let active_application_id = storage_ctx
-            .hub
-            .active_app()
-            // Don't redirect data to the welcome screen.
-            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-            .cloned()
-            // If we don't have any application ID to recommend (which means we are on the welcome screen),
-            // then just generate a new one using a UUID.
-            .or_else(|| Some(ApplicationId::random()));
-        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
-            // When we're on the welcome screen, there is no recording ID to recommend.
-            // But we want one, otherwise multiple things being dropped simultaneously on the
-            // welcome screen would end up in different recordings!
-
-            // We're creating a recording just-in-time, directly from the viewer.
-            // We need those store infos or the data will just be silently ignored.
-            force_store_info = true;
-
-            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-            // this can only be a recording.
-            Some(re_log_types::StoreId::random(StoreKind::Recording))
-        });
 
         for file in dropped_files {
+            let active_store_id = storage_ctx
+                .hub
+                .active_store_id()
+                .cloned()
+                // Don't redirect data to the welcome screen.
+                .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
+                .unwrap_or_else(|| {
+                    // When we're on the welcome screen, there is no recording ID to recommend.
+                    // But we want one, otherwise multiple things being dropped simultaneously on the
+                    // welcome screen would end up in different recordings!
+
+                    // If we don't have any application ID to recommend (which means we are on the welcome screen),
+                    // then we use the file path as the application ID or generate a new one using a UUID.
+                    let application_id = file
+                        .path
+                        .clone()
+                        .map(|p| ApplicationId::from(p.display().to_string()))
+                        .unwrap_or(ApplicationId::random());
+
+                    // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                    // this can only be a recording.
+                    let recording_id = RecordingId::random();
+
+                    // We're creating a recording just-in-time, directly from the viewer.
+                    // We need those store infos or the data will just be silently ignored.
+                    force_store_info = true;
+
+                    StoreId::recording(application_id, recording_id)
+                });
+
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     DataSource::FileContents(
                         FileSource::DragAndDrop {
-                            recommended_application_id: active_application_id.clone(),
-                            recommended_recording_id: active_recording_id.clone(),
+                            recommended_store_id: Some(active_store_id.clone()),
                             force_store_info,
                         },
                         FileContents {
@@ -1980,8 +1980,7 @@ impl App {
             if let Some(path) = file.path {
                 command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
                     FileSource::DragAndDrop {
-                        recommended_application_id: active_application_id.clone(),
-                        recommended_recording_id: active_recording_id.clone(),
+                        recommended_store_id: Some(active_store_id.clone()),
                         force_store_info,
                     },
                     path,
@@ -2315,8 +2314,7 @@ impl eframe::App for App {
 
         #[cfg(target_arch = "wasm32")]
         if let Some(PendingFilePromise {
-            recommended_application_id,
-            recommended_recording_id,
+            recommended_store_id,
             force_store_info,
             promise,
         }) = &self.open_files_promise
@@ -2326,8 +2324,7 @@ impl eframe::App for App {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
                             FileSource::FileDialog {
-                                recommended_application_id: recommended_application_id.clone(),
-                                recommended_recording_id: recommended_recording_id.clone(),
+                                recommended_store_id: recommended_store_id.clone(),
                                 force_store_info: *force_store_info,
                             },
                             file.clone(),
@@ -2394,7 +2391,7 @@ impl eframe::App for App {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
                 .store_bundle()
                 .entity_dbs()
-                .filter_map(|db| db.app_id())
+                .map(|db| db.application_id())
                 .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
                 .collect();
             if let Some(app_id) = apps.first().copied() {
@@ -2727,7 +2724,11 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     // in a situation where the store_id we're loading is the same as the currently active one,
     // which mean they will merge in a strange way.
     // This is also related to https://github.com/rerun-io/rerun/issues/5295
-    let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
+    let new_store_id = store_context
+        .blueprint
+        .store_id()
+        .clone()
+        .with_recording_id(RecordingId::random());
     let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
         if let Ok(msg) = &mut msg {
             msg.set_store_id(new_store_id.clone());
@@ -2737,7 +2738,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
 
     let file_name = format!(
         "{}.rbl",
-        crate::saving::sanitize_app_id(&store_context.app_id)
+        crate::saving::sanitize_app_id(store_context.application_id())
     );
     let title = "Save blueprint";
 

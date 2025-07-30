@@ -260,7 +260,7 @@ impl ViewportBlueprint {
                 .hub
                 .store_bundle()
                 .entity_dbs()
-                .any(|db| db.app_id() == Some(app_id)),
+                .any(|db| db.application_id() == app_id),
 
             Item::DataSource(_)
             | Item::TableId(_)

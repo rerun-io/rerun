@@ -40,6 +40,10 @@ class DVec2D(DVec2DExt):
         # You can define your own __array__ function as a member of DVec2DExt in dvec2d_ext.py
         return np.asarray(self.xy, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of DVec2DExt in dvec2d_ext.py
+        return len(self.xy)
+
 
 if TYPE_CHECKING:
     DVec2DLike = Union[DVec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]

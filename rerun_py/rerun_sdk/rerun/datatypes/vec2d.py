@@ -40,6 +40,10 @@ class Vec2D(Vec2DExt):
         # You can define your own __array__ function as a member of Vec2DExt in vec2d_ext.py
         return np.asarray(self.xy, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Vec2DExt in vec2d_ext.py
+        return len(self.xy)
+
 
 if TYPE_CHECKING:
     Vec2DLike = Union[Vec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]

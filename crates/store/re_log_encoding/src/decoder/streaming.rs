@@ -412,10 +412,11 @@ mod tests {
                 .await
                 .unwrap();
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -451,10 +452,11 @@ mod tests {
                 .await
                 .unwrap();
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -491,6 +493,8 @@ mod tests {
                 .unwrap();
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
+
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             for msg_expected in &mut decoded_messages {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
@@ -502,11 +506,13 @@ mod tests {
                     let header = file::MessageHeader::from_bytes(header_data).unwrap();
 
                     let data = &data[header_size..];
-                    let msg = file::decoder::decode_bytes_to_app(header.kind, data)
-                        .unwrap()
-                        .unwrap();
+                    let msg =
+                        file::decoder::decode_bytes_to_app(&mut app_id_cache, header.kind, data)
+                            .unwrap()
+                            .unwrap();
 
                     let msg_expected = file::decoder::decode_transport_to_app(
+                        &mut app_id_cache,
                         msg_expected.decoded_transport().unwrap().unwrap(),
                     )
                     .unwrap();
@@ -514,10 +520,11 @@ mod tests {
                 }
             }
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
