@@ -530,6 +530,27 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn update_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/UpdateEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "UpdateEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn create_dataset_entry(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -1092,6 +1113,13 @@ pub mod frontend_service_server {
             tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
             tonic::Status,
         >;
+        async fn update_entry(
+            &self,
+            request: tonic::Request<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
+            tonic::Status,
+        >;
         async fn create_dataset_entry(
             &self,
             request: tonic::Request<
@@ -1518,6 +1546,51 @@ pub mod frontend_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/UpdateEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateEntrySvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<
+                            super::super::super::catalog::v1alpha1::UpdateEntryRequest,
+                        > for UpdateEntrySvc<T>
+                    {
+                        type Response = super::super::super::catalog::v1alpha1::UpdateEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::super::super::catalog::v1alpha1::UpdateEntryRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::update_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateEntrySvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
