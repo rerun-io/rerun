@@ -523,12 +523,7 @@ impl<'a> ArrowNode<'a> {
     }
 }
 
-fn list_item_ranges(
-    ui: &mut Ui,
-    range: Range<usize>,
-    range_detail_fn: &mut dyn FnMut(&Ui, Range<usize>) -> LayoutJob,
-    item_fn: &mut dyn FnMut(&mut Ui, usize),
-) {
+fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMut(&mut Ui, usize)) {
     let range_len = range.len();
 
     const RANGE_SIZE: usize = 100;
