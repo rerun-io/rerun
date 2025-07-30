@@ -762,8 +762,7 @@ async fn chunk_store_cpu_worker_thread(
 
             if current_stores.is_none() {
                 let store_info = StoreInfo {
-                    application_id: ApplicationId::from(partition_id.as_str()),
-                    store_id: StoreId::random(StoreKind::Recording),
+                    store_id: StoreId::random(StoreKind::Recording, ApplicationId::from(partition_id.as_str())),
                     cloned_from: None,
                     store_source: StoreSource::Unknown,
                     store_version: None,
@@ -1011,7 +1010,7 @@ impl Drop for CpuRuntime {
         // thread to complete its work and exit cleanly.
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
-            if let Err(err) = thread_join_handle.join() {
+            if let Err(_) = thread_join_handle.join() {
                 log::error!("Error joining CPU runtime thread");
             }
         }
