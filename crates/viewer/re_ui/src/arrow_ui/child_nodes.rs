@@ -74,8 +74,10 @@ impl<'a> ChildNodes<'a> {
 
                 if index == 0 {
                     crate::arrow_ui::ArrowNode::new(keys.clone(), *parent_index)
+                        .with_field_name("key")
                 } else {
                     crate::arrow_ui::ArrowNode::new(values.clone(), *parent_index)
+                        .with_field_name("value")
                 }
             }
             ChildNodes::Map {
@@ -85,8 +87,10 @@ impl<'a> ChildNodes<'a> {
             } => {
                 if index == 0 {
                     crate::arrow_ui::ArrowNode::new(keys.clone(), *parent_index)
+                        .with_field_name("key")
                 } else {
                     crate::arrow_ui::ArrowNode::new(values.clone(), *parent_index)
+                        .with_field_name("value")
                 }
             }
             ChildNodes::Union {
