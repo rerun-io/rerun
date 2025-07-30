@@ -269,6 +269,16 @@
     "list_item_collapse_default": {
       "color": "{Gray.700}"
     },
+
+    "code_index": {
+      "color": "#D176BF"
+    },
+    "code_number": {
+      "color": "#4ACB94"
+    },
+    "code_string": {
+      "color": "#818EF8"
+    },
   },
 
   "alert_success": {

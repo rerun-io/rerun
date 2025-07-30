@@ -1,14 +1,20 @@
+mod child_nodes;
+
+use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
+use crate::{UiExt, UiLayout};
+use arrow::array::AsArray;
 use arrow::{
     array::Array,
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
+use eframe::epaint::StrokeKind;
+use egui::text::LayoutJob;
+use egui::{Id, Response, RichText, Stroke, TextFormat, TextStyle, Ui, WidgetText};
 use itertools::Itertools as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
-
-use crate::UiLayout;
+use std::ops::Range;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
@@ -17,6 +23,14 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
+        if ui_layout.is_selection_panel() {
+            list_item_scope(ui, Id::new("arrow data"), |ui| {
+                array_items_ui(ui, array);
+            });
+
+            return;
+        }
 
         if array.is_empty() {
             ui_layout.data_label(ui, "[]");
@@ -118,6 +132,423 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             });
         }
     });
+}
+
+fn datatype_ui<'a>(
+    data_type: &'a DataType,
+) -> (String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>) {
+    match data_type {
+        DataType::Struct(fields) => (
+            "struct".to_owned(),
+            Some(Box::new(move |ui| {
+                for field in fields {
+                    datatype_field_ui(ui, field);
+                }
+            })),
+        ),
+        DataType::List(field) => (
+            "list".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::ListView(field) => (
+            "list view".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::FixedSizeList(field, size) => (
+            format!("fixed-size list ({size})"),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::LargeList(field) => (
+            "large list".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::LargeListView(field) => (
+            "large list view".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, field);
+            })),
+        ),
+        DataType::Union(fields, mode) => {
+            let label = match mode {
+                arrow::datatypes::UnionMode::Sparse => "sparse union",
+                arrow::datatypes::UnionMode::Dense => "dense union",
+            };
+            (
+                label.to_owned(),
+                Some(Box::new(move |ui| {
+                    for (_, field) in fields.iter() {
+                        datatype_field_ui(ui, field);
+                    }
+                })),
+            )
+        }
+        DataType::Dictionary(_k, _v) => (
+            "dictionary".to_owned(),
+            // Some(Box::new(move |ui| {
+            //     ui.list_item()
+            //         .show_flat(ui, PropertyContent::new("key").value_text(k.to_string()));
+            //     ui.list_item()
+            //         .show_flat(ui, PropertyContent::new("value").value_text(v.to_string()));
+            // })),
+            None, // TODO
+        ),
+        DataType::Map(a, _) => (
+            "map".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, a);
+            })),
+        ),
+        DataType::RunEndEncoded(a, b) => (
+            "run-end encoded".to_owned(),
+            Some(Box::new(move |ui| {
+                datatype_field_ui(ui, a);
+                datatype_field_ui(ui, b);
+            })),
+        ),
+        non_nested => {
+            let label = simple_datatype_string(non_nested)
+                .map(|s| s.to_owned())
+                .unwrap_or_else(|| non_nested.to_string());
+            (label, None)
+        }
+    }
+}
+
+fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
+    ui.spacing_mut().item_spacing.y = 0.0;
+    let item = ui.list_item();
+
+    let (datatype_name, maybe_ui) = datatype_ui(field.data_type());
+
+    let property = PropertyContent::new(field.name())
+        .value_text(datatype_name)
+        .show_only_when_collapsed(false);
+
+    if let Some(content) = maybe_ui {
+        item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
+    } else {
+        item.show_hierarchical(ui, property);
+    }
+}
+
+fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
+    for i in 0..array.len() {
+        let node = ArrowNode::new(array, i);
+        node.ui(ui);
+    }
+}
+
+struct ArrowNode<'a> {
+    array: child_nodes::MaybeArc<'a>,
+    index: usize,
+    field_name: Option<WidgetText>, // TODO: Can be &str?
+}
+
+impl<'a> ArrowNode<'a> {
+    fn new(array: impl Into<child_nodes::MaybeArc<'a>>, index: usize) -> Self {
+        ArrowNode {
+            array: array.into(),
+            index,
+            field_name: None,
+        }
+    }
+
+    fn with_field_name(mut self, field_name: impl Into<WidgetText>) -> Self {
+        self.field_name = Some(field_name.into());
+        self
+    }
+
+    fn child_nodes(&'a self) -> Option<child_nodes::ChildNodes<'a>> {
+        let array: &dyn Array = self.array.as_ref();
+        let child_nodes = if let Some(struct_array) = array.as_struct_opt() {
+            child_nodes::ChildNodes::Struct {
+                parent_index: self.index,
+                array: struct_array,
+            }
+        } else if let Some(list) = array.as_list_opt::<i32>() {
+            let value = list.value(self.index);
+            child_nodes::ChildNodes::List(value.clone())
+        } else if let Some(list) = array.as_list_opt::<i64>() {
+            let value = list.value(self.index);
+            child_nodes::ChildNodes::List(value.clone())
+        } else if let Some(list_array) = array.as_fixed_size_list_opt() {
+            let value = list_array.value(self.index);
+            child_nodes::ChildNodes::List(value.clone())
+        } else if let Some(dict_array) = array.as_any_dictionary_opt() {
+            if !dict_array.keys().data_type().is_nested() {
+                child_nodes::ChildNodes::InlineKeyMap {
+                    keys: dict_array.keys().into(),
+                    values: dict_array.values().clone().into(),
+                    parent_index: self.index,
+                }
+            } else {
+                child_nodes::ChildNodes::Map {
+                    keys: dict_array.keys().into(),
+                    values: dict_array.values().clone().into(),
+                    parent_index: self.index,
+                }
+            }
+        } else if let Some(map_array) = array.as_map_opt() {
+            if !map_array.keys().data_type().is_nested() {
+                child_nodes::ChildNodes::InlineKeyMap {
+                    keys: map_array.keys().clone().into(),
+                    values: map_array.values().clone().into(),
+                    parent_index: self.index,
+                }
+            } else {
+                child_nodes::ChildNodes::Map {
+                    keys: map_array.keys().clone().into(),
+                    values: map_array.values().clone().into(),
+                    parent_index: self.index,
+                }
+            }
+        } else if let Some(union_array) = array.as_union_opt() {
+            child_nodes::ChildNodes::Union {
+                array: union_array,
+                parent_index: self.index,
+            }
+        } else {
+            return None;
+        };
+
+        Some(child_nodes)
+    }
+
+    fn layout_job(&self, ui: &Ui) -> LayoutJob {
+        let mut job = LayoutJob::default();
+        self.inline_value_layout_job(&mut job, ui);
+        job
+    }
+
+    fn text_format_base(ui: &Ui) -> TextFormat {
+        TextFormat {
+            font_id: TextStyle::Monospace.resolve(ui.style()),
+            color: ui.tokens().text_default,
+            ..Default::default()
+        }
+    }
+
+    fn text_format_strong(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().text_strong;
+        format
+    }
+    fn text_format_number(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().code_number;
+        format
+    }
+    fn text_format_string(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().code_string;
+        format
+    }
+
+    fn inline_value_layout_job(&self, job: &mut LayoutJob, ui: &Ui) {
+        let format_strong = Self::text_format_strong(ui);
+        let format_base = Self::text_format_base(ui);
+
+        if let Some(children) = self.child_nodes() {
+            let len = children.len();
+            const MAX_INLINE_ITEMS: usize = 3;
+
+            let mut peekable = children
+                .iter()
+                // Limit the number of items we show inline
+                .take(MAX_INLINE_ITEMS)
+                .peekable();
+            // TODO: Add some fallback in case it's empty
+            let has_name = peekable
+                .peek()
+                .is_some_and(|node| node.field_name.is_some());
+
+            if !has_name {
+                job.append(&format!("({len}) "), 0.0, format_base.clone());
+            }
+
+            let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
+            job.append(open, 0.0, format_strong.clone());
+
+            while let Some(child) = peekable.next() {
+                if let Some(field_name) = &child.field_name {
+                    job.append(field_name.text(), 0.0, format_base.clone());
+                    job.append(": ", 0.0, format_strong.clone());
+                }
+                child.inline_value_layout_job(job, ui);
+                if peekable.peek().is_some() {
+                    job.append(", ", 0.0, format_strong.clone());
+                }
+            }
+
+            if len > MAX_INLINE_ITEMS {
+                job.append(", ", 0.0, format_strong.clone());
+                job.append("…", 0.0, format_strong.clone());
+            }
+
+            job.append(close, 0.0, format_strong.clone());
+        } else {
+            let mut value = if let Ok(formatter) = make_formatter(self.array.as_ref()) {
+                formatter(self.index)
+            } else {
+                "Error formatting value".to_owned()
+            };
+
+            let data_type: &DataType = self.array.as_ref().data_type();
+            let format = if matches!(
+                data_type,
+                DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
+            ) {
+                value = format!("\"{value}\"");
+                Self::text_format_string(ui)
+            } else {
+                Self::text_format_number(ui)
+            };
+            job.append(&value, 0.0, format);
+        }
+    }
+
+    fn ui(self, ui: &mut Ui) -> Response {
+        let ArrowNode {
+            array,
+            index,
+            field_name,
+        } = &self;
+
+        let array = child_nodes::MaybeArc::as_ref(array);
+
+        let data_type_name = datatype_ui(array.data_type()).0;
+
+        let item = ui.list_item();
+
+        let text = field_name
+            .clone()
+            .map(|f| f.color(ui.tokens().text_default))
+            .unwrap_or_else(|| {
+                RichText::new(index.to_string())
+                    .color(ui.tokens().code_index)
+                    .into()
+            })
+            .monospace();
+        let id = ui.unique_id().with(text.text());
+
+        let job = self.layout_job(ui);
+
+        let content = PropertyContent::new(text)
+            .value_fn(|ui, visuals| {
+                ui.horizontal(|ui| {
+                    egui::Sides::new().shrink_left().show(
+                        ui,
+                        |ui| {
+                            if visuals.is_collapsible() && visuals.openness() != 0.0 {
+                                if visuals.openness() == 1.0 {
+                                    return;
+                                }
+                                ui.set_opacity(1.0 - visuals.openness());
+                            }
+                            ui.label(job);
+                        },
+                        |ui| {
+                            if visuals.hovered {
+                                let response = ui.small(RichText::new(data_type_name).strong());
+                                ui.painter().rect_stroke(
+                                    response.rect.expand(2.0),
+                                    4.0,
+                                    Stroke::new(1.0, visuals.text_color()),
+                                    StrokeKind::Middle,
+                                );
+
+                                response.on_hover_ui(|ui| {
+                                    let (datatype_name, maybe_ui) = datatype_ui(array.data_type());
+                                    if let Some(content) = maybe_ui {
+                                        list_item_scope(
+                                            ui,
+                                            Id::new("arrow data type hover"),
+                                            |ui| {
+                                                ui.list_item().show_hierarchical_with_children(
+                                                    ui,
+                                                    Id::new("arrow data type item hover"),
+                                                    true,
+                                                    LabelContent::new(datatype_name),
+                                                    content,
+                                                );
+                                            },
+                                        );
+                                    }
+                                });
+                            }
+                        },
+                    );
+                });
+            })
+            .show_only_when_collapsed(false);
+
+        let maybe_children = self.child_nodes();
+        let response = if let Some(children) = maybe_children {
+            item.show_hierarchical_with_children(ui, id, false, content, |ui| {
+                // We create a new scope so properties are only aligned on a single level
+                ui.list_item_scope(id.with("scope"), |ui| {
+                    let len = children.len();
+                    let range = 0..len;
+                    list_item_ranges(ui, range, &mut |ui, i| {
+                        children.get_child(i).ui(ui);
+                    });
+                });
+            })
+            .item_response
+        } else {
+            item.show_hierarchical(ui, content)
+        };
+
+        response
+    }
+}
+
+fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMut(&mut Ui, usize)) {
+    let range_len = range.len();
+
+    const RANGE_SIZE: usize = 100;
+
+    if range_len <= RANGE_SIZE {
+        for i in range {
+            item_fn(ui, i);
+        }
+        return;
+    }
+
+    let chunk_size = if range_len <= 10_000 {
+        100
+    } else if range_len <= 1_000_000 {
+        10_000
+    } else if range_len <= 100_000_000 {
+        1_000_000
+    } else {
+        100_000_000
+    };
+
+    let mut current = range.start;
+    while current < range.end {
+        let chunk_end = usize::min(current + chunk_size, range.end);
+        let chunk_range = current..chunk_end;
+        let id = ui.unique_id().with(chunk_range.clone());
+        ui.list_item().show_hierarchical_with_children(
+            ui,
+            id,
+            false,
+            LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end - 1)),
+            |ui| {
+                list_item_ranges(ui, chunk_range, item_fn);
+            },
+        );
+        current = chunk_end;
+    }
 }
 
 fn make_formatter(array: &dyn Array) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
