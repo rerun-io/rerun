@@ -412,17 +412,15 @@ impl<'a> ArrowNode<'a> {
             };
 
             let data_type: &DataType = self.array.as_ref().data_type();
-            let format = if data_type.is_primitive() {
-                Self::text_format_number(ui)
-            } else {
-                Self::text_format_string(ui)
-            };
-            if matches!(
+            let format = if matches!(
                 data_type,
                 DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
             ) {
                 value = format!("\"{value}\"");
-            }
+                Self::text_format_string(ui)
+            } else {
+                Self::text_format_number(ui)
+            };
             job.append(&value, 0.0, format);
         }
     }
