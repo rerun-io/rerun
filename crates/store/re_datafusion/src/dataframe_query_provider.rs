@@ -1,7 +1,7 @@
 use arrow::array::{
-    Array, ArrayRef, Int64Array, RecordBatch, StringArray, TimestampMicrosecondArray,
-    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
-    new_null_array,
+    Array, ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
+    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    TimestampSecondArray, UInt64Array, new_null_array,
 };
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
@@ -65,9 +65,7 @@ const DEFAULT_BATCH_SIZE: usize = 2048;
 const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
 /// TODO(tsaucer)
-/// - We're getting "Data truncated due to size" even when showing a tiny dataframe, just id and time. It should have many more rows.
 /// - I need to make sure I do some static queries also because they may break the time based portions
-/// - Verify this works for ALL different time indices - time stamps vs i64 (u64?)
 /// - Validate sorting is as expected - add unit tests
 /// - Add tracing spans back in
 
@@ -493,6 +491,10 @@ fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusion
             let nano_array = downcast_value!(time_array, TimestampNanosecondArray);
             nano_array.reinterpret_cast::<Int64Type>()
         }
+        DataType::Duration(TimeUnit::Nanosecond) => {
+            let duration_array = downcast_value!(time_array, DurationNanosecondArray);
+            duration_array.reinterpret_cast::<Int64Type>()
+        }
         _ => {
             return Err(exec_datafusion_err!(
                 "Unexpected type for time column {}",
@@ -762,7 +764,10 @@ async fn chunk_store_cpu_worker_thread(
 
             if current_stores.is_none() {
                 let store_info = StoreInfo {
-                    store_id: StoreId::random(StoreKind::Recording, ApplicationId::from(partition_id.as_str())),
+                    store_id: StoreId::random(
+                        StoreKind::Recording,
+                        ApplicationId::from(partition_id.as_str()),
+                    ),
                     cloned_from: None,
                     store_source: StoreSource::Unknown,
                     store_version: None,
