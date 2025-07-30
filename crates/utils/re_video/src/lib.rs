@@ -3,6 +3,7 @@
 mod decode;
 mod demux;
 mod h264;
+mod h265;
 mod stable_index_deque;
 mod time;
 
