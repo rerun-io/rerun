@@ -51,6 +51,10 @@ class Uuid(UuidExt):
         # You can define your own __array__ function as a member of UuidExt in uuid_ext.py
         return np.asarray(self.bytes, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of UuidExt in uuid_ext.py
+        return len(self.bytes)
+
 
 if TYPE_CHECKING:
     UuidLike = Union[Uuid, npt.NDArray[Any], npt.ArrayLike, Sequence[int], bytes]

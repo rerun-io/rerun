@@ -31,6 +31,10 @@ class AffixFuzzer13(ComponentMixin):
 
     many_strings_optional: list[str] | None = field(default=None)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer13Ext in affix_fuzzer13_ext.py
+        return len(self.many_strings_optional) if self.many_strings_optional is not None else 0
+
 
 AffixFuzzer13Like = AffixFuzzer13
 AffixFuzzer13ArrayLike = Union[

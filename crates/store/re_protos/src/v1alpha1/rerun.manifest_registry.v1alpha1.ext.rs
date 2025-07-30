@@ -315,6 +315,7 @@ impl GetDatasetSchemaResponse {
 
 impl RegisterWithDatasetResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_LAYER: &str = "rerun_partition_layer";
     pub const PARTITION_TYPE: &str = "rerun_partition_type";
     pub const STORAGE_URL: &str = "rerun_storage_url";
     pub const TASK_ID: &str = "rerun_task_id";
@@ -323,6 +324,7 @@ impl RegisterWithDatasetResponse {
     pub fn schema() -> Schema {
         Schema::new(vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_LAYER, DataType::Utf8, false),
             Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
             Field::new(Self::STORAGE_URL, DataType::Utf8, false),
             Field::new(Self::TASK_ID, DataType::Utf8, false),
@@ -332,6 +334,7 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         partition_ids: Vec<String>,
+        partition_layers: Vec<String>,
         partition_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
@@ -339,6 +342,7 @@ impl RegisterWithDatasetResponse {
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_layers)),
             Arc::new(StringArray::from(partition_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
@@ -422,9 +426,10 @@ impl ScanPartitionTableResponse {
 
 // --- DataSource --
 
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+// NOTE: Match the values of the Protobuf definition to keep life simple.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DataSourceKind {
-    Rrd,
+    Rrd = 1,
 }
 
 impl TryFrom<crate::manifest_registry::v1alpha1::DataSourceKind> for DataSourceKind {
@@ -454,6 +459,14 @@ impl TryFrom<i32> for DataSourceKind {
     fn try_from(kind: i32) -> Result<Self, Self::Error> {
         let kind = crate::manifest_registry::v1alpha1::DataSourceKind::try_from(kind)?;
         kind.try_into()
+    }
+}
+
+impl From<DataSourceKind> for crate::manifest_registry::v1alpha1::DataSourceKind {
+    fn from(value: DataSourceKind) -> Self {
+        match value {
+            DataSourceKind::Rrd => Self::Rrd,
+        }
     }
 }
 
@@ -507,16 +520,39 @@ impl DataSourceKind {
     }
 }
 
+#[test]
+fn datasourcekind_roundtrip() {
+    let kind = DataSourceKind::Rrd;
+    let kind: crate::manifest_registry::v1alpha1::DataSourceKind = kind.into();
+    let kind = DataSourceKind::try_from(kind).unwrap();
+    assert_eq!(DataSourceKind::Rrd, kind);
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
     pub storage_url: url::Url,
+    pub layer: String,
     pub kind: DataSourceKind,
 }
 
 impl DataSource {
+    pub const DEFAULT_LAYER: &str = "base";
+
     pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
+            layer: Self::DEFAULT_LAYER.to_owned(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
+
+    pub fn new_rrd_layer(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: layer.as_ref().into(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -526,6 +562,7 @@ impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
     fn from(value: DataSource) -> Self {
         crate::manifest_registry::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
+            layer: Some(value.layer),
             typ: value.kind as i32,
         }
     }
@@ -547,9 +584,17 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
             })?
             .parse()?;
 
+        let layer = data_source
+            .layer
+            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+
         let kind = DataSourceKind::try_from(data_source.typ)?;
 
-        Ok(Self { storage_url, kind })
+        Ok(Self {
+            storage_url,
+            layer,
+            kind,
+        })
     }
 }
 

@@ -375,6 +375,98 @@ impl TryFrom<crate::catalog::v1alpha1::DeleteEntryRequest> for re_log_types::Ent
     }
 }
 
+// --- EntryDetailsUpdate ---
+
+#[derive(Debug, Clone, Default)]
+pub struct EntryDetailsUpdate {
+    pub name: Option<String>,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::EntryDetailsUpdate> for EntryDetailsUpdate {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::EntryDetailsUpdate) -> Result<Self, Self::Error> {
+        Ok(Self { name: value.name })
+    }
+}
+
+impl From<EntryDetailsUpdate> for crate::catalog::v1alpha1::EntryDetailsUpdate {
+    fn from(value: EntryDetailsUpdate) -> Self {
+        Self { name: value.name }
+    }
+}
+
+// --- UpdateEntryRequest ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateEntryRequest {
+    pub id: re_log_types::EntryId,
+    pub entry_details_update: EntryDetailsUpdate,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::UpdateEntryRequest> for UpdateEntryRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::UpdateEntryRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value
+                .id
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateEntryRequest,
+                    "id"
+                ))?
+                .try_into()?,
+            entry_details_update: value
+                .entry_details_update
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateEntryRequest,
+                    "entry_details_update"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<UpdateEntryRequest> for crate::catalog::v1alpha1::UpdateEntryRequest {
+    fn from(value: UpdateEntryRequest) -> Self {
+        Self {
+            id: Some(value.id.into()),
+            entry_details_update: Some(value.entry_details_update.into()),
+        }
+    }
+}
+
+// --- UpdateEntryResponse ---
+
+#[derive(Debug, Clone)]
+pub struct UpdateEntryResponse {
+    pub entry_details: EntryDetails,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::UpdateEntryResponse> for UpdateEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::UpdateEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entry_details: value
+                .entry_details
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::UpdateEntryResponse,
+                    "entry_details"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<UpdateEntryResponse> for crate::catalog::v1alpha1::UpdateEntryResponse {
+    fn from(value: UpdateEntryResponse) -> Self {
+        Self {
+            entry_details: Some(value.entry_details.into()),
+        }
+    }
+}
+
 // --- ReadTableEntryRequest ---
 
 impl TryFrom<crate::catalog::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {

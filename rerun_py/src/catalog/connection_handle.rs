@@ -94,6 +94,26 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn update_entry(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        entry_details_update: re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate,
+    ) -> PyResult<re_protos::catalog::v1alpha1::ext::EntryDetails> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .update_entry(entry_id, entry_details_update)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         wait_for_future(
             py,

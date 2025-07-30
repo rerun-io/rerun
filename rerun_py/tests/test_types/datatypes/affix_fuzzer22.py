@@ -36,6 +36,10 @@ class AffixFuzzer22:
         # You can define your own __array__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
         return np.asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
+        return len(self.fixed_sized_native)
+
 
 AffixFuzzer22Like = AffixFuzzer22
 AffixFuzzer22ArrayLike = Union[
