@@ -1928,33 +1928,37 @@ impl App {
 
         let mut force_store_info = false;
 
-        let active_store_id = storage_ctx
-            .hub
-            .active_store_id()
-            .cloned()
-            // Don't redirect data to the welcome screen.
-            .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
-            .unwrap_or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
-
-                // If we don't have any application ID to recommend (which means we are on the welcome screen),
-                // then just generate a new one using a UUID.
-                let application_id = ApplicationId::random();
-
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                let recording_id = RecordingId::random();
-
-                // We're creating a recording just-in-time, directly from the viewer.
-                // We need those store infos or the data will just be silently ignored.
-                force_store_info = true;
-
-                StoreId::recording(application_id, recording_id)
-            });
-
         for file in dropped_files {
+            let active_store_id = storage_ctx
+                .hub
+                .active_store_id()
+                .cloned()
+                // Don't redirect data to the welcome screen.
+                .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
+                .unwrap_or_else(|| {
+                    // When we're on the welcome screen, there is no recording ID to recommend.
+                    // But we want one, otherwise multiple things being dropped simultaneously on the
+                    // welcome screen would end up in different recordings!
+
+                    // If we don't have any application ID to recommend (which means we are on the welcome screen),
+                    // then we use the file path as the application ID or generate a new one using a UUID.
+                    let application_id = file
+                        .path
+                        .clone()
+                        .map(|p| ApplicationId::from(p.display().to_string()))
+                        .unwrap_or(ApplicationId::random());
+
+                    // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                    // this can only be a recording.
+                    let recording_id = RecordingId::random();
+
+                    // We're creating a recording just-in-time, directly from the viewer.
+                    // We need those store infos or the data will just be silently ignored.
+                    force_store_info = true;
+
+                    StoreId::recording(application_id, recording_id)
+                });
+
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
                 command_sender.send_system(SystemCommand::LoadDataSource(
