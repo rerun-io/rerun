@@ -276,7 +276,7 @@ impl<'a> ArrowNode<'a> {
         self
     }
 
-    fn child_nodes(&'a self) -> Option<Box<dyn Iterator<Item = Self> + 'a>> {
+    fn child_nodes(&'a self) -> Option<Box<dyn NodeIterator<'a> + 'a>> {
         let array: &dyn Array = self.array.as_ref();
         if let Some(struct_array) = array.as_struct_opt() {
             Some(Box::new(struct_array.column_names().into_iter().map(
@@ -375,14 +375,19 @@ impl<'a> ArrowNode<'a> {
         format_value.color = ui.visuals().strong_text_color();
 
         if let Some(children) = self.child_nodes() {
+            let len = children.len();
+
             let mut peekable = children.peekable();
             // TODO: Add some fallback in case it's empty
             let has_name = peekable
                 .peek()
                 .map_or(false, |node| node.field_name.is_some());
 
-            let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
+            if !has_name {
+                job.append(&format!("({}) ", len), 0.0, format_name.clone());
+            }
 
+            let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
             job.append(open, 0.0, format_name.clone());
 
             while let Some(child) = peekable.next() {
@@ -423,12 +428,6 @@ impl<'a> ArrowNode<'a> {
 
         let text = field_name.clone().unwrap_or_else(|| format!("[{index}]"));
         let id = ui.unique_id().with(&text);
-
-        // let value = if let Some(formatter) = make_formatter(array).ok() {
-        //     formatter(*index)
-        // } else {
-        //     "Error formatting value".to_string()
-        // };
 
         let job = self.layout_job(ui);
 
@@ -500,6 +499,10 @@ impl<'a> ArrowNode<'a> {
         response
     }
 }
+
+trait NodeIterator<'a>: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator {}
+
+impl<'a, I: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator> NodeIterator<'a> for I {}
 
 enum MaybeArc<'a> {
     Array(&'a dyn Array),
