@@ -40,6 +40,10 @@ class Vec4D(Vec4DExt):
         # You can define your own __array__ function as a member of Vec4DExt in vec4d_ext.py
         return np.asarray(self.xyzw, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Vec4DExt in vec4d_ext.py
+        return len(self.xyzw)
+
 
 if TYPE_CHECKING:
     Vec4DLike = Union[Vec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]

@@ -33,6 +33,10 @@ class AffixFuzzer17(ComponentMixin):
 
     many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(default=None)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer17Ext in affix_fuzzer17_ext.py
+        return len(self.many_optional_unions) if self.many_optional_unions is not None else 0
+
 
 AffixFuzzer17Like = AffixFuzzer17
 AffixFuzzer17ArrayLike = Union[

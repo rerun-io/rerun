@@ -74,6 +74,10 @@ class Mat4x4(Mat4x4Ext):
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py
         return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Mat4x4Ext in mat4x4_ext.py
+        return len(self.flat_columns)
+
 
 if TYPE_CHECKING:
     Mat4x4Like = Union[Mat4x4, npt.ArrayLike]

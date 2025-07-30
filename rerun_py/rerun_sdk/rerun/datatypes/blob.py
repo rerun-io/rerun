@@ -40,6 +40,10 @@ class Blob(BlobExt):
         # You can define your own __array__ function as a member of BlobExt in blob_ext.py
         return np.asarray(self.data, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of BlobExt in blob_ext.py
+        return len(self.data)
+
 
 if TYPE_CHECKING:
     BlobLike = Union[Blob, bytes, npt.NDArray[np.uint8]]
