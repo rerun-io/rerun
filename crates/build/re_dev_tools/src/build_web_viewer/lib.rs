@@ -187,7 +187,8 @@ pub fn build(
                 wasm2wat {target_wasm_path} | rg '\"env\"'\n\
                 wasm2wat {target_wasm_path} | rg 'call .now\\b' -B 20\n\
                 \n\
-                You can also try https://rustwasm.github.io/twiggy/usage/command-line-interface/paths.html#twiggy-paths
+                You can also try `twiggy paths`:
+                https://github.com/AlexEne/twiggy/blob/945e6241bf7b6d918fba17082d0b12eae1c56349/guide/src/usage/command-line-interface/paths.md
                 "
             );
             } else {
