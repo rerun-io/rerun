@@ -333,15 +333,38 @@ impl<'a> ArrowNode<'a> {
         job
     }
 
-    fn inline_value_layout_job(&self, job: &mut LayoutJob, ui: &Ui) {
-        // TODO: Use listvisuals here
-        let mut format_name = TextFormat::default();
-        format_name.font_id = TextStyle::Monospace.resolve(ui.style());
-        format_name.color = ui.visuals().text_color();
+    fn text_format_base(ui: &Ui) -> TextFormat {
+        let mut format = TextFormat::default();
+        format.font_id = TextStyle::Monospace.resolve(ui.style());
+        format.color = ui.tokens().text_default;
+        format
+    }
 
-        let mut format_value = TextFormat::default();
-        format_value.font_id = TextStyle::Monospace.resolve(ui.style());
-        format_value.color = ui.visuals().strong_text_color();
+    fn text_format_strong(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().text_strong;
+        format
+    }
+    fn text_format_index(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().code_index;
+        format
+    }
+    fn text_format_number(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().code_number;
+        format
+    }
+    fn text_format_string(ui: &Ui) -> TextFormat {
+        let mut format = Self::text_format_base(ui);
+        format.color = ui.tokens().code_string;
+        format
+    }
+
+    fn inline_value_layout_job(&self, job: &mut LayoutJob, ui: &Ui) {
+        let format_strong = Self::text_format_strong(ui);
+        let format_base = Self::text_format_base(ui);
+        let format_index = Self::text_format_index(ui);
 
         if let Some(children) = self.child_nodes() {
             let len = children.len();
@@ -358,37 +381,49 @@ impl<'a> ArrowNode<'a> {
                 .map_or(false, |node| node.field_name.is_some());
 
             if !has_name {
-                job.append(&format!("({}) ", len), 0.0, format_name.clone());
+                job.append(&format!("({}) ", len), 0.0, format_base.clone());
             }
 
             let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
-            job.append(open, 0.0, format_name.clone());
+            job.append(open, 0.0, format_strong.clone());
 
             while let Some(child) = peekable.next() {
                 if let Some(field_name) = &child.field_name {
-                    job.append(field_name.text(), 0.0, format_name.clone());
-                    job.append(": ", 0.0, format_name.clone());
+                    job.append(field_name.text(), 0.0, format_base.clone());
+                    job.append(": ", 0.0, format_strong.clone());
                 }
                 child.inline_value_layout_job(job, ui);
                 if peekable.peek().is_some() {
-                    job.append(", ", 0.0, format_name.clone());
+                    job.append(", ", 0.0, format_strong.clone());
                 }
             }
 
             if len > MAX_INLINE_ITEMS {
-                job.append(", ", 0.0, format_name.clone());
-                job.append("…", 0.0, format_value.clone());
+                job.append(", ", 0.0, format_strong.clone());
+                job.append("…", 0.0, format_strong.clone());
             }
 
-            job.append(close, 0.0, format_name.clone());
+            job.append(close, 0.0, format_strong.clone());
         } else {
-            let value = if let Some(formatter) = make_formatter(self.array.as_ref()).ok() {
+            let mut value = if let Some(formatter) = make_formatter(self.array.as_ref()).ok() {
                 formatter(self.index)
             } else {
                 "Error formatting value".to_string()
             };
 
-            job.append(&value, 0.0, format_value.clone());
+            let data_type: &DataType = self.array.as_ref().data_type();
+            let format = if data_type.is_primitive() {
+                Self::text_format_number(ui)
+            } else {
+                Self::text_format_string(ui)
+            };
+            if matches!(
+                data_type,
+                DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
+            ) {
+                value = format!("\"{value}\"");
+            }
+            job.append(&value, 0.0, format);
         }
     }
 
@@ -407,7 +442,13 @@ impl<'a> ArrowNode<'a> {
 
         let text = field_name
             .clone()
-            .unwrap_or_else(|| format!("[{index}]").into());
+            .map(|f| f.color(ui.tokens().text_default))
+            .unwrap_or_else(|| {
+                RichText::new(index.to_string())
+                    .color(ui.tokens().code_index)
+                    .into()
+            })
+            .monospace();
         let id = ui.unique_id().with(&text.text());
 
         let job = self.layout_job(ui);
