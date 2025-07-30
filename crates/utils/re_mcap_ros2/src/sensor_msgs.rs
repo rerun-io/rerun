@@ -168,4 +168,7 @@ pub struct PointCloud2 {
 
     /// Actual point data, size is (`row_step`*`height`)
     pub data: Vec<u8>,
+
+    /// True if there are no invalid points
+    pub is_dense: bool,
 }
