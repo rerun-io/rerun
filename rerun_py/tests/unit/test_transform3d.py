@@ -66,7 +66,7 @@ def test_angle() -> None:
 
 
 def test_transform3d() -> None:
-    rotation_axis_angle = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
+    rotation_axis_angle_original = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
     scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0], rr.Scale3D([1.0, 2.0, 3.0])]
     axis_lengths = [None, 1, 1.0]
@@ -80,7 +80,7 @@ def test_transform3d() -> None:
 
     all_arrays = itertools.zip_longest(
         VEC_3D_INPUT + [None],
-        rotation_axis_angle,
+        rotation_axis_angle_original,
         quaternion_arrays,
         scale_arrays,
         MAT_3X3_INPUT + [None],
@@ -99,7 +99,7 @@ def test_transform3d() -> None:
     ) in all_arrays:
         translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
         quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
-        scale = cast(Optional[rr.datatypes.Vec3DLike | rr.datatypes.Float32Like], scale)
+        scale = cast(Optional[rr.datatypes.Vec3DLike], scale)
         mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
         relation = cast(Optional[rr.components.TransformRelationLike], relations)
         axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)

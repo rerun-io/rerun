@@ -2090,7 +2090,11 @@ fn quote_arrow_serialization(
             let mut code = String::new();
 
             code.push_indented(0, "from typing import cast", 1);
-            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
+            code.push_indented(
+                0,
+                quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
+                2,
+            );
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
@@ -2274,7 +2278,7 @@ return pa.array(pa_data, type=data_type)
                 })
                 .join(", ");
 
-            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields, obj.is_testing());
             Ok(format!(
                 r##"
 {batch_type_imports}
@@ -2322,7 +2326,7 @@ return pa.UnionArray.from_buffers(
     }
 }
 
-fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing: bool) -> String {
     let mut code = String::new();
 
     for field in fields {
@@ -2336,7 +2340,26 @@ fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
             let mod_path = &field_fqname[..last_dot];
             let field_type_name = &field_fqname[last_dot + 1..];
 
-            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+            // If both the current object and the field object are testing types,
+            // use relative imports instead of absolute ones
+            let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
+            let import_path = if current_obj_is_testing && is_field_testing {
+                // Extract the relative path within the testing namespace
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
+                    format!(".{testing_prefix}")
+                } else if mod_path == "rerun.testing" {
+                    ".".to_owned()
+                } else {
+                    mod_path.to_owned()
+                }
+            } else {
+                mod_path.to_owned()
+            };
+
+            code.push_unindented(
+                format!("from {import_path} import {field_type_name}Batch"),
+                1,
+            );
         }
     }
     code

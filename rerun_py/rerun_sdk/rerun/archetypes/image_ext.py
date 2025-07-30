@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
         npt.NDArray[np.float64],
+        npt.NDArray[np.floating],
         npt.NDArray[np.int16],
         npt.NDArray[np.int32],
         npt.NDArray[np.int64],
@@ -32,6 +33,8 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        npt.NDArray[np.integer],
+        np.ndarray[Any, np.dtype[np.floating | np.integer]],
         PILImage.Image,
     ]
     from . import EncodedImage, Image
