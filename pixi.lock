@@ -33190,7 +33190,7 @@ packages:
 - pypi: ./rerun_py
   name: rerun-sdk
   version: 0.25.0a1+dev
-  sha256: ed08f44fd63f4dfdc0387b5de33b705fe49f769c9cdbcc708134e350a0a125b7
+  sha256: 25fb59711543667dc8839aafb61e6bcdd9da1526ac86c0007b1c096c62692b31
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2

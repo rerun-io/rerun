@@ -242,5 +242,10 @@ module = [
   "anywidget.*",
   # TODO(nick): is this blocked on above?
   "jupyter_ui_poll.*",
+  # Ignore imports used in tests but not in the SDK.
+  "torch.*",
+  "torchvision.*",
+  "torchaudio.*",
+  "cv2.*",
 ]
 ignore_missing_imports = true
