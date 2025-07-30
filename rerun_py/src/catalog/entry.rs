@@ -169,6 +169,26 @@ impl PyEntry {
         connection.delete_entry(py, entry_id)
     }
 
+    /// Update this entry's properties.
+    ///
+    /// Parameters
+    /// ----------
+    /// name : str | None
+    ///     New name for the entry
+    #[pyo3(signature = (*, name=None))]
+    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        let entry_id = self.id.borrow(py).id;
+        let connection = self.client.borrow_mut(py).connection().clone();
+
+        let entry_details_update =
+            re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
+
+        let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
+        self.details = updated_entry_details;
+
+        Ok(())
+    }
+
     fn __repr__(&self) -> String {
         format!("Entry({:?}, '{}')", self.details.kind, self.details.name)
     }
