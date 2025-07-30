@@ -19,6 +19,7 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::ops::Range;
 use std::sync::Arc;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
@@ -506,9 +507,11 @@ impl<'a> ArrowNode<'a> {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 // We create a new scope so properties are only aligned on a single level
                 ui.list_item_scope(id.with("scope"), |ui| {
-                    for child in children.iter() {
-                        child.ui(ui);
-                    }
+                    let len = children.len();
+                    let range = 0..len;
+                    list_item_ranges(ui, range, &mut |ui, i| {
+                        children.get_child(i).ui(ui);
+                    });
                 });
             })
             .item_response
@@ -517,6 +520,51 @@ impl<'a> ArrowNode<'a> {
         };
 
         response
+    }
+}
+
+fn list_item_ranges(
+    ui: &mut Ui,
+    range: Range<usize>,
+    range_detail_fn: &mut dyn FnMut(&Ui, Range<usize>) -> LayoutJob,
+    item_fn: &mut dyn FnMut(&mut Ui, usize),
+) {
+    let range_len = range.len();
+
+    const RANGE_SIZE: usize = 100;
+
+    if range_len <= RANGE_SIZE {
+        for i in range {
+            item_fn(ui, i);
+        }
+        return;
+    }
+
+    let chunk_size = if range_len <= 10_000 {
+        100
+    } else if range_len <= 1_000_000 {
+        10_000
+    } else if range_len <= 100_000_000 {
+        1_000_000
+    } else {
+        100_000_000
+    };
+
+    let mut current = range.start;
+    while current < range.end {
+        let chunk_end = usize::min((current + chunk_size), range.end);
+        let chunk_range = current..chunk_end;
+        let id = ui.unique_id().with(chunk_range.clone());
+        ui.list_item().show_hierarchical_with_children(
+            ui,
+            id,
+            false,
+            LabelContent::new(format!("{}..{}", chunk_range.start, chunk_range.end - 1)),
+            |ui| {
+                list_item_ranges(ui, chunk_range, item_fn);
+            },
+        );
+        current = chunk_end;
     }
 }
 

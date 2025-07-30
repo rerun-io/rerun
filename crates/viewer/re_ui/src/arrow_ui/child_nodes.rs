@@ -49,7 +49,7 @@ impl<'a> ChildNodes<'a> {
     }
 
     /// Ui is needed to style the name of InlineKeyMap nodes
-    fn get_child(&self, index: usize) -> crate::arrow_ui::ArrowNode<'a> {
+    pub fn get_child(&self, index: usize) -> crate::arrow_ui::ArrowNode<'a> {
         assert!(index < self.len(), "Index out of bounds: {}", index);
         match self {
             ChildNodes::List(list) => crate::arrow_ui::ArrowNode::new(list.clone(), index),
