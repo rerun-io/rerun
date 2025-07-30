@@ -10,7 +10,7 @@ use arrow::array::{
 use arrow::error::ArrowError;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_types::{AnyValues, Loggable, archetypes, components};
+use re_types::{AnyValues, archetypes, components};
 
 use crate::mcap;
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
@@ -292,8 +292,11 @@ fn load_mcap(
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
-                        &archetypes::TextLog::new("Unsupported schema for channel")
-                            .with_level(components::TextLogLevel::WARN),
+                        &archetypes::TextLog::new(format!(
+                            "Unsupported schema for channel: {}",
+                            schema.name
+                        ))
+                        .with_level(components::TextLogLevel::WARN),
                     )
                     .build()?;
                 send_chunk(chunk);
