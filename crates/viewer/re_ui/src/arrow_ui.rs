@@ -4,23 +4,17 @@ use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
 use crate::{UiExt, UiLayout};
 use arrow::array::AsArray;
 use arrow::{
-    array::{Array, StructArray},
+    array::Array,
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
 use eframe::epaint::StrokeKind;
-use egui::text::{LayoutJob, TextWrapping};
-use egui::{
-    FontId, FontSelection, Frame, Id, Response, RichText, Stroke, TextFormat, TextStyle, Ui,
-    Widget, WidgetText,
-};
+use egui::text::LayoutJob;
+use egui::{Id, Response, RichText, Stroke, TextFormat, TextStyle, Ui, WidgetText};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::ops::Range;
-use std::sync::Arc;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
     re_tracing::profile_function!();
@@ -145,7 +139,7 @@ fn datatype_ui<'a>(
 ) -> (String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>) {
     match data_type {
         DataType::Struct(fields) => (
-            "struct".to_string(),
+            "struct".to_owned(),
             Some(Box::new(move |ui| {
                 for field in fields {
                     datatype_field_ui(ui, field);
@@ -153,13 +147,13 @@ fn datatype_ui<'a>(
             })),
         ),
         DataType::List(field) => (
-            "list".to_string(),
+            "list".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, field);
             })),
         ),
         DataType::ListView(field) => (
-            "list view".to_string(),
+            "list view".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, field);
             })),
@@ -171,13 +165,13 @@ fn datatype_ui<'a>(
             })),
         ),
         DataType::LargeList(field) => (
-            "large list".to_string(),
+            "large list".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, field);
             })),
         ),
         DataType::LargeListView(field) => (
-            "large list view".to_string(),
+            "large list view".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, field);
             })),
@@ -188,7 +182,7 @@ fn datatype_ui<'a>(
                 arrow::datatypes::UnionMode::Dense => "dense union",
             };
             (
-                label.to_string(),
+                label.to_owned(),
                 Some(Box::new(move |ui| {
                     for (_, field) in fields.iter() {
                         datatype_field_ui(ui, field);
@@ -197,7 +191,7 @@ fn datatype_ui<'a>(
             )
         }
         DataType::Dictionary(_k, _v) => (
-            format!("dictionary"),
+            "dictionary".to_owned(),
             // Some(Box::new(move |ui| {
             //     ui.list_item()
             //         .show_flat(ui, PropertyContent::new("key").value_text(k.to_string()));
@@ -207,13 +201,13 @@ fn datatype_ui<'a>(
             None, // TODO
         ),
         DataType::Map(a, _) => (
-            "map".to_string(),
+            "map".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, a);
             })),
         ),
         DataType::RunEndEncoded(a, b) => (
-            "run-end encoded".to_string(),
+            "run-end encoded".to_owned(),
             Some(Box::new(move |ui| {
                 datatype_field_ui(ui, a);
                 datatype_field_ui(ui, b);
@@ -221,7 +215,7 @@ fn datatype_ui<'a>(
         ),
         non_nested => {
             let label = simple_datatype_string(non_nested)
-                .map(|s| s.to_string())
+                .map(|s| s.to_owned())
                 .unwrap_or_else(|| non_nested.to_string());
             (label, None)
         }
@@ -291,13 +285,13 @@ impl<'a> ArrowNode<'a> {
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             if !dict_array.keys().data_type().is_nested() {
                 child_nodes::ChildNodes::InlineKeyMap {
-                    keys: dict_array.keys().clone().into(),
+                    keys: dict_array.keys().into(),
                     values: dict_array.values().clone().into(),
                     parent_index: self.index,
                 }
             } else {
                 child_nodes::ChildNodes::Map {
-                    keys: dict_array.keys().clone().into(),
+                    keys: dict_array.keys().into(),
                     values: dict_array.values().clone().into(),
                     parent_index: self.index,
                 }
@@ -335,20 +329,16 @@ impl<'a> ArrowNode<'a> {
     }
 
     fn text_format_base(ui: &Ui) -> TextFormat {
-        let mut format = TextFormat::default();
-        format.font_id = TextStyle::Monospace.resolve(ui.style());
-        format.color = ui.tokens().text_default;
-        format
+        TextFormat {
+            font_id: TextStyle::Monospace.resolve(ui.style()),
+            color: ui.tokens().text_default,
+            ..Default::default()
+        }
     }
 
     fn text_format_strong(ui: &Ui) -> TextFormat {
         let mut format = Self::text_format_base(ui);
         format.color = ui.tokens().text_strong;
-        format
-    }
-    fn text_format_index(ui: &Ui) -> TextFormat {
-        let mut format = Self::text_format_base(ui);
-        format.color = ui.tokens().code_index;
         format
     }
     fn text_format_number(ui: &Ui) -> TextFormat {
@@ -365,7 +355,6 @@ impl<'a> ArrowNode<'a> {
     fn inline_value_layout_job(&self, job: &mut LayoutJob, ui: &Ui) {
         let format_strong = Self::text_format_strong(ui);
         let format_base = Self::text_format_base(ui);
-        let format_index = Self::text_format_index(ui);
 
         if let Some(children) = self.child_nodes() {
             let len = children.len();
@@ -379,10 +368,10 @@ impl<'a> ArrowNode<'a> {
             // TODO: Add some fallback in case it's empty
             let has_name = peekable
                 .peek()
-                .map_or(false, |node| node.field_name.is_some());
+                .is_some_and(|node| node.field_name.is_some());
 
             if !has_name {
-                job.append(&format!("({}) ", len), 0.0, format_base.clone());
+                job.append(&format!("({len}) "), 0.0, format_base.clone());
             }
 
             let (open, close) = if has_name { ("{", "}") } else { ("[", "]") };
@@ -406,10 +395,10 @@ impl<'a> ArrowNode<'a> {
 
             job.append(close, 0.0, format_strong.clone());
         } else {
-            let mut value = if let Some(formatter) = make_formatter(self.array.as_ref()).ok() {
+            let mut value = if let Ok(formatter) = make_formatter(self.array.as_ref()) {
                 formatter(self.index)
             } else {
-                "Error formatting value".to_string()
+                "Error formatting value".to_owned()
             };
 
             let data_type: &DataType = self.array.as_ref().data_type();
@@ -448,7 +437,7 @@ impl<'a> ArrowNode<'a> {
                     .into()
             })
             .monospace();
-        let id = ui.unique_id().with(&text.text());
+        let id = ui.unique_id().with(text.text());
 
         let job = self.layout_job(ui);
 
@@ -467,7 +456,6 @@ impl<'a> ArrowNode<'a> {
                             ui.label(job);
                         },
                         |ui| {
-                            let visuals = visuals;
                             if visuals.hovered {
                                 let response = ui.small(RichText::new(data_type_name).strong());
                                 ui.painter().rect_stroke(
@@ -547,7 +535,7 @@ fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMut(&m
 
     let mut current = range.start;
     while current < range.end {
-        let chunk_end = usize::min((current + chunk_size), range.end);
+        let chunk_end = usize::min(current + chunk_size, range.end);
         let chunk_range = current..chunk_end;
         let id = ui.unique_id().with(chunk_range.clone());
         ui.list_item().show_hierarchical_with_children(

@@ -1,6 +1,4 @@
 use arrow::array::{Array, StructArray, UnionArray};
-use arrow::datatypes::DataType;
-use egui::Ui;
 use std::sync::Arc;
 
 /// Iterator over child nodes of an Arrow array.
@@ -42,15 +40,15 @@ impl<'a> ChildNodes<'a> {
             ChildNodes::InlineKeyMap { .. } => 2, // TODO: Implement inline thingy
             ChildNodes::Map { .. } => 2,
             ChildNodes::Union {
-                array: union_array,
+                array: _union_array,
                 parent_index: _,
             } => 1,
         }
     }
 
-    /// Ui is needed to style the name of InlineKeyMap nodes
+    /// Ui is needed to style the name of `InlineKeyMap` nodes
     pub fn get_child(&self, index: usize) -> crate::arrow_ui::ArrowNode<'a> {
-        assert!(index < self.len(), "Index out of bounds: {}", index);
+        assert!(index < self.len(), "Index out of bounds: {index}");
         match self {
             ChildNodes::List(list) => crate::arrow_ui::ArrowNode::new(list.clone(), index),
             ChildNodes::Struct {
@@ -104,12 +102,12 @@ impl<'a> ChildNodes<'a> {
                     .get(variant_index as usize)
                     .expect("Variant index should be valid");
                 crate::arrow_ui::ArrowNode::new(child.clone(), *parent_index)
-                    .with_field_name(variant_name.clone())
+                    .with_field_name(*variant_name)
             }
         }
     }
 
-    pub fn iter<'b>(&'b self) -> impl NodeIterator<'b> {
+    pub fn iter(&self) -> impl NodeIterator<'_> {
         (0..self.len()).map(move |index| self.get_child(index))
     }
 }
@@ -145,7 +143,7 @@ impl<'a> From<&'a dyn Array> for MaybeArc<'a> {
     }
 }
 
-impl<'a> From<arrow::array::ArrayRef> for MaybeArc<'a> {
+impl From<arrow::array::ArrayRef> for MaybeArc<'_> {
     fn from(array: arrow::array::ArrayRef) -> Self {
         MaybeArc::Arc(array)
     }
