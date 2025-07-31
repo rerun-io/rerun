@@ -90,6 +90,9 @@ pub use ffmpeg_h264::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
 
+#[cfg(with_ffmpeg)]
+mod ffmpeg_h265;
+
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
@@ -252,6 +255,17 @@ pub fn new_decoder(
         crate::VideoCodec::H264 => {
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
+                debug_name.to_owned(),
+                &video.encoding_details,
+                on_output,
+                decode_settings.ffmpeg_path.clone(),
+            )?))
+        }
+
+        #[cfg(with_ffmpeg)]
+        crate::VideoCodec::H265 => {
+            re_log::debug!("Decoding H.265…");
+            Ok(Box::new(ffmpeg_h265::FFmpegCliH265Decoder::new(
                 debug_name.to_owned(),
                 &video.encoding_details,
                 on_output,

@@ -35,7 +35,7 @@ enum VideoCodec: uint (
     // TODO(#10185): Add support for H265.
     ///
     /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
-    //H265 = 0x68657631, // b'hev1'.hex()
+    H265 = 0x68657631, // b'hev1'.hex()
 
     /// AOMedia Video 1 (AV1)
     ///
