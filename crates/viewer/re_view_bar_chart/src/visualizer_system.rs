@@ -17,7 +17,14 @@ use re_viewer_context::{
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<EntityPath, (datatypes::TensorData, components::Color)>,
+    pub charts: BTreeMap<
+        EntityPath,
+        (
+            datatypes::TensorData,
+            datatypes::TensorData,
+            components::Color,
+        ),
+    >,
 }
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
@@ -50,9 +57,13 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             };
 
             if tensor.is_vector() {
+                let indexes: components::TensorData =
+                    results.get_mono_with_fallback(&BarChart::descriptor_indexes(), self);
                 let color = results.get_mono_with_fallback(&BarChart::descriptor_color(), self);
-                self.charts
-                    .insert(data_result.entity_path.clone(), (tensor.0.clone(), color));
+                self.charts.insert(
+                    data_result.entity_path.clone(),
+                    (indexes.0.clone(), tensor.0.clone(), color),
+                );
             }
         }
 
@@ -74,4 +85,39 @@ impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSys
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [components::Color]);
+impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualizerSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::TensorData {
+        // This fallback is for indexes - generate a sequence from 0 to n-1
+        // where n is the length of the values tensor
+
+        // Try to get the values tensor to determine the length
+        if let Some(((_time, _row_id), tensor)) = ctx
+            .recording()
+            .latest_at_component::<components::TensorData>(
+                ctx.target_entity_path,
+                ctx.query,
+                &BarChart::descriptor_values(),
+            )
+        {
+            if tensor.is_vector() {
+                let shape = tensor.shape();
+                if let Some(&length) = shape.first() {
+                    // Create a sequence from 0 to length-1
+                    let indices: Vec<i64> = (0..length as i64).collect();
+                    let tensor_data = datatypes::TensorData::new(
+                        vec![length],
+                        datatypes::TensorBuffer::I64(indices.into()),
+                    );
+                    return components::TensorData(tensor_data);
+                }
+            }
+        }
+
+        // Fallback to empty tensor if we can't determine the values length
+        let tensor_data =
+            datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
+        components::TensorData(tensor_data)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [components::Color, components::TensorData]);
