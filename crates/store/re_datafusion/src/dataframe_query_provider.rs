@@ -113,6 +113,7 @@ pub struct DataframePartitionStream {
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
 /// on the data platform, we will get the schema for all entities and all components. This
 /// method is used to down select from that full schema based on `query_expression`.
+#[tracing::instrument(level = "trace", skip_all)]
 fn compute_schema_for_query(
     dataset_schema: &Schema,
     query_expression: &QueryExpression,
@@ -467,6 +468,7 @@ impl PartialOrd for ChunkInfo {
     }
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusionError> {
     Ok(match time_array.data_type() {
         DataType::Int64 => downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
@@ -508,6 +510,7 @@ fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusion
 /// vector of tuple. The outer vector is of length `num_partitions`. The inner
 /// vector contains the combination of `rerun_partition_id`, chunk ID, and
 /// chunk byte length.
+#[tracing::instrument(level = "trace", skip_all)]
 fn compute_partition_stream_chunk_info(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
 ) -> Result<Arc<BTreeMap<String, Vec<ChunkInfo>>>, DataFusionError> {
@@ -673,6 +676,7 @@ impl PartitionStreamExec {
     }
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 async fn send_next_row(
     query_handle: &QueryHandle<StorageEngine>,
     partition_id: &str,
@@ -720,6 +724,7 @@ async fn send_next_row(
     Ok(Some(()))
 }
 
+#[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<Vec<(Chunk, Option<String>)>>,
     output_channel: Sender<RecordBatch>,
@@ -830,6 +835,7 @@ async fn chunk_store_cpu_worker_thread(
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output partition,
 /// which is different from the partition_id.
+#[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     base_request: GetChunksRequest,
@@ -1012,6 +1018,7 @@ impl Drop for CpuRuntime {
 
 impl CpuRuntime {
     /// Create a new Tokio Runtime for CPU bound tasks
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
         let cpu_runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(num_threads)
