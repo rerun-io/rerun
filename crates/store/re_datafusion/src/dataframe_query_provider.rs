@@ -64,11 +64,6 @@ use tracing::Instrument as _;
 const DEFAULT_BATCH_SIZE: usize = 2048;
 const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
-/// TODO(tsaucer)
-/// - I need to make sure I do some static queries also because they may break the time based portions
-/// - Validate sorting is as expected - add unit tests
-/// - Add tracing spans back in
-
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
@@ -860,13 +855,6 @@ async fn chunk_stream_io_loop(
             get_chunks_response_stream,
         );
 
-        // We want the underlying HTTP2 client to keep polling on the gRPC stream as fast
-        // as non-blockingly possible, which cannot happen if we just poll once in a while
-        // in-between decoding phases. This results in the stream just sleeping, waiting
-        // for IO to complete, way more frequently that it should.
-        // We resolve that by spawning a dedicated I/O task that just polls the stream as fast as
-        // the stream will allows. This way, whenever the underlying HTTP2 stream is polled, we
-        // will already have pre-fetched a bunch of data for it.
         while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
             if output_channel.send(chunk_and_partition_id).await.is_err() {
                 break;
