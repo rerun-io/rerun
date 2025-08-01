@@ -93,13 +93,15 @@ struct PartitionStreamExec {
     chunk_request: GetChunksRequest,
 }
 
+type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
+
 pub struct DataframePartitionStream {
     projected_schema: SchemaRef,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
     rerun_partition_ids: Vec<String>,
 
-    chunk_tx: Option<Sender<Vec<(Chunk, Option<String>)>>>,
+    chunk_tx: Option<Sender<ChunksWithPartition>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -362,7 +364,10 @@ impl Stream for DataframePartitionStream {
             .map(|h| h.is_finished())
             .unwrap_or(false)
         {
-            let join_handle = this.cpu_join_handle.take().unwrap();
+            let join_handle = this
+                .cpu_join_handle
+                .take()
+                .expect("cpu join handle is None");
             let cpu_join_result = this.cpu_runtime.handle().block_on(join_handle);
 
             // let cpu_join_result = cpu_join_result.map_err(|err| exec_datafusion_err!("{err}"))
@@ -569,11 +574,9 @@ fn compute_partition_stream_chunk_info(
             ))?;
         let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
 
-        let num_rows = partition_id_arr.len();
-        for idx in 0..num_rows {
+        for (idx, chunk_id) in chunk_id_arr.iter().enumerate() {
             let partition_id = partition_id_arr.value(idx).to_owned();
-            // let hash_idx = partition_id.hash_one(&random_state) as usize;
-            let chunk_id = ChunkId::from_tuid(chunk_id_arr[idx]);
+            let chunk_id = ChunkId::from_tuid(*chunk_id);
             let byte_len = chunk_byte_len_arr.value(idx);
             let start_time = start_time_arr.value(idx);
             let end_time = end_time_arr.value(idx);
@@ -726,7 +729,7 @@ async fn send_next_row(
 
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<Vec<(Chunk, Option<String>)>>,
+    mut input_channel: Receiver<ChunksWithPartition>,
     output_channel: Sender<RecordBatch>,
     chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
     query_expression: QueryExpression,
@@ -793,7 +796,9 @@ async fn chunk_store_cpu_worker_thread(
                     Some((partition_id.clone(), store, query_handle, chunks_to_receive));
             };
 
-            let (_, store, _, remaining_chunks) = &mut current_stores.as_mut().unwrap();
+            let (_, store, _, remaining_chunks) = current_stores
+                .as_mut()
+                .expect("current_stores should be set");
 
             let chunk_id = chunk.id();
             let Some((chunk_idx, _)) = remaining_chunks
@@ -840,7 +845,7 @@ async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     base_request: GetChunksRequest,
     mut rerun_partition_ids: Vec<String>,
-    output_channel: Sender<Vec<(Chunk, Option<String>)>>,
+    output_channel: Sender<ChunksWithPartition>,
 ) -> Result<(), DataFusionError> {
     rerun_partition_ids.sort();
     for partition_id in rerun_partition_ids {
@@ -1009,7 +1014,7 @@ impl Drop for CpuRuntime {
         // thread to complete its work and exit cleanly.
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
-            if let Err(_) = thread_join_handle.join() {
+            if thread_join_handle.join().is_err() {
                 log::error!("Error joining CPU runtime thread");
             }
         }
@@ -1028,13 +1033,16 @@ impl CpuRuntime {
         let notify_shutdown_captured: Arc<Notify> = Arc::clone(&notify_shutdown);
 
         // The cpu_runtime runs and is dropped on a separate thread
-        let thread_join_handle = std::thread::spawn(move || {
-            cpu_runtime.block_on(async move {
-                notify_shutdown_captured.notified().await;
-            });
-            // Note: cpu_runtime is dropped here, which will wait for all tasks
-            // to complete
-        });
+
+        let thread_join_handle = std::thread::Builder::new()
+            .name("datafusion_query_cpu_thread".to_owned())
+            .spawn(move || {
+                cpu_runtime.block_on(async move {
+                    notify_shutdown_captured.notified().await;
+                });
+                // Note: cpu_runtime is dropped here, which will wait for all tasks
+                // to complete
+            })?;
 
         Ok(Self {
             handle,
