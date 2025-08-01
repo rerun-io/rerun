@@ -1,5 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
+mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
 mod dataframe_query_provider;
 #[cfg(target_arch = "wasm32")]
@@ -11,10 +12,11 @@ mod search_provider;
 mod table_entry_provider;
 mod wasm_compat;
 
+pub use dataframe_query_common::DataframeQueryTableProvider;
 #[cfg(not(target_arch = "wasm32"))]
-pub use dataframe_query_provider::DataframeQueryTableProvider;
+pub(crate) use dataframe_query_provider::PartitionStreamExec;
 #[cfg(target_arch = "wasm32")]
-pub use dataframe_query_provider_wasm::DataframeQueryTableProvider;
+pub(crate) use dataframe_query_provider_wasm::PartitionStreamExec;
 pub use datafusion_connector::DataFusionConnector;
 pub use partition_table::PartitionTableProvider;
 pub use search_provider::SearchResultsTableProvider;
