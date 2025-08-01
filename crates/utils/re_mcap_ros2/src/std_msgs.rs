@@ -22,6 +22,13 @@ pub struct ColorRGBA {
     pub a: f32,
 }
 
+/// A string type used in ROS2 messages.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StringMessage {
+    /// The string data.
+    pub data: String,
+}
+
 /// Standard metadata for higher-level stamped data types.
 ///
 /// This is generally used to communicate timestamped data
