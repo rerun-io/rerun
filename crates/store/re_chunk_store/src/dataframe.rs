@@ -323,7 +323,7 @@ impl From<&QueryExpression> for Query {
                 })
         };
 
-        Query {
+        Self {
             latest_at,
             range: query_expression.max_range().map(|range| QueryRange {
                 index: range.timeline().to_string(),

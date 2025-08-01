@@ -432,7 +432,10 @@ impl Stream for DataframePartitionStream {
                 }
             }
 
-            let (partition_id, query) = this.current_query.as_mut().unwrap();
+            let (partition_id, query) = this
+                .current_query
+                .as_mut()
+                .expect("current_query should be Some");
 
             // If the following returns none, we have exhausted that rerun partition id
             match create_next_row(query, partition_id, &this.projected_schema)? {
@@ -616,11 +619,9 @@ fn compute_partition_stream_chunk_info(
             ))?;
         let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
 
-        let num_rows = partition_id_arr.len();
-        for idx in 0..num_rows {
+        for (idx, chunk_id) in chunk_id_arr.iter().enumerate() {
             let partition_id = partition_id_arr.value(idx).to_owned();
-            // let hash_idx = partition_id.hash_one(&random_state) as usize;
-            let chunk_id = ChunkId::from_tuid(chunk_id_arr[idx]);
+            let chunk_id = ChunkId::from_tuid(*chunk_id);
             let byte_len = chunk_byte_len_arr.value(idx);
             let start_time = start_time_arr.value(idx);
             let end_time = end_time_arr.value(idx);
@@ -812,7 +813,6 @@ impl ExecutionPlan for PartitionStreamExec {
 
         let dataset_id = chunk_request
             .dataset_id
-            .clone()
             .ok_or(exec_datafusion_err!("Missing dataset id"))?
             .try_into()
             .map_err(|err| exec_datafusion_err!("{err}"))?;
