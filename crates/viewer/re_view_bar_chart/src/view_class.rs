@@ -8,14 +8,12 @@ use re_types::{
     datatypes::TensorBuffer,
 };
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
-use re_view::{
-    controls::SELECTION_RECT_ZOOM_BUTTON, suggest_view_for_each_entity, view_property_ui,
-};
+use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
     ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities,
+    VisualizableEntities, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 

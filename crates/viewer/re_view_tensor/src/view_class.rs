@@ -14,13 +14,13 @@ use re_types::{
     datatypes::TensorData,
 };
 use re_ui::{Help, UiExt as _, list_item};
-use re_view::{suggest_view_for_each_entity, view_property_ui};
+use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
     ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
-    gpu_bridge,
+    gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
