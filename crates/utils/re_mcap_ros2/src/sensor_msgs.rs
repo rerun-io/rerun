@@ -274,12 +274,16 @@ pub struct CameraInfo {
 pub struct JointState {
     /// Metadata including timestamp and coordinate frame.
     pub header: Header,
+
     /// The names of the joints.
     pub name: Vec<String>,
+
     /// The positions of the joints.
     pub position: Vec<f64>,
+
     /// The velocities of the joints.
     pub velocity: Vec<f64>,
+
     /// The efforts applied in the joints.
     pub effort: Vec<f64>,
 }
