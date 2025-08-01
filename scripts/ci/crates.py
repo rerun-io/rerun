@@ -234,11 +234,40 @@ class Bump(Enum):
             if latest_version == latest_version_finalized:
                 # Latest published is not a pre-release, bump minor and add alpha+dev
                 # example: 0.9.1 -> 0.10.0-alpha.1+dev
-                return version.bump_minor().bump_prerelease(token="alpha").replace(build="dev")
+                return version.bump_minor().bump_prerelease(token="alpha").replace(build=build_metadata())
             else:
                 # Latest published is a pre-release, bump prerelease
                 # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
-                return version.bump_prerelease(token="alpha").replace(build="dev")
+                return version.bump_prerelease(token="alpha").replace(build=build_metadata())
+
+
+def build_metadata(ctx: Context | None = None, dev: str | None = None) -> str:
+    """
+    Returns a string to be used as build metadata for dev versions.
+
+    Args:
+        ctx: Optional context for error reporting
+        dev: If "sha", returns the 7-digits prefix of the commit sha
+             If any other value, returns "dev".
+
+    Returns:
+        A string of the form "dev" or "<7digits_commit_sha>"
+
+    """
+    if not dev or dev != "sha":
+        return "dev"
+
+    try:
+        commit_sha: str = git.Repo().head.object.hexsha[:7]
+    except Exception as e:
+        # If we can't get the commit SHA, fall back
+        if ctx:
+            ctx.error(f"failed to get commit sha: {e}")
+        else:
+            print(f'failed to get commit sha, falling back to "dev": {e}', file=sys.stderr)
+        return "dev"
+
+    return commit_sha
 
 
 def is_pinned(version: str) -> bool:
@@ -330,7 +359,7 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
+def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: str | None) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
@@ -345,7 +374,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         else:
             new_version = VersionInfo.parse(bump)
     if dev is not None:
-        new_version = new_version.replace(build="dev" if dev else None)
+        new_version = new_version.replace(build=build_metadata(ctx, dev) if dev else None)
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
@@ -638,6 +667,7 @@ def print_version(
     target: Target | None,
     finalize: bool = False,
     pre_id: bool = False,
+    build_metadata: bool = False,
     skip_prerelease: bool = False,
 ) -> None:
     current_version = get_version(target, skip_prerelease)
@@ -648,6 +678,10 @@ def print_version(
     if pre_id:
         sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))  # type: ignore[union-attr]
         sys.stdout.flush()
+    elif build_metadata:
+        if current_version.build:
+            sys.stdout.write(str(current_version.build))
+            sys.stdout.flush()
     else:
         sys.stdout.write(str(current_version))
         sys.stdout.flush()
@@ -669,7 +703,13 @@ def main() -> None:
     )
     target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
-    dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
+    dev_parser.add_argument(
+        "--dev",
+        nargs="?",
+        const="static",
+        choices=["static", "sha"],
+        help="Set build metadata to `+dev` (static) or `+<sha>` (sha)",
+    )
     dev_parser.add_argument(
         "--no-dev",
         dest="dev",
@@ -698,7 +738,12 @@ def main() -> None:
         action="store_true",
         help="Return version finalized if it is a pre-release",
     )
-    get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    partial_version_parser = get_version_parser.add_mutually_exclusive_group()
+    partial_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    partial_version_parser.add_argument(
+        "--build-metadata", action="store_true", help="Retrieve only the build metadata"
+    )
+
     get_version_parser.add_argument(
         "--from",
         type=Target,
@@ -723,7 +768,7 @@ def main() -> None:
     if args.cmd == "check-publish-flags":
         check_publish_flags()
     if args.cmd == "get-version":
-        print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
+        print_version(args.target, args.finalize, args.pre_id, args.build_metadata, args.skip_prerelease)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
