@@ -2,25 +2,22 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, BinaryArray, BinaryBuilder, BooleanArray, BooleanBuilder,
-        FixedSizeListBuilder, Float32Array, Float32Builder, Float64Array, Float64Builder,
-        GenericListArray, Int32Array, Int32Builder, Int64Array, Int64Builder, ListBuilder,
-        MapBuilder, NullArray, NullBuilder, OffsetSizeTrait, StringArray, StringBuilder,
-        StructBuilder, UInt32Array, UInt32Builder, UInt64Array, UInt64Builder, UnionBuilder,
+        ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
+        Float64Builder, Int32Builder, Int64Builder, ListBuilder, StringBuilder, StructBuilder,
+        UInt32Builder, UInt64Builder,
     },
-    datatypes::{DataType, Field, Fields, UnionFields, UnionMode},
+    datatypes::{DataType, Field, Fields},
 };
 use mcap::Schema;
 use prost_reflect::{
     DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_types::{ComponentDescriptor, Loggable};
+use re_types::ComponentDescriptor;
 
 use crate::mcap::decode::{McapMessageParser, PluginError};
 
 pub struct ProtobufMessageParser {
-    num_rows: usize,
     message_descriptor: MessageDescriptor,
     fields: BTreeMap<String, FixedSizeListBuilder<Box<dyn ArrayBuilder>>>,
     archetype: String,
@@ -31,7 +28,7 @@ impl ProtobufMessageParser {
     pub fn new(num_rows: usize, schema: &Arc<Schema<'_>>) -> Self {
         let pool = DescriptorPool::decode(schema.data.as_ref()).unwrap();
 
-        let message_descriptor = dbg!(pool.get_message_by_name(schema.name.as_str()).unwrap());
+        let message_descriptor = pool.get_message_by_name(schema.name.as_str()).unwrap();
 
         let mut fields = BTreeMap::new();
 
@@ -52,7 +49,6 @@ impl ProtobufMessageParser {
         );
 
         Self {
-            num_rows,
             message_descriptor,
             fields,
             archetype: schema.name.clone(),
@@ -63,7 +59,7 @@ impl ProtobufMessageParser {
 impl McapMessageParser for ProtobufMessageParser {
     fn append(
         &mut self,
-        ctx: &mut crate::mcap::decode::ParserContext,
+        _ctx: &mut crate::mcap::decode::ParserContext,
         msg: &mcap::Message<'_>,
     ) -> anyhow::Result<()> {
         let dynamic_message =
@@ -98,7 +94,6 @@ impl McapMessageParser for ProtobufMessageParser {
         let timelines = ctx.build_timelines();
 
         let Self {
-            num_rows: _,
             message_descriptor: _,
             fields,
             archetype,
@@ -155,10 +150,6 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Option<()> {
                     .map(|(descr, _)| descr.name().to_owned())
                     .collect::<Vec<_>>()
             );
-            // let list_builder = builder
-            //     .as_any_mut()
-            //     .downcast_mut::<ListBuilder<Box<dyn ArrayBuilder>>>()
-            //     .unwrap();
             let struct_builder = builder
                 .as_any_mut()
                 .downcast_mut::<StructBuilder>()
@@ -183,25 +174,7 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Option<()> {
                     //field_builder.append_null();
                 }
             }
-            // for (descr, val) in dynamic_message.fields() {
-            //     // In protobuf, fields are not 0-indexed, so we need to subtract 1.
-            //     let i = descr.number() as usize;
-            //     if let Some(field_builder) = builders.get_mut(i - 1) {
-            //     } else {
-            //         re_log::error!("Missing builder for field: {}", descr.name());
-            //     }
-            // }
-
-            // for (builder, (descr, val)) in struct_builder
-            //     .field_builders_mut()
-            //     .iter_mut()
-            //     .zip(dynamic_message.fields())
-            // {
-            //     let is_valid = append_value(builder, val).is_some();
-            //     re_log::debug!("Nested field {}: success {is_valid}", descr.name());
-            // }
             struct_builder.append(true);
-            // list_builder.append(true);
         }
         Value::List(vec) => {
             re_log::debug!("Append called on a list with {} elements: {val}", vec.len(),);
@@ -251,33 +224,32 @@ fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> Struct
 }
 
 fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
-    let inner: (&'static str, Box<dyn ArrayBuilder>) = match descr.kind() {
-        Kind::Double => ("F64", Box::new(Float64Builder::new())),
-        Kind::Float => ("F32", Box::new(Float32Builder::new())),
-        Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => ("Int32", Box::new(Int32Builder::new())),
-        Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => ("Int64", Box::new(Int64Builder::new())),
-        Kind::Uint32 | Kind::Fixed32 => ("Uint32", Box::new(UInt32Builder::new())),
-        Kind::Uint64 | Kind::Fixed64 => ("Uint64", Box::new(UInt64Builder::new())),
-        Kind::Bool => ("Bool", Box::new(BooleanBuilder::new())),
-        Kind::String => ("String", Box::new(StringBuilder::new())),
-        Kind::Bytes => ("Binary", Box::new(BinaryBuilder::new())),
-        Kind::Message(message_descriptor) => (
-            "Struct",
-            Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>,
-        ),
+    let inner: Box<dyn ArrayBuilder> = match descr.kind() {
+        Kind::Double => Box::new(Float64Builder::new()),
+        Kind::Float => Box::new(Float32Builder::new()),
+        Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => Box::new(Int32Builder::new()),
+        Kind::Int64 | Kind::Sfixed64 | Kind::Sint64 => Box::new(Int64Builder::new()),
+        Kind::Uint32 | Kind::Fixed32 => Box::new(UInt32Builder::new()),
+        Kind::Uint64 | Kind::Fixed64 => Box::new(UInt64Builder::new()),
+        Kind::Bool => Box::new(BooleanBuilder::new()),
+        Kind::String => Box::new(StringBuilder::new()),
+        Kind::Bytes => Box::new(BinaryBuilder::new()),
+        Kind::Message(message_descriptor) => {
+            Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
+        }
         Kind::Enum(_) => {
-            // TODO(grtlr): Use proper Union type here!
-            ("Enum(Int32)", Box::new(Int32Builder::new()))
+            re_log::warn_once!(
+                "Enum support is still limited, falling back to Int32 representation"
+            );
+            Box::new(Int32Builder::new())
         }
     };
 
     if descr.is_list() {
-        re_log::error!("ListBuilder({}Builder): {descr:?}", inner.0);
-        return Box::new(ListBuilder::new(inner.1));
+        return Box::new(ListBuilder::new(inner));
     }
 
-    re_log::error!("{}Builder: {}", inner.0, descr.name());
-    inner.1
+    inner
 }
 
 fn arrow_field_from(descr: &FieldDescriptor) -> Field {
@@ -300,23 +272,10 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
                 .fields()
                 .map(|f| arrow_field_from(&f))
                 .collect::<Fields>();
-            // DataType::List(Arc::new(Field::new_list_field(
-            //     DataType::Struct(fields),
-            //     true,
-            // )))
             DataType::Struct(fields)
         }
-        Kind::Enum(enum_descriptor) => {
-            // re_log::warn!("{enum_descriptor:#?}");
-            // let type_ids = enum_descriptor
-            //     .values()
-            //     .into_iter()
-            //     .map(|val_descr| val_descr.number() as i8);
-            // let fields = enum_descriptor
-            //     .values()
-            //     .into_iter()
-            //     .map(|val_descr| Field::new(val_descr.name(), DataType::Utf8, false));
-            // DataType::Union(UnionFields::new(type_ids, fields), UnionMode::Dense)
+        Kind::Enum(_) => {
+            // TODO(grtlr): Implement enum support when `UnionBuilder` implements `ArrayBuilder`.
             DataType::Int32
         }
     };

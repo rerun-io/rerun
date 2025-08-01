@@ -13,7 +13,9 @@ use re_log_types::TimeCell;
 use re_sorbet::SorbetSchema;
 use thiserror::Error;
 
-use super::schema::{RawMcapMessageParser, protobuf::ProtobufMessageParser};
+use super::schema::{
+    RawMcapMessageParser, jsonschema::JsonMessageParser, protobuf::ProtobufMessageParser,
+};
 
 pub type SchemaName = String;
 
@@ -254,19 +256,23 @@ impl<'a> McapChunkDecoder<'a> {
             });
 
         let Some(plugin) = self.registry.0.get(&schema.name) else {
-            let (ctx, parser) = self.parsers.entry(channel_id).or_insert_with(|| {
-                if schema.encoding.as_str() == "protobuf" {
-                    (
-                        ParserContext::new(entity_path.clone()),
-                        Box::new(ProtobufMessageParser::new(num_rows, schema)),
-                    )
-                } else {
-                    (
-                        ParserContext::new(entity_path.clone()),
-                        Box::new(RawMcapMessageParser::new(num_rows)),
-                    )
-                }
-            });
+            let (ctx, parser) =
+                self.parsers
+                    .entry(channel_id)
+                    .or_insert_with(|| match schema.encoding.as_str() {
+                        "protobuf" => (
+                            ParserContext::new(entity_path.clone()),
+                            Box::new(ProtobufMessageParser::new(num_rows, schema)),
+                        ),
+                        "jsonschema" => (
+                            ParserContext::new(entity_path.clone()),
+                            Box::new(JsonMessageParser::new(num_rows, schema)),
+                        ),
+                        _ => (
+                            ParserContext::new(entity_path.clone()),
+                            Box::new(RawMcapMessageParser::new(num_rows)),
+                        ),
+                    });
 
             ctx.add_timepoint(timepoint);
 

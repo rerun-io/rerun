@@ -292,8 +292,11 @@ fn load_mcap(
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
-                        &archetypes::TextLog::new("Unsupported schema for channel")
-                            .with_level(components::TextLogLevel::WARN),
+                        &archetypes::TextLog::new(format!(
+                            "Unsupported schema for channel: {}",
+                            schema.name
+                        ))
+                        .with_level(components::TextLogLevel::WARN),
                     )
                     .build()?;
                 send_chunk(chunk);
