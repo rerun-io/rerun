@@ -280,6 +280,7 @@ fn load_mcap(
 
     let mut registry = mcap::decode::MessageDecoderRegistry::default();
     registry
+        .register_default::<mcap::schema::sensor_msgs::CameraInfoSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
