@@ -284,6 +284,7 @@ fn load_mcap(
         .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
+        .register_default::<mcap::schema::sensor_msgs::JointStateSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::PointCloud2SchemaPlugin>()
         .register_default::<mcap::schema::std_msgs::StringSchemaPlugin>();
 
