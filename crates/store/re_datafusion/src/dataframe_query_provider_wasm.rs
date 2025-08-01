@@ -24,7 +24,6 @@ use datafusion::{
     catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
 };
 use futures_util::{Stream, StreamExt as _};
-use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
@@ -32,7 +31,7 @@ use re_dataframe::{
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
-use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::PartitionId;
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::frontend::v1alpha1::{
@@ -51,10 +50,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::runtime::Handle;
-use tokio::sync::Notify;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::task::JoinHandle;
-use tracing::Instrument as _;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -88,28 +83,18 @@ struct PartitionStreamExec {
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
-    worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
 }
-
-type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
 
 pub struct DataframePartitionStream {
     projected_schema: SchemaRef,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
-    rerun_partition_ids: Vec<String>,
-
-    chunk_tx: Option<Sender<ChunksWithPartition>>,
-    store_output_channel: Receiver<RecordBatch>,
-    io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
-
-    /// We must keep a handle on the cpu runtime because the execution plan
-    /// is dropped during streaming. We need this handle to continue to exist
-    /// so that our worker does not shut down unexpectedly.
-    cpu_runtime: Arc<CpuRuntime>,
-    cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
+    current_query: Option<(String, QueryHandle<StorageEngine>)>,
+    query_expression: QueryExpression,
+    remaining_partition_ids: Vec<String>,
+    dataset_id: EntryId, // TODO(tsaucer) delete?
 }
 
 /// Compute the output schema for a query on a dataset. When we call `get_dataset_schema`
@@ -349,55 +334,115 @@ impl TableProvider for DataframeQueryTableProvider {
     }
 }
 
+impl DataframePartitionStream {
+    async fn get_chunk_store_for_single_rerun_partition(
+        &mut self,
+        partition_id: &str,
+    ) -> Result<ChunkStoreHandle, DataFusionError> {
+        let mut get_chunks_request = self.chunk_request.clone();
+        get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
+
+        let get_chunks_response_stream = self
+            .client
+            .inner()
+            .get_chunks(get_chunks_request)
+            .await
+            .map_err(|err| exec_datafusion_err!("{err}"))?
+            .into_inner();
+
+        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
+        // and the app layer (Arrow).
+        let mut chunk_stream = re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+            get_chunks_response_stream,
+        );
+
+        // TODO(tsaucer) Verify if we can just remove StoreInfo
+        let store_info = StoreInfo {
+            // Note: normally we use dataset name as application id,
+            // but we don't have it here, and it doesn't really
+            // matter since this is just a temporary store.
+            store_id: StoreId::random(StoreKind::Recording, self.dataset_id.to_string()),
+            cloned_from: None,
+            store_source: StoreSource::Unknown,
+            store_version: None,
+        };
+
+        let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
+        store.set_store_info(store_info);
+        let store = ChunkStoreHandle::new(store);
+
+        while let Some(chunks_and_partition_ids) = chunk_stream.next().await {
+            let chunks_and_partition_ids =
+                chunks_and_partition_ids.map_err(|err| exec_datafusion_err!("{err}"))?;
+
+            let _span = tracing::trace_span!(
+                "get_chunks::batch_insert",
+                num_chunks = chunks_and_partition_ids.len()
+            )
+            .entered();
+
+            for chunk_and_partition_id in chunks_and_partition_ids {
+                let (chunk, received_partition_id) = chunk_and_partition_id;
+
+                let received_partition_id = received_partition_id
+                    .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
+                if received_partition_id != partition_id {
+                    return exec_err!("Unexpected partition id: {received_partition_id}");
+                }
+
+                store
+                    .write()
+                    .insert_chunk(&Arc::new(chunk))
+                    .map_err(|err| exec_datafusion_err!("{err}"))?;
+            }
+        }
+
+        Ok(store)
+    }
+}
+
 impl Stream for DataframePartitionStream {
     type Item = Result<RecordBatch, DataFusionError>;
 
     #[tracing::instrument(level = "info", skip_all)]
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
 
-        // If we have any errors on the worker thread, we want to ensure we pass them up
-        // through the stream.
-        if this
-            .cpu_join_handle
-            .as_ref()
-            .map(|h| h.is_finished())
-            .unwrap_or(false)
-        {
-            let join_handle = this
-                .cpu_join_handle
-                .take()
-                .expect("cpu join handle is None");
-            let cpu_join_result = this.cpu_runtime.handle().block_on(join_handle);
+        loop {
+            if this.remaining_partition_ids.is_empty() && this.current_query.is_none() {
+                return Poll::Ready(None);
+            }
 
-            // let cpu_join_result = cpu_join_result.map_err(|err| exec_datafusion_err!("{err}"))
-            match cpu_join_result {
-                Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
-                Ok(Err(err)) => return Poll::Ready(Some(Err(err))),
-                Ok(Ok(())) => {}
+            while this.current_query.is_none() {
+                let Some(partition_id) = this.remaining_partition_ids.pop() else {
+                    return Poll::Ready(None);
+                };
+
+                let runtime = Handle::current();
+                let store = runtime.block_on(
+                    this.get_chunk_store_for_single_rerun_partition(partition_id.as_str()),
+                )?;
+
+                let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
+
+                let query = query_engine.query(this.query_expression.clone());
+
+                if query.num_rows() > 0 {
+                    this.current_query = Some((partition_id, query));
+                }
+            }
+
+            let (partition_id, query) = this
+                .current_query
+                .as_mut()
+                .expect("current_query should be Some");
+
+            // If the following returns none, we have exhausted that rerun partition id
+            match create_next_row(query, partition_id, &this.projected_schema)? {
+                Some(rb) => return Poll::Ready(Some(Ok(rb))),
+                None => this.current_query = None,
             }
         }
-
-        // If this is the first call, we are uninitialized so create the io worker
-        if this.io_join_handle.is_none() {
-            let io_handle = Handle::current();
-
-            // In order to properly drop the tx so the channel closes, do not clone it.
-            let Some(chunk_tx) = this.chunk_tx.take() else {
-                return Poll::Ready(Some(exec_err!("No tx for chunks from CPU thread")));
-            };
-
-            this.io_join_handle = Some(io_handle.spawn(chunk_stream_io_loop(
-                this.client.clone(),
-                this.chunk_request.clone(),
-                this.rerun_partition_ids.clone(),
-                chunk_tx,
-            )));
-        }
-
-        this.store_output_channel
-            .poll_recv(cx)
-            .map(|result| Ok(result).transpose())
     }
 }
 
@@ -663,8 +708,6 @@ impl PartitionStreamExec {
 
         let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches)?;
 
-        let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
-
         Ok(Self {
             props,
             chunk_info_batches,
@@ -672,7 +715,6 @@ impl PartitionStreamExec {
             query_expression,
             projected_schema,
             target_partitions: num_partitions,
-            worker_runtime,
             client,
             chunk_request,
         })
@@ -680,12 +722,11 @@ impl PartitionStreamExec {
 }
 
 #[tracing::instrument(level = "trace", skip_all)]
-async fn send_next_row(
+fn create_next_row(
     query_handle: &QueryHandle<StorageEngine>,
     partition_id: &str,
     target_schema: &Arc<Schema>,
-    output_channel: &Sender<RecordBatch>,
-) -> Result<Option<()>, DataFusionError> {
+) -> Result<Option<RecordBatch>, DataFusionError> {
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
@@ -719,161 +760,7 @@ async fn send_next_row(
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
 
-    output_channel
-        .send(output_batch)
-        .await
-        .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-    Ok(Some(()))
-}
-
-#[tracing::instrument(level = "trace", skip_all)]
-async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<ChunksWithPartition>,
-    output_channel: Sender<RecordBatch>,
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
-    query_expression: QueryExpression,
-    projected_schema: Arc<Schema>,
-) -> Result<(), DataFusionError> {
-    let mut current_stores: Option<(
-        String,
-        ChunkStoreHandle,
-        QueryHandle<StorageEngine>,
-        Vec<ChunkInfo>,
-    )> = None;
-    while let Some(chunks_and_partition_ids) = input_channel.recv().await {
-        for chunk_and_partition_id in chunks_and_partition_ids {
-            let (chunk, partition_id) = chunk_and_partition_id;
-
-            let partition_id = partition_id
-                .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
-
-            if let Some((current_partition, _, query_handle, _)) = &current_stores {
-                // When we change partitions, flush the outputs
-                if current_partition != &partition_id {
-                    while send_next_row(
-                        query_handle,
-                        current_partition.as_str(),
-                        &projected_schema,
-                        &output_channel,
-                    )
-                    .await?
-                    .is_some()
-                    {}
-
-                    current_stores = None;
-                }
-            }
-
-            if current_stores.is_none() {
-                let store_info = StoreInfo {
-                    store_id: StoreId::random(
-                        StoreKind::Recording,
-                        ApplicationId::from(partition_id.as_str()),
-                    ),
-                    cloned_from: None,
-                    store_source: StoreSource::Unknown,
-                    store_version: None,
-                };
-
-                let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
-                store.set_store_info(store_info);
-                let store = ChunkStoreHandle::new(store);
-
-                let query_engine =
-                    QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
-                let query_handle = query_engine.query(query_expression.clone());
-
-                let mut chunks_to_receive = chunk_info
-                    .get(&partition_id)
-                    .ok_or(exec_datafusion_err!(
-                        "No chunk info for partition id {partition_id}"
-                    ))?
-                    .clone();
-                chunks_to_receive.sort();
-
-                current_stores =
-                    Some((partition_id.clone(), store, query_handle, chunks_to_receive));
-            };
-
-            let (_, store, _, remaining_chunks) = current_stores
-                .as_mut()
-                .expect("current_stores should be set");
-
-            let chunk_id = chunk.id();
-            let Some((chunk_idx, _)) = remaining_chunks
-                .iter()
-                .enumerate()
-                .find(|(_, info)| info.chunk_id == chunk_id)
-            else {
-                return exec_err!("Unable to locate chunk ID in expected return values");
-            };
-
-            store
-                .write()
-                .insert_chunk(&std::sync::Arc::new(chunk))
-                .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-            // TODO(tsaucer) we should be able to send out intermediate rows as we are getting
-            // data in, but the prior attempts to validate these were invalid
-            remaining_chunks.remove(chunk_idx);
-        }
-    }
-
-    // Flush out remaining of last partition
-    if let Some((final_partition, _, query_handle, _)) = &mut current_stores.as_mut() {
-        while send_next_row(
-            query_handle,
-            final_partition,
-            &projected_schema,
-            &output_channel,
-        )
-        .await?
-        .is_some()
-        {}
-    }
-
-    Ok(())
-}
-
-/// This is the function that will run on the IO (main) tokio runtime that will listen
-/// to the gRPC channel for chunks coming in from the data platform. This loop is started
-/// up by the execute fn of the physical plan, so we will start one per output partition,
-/// which is different from the partition_id.
-#[tracing::instrument(level = "trace", skip_all)]
-async fn chunk_stream_io_loop(
-    mut client: ConnectionClient,
-    base_request: GetChunksRequest,
-    mut rerun_partition_ids: Vec<String>,
-    output_channel: Sender<ChunksWithPartition>,
-) -> Result<(), DataFusionError> {
-    rerun_partition_ids.sort();
-    for partition_id in rerun_partition_ids {
-        let mut get_chunks_request = base_request.clone();
-        get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
-
-        let get_chunks_response_stream = client
-            .inner()
-            .get_chunks(get_chunks_request)
-            .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
-
-        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-        // and the app layer (Arrow).
-        let mut chunk_stream = re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
-            get_chunks_response_stream,
-        );
-
-        while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
-            if output_channel.send(chunk_and_partition_id).await.is_err() {
-                break;
-            }
-        }
-    }
-
-    Ok(())
+    Ok(Some(output_batch))
 }
 
 impl ExecutionPlan for PartitionStreamExec {
@@ -906,10 +793,8 @@ impl ExecutionPlan for PartitionStreamExec {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
-        let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
-
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-        let rerun_partition_ids = self
+        let mut remaining_partition_ids = self
             .chunk_info
             .keys()
             .filter(|partition_id| {
@@ -918,33 +803,28 @@ impl ExecutionPlan for PartitionStreamExec {
             })
             .cloned()
             .collect::<Vec<_>>();
+        remaining_partition_ids.sort();
+        remaining_partition_ids.reverse();
 
         let client = self.client.clone();
         let chunk_request = self.chunk_request.clone();
 
-        let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
         let query_expression = self.query_expression.clone();
-        let projected_schema = self.projected_schema.clone();
-        let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            chunk_store_cpu_worker_thread(
-                chunk_rx,
-                batches_tx,
-                Arc::clone(&self.chunk_info),
-                query_expression,
-                projected_schema,
-            ),
-        ));
+
+        let dataset_id = chunk_request
+            .dataset_id
+            .ok_or(exec_datafusion_err!("Missing dataset id"))?
+            .try_into()
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
 
         let stream = DataframePartitionStream {
             projected_schema: self.projected_schema.clone(),
-            store_output_channel: batches_rx,
             client,
             chunk_request,
-            rerun_partition_ids,
-            chunk_tx: Some(chunk_tx),
-            io_join_handle: None,
-            cpu_join_handle,
-            cpu_runtime: Arc::clone(&self.worker_runtime),
+            remaining_partition_ids,
+            current_query: None,
+            query_expression,
+            dataset_id,
         };
 
         Ok(Box::pin(stream))
@@ -966,7 +846,6 @@ impl ExecutionPlan for PartitionStreamExec {
             query_expression: self.query_expression.clone(),
             projected_schema: self.projected_schema.clone(),
             target_partitions,
-            worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
             chunk_request: self.chunk_request.clone(),
         };
@@ -990,69 +869,5 @@ impl DisplayAs for PartitionStreamExec {
             "StreamingTableExec: num_partitions={:?}",
             self.target_partitions,
         )
-    }
-}
-
-#[derive(Debug)]
-struct CpuRuntime {
-    /// Handle is the tokio structure for interacting with a Runtime.
-    handle: Handle,
-
-    /// Signal to start shutting down
-    notify_shutdown: Arc<Notify>,
-
-    /// When thread is active, is Some
-    thread_join_handle: Option<std::thread::JoinHandle<()>>,
-}
-
-impl Drop for CpuRuntime {
-    fn drop(&mut self) {
-        // Notify the thread to shutdown.
-        self.notify_shutdown.notify_one();
-        // In a production system you also need to ensure your code stops adding
-        // new tasks to the underlying runtime after this point to allow the
-        // thread to complete its work and exit cleanly.
-        if let Some(thread_join_handle) = self.thread_join_handle.take() {
-            // If the thread is still running, we wait for it to finish
-            if thread_join_handle.join().is_err() {
-                log::error!("Error joining CPU runtime thread");
-            }
-        }
-    }
-}
-
-impl CpuRuntime {
-    /// Create a new Tokio Runtime for CPU bound tasks
-    #[tracing::instrument(level = "trace", skip_all)]
-    pub fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
-        let cpu_runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(num_threads)
-            .build()?;
-        let handle = cpu_runtime.handle().clone();
-        let notify_shutdown = Arc::new(Notify::new());
-        let notify_shutdown_captured: Arc<Notify> = Arc::clone(&notify_shutdown);
-
-        // The cpu_runtime runs and is dropped on a separate thread
-
-        let thread_join_handle = std::thread::Builder::new()
-            .name("datafusion_query_cpu_thread".to_owned())
-            .spawn(move || {
-                cpu_runtime.block_on(async move {
-                    notify_shutdown_captured.notified().await;
-                });
-                // Note: cpu_runtime is dropped here, which will wait for all tasks
-                // to complete
-            })?;
-
-        Ok(Self {
-            handle,
-            notify_shutdown,
-            thread_join_handle: Some(thread_join_handle),
-        })
-    }
-
-    /// Return a handle suitable for spawning CPU bound tasks
-    pub fn handle(&self) -> &Handle {
-        &self.handle
     }
 }
