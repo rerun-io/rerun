@@ -367,6 +367,21 @@ impl Properties for HelpButtonFirstClicked {
 
 // -----------------------------------------------
 
+/// The user opened the settings screen.
+pub struct SettingsOpened {}
+
+impl Event for SettingsOpened {
+    const NAME: &'static str = "settings-opened";
+}
+
+impl Properties for SettingsOpened {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;

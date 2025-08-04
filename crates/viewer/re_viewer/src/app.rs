@@ -1087,6 +1087,11 @@ impl App {
 
             UICommand::Settings => {
                 self.state.navigation.push(DisplayMode::Settings);
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
