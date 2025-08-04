@@ -319,10 +319,7 @@ pub fn align_record_batch_to_schema(
 /// output is a hash of the `rerun_partition_id`. We will reuse some of the
 /// underlying execution code from DataFusion's `RepartitionExec` to compute
 /// these partition IDs, just to be certain they match partitioning generated
-/// from sources other than Rerun gRPC services. This will return a vector of
-/// vector of tuple. The outer vector is of length `num_partitions`. The inner
-/// vector contains the combination of `rerun_partition_id`, chunk ID, and
-/// chunk byte length.
+/// from sources other than Rerun gRPC services.
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn compute_partition_stream_chunk_info(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
