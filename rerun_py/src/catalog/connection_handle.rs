@@ -246,6 +246,12 @@ impl ConnectionHandle {
     /// Initiate registration of the provided recording URIs with a dataset and return the
     /// corresponding task descriptors.
     ///
+    /// Custom layers can be specified via `recording_layers`:
+    /// * When empty, this defaults to `["base"]`.
+    /// * If longer than `recording_uris`, `recording_layers` will be truncated.
+    /// * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
+    ///   I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
+    ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
     #[tracing::instrument(level = "info", skip_all)]
@@ -254,10 +260,21 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
+        recording_layers: Vec<String>,
     ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let last_layer = recording_layers
+            .last()
+            .cloned()
+            .unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+
         let data_sources = recording_uris
             .iter()
-            .map(DataSource::new_rrd)
+            .zip(
+                recording_layers
+                    .into_iter()
+                    .chain(std::iter::repeat_with(|| last_layer.clone())),
+            )
+            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
 
