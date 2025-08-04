@@ -51,6 +51,7 @@ impl ViewerAnalytics {
     pub fn on_viewer_started(
         &self,
         build_info: re_build_info::BuildInfo,
+        egui_ctx: &egui::Context,
         adapter_backend: wgpu::Backend,
         device_tier: re_renderer::device_caps::DeviceCapabilityTier,
     ) {
@@ -69,6 +70,7 @@ impl ViewerAnalytics {
             ));
             analytics.record(event::viewer_started(
                 &self.app_env,
+                egui_ctx,
                 adapter_backend,
                 device_tier,
             ));

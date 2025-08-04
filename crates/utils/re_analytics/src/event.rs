@@ -80,6 +80,8 @@ pub struct ViewerRuntimeInformation {
     /// it's too detailed (could be used for fingerprinting which we don't want) and not as useful
     /// anyways since it's hard to learn about the typically identified capabilities.
     pub re_renderer_device_tier: String,
+
+    pub screen_info: ScreenInfo,
 }
 
 impl Properties for ViewerRuntimeInformation {
@@ -89,14 +91,50 @@ impl Properties for ViewerRuntimeInformation {
             is_wsl,
             graphics_adapter_backend,
             re_renderer_device_tier,
+            screen_info,
         } = self;
 
         event.insert("is_docker", is_docker);
         event.insert("is_wsl", is_wsl);
         event.insert("graphics_adapter_backend", graphics_adapter_backend);
         event.insert("re_renderer_device_tier", re_renderer_device_tier);
+        screen_info.serialize(event);
     }
 }
+
+// -----------------------------------------------
+
+/// Information about the user's monitor.
+pub struct ScreenInfo {
+    //// zoom_factor * native_pixels_per_point
+    ///
+    /// Is it usually 1.0 or 2.0, but could be anything.
+    pub pixels_per_point: f32,
+
+    /// OS pixel density
+    pub native_pixels_per_point: Option<f32>,
+
+    /// Chosen zoom, with cmd +/-.
+    ///
+    /// Default is 1.0, but the user can change it.
+    pub zoom_factor: f32,
+}
+
+impl Properties for ScreenInfo {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            pixels_per_point,
+            native_pixels_per_point,
+            zoom_factor,
+        } = self;
+
+        event.insert("pixels_per_point", pixels_per_point);
+        event.insert_opt("native_pixels_per_point", native_pixels_per_point);
+        event.insert("zoom_factor", zoom_factor);
+    }
+}
+
+// -----------------------------------------------
 
 /// Sent when a new recording is opened.
 ///
