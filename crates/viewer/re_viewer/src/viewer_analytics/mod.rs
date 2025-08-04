@@ -57,11 +57,7 @@ impl ViewerAnalytics {
         re_tracing::profile_function!();
 
         #[cfg(feature = "analytics")]
-        {
-            let Some(analytics) = self.analytics.as_ref() else {
-                return;
-            };
-
+        if let Some(analytics) = &self.analytics {
             analytics.record(event::identify(
                 analytics.config(),
                 build_info,
@@ -78,14 +74,10 @@ impl ViewerAnalytics {
     /// When we have loaded the start of a new recording.
     pub fn on_open_recording(&self, entity_db: &re_entity_db::EntityDb) {
         #[cfg(feature = "analytics")]
-        {
+        if let Some(analytics) = &self.analytics {
             if entity_db.store_kind() != re_log_types::StoreKind::Recording {
                 return;
             }
-
-            let Some(analytics) = self.analytics.as_ref() else {
-                return;
-            };
 
             if let Some(event) = event::open_recording(&self.app_env, entity_db) {
                 analytics.record(event);
