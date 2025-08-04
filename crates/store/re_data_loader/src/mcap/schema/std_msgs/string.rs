@@ -40,8 +40,9 @@ impl StringMessageParser {
 
 impl McapMessageParser for StringMessageParser {
     fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
-        let string_msg = cdr::try_decode_message::<std_msgs::StringMessage>(&msg.data)?;
-        self.texts.push(string_msg.data);
+        let std_msgs::StringMessage { data } =
+            cdr::try_decode_message::<std_msgs::StringMessage>(&msg.data)?;
+        self.texts.push(data);
         Ok(())
     }
 
