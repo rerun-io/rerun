@@ -1,3 +1,7 @@
+use arrow::{
+    array::{BooleanBuilder, StructBuilder},
+    datatypes::Field,
+};
 use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
@@ -34,10 +38,13 @@ pub struct CameraInfoMessageParser {
     distortion_models: FixedSizeListBuilder<StringBuilder>,
     k_matrices: FixedSizeListBuilder<Float64Builder>,
     d_coefficients: Vec<Vec<f64>>,
+    r_matrices: FixedSizeListBuilder<Float64Builder>,
+    p_matrices: FixedSizeListBuilder<Float64Builder>,
     widths: FixedSizeListBuilder<UInt32Builder>,
     heights: FixedSizeListBuilder<UInt32Builder>,
     binning_x: FixedSizeListBuilder<UInt32Builder>,
     binning_y: FixedSizeListBuilder<UInt32Builder>,
+    rois: FixedSizeListBuilder<StructBuilder>,
     frame_ids: FixedSizeListBuilder<StringBuilder>,
     image_from_cameras: Vec<[f32; 9]>,
     resolutions: Vec<(f32, f32)>,
@@ -51,10 +58,32 @@ impl CameraInfoMessageParser {
             distortion_models: fixed_size_list_builder(1, num_rows),
             k_matrices: fixed_size_list_builder(9, num_rows),
             d_coefficients: Vec::with_capacity(num_rows),
+            r_matrices: fixed_size_list_builder(9, num_rows),
+            p_matrices: fixed_size_list_builder(12, num_rows),
             widths: fixed_size_list_builder(1, num_rows),
             heights: fixed_size_list_builder(1, num_rows),
             binning_x: fixed_size_list_builder(1, num_rows),
             binning_y: fixed_size_list_builder(1, num_rows),
+            rois: FixedSizeListBuilder::with_capacity(
+                StructBuilder::new(
+                    vec![
+                        Field::new("x_offset", arrow::datatypes::DataType::UInt32, false),
+                        Field::new("y_offset", arrow::datatypes::DataType::UInt32, false),
+                        Field::new("width", arrow::datatypes::DataType::UInt32, false),
+                        Field::new("height", arrow::datatypes::DataType::UInt32, false),
+                        Field::new("do_rectify", arrow::datatypes::DataType::Boolean, false),
+                    ],
+                    vec![
+                        Box::new(UInt32Builder::new()),
+                        Box::new(UInt32Builder::new()),
+                        Box::new(UInt32Builder::new()),
+                        Box::new(UInt32Builder::new()),
+                        Box::new(BooleanBuilder::new()),
+                    ],
+                ),
+                1,
+                num_rows,
+            ),
             frame_ids: fixed_size_list_builder(1, num_rows),
             image_from_cameras: Vec::with_capacity(num_rows),
             resolutions: Vec::with_capacity(num_rows),
@@ -71,11 +100,11 @@ impl McapMessageParser for CameraInfoMessageParser {
             distortion_model,
             d,
             k,
-            r: _,
-            p: _,
+            r,
+            p,
             binning_x,
             binning_y,
-            roi: _,
+            roi,
         } = cdr::try_decode_message::<sensor_msgs::CameraInfo>(&msg.data)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
@@ -90,6 +119,12 @@ impl McapMessageParser for CameraInfoMessageParser {
         self.distortion_models.append(true);
         self.k_matrices.values().append_slice(&k);
         self.k_matrices.append(true);
+
+        self.r_matrices.values().append_slice(&r);
+        self.r_matrices.append(true);
+
+        self.p_matrices.values().append_slice(&p);
+        self.p_matrices.append(true);
 
         self.d_coefficients.push(d);
 
@@ -108,6 +143,36 @@ impl McapMessageParser for CameraInfoMessageParser {
         self.frame_ids.values().append_value(&header.frame_id);
         self.frame_ids.append(true);
 
+        let struct_builder = self.rois.values();
+
+        struct_builder
+            .field_builder::<UInt32Builder>(0)
+            .expect("has to exist")
+            .append_value(roi.x_offset);
+
+        struct_builder
+            .field_builder::<UInt32Builder>(1)
+            .expect("has to exist")
+            .append_value(roi.y_offset);
+
+        struct_builder
+            .field_builder::<UInt32Builder>(2)
+            .expect("has to exist")
+            .append_value(roi.width);
+
+        struct_builder
+            .field_builder::<UInt32Builder>(3)
+            .expect("has to exist")
+            .append_value(roi.height);
+
+        struct_builder
+            .field_builder::<BooleanBuilder>(4)
+            .expect("has to exist")
+            .append_value(roi.do_rectify);
+
+        struct_builder.append(true);
+        self.rois.append(true);
+
         // TODO(#2315): Rerun currently only supports the pinhole model (`plumb_bob` in ROS2)
         // so this does NOT take into account the camera model.
         self.image_from_cameras.push(k.map(|x| x as f32));
@@ -120,12 +185,15 @@ impl McapMessageParser for CameraInfoMessageParser {
         let Self {
             mut distortion_models,
             mut k_matrices,
+            mut r_matrices,
+            mut p_matrices,
             d_coefficients,
             mut widths,
             mut heights,
             mut binning_x,
             mut binning_y,
             mut frame_ids,
+            mut rois,
             image_from_cameras,
             resolutions,
         } = *self;
@@ -171,6 +239,14 @@ impl McapMessageParser for CameraInfoMessageParser {
                     d_array,
                 ),
                 (
+                    ComponentDescriptor::partial("r").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    r_matrices.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("p").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    p_matrices.finish().into(),
+                ),
+                (
                     ComponentDescriptor::partial("binning_x")
                         .with_archetype(Self::ARCHETYPE_NAME.into()),
                     binning_x.finish().into(),
@@ -179,6 +255,10 @@ impl McapMessageParser for CameraInfoMessageParser {
                     ComponentDescriptor::partial("binning_y")
                         .with_archetype(Self::ARCHETYPE_NAME.into()),
                     binning_y.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("roi").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    rois.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("frame_id")
