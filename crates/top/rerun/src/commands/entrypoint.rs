@@ -1066,7 +1066,7 @@ fn run_impl(
                     let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
-                        &call_source.app_env(),
+                        call_source.app_env(),
                         startup_options,
                         cc,
                         Some(connection_registry),
