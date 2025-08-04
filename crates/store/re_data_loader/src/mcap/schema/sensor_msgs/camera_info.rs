@@ -4,7 +4,6 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{ComponentDescriptor, archetypes::Pinhole};
 
 use crate::mcap::{
@@ -20,10 +19,6 @@ pub struct CameraInfoSchemaPlugin;
 impl SchemaPlugin for CameraInfoSchemaPlugin {
     fn name(&self) -> SchemaName {
         "sensor_msgs/msg/CameraInfo".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
     }
 
     fn create_message_parser(

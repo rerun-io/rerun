@@ -10,7 +10,6 @@ use re_chunk::{
     external::nohash_hasher::{IntMap, IsEnabled},
 };
 use re_log_types::TimeCell;
-use re_sorbet::SorbetSchema;
 use thiserror::Error;
 
 use super::schema::RawMcapMessageParser;
@@ -48,9 +47,6 @@ pub trait SchemaPlugin {
     ///
     /// The name should exactly match the schema name found in the MCAP file.
     fn name(&self) -> SchemaName;
-
-    /// Parses the schema definition from an MCAP channel, and returns a [`SorbetSchema`].
-    fn parse_schema(&self, channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError>;
 
     /// Creates a new [`McapMessageParser`] instance for processing messages from this channel.
     ///

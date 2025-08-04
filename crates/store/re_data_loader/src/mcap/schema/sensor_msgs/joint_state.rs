@@ -4,7 +4,6 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::mcap::{
@@ -19,10 +18,6 @@ pub struct JointStateSchemaPlugin;
 impl SchemaPlugin for JointStateSchemaPlugin {
     fn name(&self) -> SchemaName {
         "sensor_msgs/msg/JointState".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
     }
 
     fn create_message_parser(

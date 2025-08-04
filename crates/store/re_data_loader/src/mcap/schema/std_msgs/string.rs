@@ -1,6 +1,5 @@
 use re_chunk::{Chunk, ChunkId};
 use re_mcap_ros2::std_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::archetypes::TextDocument;
 
 use crate::mcap::{
@@ -15,10 +14,6 @@ pub struct StringSchemaPlugin;
 impl SchemaPlugin for StringSchemaPlugin {
     fn name(&self) -> SchemaName {
         "std_msgs/msg/String".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
     }
 
     fn create_message_parser(
