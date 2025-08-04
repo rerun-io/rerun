@@ -356,7 +356,7 @@ impl Properties for CrashSignal {
 pub struct HelpButtonFirstClicked {}
 
 impl Event for HelpButtonFirstClicked {
-    const NAME: &'static str = "crash-signal";
+    const NAME: &'static str = "help-button-clicked";
 }
 
 impl Properties for HelpButtonFirstClicked {
