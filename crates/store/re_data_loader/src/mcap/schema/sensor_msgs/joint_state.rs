@@ -50,33 +50,33 @@ impl JointStateMessageParser {
 
 impl McapMessageParser for JointStateMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
-        let joint_state = cdr::try_decode_message::<sensor_msgs::JointState>(msg.data.as_ref())
+        let re_mcap_ros2::sensor_msgs::JointState {
+            header,
+            name,
+            position,
+            velocity,
+            effort,
+        } = cdr::try_decode_message::<sensor_msgs::JointState>(msg.data.as_ref())
             .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(joint_state.header.stamp.as_nanos()),
+            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
         );
 
-        for name in &joint_state.name {
+        for name in &name {
             self.joint_names.values().append_value(name);
         }
         self.joint_names.append(true);
 
-        self.positions
-            .values()
-            .append_slice(joint_state.position.as_slice());
+        self.positions.values().append_slice(position.as_slice());
         self.positions.append(true);
 
-        self.velocities
-            .values()
-            .append_slice(joint_state.velocity.as_slice());
+        self.velocities.values().append_slice(velocity.as_slice());
         self.velocities.append(true);
 
-        self.efforts
-            .values()
-            .append_slice(joint_state.effort.as_slice());
+        self.efforts.values().append_slice(effort.as_slice());
         self.efforts.append(true);
 
         Ok(())
