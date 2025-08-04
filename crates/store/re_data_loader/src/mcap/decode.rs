@@ -88,9 +88,6 @@ pub trait SchemaPlugin {
     /// #     fn name(&self) -> SchemaName {
     /// #         "my_schema".into()
     /// #     }
-    /// #     fn parse_schema(&self, _channel: &Channel<'_>) -> Result<SorbetSchema, PluginError> {
-    /// #         unreachable!()
-    /// #     }
     /// fn create_message_parser(
     ///     &self,
     ///     _channel: &Channel<'_>,
