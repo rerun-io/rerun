@@ -1060,6 +1060,12 @@ fn run_impl(
         {
             let tokio_runtime_handle = tokio_runtime_handle.clone();
 
+            // Start catching `re_log::info/warn/error` messages
+            // so we can show them in the notification panel.
+            // In particular: create this before calling `run_native_app`
+            // so we catch any warnings produced during startup.
+            let text_log_rx = re_viewer::register_text_log_receiver();
+
             return re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
@@ -1071,6 +1077,7 @@ fn run_impl(
                         cc,
                         Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        text_log_rx,
                         (command_sender, command_receiver),
                     );
                     for rx in rxs_log {

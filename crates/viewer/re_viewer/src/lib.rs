@@ -346,3 +346,16 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Hook into [`re_log`] to receive copies of text log messages on a channel,
+/// which we will then show in the notification panel.
+pub fn register_text_log_receiver() -> std::sync::mpsc::Receiver<re_log::LogMsg> {
+    let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+    if re_log::add_boxed_logger(Box::new(logger)).is_err() {
+        // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
+        re_log::debug!(
+            "re_log not initialized - we won't see any log messages as GUI notifications"
+        );
+    }
+    text_log_rx
+}

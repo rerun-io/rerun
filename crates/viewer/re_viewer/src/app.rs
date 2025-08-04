@@ -161,6 +161,7 @@ impl App {
             creation_context,
             connection_registry,
             tokio_runtime,
+            crate::register_text_log_receiver(),
             command_channel(),
         )
     }
@@ -175,20 +176,13 @@ impl App {
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
+        text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
 
         let analytics =
             crate::viewer_analytics::ViewerAnalytics::new(&startup_options, app_env.clone());
-
-        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        if re_log::add_boxed_logger(Box::new(logger)).is_err() {
-            // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
-            re_log::debug!(
-                "re_log not initialized - we won't see any log messages as GUI notifications"
-            );
-        }
 
         let connection_registry =
             connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
