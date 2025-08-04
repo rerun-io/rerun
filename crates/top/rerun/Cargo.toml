@@ -35,7 +35,7 @@ default = [
   "server",
 ]
 
-## Enable telemetry using our analytics SDK.
+## Enable anonymized telemetry using our analytics SDK.
 analytics = [
   "dep:re_analytics",
   "re_crash_handler?/analytics",

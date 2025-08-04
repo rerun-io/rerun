@@ -348,6 +348,25 @@ impl Properties for CrashSignal {
     }
 }
 
+// -----------------------------------------------
+
+/// Sent the first time a `?` help button is clicked.
+///
+/// Is used to track how many users find the help button.
+pub struct HelpButtonFirstClicked {}
+
+impl Event for HelpButtonFirstClicked {
+    const NAME: &'static str = "crash-signal";
+}
+
+impl Properties for HelpButtonFirstClicked {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
