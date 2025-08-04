@@ -27,6 +27,7 @@ use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::PartitionId;
 use re_protos::frontend::v1alpha1::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_sorbet::{ColumnDescriptor, ColumnSelector};
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -144,7 +145,7 @@ impl PartitionStreamExec {
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
-        query_expression: QueryExpression,
+        mut query_expression: QueryExpression,
         client: ConnectionClient,
         chunk_request: GetChunksRequest,
     ) -> datafusion::common::Result<Self> {
@@ -152,6 +153,19 @@ impl PartitionStreamExec {
             Some(p) => Arc::new(table_schema.project(p)?),
             None => Arc::clone(table_schema),
         };
+
+        if projection.is_some() {
+            let selection = projected_schema
+                .fields()
+                .iter()
+                .map(|field| {
+                    ColumnDescriptor::try_from_arrow_field(None, field).map(ColumnSelector::from)
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+            query_expression.selection = Some(selection);
+        }
 
         let partition_col =
             Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
