@@ -1357,7 +1357,7 @@ class DatasetEntry(Entry):
 
         """
 
-    def register(self, recording_uri: str, recording_layer: str = "base", timeout_secs: int = 60) -> str:
+    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         """
         Register a RRD URI to the dataset and wait for completion.
 
@@ -1382,7 +1382,7 @@ class DatasetEntry(Entry):
 
         """
 
-    def register_batch(self, recording_uris: list[str], recording_layers: list[str] = []) -> Tasks:
+    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] = []) -> Tasks:
         """
         Register a batch of RRD URIs to the dataset and return a handle to the tasks.
 
