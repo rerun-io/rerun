@@ -43,6 +43,11 @@ use tracing::Instrument as _;
 
 const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
+/// This parameter sets the back pressure that either the streaming provider
+/// can place on the CPU worker thread or the CPU worker thread can place on
+/// the IO stream.
+const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
+
 #[derive(Debug)]
 pub(crate) struct PartitionStreamExec {
     props: PlanProperties,
@@ -406,7 +411,9 @@ async fn chunk_store_cpu_worker_thread(
 /// This is the function that will run on the IO (main) tokio runtime that will listen
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output partition,
-/// which is different from the partition_id.
+/// which is different from the partition_id. The output of this loop will be sorted
+/// by rerun_partition_id. The sorting by time index will happen within the cpu worker
+/// thread.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
@@ -473,7 +480,7 @@ impl ExecutionPlan for PartitionStreamExec {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
-        let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
+        let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
         let rerun_partition_ids = self
@@ -489,7 +496,7 @@ impl ExecutionPlan for PartitionStreamExec {
         let client = self.client.clone();
         let chunk_request = self.chunk_request.clone();
 
-        let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(32); // 32 batches of chunks, not 32 chunks
+        let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
