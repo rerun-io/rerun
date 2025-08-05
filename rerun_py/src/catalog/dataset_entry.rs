@@ -254,6 +254,9 @@ impl PyDatasetEntry {
     /// recording_uri: str
     ///     The URI of the RRD to register.
     ///
+    /// recording_layer: str
+    ///     The layer to which the recording will be registered to.
+    ///
     /// timeout_secs: int
     ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
     ///
@@ -261,7 +264,6 @@ impl PyDatasetEntry {
     /// -------
     /// partition_id: str
     ///     The partition ID of the registered RRD.
-    ///
     #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
     #[pyo3(
         text_signature = "(self, recording_uri: str, *, recording_layer: str = 'base', timeout_secs: int = 60)"
