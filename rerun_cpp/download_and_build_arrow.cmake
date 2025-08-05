@@ -68,7 +68,7 @@ function(download_and_build_arrow)
     endif()
 
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
-        # TODO(nick): Remove when resolved  # See https://github.com/apache/arrow/issues/45985
+        # TODO(#10798): Arrow can't support CMake 4.0 yet
         set(VERSION_PATCH -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
     else()
         set(VERSION_PATCH "")
