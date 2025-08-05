@@ -178,9 +178,10 @@ fn ffmpeg_version(
     // Don't use sidecar's ffmpeg_version_with_path/ffmpeg_version directly since the error message for
     // file not found isn't great and we want this for display in the UI.
 
-    let path = path
-        .cloned()
-        .unwrap_or(ffmpeg_sidecar::paths::ffmpeg_path());
+    let path = path.cloned().unwrap_or_else(|| {
+        re_tracing::profile_scope!("ffmpeg_path");
+        ffmpeg_sidecar::paths::ffmpeg_path()
+    });
     let mut cmd = match std::process::Command::new(&path)
         .arg("-version")
         .stdout(std::process::Stdio::piped()) // not stderr when calling `-version`
