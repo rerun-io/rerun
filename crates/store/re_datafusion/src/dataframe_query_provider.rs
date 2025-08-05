@@ -13,6 +13,7 @@ use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
     EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
+use datafusion::physical_expr_common::physical_expr::DynEq;
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
@@ -167,32 +168,43 @@ impl PartitionStreamExec {
             query_expression.selection = Some(selection);
         }
 
-        let partition_col =
-            Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
-        let order_col = sort_index
-            .and_then(|index| {
-                let index_name = index.as_str();
-                projected_schema
-                    .fields()
-                    .iter()
-                    .enumerate()
-                    .find(|(_idx, field)| field.name() == index_name)
-                    .map(|(index_col, _)| Column::new(index_name, index_col))
-            })
-            .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+        // The output ordering of this table provider should always be rerun
+        // partition ID and then time index. If the output does not have rerun
+        // partition ID included, we cannot specify any output ordering.
 
-        let mut physical_ordering = vec![PhysicalSortExpr::new(
-            partition_col,
-            SortOptions::new(false, true),
-        )];
-        if let Some(col_expr) = order_col {
-            physical_ordering.push(PhysicalSortExpr::new(
-                col_expr,
+        let orderings = if projected_schema
+            .fields()
+            .iter()
+            .any(|f| f.name().as_str() == DATASET_MANIFEST_ID_FIELD_NAME)
+        {
+            let partition_col =
+                Arc::new(Column::new(DATASET_MANIFEST_ID_FIELD_NAME, 0)) as Arc<dyn PhysicalExpr>;
+            let order_col = sort_index
+                .and_then(|index| {
+                    let index_name = index.as_str();
+                    projected_schema
+                        .fields()
+                        .iter()
+                        .enumerate()
+                        .find(|(_idx, field)| field.name() == index_name)
+                        .map(|(index_col, _)| Column::new(index_name, index_col))
+                })
+                .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+
+            let mut physical_ordering = vec![PhysicalSortExpr::new(
+                partition_col,
                 SortOptions::new(false, true),
-            ));
-        }
-
-        let orderings = vec![LexOrdering::new(physical_ordering)];
+            )];
+            if let Some(col_expr) = order_col {
+                physical_ordering.push(PhysicalSortExpr::new(
+                    col_expr,
+                    SortOptions::new(false, true),
+                ));
+            }
+            vec![LexOrdering::new(physical_ordering)]
+        } else {
+            vec![]
+        };
 
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
