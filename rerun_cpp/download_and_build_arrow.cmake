@@ -67,6 +67,13 @@ function(download_and_build_arrow)
         set(ARROW_CMAKE_PRESET ninja-release-minimal)
     endif()
 
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
+        # TODO(nick): Remove when resolved  # See https://github.com/apache/arrow/issues/45985
+        set(VERSION_PATCH -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+    else()
+        set(VERSION_PATCH "")
+    endif()
+
     ExternalProject_Add(
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
@@ -101,6 +108,7 @@ function(download_and_build_arrow)
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} # Specify the toolchain file for cross-compilation (see https://github.com/rerun-io/rerun/issues/7445)
+        ${VERSION_PATCH}
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
     )
