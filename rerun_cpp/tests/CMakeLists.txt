@@ -31,7 +31,16 @@ list(APPEND rerun_sdk_tests_SRC "../docs/readme_snippets.cpp")
 
 add_executable(rerun_sdk_tests ${rerun_sdk_tests_SRC})
 
-rerun_strict_warning_settings(rerun_sdk_tests)
+# Set default warning settings if defined.
+if(COMMAND rerun_strict_warning_settings)
+    rerun_strict_warning_settings(rerun_sdk_tests)
+endif()
 
 # Include arrow explicitly again, otherwise the arrow headers won't be found.
-target_link_libraries(rerun_sdk_tests PRIVATE loguru::loguru Catch2::Catch2 rerun_sdk rerun_arrow_target)
+# Link loguru if available, otherwise proceed without it
+if(TARGET loguru::loguru)
+    target_link_libraries(rerun_sdk_tests PRIVATE loguru::loguru Catch2::Catch2 rerun_sdk rerun_arrow_target)
+else()
+    message(WARNING "loguru::loguru target not found. Tests will be built without loguru logging support.")
+    target_link_libraries(rerun_sdk_tests PRIVATE Catch2::Catch2 rerun_sdk rerun_arrow_target)
+endif()

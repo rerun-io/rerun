@@ -135,6 +135,17 @@ endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
+# -----------------------------------------------------------------------------
+# Loguru dependency.
+# Try to find loguru package (e.g., from Conan), otherwise it should be provided by the parent project.
+find_package(loguru QUIET)
+if(loguru_FOUND)
+    message(STATUS "Found loguru package")
+    target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
+else()
+    message(STATUS "loguru package not found - assuming it will be provided by parent project")
+endif()
+
 if(MSVC AND BUILD_SHARED_LIBS)
     # This code is required by to support BUILD_SHARED_LIBS=ON on Windows
     # Differently from Linux/macOS, by default Windows does not support

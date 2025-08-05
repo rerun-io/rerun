@@ -156,3 +156,84 @@ As of writing we tested the SDK against:
 * Apple Clang 14, 15
 * GCC 9, 10, 12
 * Visual Studio 2022
+
+## Building with Conan
+
+The Rerun C++ SDK can be built and distributed using [Conan](https://conan.io/), which provides better dependency management and easier integration into existing C++ projects.
+
+### Installing Conan
+
+1. **Install Conan 2.x** (recommended):
+   ```bash
+   pip install conan>=2.0
+   ```
+
+2. **Verify installation**:
+   ```bash
+   conan --version
+   ```
+
+3. **Configure Conan profile** (first time setup):
+   ```bash
+   conan profile detect --force
+   ```
+
+### Building the SDK with Conan
+
+1. **Install dependencies**:
+   ```bash
+   cd rerun_cpp
+   conan install . --build=missing -s build_type=Release
+   ```
+
+2. **Configure and build**:
+   ```bash
+   cd build
+   cmake .. -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+   cmake --build . --config Release
+   ```
+
+### Creating a Local Conan Package
+
+To use the Rerun C++ SDK as a dependency in other projects:
+
+1. **Export the recipe to your local Conan cache**:
+   ```bash
+   cd rerun_cpp
+   conan export . --name=rerun_cpp_sdk --version=0.25.0
+   ```
+
+2. **Use in other projects** by adding to your `conanfile.py`:
+   ```python
+   requires = ["rerun_cpp_sdk/0.25.0-alpha.1+dev"]
+   ```
+
+   Or in a `conanfile.txt`:
+   ```ini
+   [requires]
+   rerun_cpp_sdk/0.25.0-alpha.1+dev
+
+   [generators]
+   CMakeDeps
+   CMakeToolchain
+   ```
+
+3. **Link in your CMakeLists.txt**:
+   ```cmake
+   find_package(rerun_sdk REQUIRED)
+   target_link_libraries(your_target PRIVATE rerun_sdk)
+   ```
+
+### Dependencies Included
+
+The Conan build automatically handles these dependencies:
+* **Apache Arrow** - For data serialization
+* **loguru** - For logging support (optional)
+* **Boost** - Various utilities
+* **Other system dependencies** - Automatically resolved
+
+### Troubleshooting Conan Build
+
+* **Missing loguru**: The build will warn if loguru is not found but will continue without logging support
+* **Arrow build issues**: Make sure you have sufficient disk space and memory for the Arrow build
+* **Toolchain issues**: Ensure you're using the Conan-generated toolchain file in your CMake configuration

@@ -4,6 +4,13 @@
 # Tries to build an as small as possible version of Arrow that is compatible with the Rerun C++ SDK.
 function(download_and_build_arrow)
     include(ExternalProject)
+    
+    # Convert CMAKE_TOOLCHAIN_FILE to absolute path if it's set
+    if(CMAKE_TOOLCHAIN_FILE)
+        get_filename_component(ARROW_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE)
+    else()
+        set(ARROW_TOOLCHAIN_FILE "")
+    endif()
 
     set(ARROW_DOWNLOAD_PATH ${CMAKE_CURRENT_BINARY_DIR}/arrow)
 
@@ -100,7 +107,7 @@ function(download_and_build_arrow)
         -Dxsimd_SOURCE=BUNDLED
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
-        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} # Specify the toolchain file for cross-compilation (see https://github.com/rerun-io/rerun/issues/7445)
+        -DCMAKE_TOOLCHAIN_FILE=${ARROW_TOOLCHAIN_FILE} # Specify the toolchain file for cross-compilation (see https://github.com/rerun-io/rerun/issues/7445)
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
     )

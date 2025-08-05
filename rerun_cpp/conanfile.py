@@ -13,7 +13,7 @@ class RerunCppSdkConan(ConanFile):
     settings        = "os", "arch", "compiler", "build_type"
     options         = {"shared": [True, False]}
     default_options = {"shared": False}
-    requires        = ["arrow/15.0.0"]
+    requires        = ["arrow/15.0.0", "loguru/cci.20230406"]
     exports_sources = "lib/*", "src/*", "CMakeLists.txt"
     no_copy_source  = False
 
@@ -107,7 +107,7 @@ class RerunCppSdkConan(ConanFile):
         self.cpp_info.components["c_core"].libs = ["rerun_c"]
         # C++ SDK component
         self.cpp_info.components["rerun_sdk"].libs     = ["rerun_sdk"]
-        self.cpp_info.components["rerun_sdk"].requires = ["c_core", "arrow::arrow"]
+        self.cpp_info.components["rerun_sdk"].requires = ["c_core", "arrow::arrow", "loguru::loguru"]
 
         # Make sure `find_package(rerun_sdk)` works
         self.cpp_info.set_property("cmake_file_name",   "rerun_sdk")
