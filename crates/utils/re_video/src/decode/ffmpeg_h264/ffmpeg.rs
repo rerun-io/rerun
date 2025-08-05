@@ -834,30 +834,8 @@ impl FFmpegCliH264Decoder {
 
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
-        match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
-            Ok(version) => {
-                if !version.is_compatible() {
-                    return Err(Error::UnsupportedFFmpegVersion {
-                        actual_version: version,
-                        minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
-                        minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
-                    });
-                }
-            }
-
-            Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
-                return Err(Error::FFmpegNotInstalled);
-            }
-
-            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
-                // This happens quite often, don't fail playing video over it!
-                re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
-            }
-
-            Err(err) => {
-                return Err(Error::FailedToDetermineFFmpegVersion(err));
-            }
-        }
+        let ffmpeg_version_result = FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref());
+        check_ffmpeg_version(ffmpeg_version_result)?;
 
         let on_output = Arc::new(on_output);
         let ffmpeg = FFmpegProcessAndListener::new(
@@ -873,6 +851,34 @@ impl FFmpegCliH264Decoder {
             on_output,
             ffmpeg_path,
         })
+    }
+}
+
+fn check_ffmpeg_version(
+    ffmpeg_version_result: Result<FFmpegVersion, FFmpegVersionParseError>,
+) -> Result<(), Error> {
+    match ffmpeg_version_result {
+        Ok(version) => {
+            if version.is_compatible() {
+                Ok(())
+            } else {
+                Err(Error::UnsupportedFFmpegVersion {
+                    actual_version: version,
+                    minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                    minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                })
+            }
+        }
+
+        Err(FFmpegVersionParseError::FFmpegNotFound(_)) => Err(Error::FFmpegNotInstalled),
+
+        Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+            // This happens quite often, don't fail playing video over it!
+            re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
+            Ok(())
+        }
+
+        Err(err) => Err(Error::FailedToDetermineFFmpegVersion(err)),
     }
 }
 
