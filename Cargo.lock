@@ -8303,6 +8303,7 @@ dependencies = [
  "notify",
  "parking_lot",
  "rand 0.8.5",
+ "re_analytics",
  "re_arrow_util",
  "re_build_tools",
  "re_entity_db",
