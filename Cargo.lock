@@ -7437,7 +7437,6 @@ dependencies = [
  "re_log_types",
  "re_mcap_ros2",
  "re_smart_channel",
- "re_sorbet",
  "re_tracing",
  "re_types",
  "serde",
