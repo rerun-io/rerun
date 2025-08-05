@@ -69,6 +69,8 @@ function(download_and_build_arrow)
 
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
         # TODO(#10798): Arrow can't support CMake 4.0 yet
+        # See arrow issue linked from our internal issue above for more details.
+        # See here for what this does https://cmake.org/cmake/help/latest/variable/CMAKE_POLICY_VERSION_MINIMUM.html
         set(VERSION_PATCH -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
     else()
         set(VERSION_PATCH "")
