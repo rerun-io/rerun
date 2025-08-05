@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from glob import glob
+from typing import Callable
 
 
 class Result:
@@ -40,7 +41,13 @@ class Result:
         self.duration = duration
 
 
-def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None, deny_warnings: bool = True) -> Result:
+def run_cargo(
+    cargo_cmd: str,
+    cargo_args: str,
+    clippy_conf: str | None = None,
+    deny_warnings: bool = True,
+    output_checks: Callable[[str], str | None] | None = None,
+) -> Result:
     args = ["cargo", cargo_cmd]
     if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
         args.append("--quiet")
@@ -75,7 +82,16 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None, d
     success = result.returncode == 0
 
     if success:
-        print("✅")
+        output_check_error = None
+        if output_checks is not None:
+            output_check_error = output_checks(result.stdout)
+
+        if output_check_error is not None:
+            print("❌")
+            print(output_check_error)
+            success = False
+        else:
+            print("✅")
     else:
         print("❌")
         # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
@@ -107,6 +123,7 @@ def main() -> None:
         ("base_checks", base_checks),
         ("sdk_variations", sdk_variations),
         ("cargo_deny", cargo_deny),
+        ("denied_sdk_deps", denied_sdk_deps),
         ("wasm", wasm),
         ("individual_examples", individual_examples),
         ("individual_crates", individual_crates),
@@ -197,44 +214,69 @@ def sdk_variations(results: list[Result]) -> None:
     results.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
 
+deny_targets = [
+    "aarch64-apple-darwin",
+    "wasm32-unknown-unknown",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+]
+
+
 def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
     results.append(run_cargo("install", "--locked cargo-deny@^0.17"))
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target aarch64-apple-darwin check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-gnu check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-pc-windows-msvc check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target i686-unknown-linux-gnu check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target wasm32-unknown-unknown check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-apple-darwin check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-gnu check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-pc-windows-msvc check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-gnu check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-linux-musl check"),
-    )
-    results.append(
-        run_cargo("deny", "--all-features --exclude-dev --log-level error --target x86_64-unknown-redox check"),
-    )
+
+    for target in deny_targets:
+        results.append(
+            run_cargo("deny", f"--all-features --exclude-dev --log-level error --target {target} check"),
+        )
+
+
+def denied_sdk_deps(results: list[Result]) -> None:
+    """
+    Check for disallowed SDK dependencies.
+
+    This protects against leaking UI dependencies into the SDK.
+    """
+
+    # Installing is quite quick if it's already installed.
+    results.append(run_cargo("install", "--locked cargo-tree@^0.29.0"))
+
+    # Sampling of dependencies that should never show up in the SDK, unless the viewer is enabled.
+    disallowed_dependencies = [
+        "re_viewer",
+        "wgpu",
+        "egui",
+        "winit",
+        "rfd",  # File dialog library.
+        "objc2-ui-kit",  # MacOS system libraries.
+        "wayland-sys",  # Linux windowing.
+    ]
+
+    def check_sdk_tree_with_default_features(tree_output: str) -> str | None:
+        for disallowed_dependency in disallowed_dependencies:
+            if disallowed_dependency in tree_output:
+                return (
+                    f"{disallowed_dependency} showed up in the SDK's dependency tree when building with default features. "
+                    "This dependency should only ever show up if the `run` feature is enabled. "
+                    f"Full dependency tree:\n{tree_output}"
+                )
+
+        return None
+
+    for target in deny_targets:
+        result = run_cargo(
+            "tree",
+            f"-p rerun --target {target}",
+            output_checks=check_sdk_tree_with_default_features,
+        )
+        result.command = f"Check dependencies in `{result.command}`"
+        results.append(result)
 
 
 def wasm(results: list[Result]) -> None:

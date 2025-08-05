@@ -74,7 +74,7 @@ jobs:
 
       - name: Rust checks (PR subset)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
+        run: pixi run rs-check --only base_checks sdk_variations cargo_deny denied_sdk_deps wasm docs
 
       - name: Rust most checks (`main` branch subset)
         if: ${{ inputs.CHANNEL == 'main' }}
