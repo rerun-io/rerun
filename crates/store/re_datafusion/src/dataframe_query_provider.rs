@@ -581,11 +581,8 @@ struct CpuRuntime {
 
 impl Drop for CpuRuntime {
     fn drop(&mut self) {
-        // Notify the thread to shutdown.
+        // Notify the thread to shut down.
         self.notify_shutdown.notify_one();
-        // In a production system you also need to ensure your code stops adding
-        // new tasks to the underlying runtime after this point to allow the
-        // thread to complete its work and exit cleanly.
         if let Some(thread_join_handle) = self.thread_join_handle.take() {
             // If the thread is still running, we wait for it to finish
             if thread_join_handle.join().is_err() {
