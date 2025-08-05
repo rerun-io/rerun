@@ -98,7 +98,8 @@ impl FFmpegVersion {
 
     /// Like [`Self::for_executable_poll`], but blocks until the version is ready.
     ///
-    /// WARNING: this blocks for half a second on Mac the first time this is called with a given path, maybe more on other platforms.
+    /// WARNING: this can block for SEVEN SECONDS on Mac, but usually only the first time
+    /// after a reboot. NEVER call this on the GUI thread!
     pub fn for_executable_blocking(path: Option<&std::path::Path>) -> FfmpegVersionResult {
         re_tracing::profile_function!();
 
