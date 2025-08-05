@@ -1367,7 +1367,7 @@ class DatasetEntry(Entry):
         Parameters
         ----------
         recording_uri: str
-            The URI of the RRD to register
+            The URI of the RRD to register.
 
         recording_layer: str
             The layer to which the recording will be registered to.
@@ -1392,7 +1392,7 @@ class DatasetEntry(Entry):
         Parameters
         ----------
         recording_uris: list[str]
-            The URIs of the RRDs to register
+            The URIs of the RRDs to register.
 
         recording_layers: list[str]
             The layers to which the recordings will be registered to:

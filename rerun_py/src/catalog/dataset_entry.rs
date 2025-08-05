@@ -252,7 +252,7 @@ impl PyDatasetEntry {
     /// Parameters
     /// ----------
     /// recording_uri: str
-    ///     The URI of the RRD to register
+    ///     The URI of the RRD to register.
     ///
     /// timeout_secs: int
     ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
@@ -263,6 +263,9 @@ impl PyDatasetEntry {
     ///     The partition ID of the registered RRD.
     ///
     #[pyo3(signature = (recording_uri, recording_layer = "base".to_owned(), timeout_secs = 60))]
+    #[pyo3(
+        text_signature = "(self, recording_uri: str, recording_layer: str = 'base', timeout_secs: int = 60)"
+    )]
     fn register(
         self_: PyRef<'_, Self>,
         recording_uri: String,
@@ -309,6 +312,11 @@ impl PyDatasetEntry {
     ///     * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
     ///       I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
     #[allow(rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recording_uris,
+        recording_layers = vec![],
+    ))]
+    #[pyo3(text_signature = "(self, recording_uris: list[str], recording_layers: list[str] = [])")]
     // TODO(ab): it might be useful to return partition ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
