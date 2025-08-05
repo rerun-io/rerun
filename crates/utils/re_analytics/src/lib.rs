@@ -149,6 +149,13 @@ impl From<i64> for Property {
     }
 }
 
+impl From<f32> for Property {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self::Float(value as _)
+    }
+}
+
 impl From<f64> for Property {
     #[inline]
     fn from(value: f64) -> Self {

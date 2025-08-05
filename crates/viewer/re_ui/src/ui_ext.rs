@@ -1040,6 +1040,11 @@ pub trait UiExt {
                             ui.data_mut(|d| {
                                 d.insert_persisted(has_shown_help_id, true);
                             });
+
+                            #[cfg(feature = "analytics")]
+                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
+                            }
                         }
                     }
                 })
