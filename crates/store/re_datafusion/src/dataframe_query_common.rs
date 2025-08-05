@@ -55,7 +55,6 @@ impl DataframeQueryTableProvider {
     /// creation of the table provider.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
-        // query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
         origin: Origin,
         connection: ConnectionRegistryHandle,
         dataset_id: EntryId,
