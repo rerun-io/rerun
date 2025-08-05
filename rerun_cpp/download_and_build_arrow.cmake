@@ -74,6 +74,11 @@ function(download_and_build_arrow)
         set(VERSION_PATCH "")
     endif()
 
+    # Allow for CMAKE_POLICY Override
+    if(CMAKE_POLICY_VERSION_MINIMUM)
+        set(VERSION_PATCH "-DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM}")
+    endif()
+
     ExternalProject_Add(
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
