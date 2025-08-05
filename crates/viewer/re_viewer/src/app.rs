@@ -296,7 +296,12 @@ impl App {
                 )
             },
         );
-        analytics.on_viewer_started(build_info.clone(), adapter_backend, device_tier);
+        analytics.on_viewer_started(
+            build_info.clone(),
+            &creation_context.egui_ctx,
+            adapter_backend,
+            device_tier,
+        );
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
@@ -1087,6 +1092,11 @@ impl App {
 
             UICommand::Settings => {
                 self.state.navigation.push(DisplayMode::Settings);
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]

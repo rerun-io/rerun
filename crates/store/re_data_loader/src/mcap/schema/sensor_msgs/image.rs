@@ -1,7 +1,6 @@
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
@@ -19,10 +18,6 @@ pub struct ImageSchemaPlugin;
 impl SchemaPlugin for ImageSchemaPlugin {
     fn name(&self) -> SchemaName {
         "sensor_msgs/msg/Image".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
     }
 
     fn create_message_parser(

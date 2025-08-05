@@ -33,13 +33,6 @@ impl SchemaPlugin for PointCloud2SchemaPlugin {
         "sensor_msgs/msg/PointCloud2".into()
     }
 
-    fn parse_schema(
-        &self,
-        _channel: &mcap::Channel<'_>,
-    ) -> Result<re_sorbet::SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
-    }
-
     fn create_message_parser(
         &self,
         _channel: &mcap::Channel<'_>,
