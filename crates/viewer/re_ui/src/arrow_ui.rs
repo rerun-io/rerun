@@ -240,6 +240,7 @@ fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
 }
 
 fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
+    dbg!(array.len(), array.data_type());
     for i in 0..array.len() {
         let node = ArrowNode::new(array, i);
         node.ui(ui);
@@ -264,62 +265,6 @@ impl<'a> ArrowNode<'a> {
     fn with_field_name(mut self, field_name: impl Into<WidgetText>) -> Self {
         self.field_name = Some(field_name.into());
         self
-    }
-
-    fn child_nodes(&'a self) -> Option<child_nodes::ChildNodes<'a>> {
-        let array: &dyn Array = self.array.as_ref();
-        let child_nodes = if let Some(struct_array) = array.as_struct_opt() {
-            child_nodes::ChildNodes::Struct {
-                parent_index: self.index,
-                array: struct_array,
-            }
-        } else if let Some(list) = array.as_list_opt::<i32>() {
-            let value = list.value(self.index);
-            child_nodes::ChildNodes::List(value.clone())
-        } else if let Some(list) = array.as_list_opt::<i64>() {
-            let value = list.value(self.index);
-            child_nodes::ChildNodes::List(value.clone())
-        } else if let Some(list_array) = array.as_fixed_size_list_opt() {
-            let value = list_array.value(self.index);
-            child_nodes::ChildNodes::List(value.clone())
-        } else if let Some(dict_array) = array.as_any_dictionary_opt() {
-            if !dict_array.keys().data_type().is_nested() {
-                child_nodes::ChildNodes::InlineKeyMap {
-                    keys: dict_array.keys().into(),
-                    values: dict_array.values().clone().into(),
-                    parent_index: self.index,
-                }
-            } else {
-                child_nodes::ChildNodes::Map {
-                    keys: dict_array.keys().into(),
-                    values: dict_array.values().clone().into(),
-                    parent_index: self.index,
-                }
-            }
-        } else if let Some(map_array) = array.as_map_opt() {
-            if !map_array.keys().data_type().is_nested() {
-                child_nodes::ChildNodes::InlineKeyMap {
-                    keys: map_array.keys().clone().into(),
-                    values: map_array.values().clone().into(),
-                    parent_index: self.index,
-                }
-            } else {
-                child_nodes::ChildNodes::Map {
-                    keys: map_array.keys().clone().into(),
-                    values: map_array.values().clone().into(),
-                    parent_index: self.index,
-                }
-            }
-        } else if let Some(union_array) = array.as_union_opt() {
-            child_nodes::ChildNodes::Union {
-                array: union_array,
-                parent_index: self.index,
-            }
-        } else {
-            return None;
-        };
-
-        Some(child_nodes)
     }
 
     fn layout_job(&self, ui: &Ui) -> LayoutJob {
@@ -356,7 +301,7 @@ impl<'a> ArrowNode<'a> {
         let format_strong = Self::text_format_strong(ui);
         let format_base = Self::text_format_base(ui);
 
-        if let Some(children) = self.child_nodes() {
+        if let Some(children) = child_nodes::ChildNodes::new(self.array.as_ref(), self.index) {
             let len = children.len();
             const MAX_INLINE_ITEMS: usize = 3;
 
@@ -490,7 +435,7 @@ impl<'a> ArrowNode<'a> {
             })
             .show_only_when_collapsed(false);
 
-        let maybe_children = self.child_nodes();
+        let maybe_children = child_nodes::ChildNodes::new(array, *index);
         let response = if let Some(children) = maybe_children {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 // We create a new scope so properties are only aligned on a single level
