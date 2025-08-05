@@ -1,7 +1,9 @@
+use arrow::array::{FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
 use re_types::{
+    ComponentDescriptor,
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
@@ -9,6 +11,7 @@ use re_types::{
 use crate::mcap::{
     cdr,
     decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    schema::fixed_size_list_builder,
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -35,14 +38,26 @@ pub struct ImageMessageParser {
     /// Note: These blobs are directly moved into a `Blob`, without copying.
     blobs: Vec<Vec<u8>>,
     image_formats: Vec<ImageFormat>,
+    height: FixedSizeListBuilder<UInt32Builder>,
+    width: FixedSizeListBuilder<UInt32Builder>,
+    encoding: FixedSizeListBuilder<StringBuilder>,
+    is_bigendian: FixedSizeListBuilder<UInt32Builder>,
+    step: FixedSizeListBuilder<UInt32Builder>,
     is_depth_image: bool,
 }
 
 impl ImageMessageParser {
+    const ARCHETYPE_NAME: &str = "sensor_msgs.msg.Image";
+
     pub fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
             image_formats: Vec::with_capacity(num_rows),
+            height: fixed_size_list_builder(1, num_rows),
+            width: fixed_size_list_builder(1, num_rows),
+            encoding: fixed_size_list_builder(1, num_rows),
+            is_bigendian: fixed_size_list_builder(1, num_rows),
+            step: fixed_size_list_builder(1, num_rows),
             is_depth_image: false,
         }
     }
@@ -78,6 +93,23 @@ impl McapMessageParser for ImageMessageParser {
         self.blobs.push(data.into_owned());
         self.image_formats.push(img_format);
 
+        self.height.values().append_slice(&[height]);
+        self.height.append(true);
+
+        self.width.values().append_slice(&[width]);
+        self.width.append(true);
+
+        self.encoding.values().append_value(encoding);
+        self.encoding.append(true);
+
+        self.is_bigendian
+            .values()
+            .append_slice(&[is_bigendian as u32]);
+        self.is_bigendian.append(true);
+
+        self.step.values().append_slice(&[step]);
+        self.step.append(true);
+
         Ok(())
     }
 
@@ -85,6 +117,11 @@ impl McapMessageParser for ImageMessageParser {
         let Self {
             blobs,
             image_formats,
+            mut height,
+            mut width,
+            mut encoding,
+            mut is_bigendian,
+            mut step,
             is_depth_image,
         } = *self;
 
@@ -107,10 +144,51 @@ impl McapMessageParser for ImageMessageParser {
                 .collect()
         };
 
-        let chunk = Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, images)
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        let image_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            timelines.clone(),
+            images,
+        )
+        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
 
-        Ok(vec![chunk])
+        let metadata_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            timelines.clone(),
+            [
+                (
+                    ComponentDescriptor::partial("height")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    height.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("width")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    width.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("encoding")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    encoding.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("is_bigendian")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    is_bigendian.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("step")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    step.finish().into(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        )
+        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+
+        Ok(vec![image_chunk, metadata_chunk])
     }
 }
 
