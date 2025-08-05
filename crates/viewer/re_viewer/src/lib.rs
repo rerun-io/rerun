@@ -352,10 +352,8 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
 pub fn register_text_log_receiver() -> std::sync::mpsc::Receiver<re_log::LogMsg> {
     let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
     if re_log::add_boxed_logger(Box::new(logger)).is_err() {
-        // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
-        re_log::debug!(
-            "re_log not initialized - we won't see any log messages as GUI notifications"
-        );
+        // This can happen when users wrap re_viewer in their own eframe app.
+        re_log::info!("re_log not initialized. You won't see log messages as GUI notifications.");
     }
     text_log_rx
 }
