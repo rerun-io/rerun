@@ -210,7 +210,24 @@ def main() -> None:
     root_dirpath = os.path.abspath(f"{script_dirpath}/..")
     os.chdir(root_dirpath)
 
-    extensions = ["c", "cpp", "fbs", "h", "hpp", "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
+    extensions = [
+        "c",
+        "cpp",
+        "fbs",
+        "h",
+        "hpp",
+        "html",
+        "js",
+        "md",
+        "py",
+        "rs",
+        "sh",
+        "toml",
+        "txt",
+        "wgsl",
+        "yml",
+        "cmake",
+    ]
 
     exclude_paths = {
         "./CODE_STYLE.md",
