@@ -266,7 +266,7 @@ impl PyDatasetEntry {
     ///     The partition ID of the registered RRD.
     #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
     #[pyo3(
-        text_signature = "(self, recording_uri: str, *, recording_layer: str = 'base', timeout_secs: int = 60)"
+        text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
     )]
     fn register(
         self_: PyRef<'_, Self>,
@@ -319,9 +319,7 @@ impl PyDatasetEntry {
         *,
         recording_layers = vec![],
     ))]
-    #[pyo3(
-        text_signature = "(self, recording_uris: list[str], *, recording_layers: list[str] = [])"
-    )]
+    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers = [])")]
     // TODO(ab): it might be useful to return partition ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
