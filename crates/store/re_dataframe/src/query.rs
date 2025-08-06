@@ -30,7 +30,6 @@ use re_chunk_store::{
     IndexValue, QueryExpression, SparseFillStrategy,
 };
 use re_log_types::ResolvedTimeRange;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
@@ -1324,34 +1323,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
-    }
-}
-
-pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
-    let latest_at = if query_expression.is_static() {
-        Some(QueryLatestAt::new_static())
-    } else {
-        query_expression
-            .min_latest_at()
-            .map(|latest_at| QueryLatestAt {
-                index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at(),
-            })
-    };
-
-    Query {
-        latest_at,
-        range: query_expression.max_range().map(|range| QueryRange {
-            index: range.timeline().to_string(),
-            index_range: range.range,
-        }),
-        columns_always_include_everything: false,
-        columns_always_include_chunk_ids: false,
-        columns_always_include_entity_paths: false,
-        columns_always_include_byte_offsets: false,
-        columns_always_include_static_indexes: false,
-        columns_always_include_global_indexes: false,
-        columns_always_include_component_indexes: false,
     }
 }
 

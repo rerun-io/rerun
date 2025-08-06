@@ -9,7 +9,8 @@ use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
-use re_dataframe::{ChunkStoreHandle, query_from_query_expression};
+use re_dataframe::ChunkStoreHandle;
+use re_datafusion::query_from_query_expression;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};

@@ -13,7 +13,7 @@ use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{Index, QueryExpression, query_from_query_expression};
+use re_dataframe::{Index, QueryExpression};
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
@@ -23,6 +23,7 @@ use re_protos::frontend::v1alpha1::{
     GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind};
 use re_tuid::Tuid;
 use re_uri::Origin;
@@ -434,6 +435,34 @@ pub(crate) fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array,
             ));
         }
     })
+}
+
+pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
+    let latest_at = if query_expression.is_static() {
+        Some(QueryLatestAt::new_static())
+    } else {
+        query_expression
+            .min_latest_at()
+            .map(|latest_at| QueryLatestAt {
+                index: Some(latest_at.timeline().to_string()),
+                at: latest_at.at(),
+            })
+    };
+
+    Query {
+        latest_at,
+        range: query_expression.max_range().map(|range| QueryRange {
+            index: range.timeline().to_string(),
+            index_range: range.range,
+        }),
+        columns_always_include_everything: false,
+        columns_always_include_chunk_ids: false,
+        columns_always_include_entity_paths: false,
+        columns_always_include_byte_offsets: false,
+        columns_always_include_static_indexes: false,
+        columns_always_include_global_indexes: false,
+        columns_always_include_component_indexes: false,
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

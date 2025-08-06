@@ -4,7 +4,7 @@ mod engine;
 mod query;
 
 pub use self::engine::QueryEngine;
-pub use self::query::{QueryHandle, query_from_query_expression};
+pub use self::query::QueryHandle;
 
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
