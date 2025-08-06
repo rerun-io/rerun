@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description="Hunt down zombie TODOs.")
 # To access private repositories, the token must either be a fine-grained
-# generated from inside the organization or a classic toekn with `repo` scope.
+# generated from inside the organization or a classic token with `repo` scope.
 parser.add_argument(
     "--token",
     dest="GITHUB_TOKEN",
