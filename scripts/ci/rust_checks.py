@@ -248,13 +248,16 @@ def denied_sdk_deps(results: list[Result]) -> None:
     results.append(run_cargo("install", "--locked cargo-tree@^0.29.0"))
 
     # Sampling of dependencies that should never show up in the SDK, unless the viewer is enabled.
+    # They are ordered from "big to small" to make sure the bigger leaks are caught & reported first.
+    # (e.g. `re_viewer` depends on `rfd` which is also disallowed, but if re_viewer is leaking, only report `re_viewer`)
     disallowed_dependencies = [
         "re_viewer",
         "wgpu",
         "egui",
         "winit",
         "rfd",  # File dialog library.
-        "objc2-ui-kit",  # MacOS system libraries.
+        "objc2-ui-kit",  # MacOS system ui libraries.
+        "cocoa",  # Legacy MacOS system ui libraries.
         "wayland-sys",  # Linux windowing.
     ]
 
