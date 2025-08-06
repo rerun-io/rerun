@@ -325,8 +325,6 @@ pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
     Ok(features)
 }
 
-// Test for jiff
-
 #[cfg(test)]
 mod tests {
     use super::*;
