@@ -2,21 +2,21 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
 from github import Github
 from gitignore_parser import parse_gitignore
+from tqdm import tqdm
 
 # ---
 
 parser = argparse.ArgumentParser(description="Hunt down zombie TODOs.")
-parser.add_argument("--gh", action="store_true", help="Use `gh` CLI to fetch issues instead of the https Github API")
+# To access private repositories, the token must either be a fine-grained
+# generated from inside the organization or a classic toekn with `repo` scope.
 parser.add_argument(
     "--token",
     dest="GITHUB_TOKEN",
@@ -35,9 +35,8 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if not args.gh and args.GITHUB_TOKEN is None:
-    print("Error: GITHUB_TOKEN is required when using the https Github API.")
-    sys.exit(1)
+if args.GITHUB_TOKEN is None:
+    print("Warning: Without GITHUB_TOKEN can only check public repos.")
 
 # --- GitHub API access ---
 
@@ -46,68 +45,43 @@ github_client = None
 
 # Cache for issue status checks: (repo_owner, repo_name, issue_number) -> (is_closed, author)
 issue_cache: dict[tuple[str, str, int], tuple[bool, str]] = {}
+cache_hit = 0  # Cache hit count
+cache_miss = 0  # Cache miss count
 cache_lock = Lock()  # Thread safety for the cache
 
 
-def init_github_client():
+def init_github_client() -> None:
     global github_client
-    if args.gh:
-        # When using gh CLI, we don't need to initialize the client
-        github_client = None
-    else:
-        github_client = Github(args.GITHUB_TOKEN)
+    github_client = Github(args.GITHUB_TOKEN)
 
 
 def check_issue_closed(repo_owner: str, repo_name: str, issue_number: int) -> tuple[bool, str]:
     """
     Check if a specific issue is closed and get its author.
+
     Uses caching to avoid repeated API calls for the same issue.
 
     Returns:
         (is_closed, author) tuple
+
     """
+    global issue_cache, cache_hit, cache_miss
     cache_key = (repo_owner, repo_name, issue_number)
 
     # Check if we already have this result cached (thread-safe)
     with cache_lock:
         if cache_key in issue_cache:
+            cache_hit += 1
             return issue_cache[cache_key]
-
+        cache_miss += 1
     # Fetch the result and cache it
-    if args.gh:
-        result = check_issue_closed_gh(repo_owner, repo_name, issue_number)
-    else:
-        result = check_issue_closed_api(repo_owner, repo_name, issue_number)
+    result = check_issue_closed_api(repo_owner, repo_name, issue_number)
 
     # Store in cache (thread-safe)
     with cache_lock:
         issue_cache[cache_key] = result
 
     return result
-
-
-def check_issue_closed_gh(repo_owner: str, repo_name: str, issue_number: int) -> tuple[bool, str]:
-    """Check if an issue is closed using gh CLI."""
-    cmd = ["gh", "api", f"/repos/{repo_owner}/{repo_name}/issues/{issue_number}"]
-
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        data = json.loads(result.stdout)
-        is_closed = data["state"] == "closed"
-        author = data["user"]["login"]
-        return is_closed, author
-    except subprocess.CalledProcessError as e:
-        if e.returncode == 22:  # Issue not found
-            return False, "unknown"
-        print(f"Error: Failed to fetch issue {repo_owner}/{repo_name}#{issue_number}. Exit code: {e.returncode}")
-        print(f"Error output: {e.stderr}")
-        return False, "unknown"
-    except json.JSONDecodeError as e:
-        print(f"Error: Failed to parse JSON response for {repo_owner}/{repo_name}#{issue_number}: {e}")
-        return False, "unknown"
-    except Exception as e:
-        print(f"Error fetching issue {repo_owner}/{repo_name}#{issue_number}: {e}")
-        return False, "unknown"
 
 
 def check_issue_closed_api(repo_owner: str, repo_name: str, issue_number: int) -> tuple[bool, str]:
@@ -202,9 +176,31 @@ def collect_external_repos_from_file(path: str) -> set[str]:
     return repos
 
 
+def get_line_output(owner: str, name: str, issue_num: int, path: str, i: int, line: str) -> tuple[bool, str]:
+    is_closed, author = check_issue_closed(owner, name, issue_num)
+    display = ""
+
+    if is_closed:
+        blame_info = get_line_blame_info(path, i + 1)
+        blame_string = f" {blame_info}" if blame_info is not None else ""
+        if args.markdown:
+            # Convert path to relative path for clean display
+            display_path = path.lstrip("./")
+            github_url = f"https://github.com/{owner}/{name}/blob/main/{display_path}#L{i + 1}"
+            display = (
+                f"* [ ] `{line.strip()}`\n"
+                f"   * #{issue_num} (Issue author: @{author})\n"
+                f"   * [`{display_path}#L{i}`]({github_url}){blame_string}\n"
+            )
+        else:
+            display = f"{path}:{i}: {line.strip()}\n"
+    return is_closed, display
+
+
 # Returns true if the file is OK.
-def check_file(path: str) -> bool:
+def check_file(path: str) -> tuple[bool, str]:
     ok = True
+    display = ""
     with open(path, encoding="utf8") as f:
         for i, line in enumerate(f.readlines()):
             # Check for internal issue references (TODO(#1234))
@@ -213,33 +209,9 @@ def check_file(path: str) -> bool:
                 for match in internal_matches.groups():
                     if match is not None:
                         issue_num = int(match)
-
-                        # Check cache first
-                        cache_key = (repo_owner, repo_name, issue_num)
-                        is_closed, author = None, None
-                        with cache_lock:
-                            if cache_key in issue_cache:
-                                is_closed, author = issue_cache[cache_key]
-
-                        if is_closed is None:
-                            is_closed, author = check_issue_closed(repo_owner, repo_name, issue_num)
-                        if is_closed:
-                            blame_info = get_line_blame_info(path, i + 1)
-                            blame_string = f" {blame_info}" if blame_info is not None else ""
-                            if args.markdown:
-                                # Convert path to relative path for clean display
-                                display_path = path.lstrip("./")
-                                github_url = (
-                                    f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i + 1}"
-                                )
-                                print(f"* [ ] `{line.strip()}`")
-                                print(f"   * #{issue_num} (Issue author: @{author})")
-                                print(
-                                    f"   * [`{display_path}#L{i}`]({github_url}){blame_string}",
-                                )
-                            else:
-                                print(f"{path}:{i}: {line.strip()}")
-                            ok &= False
+                        is_closed, line_display = get_line_output(repo_owner, repo_name, issue_num, path, i, line)
+                        display += line_display
+                        ok &= is_closed
 
             # Check for external issue references (TODO(owner/repo#1234))
             external_matches = external_issue_pattern.search(line)
@@ -249,41 +221,19 @@ def check_file(path: str) -> bool:
 
                 owner, name = repo_key.split("/")
 
-                # Check cache first
-                cache_key = (owner, name, issue_num)
-                is_closed, author = None, None
-                with cache_lock:
-                    if cache_key in issue_cache:
-                        is_closed, author = issue_cache[cache_key]
-
-                if is_closed is None:
-                    is_closed, author = check_issue_closed(owner, name, issue_num)
-                if is_closed:
-                    blame_info = get_line_blame_info(path, i + 1)
-                    blame_string = f" {blame_info}" if blame_info is not None else ""
-                    if args.markdown:
-                        # Convert path to relative path for clean display
-                        display_path = path.lstrip("./")
-                        github_url = f"https://github.com/{repo_owner}/{repo_name}/blob/main/{display_path}#L{i + 1}"
-                        external_issue_url = f"https://github.com/{repo_key}/issues/{issue_num}"
-                        print(f"* [ ] `{line.strip()}`")
-                        print(f"   * [{repo_key}#{issue_num}]({external_issue_url}) (Issue author: @{author})")
-                        print(
-                            f"   * [`{display_path}#L{i}`]({github_url}){blame_string}",
-                        )
-                    else:
-                        print(f"{path}:{i}: {line.strip()}")
-                    ok &= False
-    return ok
+                is_closed, line_display = get_line_output(owner, name, issue_num, path, i, line)
+                display += line_display
+                ok &= is_closed
+    return ok, display
 
 
-def process_file(filepath: str) -> bool:
+def process_file(filepath: str) -> tuple[bool, str]:
     """Process a single file and return True if it's OK (no zombie TODOs found)."""
     try:
         return check_file(filepath)
     except Exception as e:
         print(f"Error processing {filepath}: {e}")
-        return True  # Don't fail the whole process for one file
+        return True, ""  # Don't fail the whole process for one file
 
 
 # ---
@@ -351,19 +301,25 @@ def main() -> None:
         # Submit all file processing tasks
         future_to_file = {executor.submit(process_file, filepath): filepath for filepath in files_to_process}
 
-        # Process completed tasks
-        for future in as_completed(future_to_file):
-            filepath = future_to_file[future]
-            try:
-                file_ok = future.result()
-                ok &= file_ok
-                completed_files += 1
-                # if completed_files % 10 == 0:  # Progress update every 10 files
-                #     print(f"  Processed {completed_files}/{len(files_to_process)} files...")
-            except Exception as e:
-                print(f"Error processing {filepath}: {e}")
-                completed_files += 1
-                # Don't fail the whole process for one file error
+        # Process completed tasks with progress bar
+        display = ""
+        with tqdm(total=len(files_to_process), desc="Processing files", unit="file") as pbar:
+            for future in as_completed(future_to_file):
+                filepath = future_to_file[future]
+                try:
+                    file_ok, file_display = future.result()
+                    ok &= file_ok
+                    completed_files += 1
+                    display += file_display
+                    pbar.update(1)
+                    # if completed_files % 10 == 0:  # Progress update every 10 files
+                    #     print(f"  Processed {completed_files}/{len(files_to_process)} files...")
+                except Exception as e:
+                    print(f"Error processing {filepath}: {e}")
+                    completed_files += 1
+                    pbar.update(1)
+                    # Don't fail the whole process for one file error
+    print(display)
 
     # Print cache statistics
     if issue_cache:
@@ -372,6 +328,7 @@ def main() -> None:
         closed_count = sum(1 for is_closed, _ in issue_cache.values() if is_closed)
         print(f"  Closed issues found: {closed_count}")
         print(f"  Open/unknown issues: {len(issue_cache) - closed_count}")
+        print(f"  Cache hits: {cache_hit}, Cache misses: {cache_miss}")
 
     if not ok:
         raise ValueError("Clean your zombies!")
