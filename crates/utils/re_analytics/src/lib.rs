@@ -447,7 +447,7 @@ mod tests {
 
         // The format should be like: "2025-04-03T01:20:10.557958200Z"
         // RFC3339 regex pattern
-        let re = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
+        let re = regex_lite::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
             .expect("Failed to compile regex");
 
         assert!(
