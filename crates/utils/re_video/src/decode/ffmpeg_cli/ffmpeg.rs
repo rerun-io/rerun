@@ -18,16 +18,91 @@ use ffmpeg_sidecar::{
 use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
-use crate::decode::ffmpeg_h264;
-use crate::decode::ffmpeg_h264::FFmpegVersionParseError;
 use crate::{
     PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
         AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
-        ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
+        ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
     demux::ChromaSubsamplingModes,
 };
+
+use super::version::FFmpegVersionParseError;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("Couldn't find an installation of the FFmpeg executable.")]
+    FFmpegNotInstalled,
+
+    #[error("Failed to start FFmpeg: {0}")]
+    FailedToStartFfmpeg(std::io::Error),
+
+    #[error(
+        "FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported."
+    )]
+    UnsupportedFFmpegVersion {
+        actual_version: FFmpegVersion,
+        minimum_version_major: u32,
+        minimum_version_minor: u32,
+    },
+
+    // TODO(andreas): This error can have a variety of reasons and is as such redundant to some of the others.
+    // It works with an inner error because some of the error sources are behind an anyhow::Error inside of ffmpeg-sidecar.
+    #[error(transparent)]
+    FailedToDetermineFFmpegVersion(FFmpegVersionParseError),
+
+    #[error("Failed to get stdin handle")]
+    NoStdin,
+
+    #[error("Failed to get iterator: {0}")]
+    NoIterator(String),
+
+    #[error("No frame info received, this is a likely a bug in Rerun")]
+    NoFrameInfo,
+
+    #[error("Failed to write data to FFmpeg: {0}")]
+    FailedToWriteToFfmpeg(std::io::Error),
+
+    #[error("Bad video data: {0}")]
+    BadVideoData(String),
+
+    #[error("FFmpeg error: {0}")]
+    Ffmpeg(String),
+
+    #[error("FFmpeg fatal error: {0}")]
+    FfmpegFatal(String),
+
+    #[error("FFmpeg IPC error: {0}")]
+    FfmpegSidecar(String),
+
+    #[error("FFmpeg exited unexpectedly with code {0:?}")]
+    FfmpegUnexpectedExit(Option<std::process::ExitStatus>),
+
+    #[error("FFmpeg output a non-image chunk when we expected only images.")]
+    UnexpectedFfmpegOutputChunk,
+
+    #[error("Failed to send video frame info to the FFmpeg read thread.")]
+    BrokenFrameInfoChannel,
+
+    #[error("Failed to parse sequence parameter set.")]
+    SpsParsing,
+}
+
+impl Error {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Restarting ffmpeg can recover from some decoder internal errors.
+        matches!(
+            self,
+            Self::Ffmpeg(_) | Self::FfmpegFatal(_) | Self::UnexpectedFfmpegOutputChunk
+        )
+    }
+}
+
+impl From<Error> for DecodeError {
+    fn from(err: Error) -> Self {
+        Self::Ffmpeg(std::sync::Arc::new(err))
+    }
+}
 
 /// In Annex-B before every NAL unit is a NAL start code.
 ///
@@ -135,7 +210,8 @@ impl FFmpegProcessAndListener {
         on_output: Arc<OutputCallback>,
         encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
-    ) -> Result<Self, ffmpeg_h264::Error> {
+        codec: &'static str,
+    ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
         // TODO(andreas): should get SPS also without AVCC from ongoing stream.
@@ -182,27 +258,42 @@ impl FFmpegProcessAndListener {
         };
 
         let mut ffmpeg = ffmpeg_command
-            // Keep in mind that all arguments that are about the input, need to go before!
-            .format("hevc")
+            // Keep banner enabled so we can check on the version more easily.
+            //.hide_banner()
+            // "Reduce the latency introduced by buffering during initial input streams analysis."
+            //.arg("-fflags nobuffer")
+            //
+            // .. instead use these more aggressive options found here
+            // https://stackoverflow.com/a/49273163
             .args([
                 "-probesize",
                 "32", // 32 bytes is the minimum probe size.
                 "-analyzeduration",
                 "0",
             ])
+            // Keep in mind that all arguments that are about the input, need to go before!
+            .format(codec) // TODO(andreas): should we check ahead of time whether this is available?
+            //.fps_mode("0")
             .input("-") // stdin is our input!
-            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all. TODO needed for h265?
+            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
+            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
             .fps_mode("passthrough")
             .pix_fmt(ffmpeg_pix_fmt)
             // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
             .args(["-f", "rawvideo"])
+            // This should be taken care of by the yuvj formats, but let's be explicit again that we want full color range
+            .args(["-color_range", "2"]) // 2 == pc/full
+            // Besides the less and less common Bt601, this is the only space we support right now, so let ffmpeg do the conversion.
+            // TODO(andreas): It seems that FFmpeg 7.0 handles this as I expect, but FFmpeg 7.1 consistently gives me the wrong colors on the Bunny test clip.
+            // (tested Windows with both FFmpeg 7.0 and 7.1, tested Mac with 7.1. More rigorous testing and comparing is required!)
+            .args(["-colorspace", "1"]) // 1 == Bt.709
             .output("-") // Output to stdout.
             .spawn()
-            .map_err(ffmpeg_h264::Error::FailedToStartFfmpeg)?;
+            .map_err(Error::FailedToStartFfmpeg)?;
 
         let ffmpeg_iterator = ffmpeg
             .iter()
-            .map_err(|err| ffmpeg_h264::Error::NoIterator(err.to_string()))?;
+            .map_err(|err| Error::NoIterator(err.to_string()))?;
 
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
@@ -238,7 +329,7 @@ impl FFmpegProcessAndListener {
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
                 let on_output = on_output.clone();
-                let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(ffmpeg_h264::Error::NoStdin)?;
+                let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
                 let mut ffmpeg_stdin = StdinWithShutdown {
                     stdin: ffmpeg_stdin,
                     shutdown: stdin_shutdown.clone(),
@@ -266,7 +357,7 @@ impl FFmpegProcessAndListener {
         })
     }
 
-    fn submit_chunk(&mut self, chunk: Chunk) -> Result<(), ffmpeg_h264::Error> {
+    fn submit_chunk(&mut self, chunk: Chunk) -> Result<(), Error> {
         // We send the information about this chunk first.
         // Chunks are defined to always yield a single frame.
         let frame_info = FFmpegFrameInfo {
@@ -283,9 +374,9 @@ impl FFmpegProcessAndListener {
         if self.frame_info_tx.send(frame_info).is_err() || self.frame_data_tx.send(data).is_err() {
             Err(
                 if let Ok(exit_code) = self.ffmpeg.as_inner_mut().try_wait() {
-                    ffmpeg_h264::Error::FfmpegUnexpectedExit(exit_code)
+                    Error::FfmpegUnexpectedExit(exit_code)
                 } else {
-                    ffmpeg_h264::Error::BrokenFrameInfoChannel
+                    Error::BrokenFrameInfoChannel
                 },
             )
         } else {
@@ -407,7 +498,7 @@ fn write_ffmpeg_input(
         if let Err(err) = write_result {
             let on_output = on_output.lock();
             if let Some(on_output) = on_output.as_ref() {
-                let write_error = matches!(err, ffmpeg_h264::Error::FailedToWriteToFfmpeg(_));
+                let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
                 on_output(Err(err.into()));
 
                 if write_error {
@@ -564,14 +655,10 @@ fn read_ffmpeg_output(
                             re_log::warn_once!("{debug_name} decoder: {msg}");
                         }
                         LogLevel::Error => {
-                            (on_output.lock().as_ref()?)(Err(
-                                ffmpeg_h264::Error::Ffmpeg(msg).into()
-                            ));
+                            (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
                         }
                         LogLevel::Fatal => {
-                            (on_output.lock().as_ref()?)(Err(
-                                ffmpeg_h264::Error::FfmpegFatal(msg).into()
-                            ));
+                            (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
                         }
                     }
                 }
@@ -584,7 +671,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Error(error) => {
                 // An error in ffmpeg sidecar itself, rather than ffmpeg.
-                (on_output.lock().as_ref()?)(Err(ffmpeg_h264::Error::FfmpegSidecar(error).into()));
+                (on_output.lock().as_ref()?)(Err(Error::FfmpegSidecar(error).into()));
             }
 
             FfmpegEvent::ParsedInput(input) => {
@@ -689,14 +776,12 @@ fn read_ffmpeg_output(
                     re_log::debug_once!("Parsed FFmpeg version: {ffmpeg_version}");
 
                     if !ffmpeg_version.is_compatible() {
-                        (on_output.lock().as_ref()?)(Err(
-                            ffmpeg_h264::Error::UnsupportedFFmpegVersion {
-                                actual_version: ffmpeg_version,
-                                minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
-                                minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
-                            }
-                            .into(),
-                        ));
+                        (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
+                            actual_version: ffmpeg_version,
+                            minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                            minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                        }
+                        .into()));
                     }
                 } else {
                     re_log::warn_once!(
@@ -721,9 +806,7 @@ fn read_ffmpeg_output(
             FfmpegEvent::OutputChunk(_) => {
                 // Something went seriously wrong if we end up here.
                 re_log::error!("Unexpected ffmpeg output chunk for {debug_name}");
-                (on_output.lock().as_ref()?)(Err(
-                    ffmpeg_h264::Error::UnexpectedFfmpegOutputChunk.into()
-                ));
+                (on_output.lock().as_ref()?)(Err(Error::UnexpectedFfmpegOutputChunk.into()));
                 return None;
             }
         }
@@ -732,22 +815,24 @@ fn read_ffmpeg_output(
     Some(())
 }
 
-/// Decode H.264 video via ffmpeg over CLI
-pub struct FFmpegCliH265Decoder {
+/// Decode video via ffmpeg over CLI
+pub struct FFmpegCliDecoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
+    codec: &'static str,
 }
 
-impl FFmpegCliH265Decoder {
+impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
         encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
-    ) -> Result<Self, ffmpeg_h264::Error> {
+        codec: &'static str,
+    ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
         // Check the version once ahead of running FFmpeg.
@@ -755,7 +840,7 @@ impl FFmpegCliH265Decoder {
         match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
             Ok(version) => {
                 if !version.is_compatible() {
-                    return Err(ffmpeg_h264::Error::UnsupportedFFmpegVersion {
+                    return Err(Error::UnsupportedFFmpegVersion {
                         actual_version: version,
                         minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
                         minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
@@ -764,7 +849,7 @@ impl FFmpegCliH265Decoder {
             }
 
             Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
-                return Err(ffmpeg_h264::Error::FFmpegNotInstalled);
+                return Err(Error::FFmpegNotInstalled);
             }
 
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
@@ -773,7 +858,7 @@ impl FFmpegCliH265Decoder {
             }
 
             Err(err) => {
-                return Err(ffmpeg_h264::Error::FailedToDetermineFFmpegVersion(err));
+                return Err(Error::FailedToDetermineFFmpegVersion(err));
             }
         }
 
@@ -783,6 +868,7 @@ impl FFmpegCliH265Decoder {
             on_output.clone(),
             encoding_details,
             ffmpeg_path.as_deref(),
+            codec,
         )?;
 
         Ok(Self {
@@ -790,11 +876,12 @@ impl FFmpegCliH265Decoder {
             ffmpeg,
             on_output,
             ffmpeg_path,
+            codec,
         })
     }
 }
 
-impl AsyncDecoder for FFmpegCliH265Decoder {
+impl AsyncDecoder for FFmpegCliDecoder {
     fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
@@ -824,6 +911,7 @@ impl AsyncDecoder for FFmpegCliH265Decoder {
             self.on_output.clone(),
             &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
+            self.codec,
         )?;
         Ok(())
     }
@@ -842,10 +930,8 @@ struct NaluStreamState {
     previous_frame_was_idr: bool,
 }
 
-fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), ffmpeg_h264::Error> {
-    stream
-        .write_all(data)
-        .map_err(ffmpeg_h264::Error::FailedToWriteToFfmpeg)
+fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), Error> {
+    stream.write_all(data).map_err(Error::FailedToWriteToFfmpeg)
 }
 
 fn write_avc_chunk_to_nalu_stream(
@@ -853,7 +939,7 @@ fn write_avc_chunk_to_nalu_stream(
     nalu_stream: &mut dyn std::io::Write,
     chunk: &Chunk,
     state: &mut NaluStreamState,
-) -> Result<(), ffmpeg_h264::Error> {
+) -> Result<(), Error> {
     re_tracing::profile_function!();
 
     let avcc = &avcc.avcc;
@@ -888,7 +974,7 @@ fn write_avc_chunk_to_nalu_stream(
         let length_prefix_size = avcc.length_size_minus_one as usize + 1;
 
         if sample_end < buffer_offset + length_prefix_size {
-            return Err(ffmpeg_h264::Error::BadVideoData(
+            return Err(Error::BadVideoData(
                 "Not enough bytes to fit the length prefix".to_owned(),
             ));
         }
@@ -911,7 +997,7 @@ fn write_avc_chunk_to_nalu_stream(
             ) as usize,
 
             _ => {
-                return Err(ffmpeg_h264::Error::BadVideoData(format!(
+                return Err(Error::BadVideoData(format!(
                     "Bad length prefix size: {length_prefix_size}"
                 )));
             }
@@ -921,9 +1007,7 @@ fn write_avc_chunk_to_nalu_stream(
         let data_end = buffer_offset + nal_unit_size + length_prefix_size;
 
         if chunk.data.len() < data_end {
-            return Err(ffmpeg_h264::Error::BadVideoData(
-                "Not enough bytes to".to_owned(),
-            ));
+            return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
         }
 
         // Can be useful for finding issues, but naturally very spammy.
@@ -996,7 +1080,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         "Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (32) options",
         // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
-        "Could not find codec parameters for stream 0 (Video: h265, none): unspecified size",
+        "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
         // NOTE: We sometimes get a `[NULL @ 0x14f107150]`, which is not very actionable, but may be useful for debugging.
     ];
 
@@ -1047,8 +1131,8 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[foo#0:0/h265 @ 0x148db8000]"),
-            "[foo#0:0/h265]"
+            sanitize_ffmpeg_log_message("[foo#0:0/h264 @ 0x148db8000]"),
+            "[foo#0:0/h264]"
         );
 
         assert_eq!(
@@ -1080,12 +1164,12 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[h265 @ 0x148db8000 something is wrong here"),
-            "[h265 @ 0x148db8000 something is wrong here"
+            sanitize_ffmpeg_log_message("[h264 @ 0x148db8000 something is wrong here"),
+            "[h264 @ 0x148db8000 something is wrong here"
         );
         assert_eq!(
-            sanitize_ffmpeg_log_message("h265 @ 0x148db8000] something is wrong here"),
-            "h265] something is wrong here"
+            sanitize_ffmpeg_log_message("h264 @ 0x148db8000] something is wrong here"),
+            "h264] something is wrong here"
         );
     }
 }

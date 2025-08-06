@@ -83,15 +83,15 @@ mod async_decoder_wrapper;
 mod av1;
 
 #[cfg(with_ffmpeg)]
-mod ffmpeg_h264;
+mod ffmpeg_cli;
 
 #[cfg(with_ffmpeg)]
-pub use ffmpeg_h264::{
+pub use ffmpeg_cli::FFmpegCliDecoder;
+
+#[cfg(with_ffmpeg)]
+pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
-
-#[cfg(with_ffmpeg)]
-mod ffmpeg_h265;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -252,24 +252,19 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264 => {
-            re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
+        crate::VideoCodec::H264 | crate::VideoCodec::H265 => {
+            let codec_name = match video.codec {
+                crate::VideoCodec::H264 => "h264",
+                crate::VideoCodec::H265 => "hevc",
+                _ => unreachable!(),
+            };
+            re_log::trace!("Decoding {}…", codec_name);
+            Ok(Box::new(FFmpegCliDecoder::new(
                 debug_name.to_owned(),
                 &video.encoding_details,
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
-            )?))
-        }
-
-        #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H265 => {
-            re_log::debug!("Decoding H.265…");
-            Ok(Box::new(ffmpeg_h265::FFmpegCliH265Decoder::new(
-                debug_name.to_owned(),
-                &video.encoding_details,
-                on_output,
-                decode_settings.ffmpeg_path.clone(),
+                codec_name,
             )?))
         }
 

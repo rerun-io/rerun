@@ -227,7 +227,7 @@ fn ffmpeg_version(
 
 #[cfg(test)]
 mod tests {
-    use crate::decode::ffmpeg_h264::FFmpegVersion;
+    use crate::decode::ffmpeg_cli::FFmpegVersion;
 
     #[test]
     fn test_parse_ffmpeg_version() {
