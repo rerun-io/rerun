@@ -28,7 +28,7 @@ import * as rerun from "@rerun-io/web-viewer";
  */
 export default class WebViewer extends React.Component {
   /** @type {React.RefObject<HTMLDivElement>} */
-  #parent = createRef();
+  #parent = /** @type {React.RefObject<HTMLDivElement>} */ (createRef());
 
   /** @type {rerun.WebViewer} */
   #handle;
