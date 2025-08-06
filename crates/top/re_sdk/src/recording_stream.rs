@@ -3126,8 +3126,22 @@ mod tests {
 
     const CONFIG_CHANGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 
+    fn clear_environment() {
+        // SAFETY: only used in tests.
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED");
+            std::env::remove_var("RERUN_FLUSH_NUM_BYTES");
+            std::env::remove_var("RERUN_FLUSH_NUM_ROWS");
+            std::env::remove_var("RERUN_FLUSH_TICK_SECS");
+            std::env::remove_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED");
+        }
+    }
+
     #[test]
     fn test_sink_dependent_batcher_config() {
+        clear_environment();
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
@@ -3143,14 +3157,18 @@ mod tests {
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
             .expect("no config change message received within timeout");
-        assert_eq!(new_config, ChunkBatcherConfig::DEFAULT); // buffered sink uses the default config.
+        assert_eq!(
+            new_config,
+            ChunkBatcherConfig::from_env().unwrap(),
+            "Buffered sink should uses the config from the environment"
+        );
 
         // Change sink to our custom sink. Will it take over the setting?
         let injected_config = ChunkBatcherConfig {
             flush_tick: std::time::Duration::from_secs(123),
             flush_num_bytes: 123,
             flush_num_rows: 123,
-            ..ChunkBatcherConfig::DEFAULT
+            ..new_config
         };
         rec.set_sink(Box::new(BatcherConfigTestSink {
             config: injected_config.clone(),
@@ -3181,6 +3199,8 @@ mod tests {
 
     #[test]
     fn test_explicit_batcher_config() {
+        clear_environment();
+
         // This environment variable should *not* override the explicit config.
         let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_TICK_SECS", "456");
         let explicit_config = ChunkBatcherConfig {
