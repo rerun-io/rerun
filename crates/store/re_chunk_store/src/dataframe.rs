@@ -14,7 +14,6 @@ use itertools::Itertools as _;
 use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     IndexColumnDescriptor, TimeColumnSelector,
@@ -307,36 +306,6 @@ impl QueryExpression {
         }
 
         None
-    }
-}
-
-impl From<&QueryExpression> for Query {
-    fn from(query_expression: &QueryExpression) -> Self {
-        let latest_at = if query_expression.is_static() {
-            Some(QueryLatestAt::new_static())
-        } else {
-            query_expression
-                .min_latest_at()
-                .map(|latest_at| QueryLatestAt {
-                    index: Some(latest_at.timeline().to_string()),
-                    at: latest_at.at(),
-                })
-        };
-
-        Self {
-            latest_at,
-            range: query_expression.max_range().map(|range| QueryRange {
-                index: range.timeline().to_string(),
-                index_range: range.range,
-            }),
-            columns_always_include_everything: false,
-            columns_always_include_chunk_ids: false,
-            columns_always_include_entity_paths: false,
-            columns_always_include_byte_offsets: false,
-            columns_always_include_static_indexes: false,
-            columns_always_include_global_indexes: false,
-            columns_always_include_component_indexes: false,
-        }
     }
 }
 

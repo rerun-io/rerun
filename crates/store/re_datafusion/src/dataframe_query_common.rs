@@ -13,7 +13,7 @@ use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{Index, QueryExpression};
+use re_dataframe::{Index, QueryExpression, query_from_query_expression};
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
@@ -23,7 +23,6 @@ use re_protos::frontend::v1alpha1::{
     GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::manifest_registry::v1alpha1::ext::Query;
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind};
 use re_tuid::Tuid;
 use re_uri::Origin;
@@ -101,7 +100,7 @@ impl DataframeQueryTableProvider {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = Query::from(query_expression);
+        let query = query_from_query_expression(query_expression);
 
         let mut fields_of_interest = [
             "chunk_partition_id",

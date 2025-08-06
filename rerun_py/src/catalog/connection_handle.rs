@@ -9,7 +9,7 @@ use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
-use re_dataframe::ChunkStoreHandle;
+use re_dataframe::{ChunkStoreHandle, query_from_query_expression};
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -23,7 +23,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{DataSource, Query, RegisterWithDatasetTaskDescriptor},
+    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
@@ -470,7 +470,7 @@ impl ConnectionHandle {
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
 
-        let query = Query::from(query_expression);
+        let query = query_from_query_expression(query_expression);
 
         let partition_ids = partition_ids
             .iter()
@@ -728,7 +728,7 @@ impl ConnectionHandle {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = Query::from(query_expression);
+        let query = query_from_query_expression(query_expression);
 
         wait_for_future(
             py,

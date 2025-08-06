@@ -31,6 +31,7 @@ re_chunk.workspace = true
 re_format_arrow.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_protos.workspace = true
 re_query.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
