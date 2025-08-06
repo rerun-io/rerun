@@ -56,7 +56,6 @@ impl<'a> PostHogEvent<'a> {
 // See https://posthog.com/docs/api/post-only-endpoints#capture.
 #[derive(Debug, serde::Serialize)]
 pub struct PostHogCaptureEvent<'a> {
-    // #[serde(with = "jiff::timestamp")]
     timestamp: Timestamp,
     event: &'a str,
     distinct_id: &'a str,
@@ -66,7 +65,6 @@ pub struct PostHogCaptureEvent<'a> {
 // See https://posthog.com/docs/api/post-only-endpoints#identify.
 #[derive(Debug, serde::Serialize)]
 pub struct PostHogIdentifyEvent<'a> {
-    // #[serde(with = "jiff::timestamp")]
     timestamp: Timestamp,
     event: &'a str,
     distinct_id: &'a str,
