@@ -1,3 +1,4 @@
+use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use tokio_stream::{Stream, StreamExt as _};
 
 use re_auth::client::AuthDecorator;
@@ -456,7 +457,26 @@ async fn stream_partition_from_server(
                 fuzzy_descriptors: vec![],
                 exclude_static_data: true,
                 exclude_temporal_data: false,
-                query: None,
+                query: time_range.clone().map(|time_range| {
+                    Query {
+                        range: Some(QueryRange {
+                            index: time_range.timeline.name().to_string(),
+                            index_range: time_range.clone().into(),
+                        }),
+                        latest_at: Some(QueryLatestAt {
+                            index: Some(time_range.timeline.name().to_string()),
+                            at: time_range.min.into(),
+                        }),
+                        columns_always_include_everything: false,
+                        columns_always_include_chunk_ids: false,
+                        columns_always_include_byte_offsets: false,
+                        columns_always_include_entity_paths: false,
+                        columns_always_include_static_indexes: false,
+                        columns_always_include_global_indexes: false,
+                        columns_always_include_component_indexes: false,
+                    }
+                    .into()
+                }),
             })
             .await?
             .into_inner()
