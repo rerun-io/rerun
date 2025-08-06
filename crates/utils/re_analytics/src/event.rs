@@ -9,6 +9,15 @@
 //! as well as information about user data.
 //! Read more about our analytics policy at <https://github.com/rerun-io/rerun/tree/main/crates/utils/re_analytics>.
 
+use std::collections::HashMap;
+
+use re_build_info::BuildInfo;
+use url::Url;
+
+use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
+
+// ---------------------------------------------------------------
+
 /// Records a crash caused by a panic.
 ///
 /// Used in `re_crash_handler`.
@@ -18,6 +27,54 @@ pub struct CrashPanic {
     pub message: Option<String>,
     pub file_line: Option<String>,
 }
+
+impl Event for CrashPanic {
+    const NAME: &'static str = "crash-panic";
+}
+
+impl Properties for CrashPanic {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            callstack,
+            message,
+            file_line,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("callstack", callstack);
+        event.insert_opt("message", message);
+        event.insert_opt("file_line", file_line);
+    }
+}
+
+// ---------------------------------------------------------------
+
+pub struct CrashSignal {
+    pub build_info: BuildInfo,
+    pub signal: String,
+    pub callstack: String,
+}
+
+impl Event for CrashSignal {
+    const NAME: &'static str = "crash-signal";
+}
+
+impl Properties for CrashSignal {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            signal,
+            callstack,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("signal", signal.clone());
+        event.insert("callstack", callstack.clone());
+    }
+}
+
+// ---------------------------------------------------------------
 
 /// Holds information about the user's environment.
 ///
@@ -42,22 +99,33 @@ pub struct Identify {
     pub opt_in_metadata: HashMap<String, Property>,
 }
 
-/// Sent when the viewer is first started.
-///
-/// Used in `re_viewer`.
-pub struct ViewerStarted {
-    /// The URL on which the web viewer is running.
-    ///
-    /// This will be used to populate `hashed_root_domain` property for all urls.
-    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
-    pub url: Option<String>,
+impl Event for Identify {
+    const NAME: &'static str = "$identify";
 
-    /// The environment in which the viewer is running.
-    pub app_env: &'static str,
-
-    /// Sparse information about the runtime environment the viewer is running in.
-    pub runtime_info: ViewerRuntimeInformation,
+    const KIND: EventKind = EventKind::Update;
 }
+
+impl Properties for Identify {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            rust_version,
+            llvm_version,
+            python_version,
+            opt_in_metadata,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert_opt("rust_version", rust_version);
+        event.insert_opt("llvm_version", llvm_version);
+        event.insert_opt("python_version", python_version);
+        for (name, value) in opt_in_metadata {
+            event.insert(name, value);
+        }
+    }
+}
+
+// ---------------------------------------------------------------
 
 /// Some sparse information about the runtime environment the viewer is running in.
 pub struct ViewerRuntimeInformation {
@@ -102,8 +170,7 @@ impl Properties for ViewerRuntimeInformation {
     }
 }
 
-// -----------------------------------------------
-
+// ---------------------------------------------------------------
 /// Information about the user's monitor.
 pub struct ScreenInfo {
     //// zoom_factor * native_pixels_per_point
@@ -135,25 +202,6 @@ impl Properties for ScreenInfo {
 }
 
 // -----------------------------------------------
-
-/// Sent when a new recording is opened.
-///
-/// Used in `re_viewer`.
-pub struct OpenRecording {
-    /// The URL on which the web viewer is running.
-    ///
-    /// This will be used to populate `hashed_root_domain` property for all urls.
-    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
-    pub url: Option<String>,
-
-    /// The environment in which the viewer is running.
-    pub app_env: &'static str,
-
-    pub store_info: Option<StoreInfo>,
-
-    /// How data is being loaded into the viewer.
-    pub data_source: Option<&'static str>,
-}
 
 /// Basic information about a recording's chunk store.
 pub struct StoreInfo {
@@ -191,6 +239,17 @@ pub enum Id {
     Hashed(Property),
 }
 
+impl From<Id> for Property {
+    fn from(val: Id) -> Self {
+        match val {
+            Id::Official(id) => Self::String(id),
+            Id::Hashed(id) => id,
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Sent when a Wasm file is served.
 ///
 /// Used in `re_web_viewer_server`.
@@ -206,46 +265,23 @@ impl Properties for ServeWasm {
 
 // ----------------------------------------------------------------------------
 
-use std::collections::HashMap;
+// ---------------------------------------------------------------
 
-use re_build_info::BuildInfo;
-use url::Url;
+/// Sent when the viewer is first started.
+///
+/// Used in `re_viewer`.
+pub struct ViewerStarted {
+    /// The URL on which the web viewer is running.
+    ///
+    /// This will be used to populate `hashed_root_domain` property for all urls.
+    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
+    pub url: Option<String>,
 
-use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
+    /// The environment in which the viewer is running.
+    pub app_env: &'static str,
 
-impl From<Id> for Property {
-    fn from(val: Id) -> Self {
-        match val {
-            Id::Official(id) => Self::String(id),
-            Id::Hashed(id) => id,
-        }
-    }
-}
-
-impl Event for Identify {
-    const NAME: &'static str = "$identify";
-
-    const KIND: EventKind = EventKind::Update;
-}
-
-impl Properties for Identify {
-    fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self {
-            build_info,
-            rust_version,
-            llvm_version,
-            python_version,
-            opt_in_metadata,
-        } = self;
-
-        build_info.serialize(event);
-        event.insert_opt("rust_version", rust_version);
-        event.insert_opt("llvm_version", llvm_version);
-        event.insert_opt("python_version", python_version);
-        for (name, value) in opt_in_metadata {
-            event.insert(name, value);
-        }
-    }
+    /// Sparse information about the runtime environment the viewer is running in.
+    pub runtime_info: ViewerRuntimeInformation,
 }
 
 impl Event for ViewerStarted {
@@ -291,6 +327,27 @@ impl Properties for ViewerStarted {
         add_sanitized_url_properties(event, url);
         runtime_info.serialize(event);
     }
+}
+
+// ---------------------------------------------------------------
+
+/// Sent when a new recording is opened.
+///
+/// Used in `re_viewer`.
+pub struct OpenRecording {
+    /// The URL on which the web viewer is running.
+    ///
+    /// This will be used to populate `hashed_root_domain` property for all urls.
+    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
+    pub url: Option<String>,
+
+    /// The environment in which the viewer is running.
+    pub app_env: &'static str,
+
+    pub store_info: Option<StoreInfo>,
+
+    /// How data is being loaded into the viewer.
+    pub data_source: Option<&'static str>,
 }
 
 impl Event for OpenRecording {
@@ -342,49 +399,7 @@ impl Properties for OpenRecording {
     }
 }
 
-impl Event for CrashPanic {
-    const NAME: &'static str = "crash-panic";
-}
-
-impl Properties for CrashPanic {
-    fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self {
-            build_info,
-            callstack,
-            message,
-            file_line,
-        } = self;
-
-        build_info.serialize(event);
-        event.insert("callstack", callstack);
-        event.insert_opt("message", message);
-        event.insert_opt("file_line", file_line);
-    }
-}
-
-pub struct CrashSignal {
-    pub build_info: BuildInfo,
-    pub signal: String,
-    pub callstack: String,
-}
-
-impl Event for CrashSignal {
-    const NAME: &'static str = "crash-signal";
-}
-
-impl Properties for CrashSignal {
-    fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self {
-            build_info,
-            signal,
-            callstack,
-        } = self;
-
-        build_info.serialize(event);
-        event.insert("signal", signal.clone());
-        event.insert("callstack", callstack.clone());
-    }
-}
+// -----------------------------------------------
 
 // -----------------------------------------------
 

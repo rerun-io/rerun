@@ -781,7 +781,7 @@ fn create_app(
     let mut app = crate::App::new(
         main_thread_token,
         build_info,
-        &app_env,
+        app_env,
         startup_options,
         cc,
         Some(connection_registry),
