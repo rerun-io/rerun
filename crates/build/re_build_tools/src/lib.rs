@@ -338,7 +338,11 @@ mod tests {
 
         // Check it matches the expected format: YYYY-MM-DDThh:mm:ssZ
         // This regex checks for the ISO 8601 / RFC 3339 format
-        let regex = regex_lite::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$").unwrap();
-        assert!(regex.is_match(&timestamp), "Timestamp format is incorrect: {}", timestamp);
+        let regex =
+            regex_lite::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$").unwrap();
+        assert!(
+            regex.is_match(&timestamp),
+            "Timestamp format is incorrect: {timestamp}"
+        );
     }
 }

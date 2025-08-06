@@ -40,8 +40,8 @@ use std::{
     collections::HashMap,
     io::Error as IoError,
     sync::{
-        OnceLock,
         atomic::{AtomicU64, Ordering},
+        OnceLock,
     },
     time::Duration,
 };
@@ -425,7 +425,6 @@ impl Properties for re_build_info::BuildInfo {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -442,15 +441,19 @@ mod tests {
         let parsed: Value = serde_json::from_str(&serialized).expect("Failed to parse JSON");
 
         // Verify the timestamp format is correct (RFC3339)
-        let time_str = parsed["time_utc"].as_str().expect("time_utc should be a string");
+        let time_str = parsed["time_utc"]
+            .as_str()
+            .expect("time_utc should be a string");
 
         // The format should be like: "2025-04-03T01:20:10.557958200Z"
         // RFC3339 regex pattern
         let re = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
             .expect("Failed to compile regex");
 
-        assert!(re.is_match(time_str),
-                "Timestamp '{}' does not match expected RFC3339 format", time_str);
+        assert!(
+            re.is_match(time_str),
+            "Timestamp '{time_str}' does not match expected RFC3339 format",
+        );
 
         // Verify other fields
         assert_eq!(parsed["kind"], "Append");
@@ -476,7 +479,9 @@ mod tests {
         let diff = (now.as_nanosecond() - event_time.as_nanosecond()).abs();
         let five_seconds_ns = 5_000_000_000;
 
-        assert!(diff < five_seconds_ns,
-                "Timestamp difference is too large: {} nanoseconds", diff);
+        assert!(
+            diff < five_seconds_ns,
+            "Timestamp difference is too large: {diff} nanoseconds"
+        );
     }
 }
