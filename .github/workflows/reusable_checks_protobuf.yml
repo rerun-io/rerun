@@ -37,8 +37,8 @@ jobs:
         with:
           pixi-version: v0.41.4
 
-      - name: Fetch latest main (so we can grab the current schema snapshot)
-        run: time git fetch origin main # yes, we need full --depth for `buf` to work
+      - name: Fetch latest release (so we can grab the current schema snapshot)
+        run: time git fetch origin latest # yes, we need full --depth for `buf` to work
 
       # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
       # than a pure git solution in the future. For now, convenience wins.
