@@ -10,6 +10,7 @@ mod app_blueprint;
 mod app_state;
 mod background_tasks;
 mod default_views;
+mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
@@ -23,9 +24,6 @@ mod viewer_analytics;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod docker_detection;
 
 /// Auto-generated blueprint-related types.
 ///
