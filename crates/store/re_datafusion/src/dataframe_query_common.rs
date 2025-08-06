@@ -303,11 +303,16 @@ pub fn align_record_batch_to_schema(
 
     for field in target_schema.fields() {
         if let Some((idx, _)) = batch.schema().column_with_name(field.name()) {
-            aligned_columns.push(batch.column(idx).clone());
+            let batch_data_type = batch.column(idx).data_type();
+            if batch_data_type == &DataType::Null && field.data_type() != &DataType::Null {
+                // Chunk store may output a null array of null data type
+                aligned_columns.push(new_null_array(field.data_type(), num_rows));
+            } else {
+                aligned_columns.push(batch.column(idx).clone());
+            }
         } else {
             // Fill with nulls of the right data type
-            let array = new_null_array(field.data_type(), num_rows);
-            aligned_columns.push(array);
+            aligned_columns.push(new_null_array(field.data_type(), num_rows));
         }
     }
 
