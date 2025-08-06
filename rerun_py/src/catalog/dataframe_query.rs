@@ -16,7 +16,6 @@ use tracing::instrument;
 
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
-use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
@@ -482,33 +481,17 @@ impl PyDataframeQueryView {
         let dataset_id = entry.details.id;
         let connection = entry.client.borrow(py).connection().clone();
 
-        //
-        // Fetch relevant chunks
-        //
-
-        let chunk_stores = connection.get_chunks_for_dataframe_query(
-            py,
-            dataset_id,
-            &self.query_expression,
-            self.partition_ids.as_slice(),
-        )?;
-
-        let query_engines = chunk_stores
-            .into_iter()
-            .map(|(partition_id, store_handle)| {
-                let query_engine = QueryEngine::new(
-                    store_handle.clone(),
-                    QueryCache::new_handle(store_handle.clone()),
-                );
-
-                (partition_id, query_engine)
-            })
-            .collect();
-
-        DataframeQueryTableProvider::new(query_engines, &self.query_expression)
-            .map_err(to_py_err)?
-            .try_into()
-            .map_err(to_py_err)
+        wait_for_future(py, async {
+            DataframeQueryTableProvider::new(
+                connection.origin().clone(),
+                connection.connection_registry().clone(),
+                dataset_id,
+                &self.query_expression,
+            )
+            .await
+        })
+        .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
+        .map_err(to_py_err)
     }
 }
 

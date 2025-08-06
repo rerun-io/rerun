@@ -11,6 +11,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
+use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
@@ -18,8 +19,6 @@ use re_sorbet::{
     IndexColumnDescriptor, TimeColumnSelector,
 };
 use tap::Tap as _;
-
-use crate::{ChunkStore, ColumnMetadata};
 
 // --- Queries v2 ---
 
@@ -461,6 +460,14 @@ impl ChunkStore {
     pub fn schema_for_query(&self, query: &QueryExpression) -> ChunkColumnDescriptors {
         re_tracing::profile_function!();
 
+        let filter = Self::create_component_filter_from_query(query);
+
+        self.schema().filter_components(filter)
+    }
+
+    pub fn create_component_filter_from_query(
+        query: &QueryExpression,
+    ) -> impl Fn(&ComponentColumnDescriptor) -> bool {
         let QueryExpression {
             view_contents,
             include_semantically_empty_columns,
@@ -475,7 +482,7 @@ impl ChunkStore {
             selection: _,
         } = query;
 
-        let filter = |column: &ComponentColumnDescriptor| {
+        let filter = move |column: &ComponentColumnDescriptor| {
             let is_part_of_view_contents = || {
                 view_contents.as_ref().is_none_or(|view_contents| {
                     view_contents
@@ -505,6 +512,6 @@ impl ChunkStore {
                 && passes_static_check()
         };
 
-        self.schema().filter_components(filter)
+        filter
     }
 }

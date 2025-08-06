@@ -7564,6 +7564,7 @@ dependencies = [
 name = "re_datafusion"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "async-stream",
@@ -7574,12 +7575,15 @@ dependencies = [
  "futures-util",
  "getrandom 0.3.3",
  "itertools 0.14.0",
+ "log",
  "re_dataframe",
  "re_grpc_client",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_sorbet",
  "re_tuid",
+ "re_uri",
  "tokio",
  "tokio-stream",
  "tonic",
