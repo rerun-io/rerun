@@ -6,9 +6,9 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
-use datafusion::common::{DataFusionError, downcast_value, exec_datafusion_err};
+use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
 use datafusion::datasource::TableType;
-use datafusion::logical_expr::Expr;
+use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk::ChunkId;
@@ -24,12 +24,13 @@ use re_protos::frontend::v1alpha1::{
 };
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind};
+use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
 use re_uri::Origin;
 use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
@@ -194,6 +195,49 @@ impl DataframeQueryTableProvider {
             chunk_request,
         })
     }
+
+    fn column_to_selector(column: &Column) -> Option<ComponentColumnSelector> {
+        ComponentColumnSelector::from_str(column.name()).ok()
+    }
+
+    fn compute_column_is_not_null_filter(
+        filters: &[&Expr],
+    ) -> Result<Vec<Option<ComponentColumnSelector>>, DataFusionError> {
+        filters
+            .iter()
+            .map(|expr| {
+                match expr {
+                    Expr::IsNotNull(inner) => {
+                        if let Expr::Column(col) = inner.as_ref() {
+                            return Ok(Self::column_to_selector(col));
+                        }
+                    }
+                    Expr::Not(inner) => {
+                        if let Expr::IsNull(col_expr) = inner.as_ref() {
+                            if let Expr::Column(col) = col_expr.as_ref() {
+                                return Ok(Self::column_to_selector(col));
+                            }
+                        }
+                    }
+                    Expr::BinaryExpr(binary) => {
+                        if binary.op == Operator::NotEq {
+                            if let (Expr::Column(col), Expr::Literal(sv))
+                            | (Expr::Literal(sv), Expr::Column(col)) =
+                                (binary.left.as_ref(), binary.right.as_ref())
+                            {
+                                if sv.is_null() {
+                                    return Ok(Self::column_to_selector(col));
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                Ok(None)
+            })
+            .collect()
+    }
 }
 
 #[async_trait]
@@ -215,16 +259,25 @@ impl TableProvider for DataframeQueryTableProvider {
         &self,
         state: &dyn Session,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        let mut query_expression = self.query_expression.clone();
+
+        // Find the first column selection that is a component
+        let filters = filters.iter().collect::<Vec<_>>();
+        query_expression.filtered_is_not_null = Self::compute_column_is_not_null_filter(&filters)?
+            .into_iter()
+            .flatten()
+            .next();
+
         crate::PartitionStreamExec::try_new(
             &self.schema,
             self.sort_index,
             projection,
             state.config().target_partitions(),
             Arc::clone(&self.chunk_info_batches),
-            self.query_expression.clone(),
+            query_expression,
             self.client.clone(),
             self.chunk_request.clone(),
         )
@@ -233,6 +286,32 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::new(CoalesceBatchesExec::new(exec, DEFAULT_BATCH_SIZE).with_fetch(limit))
                 as Arc<dyn ExecutionPlan>
         })
+    }
+
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&Expr],
+    ) -> datafusion::common::Result<Vec<TableProviderFilterPushDown>> {
+        let filter_columns = Self::compute_column_is_not_null_filter(filters)?;
+        let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
+        if let Some(col) = non_null_columns.first() {
+            let col = *col;
+            Ok(filter_columns
+                .iter()
+                .map(|filter| {
+                    if Some(col) == filter.as_ref() {
+                        TableProviderFilterPushDown::Exact
+                    } else {
+                        TableProviderFilterPushDown::Unsupported
+                    }
+                })
+                .collect::<Vec<_>>())
+        } else {
+            Ok(vec![
+                TableProviderFilterPushDown::Unsupported;
+                filters.len()
+            ])
+        }
     }
 }
 
