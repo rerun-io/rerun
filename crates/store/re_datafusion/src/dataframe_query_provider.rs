@@ -100,13 +100,11 @@ impl Stream for DataframePartitionStream {
             .map(|h| h.is_finished())
             .unwrap_or(false)
         {
-            let join_handle = this
-                .cpu_join_handle
-                .take()
-                .expect("cpu join handle is None");
+            let Some(join_handle) = this.cpu_join_handle.take() else {
+                return Poll::Ready(Some(exec_err!("CPU join handle is None")));
+            };
             let cpu_join_result = this.cpu_runtime.handle().block_on(join_handle);
 
-            // let cpu_join_result = cpu_join_result.map_err(|err| exec_datafusion_err!("{err}"))
             match cpu_join_result {
                 Err(err) => return Poll::Ready(Some(exec_err!("{err}"))),
                 Ok(Err(err)) => return Poll::Ready(Some(Err(err))),
@@ -260,7 +258,7 @@ async fn send_next_row(
     let query_schema = Arc::clone(query_handle.schema());
     let num_fields = query_schema.fields.len();
 
-    let Some(next_row) = query_handle.next_row() else {
+    let Some(mut next_row) = query_handle.next_row() else {
         return Ok(None);
     };
 
@@ -277,16 +275,14 @@ async fn send_next_row(
         next_row[0].len()
     ])) as Arc<dyn Array>;
 
-    let mut arrays = Vec::with_capacity(num_fields + 1);
-    arrays.push(pid_array);
-    arrays.extend(next_row);
+    next_row.insert(0, pid_array);
 
     let batch_schema = Arc::new(prepend_string_column_schema(
         &query_schema,
         DATASET_MANIFEST_ID_FIELD_NAME,
     ));
 
-    let batch = RecordBatch::try_new(batch_schema, arrays)?;
+    let batch = RecordBatch::try_new(batch_schema, next_row)?;
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
 
@@ -313,9 +309,7 @@ async fn chunk_store_cpu_worker_thread(
         Vec<ChunkInfo>,
     )> = None;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
-        for chunk_and_partition_id in chunks_and_partition_ids {
-            let (chunk, partition_id) = chunk_and_partition_id;
-
+        for (chunk, partition_id) in chunks_and_partition_ids {
             let partition_id = partition_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
 
@@ -336,7 +330,7 @@ async fn chunk_store_cpu_worker_thread(
                 }
             }
 
-            if current_stores.is_none() {
+            let current_stores = current_stores.get_or_insert({
                 let store_info = StoreInfo {
                     store_id: StoreId::random(
                         StoreKind::Recording,
@@ -363,13 +357,10 @@ async fn chunk_store_cpu_worker_thread(
                     .clone();
                 chunks_to_receive.sort();
 
-                current_stores =
-                    Some((partition_id.clone(), store, query_handle, chunks_to_receive));
-            };
+                (partition_id.clone(), store, query_handle, chunks_to_receive)
+            });
 
-            let (_, store, _, remaining_chunks) = current_stores
-                .as_mut()
-                .expect("current_stores should be set");
+            let (_, store, _, remaining_chunks) = current_stores;
 
             let chunk_id = chunk.id();
             let Some((chunk_idx, _)) = remaining_chunks
