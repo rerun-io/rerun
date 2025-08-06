@@ -112,19 +112,16 @@ impl McapMessageParser for ProtobufMessageParser {
                 },
             )?;
 
-        for (field_descr, val) in dynamic_message.fields() {
-            re_log::debug!("Field {}: Start writing to builders", field_descr.name());
-            let Some(rows_builder) = self.fields.get_mut(field_descr.name()) else {
-                re_log::error_once!(
-                    "Message has field that is not part of its definition: {}",
-                    field_descr.name()
-                );
-                continue;
-            };
-
-            append_value(rows_builder.values(), val)?;
-            rows_builder.append(true);
-            re_log::trace!("Field {}: Finished writing to builders", field_descr.name(),);
+        // We always need to make sure to iterate over all our builders, adding null values whenever
+        // a field is missing from the message that we received.
+        for (field, builder) in &mut self.fields {
+            if let Some(val) = dynamic_message.get_field_by_name(field.as_str()) {
+                append_value(builder.values(), val.as_ref())?;
+                builder.append(true);
+                re_log::trace!("Field {}: Finished writing to builders", field);
+            } else {
+                builder.append(false);
+            }
         }
 
         Ok(())
@@ -191,7 +188,7 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Error
             downcast_err::<BinaryBuilder>(builder, val)?.append_value(bytes.clone());
         }
         Value::Message(dynamic_message) => {
-            re_log::debug!(
+            re_log::trace!(
                 "Append called on dynamic message with fields: {:?}",
                 dynamic_message
                     .fields()
@@ -199,7 +196,7 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Error
                     .collect::<Vec<_>>()
             );
             let struct_builder = downcast_err::<StructBuilder>(builder, val)?;
-            re_log::debug!(
+            re_log::trace!(
                 "Retrieved StructBuilder with {} fields",
                 struct_builder.num_fields()
             );
@@ -255,7 +252,7 @@ fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> Struct
 
     debug_assert_eq!(fields.len(), field_builders.len());
 
-    re_log::debug!(
+    re_log::trace!(
         "Created StructBuilder for message {} with fields: {:?}",
         message_descriptor.full_name(),
         fields.iter().map(|f| f.name()).collect::<Vec<_>>()
