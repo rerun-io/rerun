@@ -284,7 +284,7 @@ profiling = { version = "1.0.12", default-features = false }
 prost = "0.13.3"
 prost-build = "0.13.3"
 prost-types = "0.13.3"
-prost-reflect = "0.16.0"
+prost-reflect = "0.15.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.24.1"
