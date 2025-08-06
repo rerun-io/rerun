@@ -7,6 +7,7 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from typing import Optional
 
 from github import Github
 from gitignore_parser import parse_gitignore
@@ -103,7 +104,7 @@ def check_issue_closed_api(repo_owner: str, repo_name: str, issue_number: int) -
 # --- Git blame on a line ---
 
 
-def get_line_blame_info(file_path: str, line_number: int, repo_path: str = ".") -> str | None:
+def get_line_blame_info(file_path: str, line_number: int, repo_path: str = ".") -> Optional[str]:
     """
     Simpler version that uses regular git blame output.
 
