@@ -4,7 +4,13 @@ use h264_reader::{
     push::NalInterest,
 };
 
-use crate::{VideoCodec, VideoEncodingDetails, h264::encoding_details_from_h264_sps};
+use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, Sps};
+use std::io::Cursor;
+
+use crate::{
+    VideoCodec, VideoEncodingDetails, h264::encoding_details_from_h264_sps,
+    h265::encoding_details_from_h265_sps,
+};
 
 /// Failure reason for [`detect_gop_start`].
 #[derive(thiserror::Error, Debug)]
@@ -65,7 +71,7 @@ pub fn detect_gop_start(
     #[expect(clippy::match_same_arms)]
     match codec {
         VideoCodec::H264 => detect_h264_annexb_gop(sample_data),
-        VideoCodec::H265 => Err(DetectGopStartError::UnsupportedCodec(codec)),
+        VideoCodec::H265 => detect_h265_annexb_gop(sample_data),
         VideoCodec::AV1 => Err(DetectGopStartError::UnsupportedCodec(codec)),
         VideoCodec::VP8 => Err(DetectGopStartError::UnsupportedCodec(codec)),
         VideoCodec::VP9 => Err(DetectGopStartError::UnsupportedCodec(codec)),
@@ -156,6 +162,44 @@ fn detect_h264_annexb_gop(
             error_str,
         )),
         None => Ok(GopStartDetection::NotStartOfGop),
+    }
+}
+
+pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
+    let mut parser = Parser::default();
+    let mut details: Option<VideoEncodingDetails> = None;
+    let mut idr_found = false;
+    let mut cursor = Cursor::new(data);
+
+    while let Ok(nalu) = Nalu::next(&mut cursor) {
+        match nalu.header.type_ {
+            NaluType::SpsNut if details.is_none() => {
+                // parse_sps returns &Sps, so bind to a reference
+                let sps_ref: &Sps = parser
+                    .parse_sps(&nalu)
+                    .map_err(DetectGopStartError::FailedToExtractEncodingDetails)?;
+                // convert into your VideoEncodingDetails
+                details = Some(encoding_details_from_h265_sps(sps_ref));
+            }
+            t if t.is_idr() => {
+                idr_found = true;
+            }
+            _ => {}
+        }
+        if idr_found && details.is_some() {
+            break;
+        }
+    }
+
+    if idr_found {
+        if let Some(ved) = details {
+            Ok(GopStartDetection::StartOfGop(ved))
+        } else {
+            // saw IDR but no SPS → not useful
+            Ok(GopStartDetection::NotStartOfGop)
+        }
+    } else {
+        Ok(GopStartDetection::NotStartOfGop)
     }
 }
 
